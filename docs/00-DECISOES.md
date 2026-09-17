@@ -211,6 +211,67 @@ privado é requisito, não preferência.
 
 ---
 
+### D-2026-09-17-12 — Versões adotadas na Fase 1
+
+**Decisão:** versões instaladas, validadas e fixadas pelo `package-lock.json`.
+
+| Pacote | Versão |
+|---|---|
+| next | 16.3.5 |
+| react · react-dom | 19.3.0 |
+| typescript | 6.0.3 |
+| tailwindcss · @tailwindcss/postcss | 4.3.3 |
+| eslint | 9.39.5 |
+| eslint-config-next | 16.3.5 |
+| vitest | 5.0.1 |
+| @supabase/supabase-js | 2.116.0 |
+| zod | 4.6.5 |
+| server-only | 0.0.1 |
+
+**Duas exceções ao "mais recente estável", por incompatibilidade comprovada:**
+
+1. **TypeScript 6.0.3 em vez de 7.0.2** — `typescript-eslint` 8.70, embutido no
+   `eslint-config-next`, recusa a API do TS 7.0 com erro explícito.
+2. **ESLint 9.39.5 em vez de 10.10.0** — `eslint-plugin-react`, embutido no
+   `eslint-config-next` 16, usa `context.getFilename()`, removido no ESLint 10.
+
+Nenhuma tecnologia aprovada foi substituída: continua sendo TypeScript e ESLint.
+A decisão coube à autorização de "selecionar e instalar versões estáveis
+compatíveis" dada para a Fase 1.
+
+**Formalizada em:** `CLAUDE.md` §44-A.1
+
+---
+
+### D-2026-09-17-13 — Breakpoints em CSS, não em JavaScript
+
+**Decisão:** a alternância sidebar × drawer do administrativo é decidida por CSS
+(`hidden lg:flex` / `lg:hidden`), não medindo `window.innerWidth`.
+
+**Motivo:** PI-004 proíbe transportar breakpoints calculados por JavaScript. O
+resultado visual é idêntico ao do design, sem flash de layout e sem divergência
+de hidratação entre servidor e cliente. O JavaScript do drawer controla apenas
+aberto/fechado, que é comportamento e não breakpoint.
+
+**Formalizada em:** `05-PLANO-IMPLEMENTACAO.md` PI-004 · `CLAUDE.md` §8
+
+**Impacto no design:** nenhum. Mesmo comportamento responsivo.
+
+---
+
+### D-2026-09-17-14 — Tipografia por next/font
+
+**Decisão:** Bricolage Grotesque e Be Vietnam Pro carregadas por `next/font`,
+auto-hospedadas, em vez do `<link>` para o Google Fonts usado no protótipo.
+
+**Motivo:** mesmas famílias e mesmos pesos, sem requisição a terceiro em runtime
+e sem deslocamento de layout. É decisão de implementação; a tipografia aprovada
+não muda (CLAUDE.md §44-A.2).
+
+**Impacto no design:** nenhum.
+
+---
+
 # Decisões em aberto
 
 Nenhuma implementação que dependa destes pontos deve começar antes da decisão.
@@ -220,7 +281,9 @@ Nenhuma implementação que dependa destes pontos deve começar antes da decisã
 | ~~A-01~~ | ~~Framework~~ | — | ✅ Resolvida em D-2026-09-17-07: Next.js com App Router |
 | ~~A-02~~ | ~~Gestor de pacotes~~ | — | ✅ Resolvida em D-2026-09-17-07: npm |
 | ~~A-03~~ | ~~Estratégia de estilização~~ | — | ✅ Resolvida em D-2026-09-17-07: Tailwind CSS, sem redesign |
-| **A-04** | **Versões efetivamente adotadas** — verificar estabilidade e compatibilidade mútua no momento da instalação; fixar via `package-lock.json` | Registro ao final da Fase 1 | `CLAUDE.md` §44-A.1 |
+| ~~A-04~~ | ~~Versões efetivamente adotadas~~ | — | ✅ Resolvida em D-2026-09-17-12; registradas em `CLAUDE.md` §44-A.1 |
+| **A-12** | **Otimização do logo** — `public/marca/logo-shalon.png` tem 1,4 MB (1774×887) e é exibido a 38–46px de altura | Fase 3 (pipeline de imagens) | `05-PLANO-IMPLEMENTACAO.md` §7.3 |
+| **A-13** | **Revisar TypeScript 7 e ESLint 10** quando `typescript-eslint` e `eslint-plugin-react` passarem a suportá-los | Manutenção | `CLAUDE.md` §44-A.1 |
 | **A-05** | **Provedor de geocodificação/rotas** e modelo de custo | Fase 5 | `01-DOCUMENTO-MESTRE.md` §79.2 prevê Google como inicial, abstraído no domínio |
 | **A-06** | **Adaptações visuais de C1–C8** — telas que o design aprovado não possui | Fases 3 a 8 | A propor fase a fase, com aprovação prévia |
 | **A-07** | **Dados reais da Shalon** — preços, sabores, combos, horários, faixas de distância, chave Pix, endereço definitivo | Fase 11 (seed de produção) | `01-DOCUMENTO-MESTRE.md` §78 |

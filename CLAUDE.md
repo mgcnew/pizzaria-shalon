@@ -912,7 +912,7 @@ Atualizações estruturais devem ser tratadas separadamente.
 
 # 44-A. STACK DEFINIDA
 
-**Status:** aprovada em 17/09/2026. Versões pendentes de verificação na Fase 1.
+**Status:** aprovada em 17/09/2026. Versões registradas ao final da Fase 1.
 
 Esta seção registra a stack oficial do projeto.
 
@@ -941,7 +941,39 @@ Na preparação da Fase 1:
 3. **registrar aqui as versões efetivamente adotadas**, após a instalação;
 4. registrar a mesma informação em `docs/00-DECISOES.md`.
 
-Versões efetivamente adotadas: *a registrar na Fase 1.*
+### Versões efetivamente adotadas
+
+Instaladas e validadas na Fase 1, em 17/09/2026. Fixadas pelo
+`package-lock.json`, que é versionado.
+
+| Pacote | Versão |
+|---|---|
+| next | 16.3.5 |
+| react · react-dom | 19.3.0 |
+| typescript | 6.0.3 |
+| tailwindcss · @tailwindcss/postcss | 4.3.3 |
+| eslint | 9.39.5 |
+| eslint-config-next | 16.3.5 |
+| vitest | 5.0.1 |
+| @supabase/supabase-js | 2.116.0 |
+| zod | 4.6.5 |
+| server-only | 0.0.1 |
+| @types/node | 22.20.3 |
+| @types/react · @types/react-dom | 19.3.0 |
+
+**Duas versões NÃO são a mais recente do registro, por incompatibilidade
+comprovada — não por preferência:**
+
+1. **TypeScript 6.0.3 em vez de 7.0.2.** `typescript-eslint` 8.70, embutido
+   no `eslint-config-next`, recusa a API do TypeScript 7.0 com erro
+   explícito. Revisar quando `typescript-eslint` suportar TS >= 7.1.
+2. **ESLint 9.39.5 em vez de 10.10.0.** `eslint-plugin-react`, embutido no
+   `eslint-config-next` 16, usa `context.getFilename()`, removido no
+   ESLint 10. Revisar quando o `eslint-config-next` atualizar o plugin.
+
+Ambas continuam sendo TypeScript e ESLint: nenhuma tecnologia aprovada foi
+substituída. Ao atualizar qualquer uma delas, revalidar a compatibilidade
+mútua e atualizar esta tabela.
 
 ## 44-A.2 Tailwind não autoriza redesign
 
