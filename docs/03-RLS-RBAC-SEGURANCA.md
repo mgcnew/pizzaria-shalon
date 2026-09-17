@@ -1,8 +1,8 @@
-# 04 — RLS, RBAC e Segurança | Pizzaria Shalon
+# 03 — RLS, RBAC e Segurança | Pizzaria Shalon
 
 **Versão:** 1.0  
 **Status:** Especificação arquitetural — não implementar ainda  
-**Fontes de verdade:** `01-DOCUMENTO-MESTRE.md` V2, `02-SEGURANCA-PERMISSOES.md`, `03-MODELO-DADOS-SUPABASE.md`
+**Fontes de verdade:** `01-DOCUMENTO-MESTRE.md` V2, `02-MODELO-DADOS-SUPABASE.md`
 
 > Este documento define as fronteiras de acesso do sistema, a estratégia de autenticação, autorização, RLS, operações públicas controladas, auditoria e proteção de dados sensíveis. Ele **não é um conjunto de policies SQL pronto** e ainda não autoriza o Claude Code a implementar o banco. A implementação deve ocorrer somente após a consolidação das regras de negócio e do plano de implementação.
 
@@ -1206,7 +1206,7 @@ Não deixar RLS “para o final”.
 
 # 37. Decisões que o próximo documento deve congelar
 
-O documento `05-REGRAS-NEGOCIO.md` deverá transformar em invariantes explícitos, entre outros:
+O documento `04-REGRAS-NEGOCIO.md` deverá transformar em invariantes explícitos, entre outros:
 
 - enumeração final dos status de pedido;
 - transições permitidas e seus atores;
@@ -1236,6 +1236,6 @@ Se qualquer uma dessas respostas depender apenas da interface, a regra ainda nã
 
 # 39. Instrução para Claude Code
 
-> **NÃO IMPLEMENTAR AINDA.** Este documento é especificação arquitetural. Não criar migrations, policies, funções, triggers ou código de autenticação até que `05-REGRAS-NEGOCIO.md`, `06-PLANO-IMPLEMENTACAO.md` e o `CLAUDE.md` estejam consolidados e a implementação seja explicitamente autorizada.
+> **NÃO IMPLEMENTAR AINDA.** Este documento é especificação arquitetural. Não criar migrations, policies, funções, triggers ou código de autenticação até que `04-REGRAS-NEGOCIO.md`, `05-PLANO-IMPLEMENTACAO.md` e o `CLAUDE.md` estejam consolidados e a implementação seja explicitamente autorizada.
 
 Quando autorizado, preservar o frontend aprovado como referência visual oficial e adaptar a camada de dados a ele sem redesenhar a experiência.

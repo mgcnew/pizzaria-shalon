@@ -1,9 +1,9 @@
-# 03 — Modelo de Dados Supabase | Pizzaria Shalon
+# 02 — Modelo de Dados Supabase | Pizzaria Shalon
 
 **Versão:** 1.0  
 **Status:** Especificação arquitetural — não implementar ainda  
 **Fonte de verdade funcional:** `01-DOCUMENTO-MESTRE.md` V2  
-**Documento complementar:** `02-SEGURANCA-PERMISSOES.md`
+**Documento complementar:** `03-RLS-RBAC-SEGURANCA.md`
 
 > Este documento transforma as regras funcionais aprovadas em um modelo relacional para PostgreSQL/Supabase. Ele define entidades, relacionamentos, snapshots, invariantes e fronteiras de segurança. **Não é uma migration pronta e não autoriza o Claude Code a implementar o banco ainda.** Antes da implementação, deve ser reconciliado com o documento específico de RLS/RBAC e com as regras de negócio.
 
@@ -563,7 +563,7 @@ Estados conceituais necessários incluem:
 - `rejected`
 - `cancelled`
 
-A ordem exata, nomes finais e transições serão formalizados em `05-REGRAS-NEGOCIO.md`.
+A ordem exata, nomes finais e transições serão formalizados em `04-REGRAS-NEGOCIO.md`.
 
 **Importante:** estados pré-condicionais podem depender do pagamento/entrega. Evitar uma enumeração que force combinações impossíveis. `payment_status` e `delivery_approval_status` permanecem dimensões próprias quando isso reduzir complexidade.
 
@@ -1456,9 +1456,9 @@ O modelo estará pronto para virar migrations somente quando conseguirmos demons
 
 Após aprovação deste modelo, criar:
 
-**`04-RLS-RBAC-SEGURANCA.md`**
+**`03-RLS-RBAC-SEGURANCA.md`**
 
-Ele deverá transformar `02-SEGURANCA-PERMISSOES.md` e este modelo em uma matriz concreta de:
+Ele deverá transformar `03-RLS-RBAC-SEGURANCA.md` e este modelo em uma matriz concreta de:
 
 - tabela/recurso;
 - ator;
@@ -1469,7 +1469,7 @@ Ele deverá transformar `02-SEGURANCA-PERMISSOES.md` e este modelo em uma matriz
 - eventos auditados;
 - cenários de teste de autorização.
 
-Somente depois disso consolidar `05-REGRAS-NEGOCIO.md`, `06-PLANO-IMPLEMENTACAO.md` e o `CLAUDE.md` raiz.
+Somente depois disso consolidar `04-REGRAS-NEGOCIO.md`, `05-PLANO-IMPLEMENTACAO.md` e o `CLAUDE.md` raiz.
 
 ---
 

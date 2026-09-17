@@ -1026,8 +1026,8 @@ Antes da primeira alteração de código, confirmar:
 - [ ] `05-PLANO-IMPLEMENTACAO.md` presente;
 - [ ] `CLAUDE.md` presente;
 - [ ] frontend aprovado disponível;
-- [ ] código versionado em Git;
-- [ ] working tree limpo ou estado conhecido;
+- [x] código versionado em Git;
+- [x] working tree limpo ou estado conhecido;
 - [ ] projeto Supabase correto identificado;
 - [ ] ambientes dev/prod diferenciados;
 - [ ] segredos fora do repositório;

@@ -1,6 +1,7 @@
 # CLAUDE.md
 ## Pizzaria Shalon — Instruções permanentes para Claude Code
 
+**Versão:** 1.1 — reconciliação documental de 17/09/2026  
 **Status:** Governança de implementação da V1  
 **Aplicação:** todo trabalho realizado neste repositório  
 **Idioma de comunicação do projeto:** Português do Brasil
@@ -307,7 +308,15 @@ Exemplos:
 - exportar;
 - visualizar financeiro sensível.
 
-Não inferir autorização apenas pelo nome textual do cargo quando existir mecanismo de permissão.
+O nome textual do cargo **nunca** é mecanismo de autorização. A decisão de
+autorizar depende exclusivamente da permissão semântica efetiva do usuário no
+momento da operação (RN-RBAC-004).
+
+`Owner/Admin` e `Atendente` são os **papéis conceituais** do sistema. Os nomes
+exibidos na interface podem ser amigáveis e tornar-se configuráveis
+posteriormente — por exemplo "Proprietária" e "Balconista", como no design
+aprovado — sem que isso altere o mecanismo de autorização.
+Decisão confirmada em 17/09/2026.
 
 ---
 
@@ -898,6 +907,24 @@ Antes de nova dependência:
 Não atualizar todas as bibliotecas durante uma feature sem motivo.
 
 Atualizações estruturais devem ser tratadas separadamente.
+
+---
+
+# 44-A. STACK DEFINIDA
+
+**Status:** pendente de decisão arquitetural.
+
+Esta seção registra a stack oficial do projeto. Enquanto estiver pendente,
+nenhuma escolha de framework, gestor de pacotes ou estratégia de estilização
+deve ser assumida implicitamente em código.
+
+- Framework: *a definir*
+- Gestor de pacotes: *a definir*
+- Estilização: *a definir*
+- Versões fixadas: *a definir*
+
+Alterações nesta seção exigem decisão explícita registrada, não podem ser feitas
+como efeito colateral de uma feature, e devem ser refletidas em `05-PLANO-IMPLEMENTACAO.md` §5.
 
 ---
 

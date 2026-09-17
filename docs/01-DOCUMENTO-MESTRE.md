@@ -61,6 +61,11 @@ templates de remarketing.
 
 Não queremos precisar alterar código porque a pizzaria começou a aceitar uma nova bandeira ou adicionou uma borda de cheddar.
 
+> **⚠️ PARCIALMENTE SUPERADO PELA V2 — ver §79.2 e §79.27.** O item
+> "cálculo de entrega por distância" desta lista **não está mais fora da V1**.
+> O cálculo por rota viária passou a integrar o escopo funcional consolidado.
+> Os demais itens da lista continuam vigentes. Decisão confirmada em 17/09/2026.
+
 2.4 V1 controlada
 
 Funcionalidades futuras deverão ser consideradas arquiteturalmente, mas não implementadas antecipadamente.
@@ -154,6 +159,12 @@ Não haverá menu inferior permanente.
 
 Quando existirem produtos no carrinho, poderá existir um CTA/barra flutuante de carrinho, pois isso não representa navegação inferior.
 
+> **⚠️ SUPERADO PELA V2 — ver §79.3 e §79.6.** Tradicional e Brotinho **não são
+> categorias**: são **tamanhos** configuráveis e reutilizáveis (§79.3, RN-PIZZA-002).
+> As categorias vigentes da V1 são Pizzas Salgadas, Pizzas Doces, Fogazza, Combos
+> e Bebidas (§79.6), sendo dados configuráveis e não enum estrutural.
+> Decisão confirmada em 17/09/2026.
+
 6. Cardápio inicial
 
 Categorias inicialmente conhecidas:
@@ -171,6 +182,11 @@ A estrutura não deverá limitar o estabelecimento a essas categorias.
 A administradora poderá criar novas categorias posteriormente.
 
 7. Produtos e cardápio
+
+> **Nota de reconciliação (17/09/2026) — ver §79.3.** Cada sabor comercial de pizza
+> **é um produto**. O termo "sabores" na lista abaixo designa uma área de cadastro do
+> painel, **não** uma entidade independente do modelo de dados. O modelo canônico está
+> em `02-MODELO-DADOS-SUPABASE.md`.
 
 O painel administrativo deverá permitir CRUD de:
 
@@ -256,6 +272,12 @@ indisponível temporariamente;
 ativo/inativo.
 
 O objetivo é reduzir pedidos que posteriormente precisem ser recusados.
+
+> **⚠️ COMPLEMENTADO PELA V2 — ver §79.12.** "Pix" desdobra-se em duas opções
+> distintas: **Pix na maquininha** (pagamento presencial) e **Pix antecipado por
+> chave** (só aparece se a chave estiver cadastrada e habilitada; mantém o pedido
+> em "Aguardando confirmação do Pix" e impede a produção até confirmação manual
+> autorizada — RN-PGTO-007 a RN-PGTO-011). O restante desta seção continua vigente.
 
 11. Formas de pagamento
 
@@ -346,6 +368,14 @@ ou
 RETIRADA
 
 inclusive na comanda.
+
+> **⚠️ SUPERADO INTEGRALMENTE PELA V2 — ver §79.2.** Esta seção descreve a regra
+> antiga de **taxa por bairro/região**, mantida apenas como registro histórico da
+> descoberta. A regra vigente da V1 é **distância real de rota viária**, com faixas
+> configuráveis por km, raio de aprovação automática e distância máxima atendida
+> (§79.2; RN-ENT-006 a RN-ENT-014). O bloco "Futuro" ao final desta seção também
+> está superado: o cálculo por distância **faz parte da V1**.
+> Decisão confirmada em 17/09/2026.
 
 15. Taxa de entrega
 
@@ -1154,6 +1184,11 @@ Hero/banner
 
 Promoções e comunicação da pizzaria.
 
+> **⚠️ SUPERADO PELA V2 — ver §79.6 e §79.3.** O exemplo de categorias horizontais
+> abaixo é anterior à consolidação. Brotinho é **tamanho**, não categoria, e
+> "Refrigerantes" passou a ser "Bebidas". Categorias vigentes: Pizzas Salgadas,
+> Pizzas Doces, Fogazza, Combos e Bebidas. Decisão confirmada em 17/09/2026.
+
 Categorias horizontais
 
 Pizza | Brotinho | Fogazza | Combos | Refrigerantes etc.
@@ -1268,6 +1303,11 @@ As regras críticas deverão ser validadas no backend/banco.
 67. Arquitetura de dados
 
 A modelagem deverá preservar entidades distintas em vez de colocar tudo em tabelas genéricas.
+
+> **Nota de reconciliação (17/09/2026) — ver §79.3.** Cada sabor comercial de pizza
+> **é um produto**. O termo "sabores" na lista abaixo designa um domínio funcional,
+> **não** uma entidade independente do modelo de dados. O modelo canônico está em
+> `02-MODELO-DADOS-SUPABASE.md`.
 
 Entre os domínios que provavelmente existirão:
 
@@ -1452,6 +1492,11 @@ Pagamento online
 gateway;
 Pix conciliado automaticamente;
 checkout financeiro externo.
+> **⚠️ PARCIALMENTE SUPERADO PELA V2 — ver §79.2 e §79.27.** Deste bloco,
+> **cálculo por quilômetros, roteamento e uso de API de mapas passaram a integrar
+> a V1**. Permanecem fora da V1 apenas o rastreamento por **GPS do motoboy** e o
+> app/login do entregador. Decisão confirmada em 17/09/2026.
+
 Entrega avançada
 cálculo por quilômetros;
 roteamento;
@@ -1867,12 +1912,16 @@ O design aprovado permanece como referência visual oficial. Não redesenhar ou 
 
 Antes de implementar funcionalidades, a documentação técnica deve ser reconciliada com esta V2. A sequência passa a ser:
 
-1. atualizar/reconciliar segurança e permissões;
-2. criar **03-MODELO-DADOS-SUPABASE.md**;
-3. criar/refinar **04-RLS-RBAC-SEGURANCA.md**;
-4. criar **05-REGRAS-NEGOCIO.md**;
-5. criar **06-PLANO-IMPLEMENTACAO.md**;
-6. criar o `CLAUDE.md` raiz;
+1. atualizar/reconciliar segurança e permissões; ✅ concluído
+2. criar **02-MODELO-DADOS-SUPABASE.md**; ✅ concluído
+3. criar/refinar **03-RLS-RBAC-SEGURANCA.md**; ✅ concluído
+4. criar **04-REGRAS-NEGOCIO.md**; ✅ concluído
+5. criar **05-PLANO-IMPLEMENTACAO.md**; ✅ concluído
+6. criar o `CLAUDE.md` raiz; ✅ concluído
 7. somente então iniciar implementação por fases.
+
+> **Nota de reconciliação (17/09/2026):** a numeração originalmente prevista
+> (03 a 06) foi executada como 02 a 05. Os nomes acima refletem os arquivos
+> realmente existentes em `docs/`.
 
 **Regra final para Claude Code:** não implementar ainda a partir de decisões antigas isoladas. Em qualquer conflito, esta consolidação V2 é a fonte de verdade funcional mais recente.
