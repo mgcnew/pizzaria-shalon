@@ -79,3 +79,6 @@ desktop.ini
 # Os arquivos .dc.html, support.js, image-slot.js e uploads/ SÃO versionados:
 # constituem a referência visual oficial do projeto (CLAUDE.md §7).
 **/.image-slots.state.json
+
+# Ferramentas locais de desenvolvimento
+.claude/
