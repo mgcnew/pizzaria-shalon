@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+@import "../ui/tokens/tokens.css";
+@import "../ui/tokens/theme.css";
+
+/* =========================================================================
+ * BASE
+ * Reproduz o reset e as regras globais do design aprovado.
+ * ========================================================================= */
+
+@layer base {
+  html {
+    /* Impede rolagem horizontal da página; conteúdo largo rola no próprio
+     * contêiner, como no design. */
+    overflow-x: hidden;
+  }
+
+  body {
+    margin: 0;
+    background: var(--shalon-bg);
+    color: var(--shalon-ink);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a {
+    color: var(--shalon-brand-red);
+    text-decoration: none;
+  }
+
+  a:hover {
+    color: #8e1c12;
+  }
+
+  /* Foco visível — requisito de acessibilidade (CLAUDE.md §38). */
+  :focus-visible {
+    outline: 2px solid var(--shalon-brand-orange);
+    outline-offset: 2px;
+  }
+
+  /* Todo preço e valor usa numeral tabular, como no design. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /* Carrosséis horizontais sem barra de rolagem visível (data-hscroll). */
+  [data-hscroll="true"] {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  [data-hscroll="true"]::-webkit-scrollbar {
+    display: none;
+  }
+}

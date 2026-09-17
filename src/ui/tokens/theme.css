@@ -1,0 +1,179 @@
+/* =========================================================================
+ * PONTE TOKENS → TAILWIND
+ *
+ * Tailwind v4 usa configuração CSS-first. Este bloco @theme apenas EXPÕE os
+ * tokens de tokens.css como utilitários. Os valores não são redefinidos aqui:
+ * cada entrada aponta para a variável correspondente, de modo que o design
+ * continue sendo a única fonte (CLAUDE.md §44-A.2).
+ *
+ * Consequência prática: trocar o tema (claro/escuro, amarelo/vermelho) troca
+ * os tokens e os utilitários acompanham, sem reescrever componente algum.
+ * ========================================================================= */
+
+@theme inline {
+  /* --- Cores ------------------------------------------------------------ */
+  --color-brand-yellow: var(--shalon-brand-yellow);
+  --color-brand-orange: var(--shalon-brand-orange);
+  --color-brand-red: var(--shalon-brand-red);
+
+  --color-bg: var(--shalon-bg);
+  --color-surface: var(--shalon-surface);
+  --color-elev: var(--shalon-elev);
+  --color-border-shalon: var(--shalon-border);
+
+  --color-ink: var(--shalon-ink);
+  --color-ink-2: var(--shalon-ink-2);
+  --color-muted: var(--shalon-muted);
+
+  --color-success: var(--shalon-success);
+  --color-warning: var(--shalon-warning);
+  --color-danger: var(--shalon-danger);
+  --color-info: var(--shalon-info);
+  --color-disabled: var(--shalon-disabled);
+
+  --color-cta: var(--shalon-cta-bg);
+  --color-cta-fg: var(--shalon-cta-fg);
+
+  --color-tw: var(--shalon-tw);
+  --color-twb: var(--shalon-twb);
+  --color-twf: var(--shalon-twf);
+  --color-tg: var(--shalon-tg);
+  --color-tgb: var(--shalon-tgb);
+  --color-tgf: var(--shalon-tgf);
+  --color-td: var(--shalon-td);
+  --color-tdb: var(--shalon-tdb);
+  --color-tdf: var(--shalon-tdf);
+  --color-ti: var(--shalon-ti);
+  --color-tib: var(--shalon-tib);
+  --color-tif: var(--shalon-tif);
+  --color-tn: var(--shalon-tn);
+  --color-tnb: var(--shalon-tnb);
+  --color-tnf: var(--shalon-tnf);
+
+  --color-sidebar: var(--shalon-sidebar);
+  --color-sidebar-ink: var(--shalon-sidebar-ink);
+
+  --color-dark-surface: var(--shalon-dark-surface);
+  --color-dark-ink: var(--shalon-dark-ink);
+  --color-dark-ink-2: var(--shalon-dark-ink-2);
+  --color-dark-ink-3: var(--shalon-dark-ink-3);
+  --color-dark-muted: var(--shalon-dark-muted);
+
+  /* --- Tipografia -------------------------------------------------------
+   * Bricolage Grotesque para títulos e números grandes.
+   * Be Vietnam Pro para interface, corpo e preços.
+   * As variáveis --font-* vêm de next/font (ver src/ui/fonts.ts).
+   */
+  --font-display: var(--font-bricolage), system-ui, sans-serif;
+  --font-sans: var(--font-be-vietnam), system-ui, sans-serif;
+
+  /* Escala do design (valor / peso conforme a vitrine "Tipografia") */
+  --text-display: 38px;
+  --text-display--line-height: 1.05;
+  --text-display--font-weight: 800;
+
+  --text-h1: 28px;
+  --text-h1--line-height: 1.08;
+  --text-h1--font-weight: 800;
+
+  --text-h2: 21px;
+  --text-h2--line-height: 1.2;
+  --text-h2--font-weight: 700;
+
+  --text-h3: 16px;
+  --text-h3--line-height: 1.25;
+  --text-h3--font-weight: 600;
+
+  --text-body: 16px;
+  --text-body--line-height: 1.45;
+
+  --text-small: 14px;
+  --text-small--line-height: 1.4;
+
+  --text-caption: 12px;
+  --text-caption--line-height: 1.3;
+  --text-caption--font-weight: 600;
+  --text-caption--letter-spacing: 0.06em;
+
+  --text-button: 16px;
+  --text-button--font-weight: 600;
+
+  --text-price: 20px;
+  --text-price--font-weight: 700;
+
+  /* --- Raios ------------------------------------------------------------ */
+  --radius-6: var(--shalon-radius-6);
+  --radius-8: var(--shalon-radius-8);
+  --radius-9: var(--shalon-radius-9);
+  --radius-10: var(--shalon-radius-10);
+  --radius-11: var(--shalon-radius-11);
+  --radius-12: var(--shalon-radius-12);
+  --radius-13: var(--shalon-radius-13);
+  --radius-14: var(--shalon-radius-14);
+  --radius-16: var(--shalon-radius-16);
+  --radius-18: var(--shalon-radius-18);
+  --radius-20: var(--shalon-radius-20);
+  --radius-22: var(--shalon-radius-22);
+  --radius-pill: var(--shalon-radius-pill);
+
+  /* --- Alvos de toque --------------------------------------------------- */
+  --spacing-touch: var(--shalon-touch-min);
+  --spacing-touch-cta: var(--shalon-touch-cta);
+  --spacing-touch-cta-lg: var(--shalon-touch-cta-lg);
+  --spacing-touch-cta-xl: var(--shalon-touch-cta-xl);
+
+  /* --- Contêineres ------------------------------------------------------ */
+  --container-shalon: var(--shalon-container);
+  --container-sidebar: var(--shalon-sidebar-w);
+  --container-drawer: var(--shalon-drawer-max);
+  --container-sheet: var(--shalon-sheet-max);
+
+  /* --- Sombras ---------------------------------------------------------- */
+  --shadow-cta: var(--shalon-shadow-cta);
+  --shadow-toast: var(--shalon-shadow-toast);
+  --shadow-card-sel: var(--shalon-shadow-card-sel);
+
+  /* --- Animações do design ---------------------------------------------- */
+  --animate-shalon-up: shalonUp 0.28s ease both;
+  --animate-shalon-spin: shalonSpin 0.8s linear infinite;
+  --animate-shalon-pulse: shalonPulse 1.4s infinite;
+}
+
+/* Keyframes idênticos aos do design aprovado. */
+@keyframes shalonUp {
+  from {
+    transform: translateY(14px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes shalonSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes shalonPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* Respeita quem pediu menos movimento (CLAUDE.md §38). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

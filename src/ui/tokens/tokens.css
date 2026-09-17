@@ -1,0 +1,173 @@
+/* =========================================================================
+ * TOKENS DA PIZZARIA SHALON
+ *
+ * Extraídos literalmente do design aprovado do Claude Design:
+ *   pizzaria-shalon-design-system/project/Pizzaria Shalon.dc.html
+ *   pizzaria-shalon-design-system/project/Shalon Admin.dc.html
+ *
+ * Este arquivo é a FONTE da configuração do Tailwind, e não o contrário
+ * (CLAUDE.md §44-A.2). Nenhum valor aqui pode ser "arredondado", trocado
+ * pela paleta padrão do Tailwind ou simplificado por conveniência.
+ *
+ * Qualquer alteração de valor exige decisão documentada (CLAUDE.md §7).
+ * ========================================================================= */
+
+:root {
+  /* --- Marca ------------------------------------------------------------ */
+  --shalon-brand-yellow: #ffb61e;
+  --shalon-brand-orange: #ee7a17;
+  --shalon-brand-red: #c4291c;
+
+  /* --- Superfícies ------------------------------------------------------ */
+  --shalon-bg: #f7f2ea;
+  --shalon-surface: #ffffff;
+  --shalon-elev: #fffcf6;
+  --shalon-border: #e8dccb;
+
+  /* --- Texto ------------------------------------------------------------ */
+  --shalon-ink: #1e1814;
+  --shalon-ink-2: #584e45;
+  --shalon-muted: #8b8077;
+
+  /* --- Semânticas ------------------------------------------------------- */
+  --shalon-success: #1b7a4f;
+  --shalon-warning: #96610a;
+  --shalon-danger: #c0392b;
+  --shalon-info: #20658f;
+  --shalon-disabled: #cfc6ba;
+
+  /* --- CTA: trocado pelo tema de acento (ver [data-acento]) -------------- */
+  --shalon-cta-bg: var(--shalon-brand-yellow);
+  --shalon-cta-fg: var(--shalon-ink);
+
+  /* --- Tonais (usados sobretudo no administrativo) ----------------------
+   * Cada família tem fundo / borda / texto:
+   *   tw = warning · tg = success · td = danger · ti = info · tn = neutro
+   */
+  --shalon-tw: #fff3dc;
+  --shalon-twb: #f0ddb5;
+  --shalon-twf: #96610a;
+
+  --shalon-tg: #e7f4ec;
+  --shalon-tgb: #cfe4d8;
+  --shalon-tgf: #1b7a4f;
+
+  --shalon-td: #fbe7e4;
+  --shalon-tdb: #f0c4be;
+  --shalon-tdf: #c0392b;
+
+  --shalon-ti: #e8f1f7;
+  --shalon-tib: #cbdeea;
+  --shalon-tif: #20658f;
+
+  --shalon-tn: #f1ebe3;
+  --shalon-tnb: #e8dccb;
+  --shalon-tnf: #584e45;
+
+  /* --- Shell administrativo --------------------------------------------- */
+  --shalon-sidebar: #2a201a;
+  --shalon-sidebar-ink: #e3d3bd;
+
+  /* --- Superfícies escuras usadas no público (hero, toast, drawer) ------- */
+  --shalon-dark-surface: #2a201a;
+  --shalon-dark-ink: #fff7e8;
+  --shalon-dark-ink-2: #d9c9b2;
+  --shalon-dark-ink-3: #e8d8c2;
+  --shalon-dark-muted: #b7a692;
+
+  /* --- Raios ------------------------------------------------------------ */
+  --shalon-radius-6: 6px;
+  --shalon-radius-8: 8px;
+  --shalon-radius-9: 9px;
+  --shalon-radius-10: 10px;
+  --shalon-radius-11: 11px;
+  --shalon-radius-12: 12px;
+  --shalon-radius-13: 13px;
+  --shalon-radius-14: 14px;
+  --shalon-radius-16: 16px;
+  --shalon-radius-18: 18px;
+  --shalon-radius-20: 20px;
+  --shalon-radius-22: 22px;
+  --shalon-radius-pill: 999px;
+
+  /* --- Alvos de toque (CLAUDE.md §38) ----------------------------------- */
+  --shalon-touch-min: 44px;
+  --shalon-touch-cta: 48px;
+  --shalon-touch-cta-lg: 52px;
+  --shalon-touch-cta-xl: 56px;
+
+  /* --- Larguras de contêiner -------------------------------------------- */
+  --shalon-container: 1120px;
+  --shalon-sidebar-w: 232px;
+  --shalon-drawer-max: 280px;
+  --shalon-sheet-max: 560px;
+
+  /* --- Espessuras de borda ---------------------------------------------- */
+  --shalon-border-card: 1px;
+  --shalon-border-control: 1.5px;
+  --shalon-border-selected: 2px;
+
+  /* --- Sombras ---------------------------------------------------------- */
+  --shalon-shadow-cta: 0 8px 24px rgb(30 24 20 / 0.16);
+  --shalon-shadow-toast: 0 10px 30px rgb(0 0 0 / 0.2);
+  --shalon-shadow-card-sel: 0 6px 18px rgb(30 24 20 / 0.1);
+
+  /* --- Véus de sobreposição --------------------------------------------- */
+  --shalon-scrim-sheet: rgb(30 24 20 / 0.5);
+  --shalon-scrim-drawer: rgb(30 24 20 / 0.55);
+}
+
+/* =========================================================================
+ * TEMA DE ACENTO
+ * Prop `acento` do design: amarelo (padrão público) ou vermelho (padrão admin).
+ * Reescreve SOMENTE o par CTA — o restante da interface não muda.
+ * ========================================================================= */
+
+[data-acento="amarelo"] {
+  --shalon-cta-bg: #ffb61e;
+  --shalon-cta-fg: #1e1814;
+}
+
+[data-acento="vermelho"] {
+  --shalon-cta-bg: #c4291c;
+  --shalon-cta-fg: #ffffff;
+}
+
+/* =========================================================================
+ * MODO ESCURO
+ * Reproduz `applyTheme()` do administrativo. Reescreve os tokens; nenhuma
+ * regra de layout ou componente muda por causa do tema.
+ * ========================================================================= */
+
+[data-tema="escuro"] {
+  --shalon-bg: #16110e;
+  --shalon-surface: #201a15;
+  --shalon-elev: #291f19;
+  --shalon-ink: #f7efe3;
+  --shalon-ink-2: #c6b8a8;
+  --shalon-muted: #998b7d;
+  --shalon-border: #3b3029;
+
+  --shalon-tw: rgb(255 182 30 / 0.15);
+  --shalon-twb: rgb(255 182 30 / 0.34);
+  --shalon-twf: #f3c670;
+
+  --shalon-tg: rgb(27 122 79 / 0.17);
+  --shalon-tgb: rgb(27 122 79 / 0.38);
+  --shalon-tgf: #69c89a;
+
+  --shalon-td: rgb(192 57 43 / 0.17);
+  --shalon-tdb: rgb(192 57 43 / 0.4);
+  --shalon-tdf: #f2948a;
+
+  --shalon-ti: rgb(32 101 143 / 0.18);
+  --shalon-tib: rgb(32 101 143 / 0.4);
+  --shalon-tif: #86c3e8;
+
+  --shalon-tn: rgb(255 255 255 / 0.07);
+  --shalon-tnb: rgb(255 255 255 / 0.15);
+  --shalon-tnf: #c6b8a8;
+
+  --shalon-sidebar: #100c0a;
+  --shalon-sidebar-ink: #e3d3bd;
+}
