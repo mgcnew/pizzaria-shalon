@@ -1458,7 +1458,7 @@ Após aprovação deste modelo, criar:
 
 **`03-RLS-RBAC-SEGURANCA.md`**
 
-Ele deverá transformar `03-RLS-RBAC-SEGURANCA.md` e este modelo em uma matriz concreta de:
+O documento `03-RLS-RBAC-SEGURANCA.md` consolidou a especificação de segurança e este modelo em uma matriz concreta de:
 
 - tabela/recurso;
 - ator;

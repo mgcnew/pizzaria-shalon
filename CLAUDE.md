@@ -912,19 +912,62 @@ Atualizações estruturais devem ser tratadas separadamente.
 
 # 44-A. STACK DEFINIDA
 
-**Status:** pendente de decisão arquitetural.
+**Status:** aprovada em 17/09/2026. Versões pendentes de verificação na Fase 1.
 
-Esta seção registra a stack oficial do projeto. Enquanto estiver pendente,
-nenhuma escolha de framework, gestor de pacotes ou estratégia de estilização
-deve ser assumida implicitamente em código.
+Esta seção registra a stack oficial do projeto.
 
-- Framework: *a definir*
-- Gestor de pacotes: *a definir*
-- Estilização: *a definir*
-- Versões fixadas: *a definir*
+| Camada | Decisão |
+|---|---|
+| Framework | **Next.js com App Router** |
+| Linguagem | **TypeScript em modo strict** |
+| UI | **React** |
+| Backend / Banco / Auth / Storage | **Supabase** |
+| Gestor de pacotes | **npm** |
+| Estilização | **Tailwind CSS** |
+| Deploy previsto | **Vercel** |
+
+## 44-A.1 Versões
+
+**Nenhuma versão está fixada nesta seção e nenhuma deve ser presumida.**
+
+Em particular, **não assumir Next.js 15** nem qualquer outro número mencionado
+durante a auditoria da Fase 0: aquilo foi proposta, não decisão.
+
+Na preparação da Fase 1:
+
+1. verificar as versões estáveis e **mutuamente compatíveis** disponíveis no
+   momento da instalação;
+2. instalar com `npm`, deixando o `package-lock.json` fixar as versões;
+3. **registrar aqui as versões efetivamente adotadas**, após a instalação;
+4. registrar a mesma informação em `docs/00-DECISOES.md`.
+
+Versões efetivamente adotadas: *a registrar na Fase 1.*
+
+## 44-A.2 Tailwind não autoriza redesign
+
+Tailwind é **mecanismo de implementação**, não licença para redesenhar.
+
+Continuam sendo referência visual obrigatória, conforme §7 e conforme o design
+aprovado do Claude Design:
+
+- tokens de cor (marca, superfície, texto, semânticos, tonais, CTA);
+- tipografia (Bricolage Grotesque e Be Vietnam Pro) e a escala definida;
+- espaçamentos;
+- raios;
+- temas claro/escuro e os temas de acento amarelo/vermelho;
+- estados de loading, vazio, erro, indisponível e bloqueado;
+- hierarquia visual, navegação, responsividade e microcopy.
+
+Os tokens do design devem ser a **fonte** da configuração do Tailwind, e não o
+contrário. Não substituir a paleta da Shalon pela paleta padrão do Tailwind, não
+trocar a tipografia por utilitários genéricos e não "simplificar" espaçamentos ou
+raios para valores redondos do framework.
+
+## 44-A.3 Alteração desta seção
 
 Alterações nesta seção exigem decisão explícita registrada, não podem ser feitas
-como efeito colateral de uma feature, e devem ser refletidas em `05-PLANO-IMPLEMENTACAO.md` §5.
+como efeito colateral de uma feature, e devem ser refletidas em
+`05-PLANO-IMPLEMENTACAO.md` §5 e em `docs/00-DECISOES.md`.
 
 ---
 

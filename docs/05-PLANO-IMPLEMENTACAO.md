@@ -1019,19 +1019,19 @@ O texto definitivo ficará no `CLAUDE.md`.
 
 Antes da primeira alteração de código, confirmar:
 
-- [ ] `01-DOCUMENTO-MESTRE.md` presente e atualizado;
-- [ ] `02-MODELO-DADOS-SUPABASE.md` presente;
-- [ ] `03-RLS-RBAC-SEGURANCA.md` presente;
-- [ ] `04-REGRAS-NEGOCIO.md` presente;
-- [ ] `05-PLANO-IMPLEMENTACAO.md` presente;
-- [ ] `CLAUDE.md` presente;
-- [ ] frontend aprovado disponível;
+- [x] `01-DOCUMENTO-MESTRE.md` presente e atualizado;
+- [x] `02-MODELO-DADOS-SUPABASE.md` presente;
+- [x] `03-RLS-RBAC-SEGURANCA.md` presente;
+- [x] `04-REGRAS-NEGOCIO.md` presente;
+- [x] `05-PLANO-IMPLEMENTACAO.md` presente;
+- [x] `CLAUDE.md` presente;
+- [x] frontend aprovado disponível;
 - [x] código versionado em Git;
 - [x] working tree limpo ou estado conhecido;
 - [ ] projeto Supabase correto identificado;
 - [ ] ambientes dev/prod diferenciados;
 - [ ] segredos fora do repositório;
-- [ ] nenhuma documentação antiga conflitante no contexto do Claude.
+- [x] nenhuma documentação antiga conflitante no contexto do Claude.
 
 ---
 

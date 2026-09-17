@@ -115,20 +115,119 @@ Contexto: conclusão da **Fase 0 — Preparação e Auditoria** (`05-PLANO-IMPLE
 
 ---
 
+### D-2026-09-17-07 — Stack arquitetural da V1
+
+**Decisão:** stack oficial aprovada.
+
+| Camada | Decisão |
+|---|---|
+| Framework | Next.js com App Router |
+| Linguagem | TypeScript em modo strict |
+| UI | React |
+| Backend / Banco / Auth / Storage | Supabase |
+| Gestor de pacotes | npm |
+| Estilização | Tailwind CSS |
+| Deploy previsto | Vercel |
+
+**Sobre versões:** **nenhuma versão foi fixada**. Em particular, **não assumir
+Next.js 15** nem qualquer número citado na auditoria da Fase 0 — aquilo foi
+proposta, não decisão. Na preparação da Fase 1: verificar as versões estáveis e
+mutuamente compatíveis disponíveis no momento da instalação, instalar com `npm`
+deixando o `package-lock.json` fixar as versões, e registrar as versões
+efetivamente adotadas em `CLAUDE.md` §44-A.1 e aqui.
+
+**Sobre Tailwind:** a escolha **não autoriza redesign**. Tailwind é mecanismo de
+implementação. Tokens, cores, tipografia, espaçamentos, raios, temas, estados e
+demais decisões visuais do Claude Design continuam sendo a referência. Os tokens
+do design são a **fonte** da configuração do Tailwind, e não o contrário.
+
+**Motivo:** destravar a Fase 1 sem antecipar versões nem abrir brecha para
+alteração da experiência aprovada.
+
+**Formalizada em:** `CLAUDE.md` §44-A (com §44-A.1 sobre versões e §44-A.2 sobre
+a proibição de redesign) · `CLAUDE.md` §7 · `05-PLANO-IMPLEMENTACAO.md` §5
+
+**Impacto no design:** nenhum. A identidade visual permanece integralmente.
+
+---
+
+### D-2026-09-17-08 — `02-SEGURANCA-PERMISSOES.md` não será recuperado
+
+**Decisão:** o arquivo **não será recuperado nem recriado**. O redirecionamento
+das suas citações para `03-RLS-RBAC-SEGURANCA.md` é **definitivo**.
+
+**Motivo:** o arquivo nunca existiu no repositório e o conteúdo que ele prometia
+— matriz de RBAC, permissões semânticas, fronteiras de acesso — está
+integralmente em `03-RLS-RBAC-SEGURANCA.md`.
+
+**Formalizada em:** `02-MODELO-DADOS-SUPABASE.md` linhas 6 e 1461 ·
+`03-RLS-RBAC-SEGURANCA.md` linha 5
+
+---
+
+### D-2026-09-17-09 — Checklist pré-implementação
+
+**Decisão:** no checklist de `05-PLANO-IMPLEMENTACAO.md` §23, marcar como
+concluídos **somente** os itens objetivamente verificados: presença dos cinco
+documentos normativos, presença do `CLAUDE.md`, frontend aprovado disponível,
+código versionado em Git e working tree limpo.
+
+Permanecem **desmarcados** por ainda não estarem resolvidos: projeto Supabase
+identificado, ambientes dev/prod diferenciados e segredos fora do repositório.
+
+**Motivo:** o checklist é um gate real, não um formulário a preencher.
+
+---
+
+### D-2026-09-17-10 — Identidade Git do repositório
+
+**Decisão:** autoria dos commits do projeto:
+
+- Nome: **Marcelo**
+- E-mail: **mgc.info.new@gmail.com**
+
+Configurada **somente neste repositório** (`git config --local`). A configuração
+global da máquina permanece intocada.
+
+**Motivo:** a máquina não possuía identidade Git configurada. Os dois primeiros
+commits foram criados com um e-mail inferido e tiveram a autoria corrigida com
+`git filter-branch` antes de existir qualquer remoto, preservando integralmente
+conteúdo (hashes de árvore idênticos), mensagens e datas.
+
+---
+
+### D-2026-09-17-11 — Destino do repositório: GitHub privado
+
+**Decisão:** o projeto será hospedado no **GitHub**, em repositório **privado**.
+
+**Neste momento o repositório permanece somente local.** Não criar repositório
+remoto e não executar `push` até autorização explícita.
+
+**Motivo:** o repositório contém documentação operacional e comercial da Shalon
+e, a partir da Fase 2, passará a envolver configuração de ambientes. Repositório
+privado é requisito, não preferência.
+
+**Pendências relacionadas:** ver A-10 (criação do remoto e primeiro `push`).
+
+---
+
 # Decisões em aberto
 
 Nenhuma implementação que dependa destes pontos deve começar antes da decisão.
 
 | # | Decisão pendente | Bloqueia | Onde será registrada |
 |---|---|---|---|
-| **A-01** | **Framework** da aplicação | Fase 1 | `CLAUDE.md` §44-A |
-| **A-02** | **Gestor de pacotes** | Fase 1 | `CLAUDE.md` §44-A |
-| **A-03** | **Estratégia de estilização** (CSS Modules, Tailwind ou outra) | Fase 1 | `CLAUDE.md` §44-A |
-| **A-04** | **Versões fixadas** das dependências principais | Fase 1 | `CLAUDE.md` §44-A |
+| ~~A-01~~ | ~~Framework~~ | — | ✅ Resolvida em D-2026-09-17-07: Next.js com App Router |
+| ~~A-02~~ | ~~Gestor de pacotes~~ | — | ✅ Resolvida em D-2026-09-17-07: npm |
+| ~~A-03~~ | ~~Estratégia de estilização~~ | — | ✅ Resolvida em D-2026-09-17-07: Tailwind CSS, sem redesign |
+| **A-04** | **Versões efetivamente adotadas** — verificar estabilidade e compatibilidade mútua no momento da instalação; fixar via `package-lock.json` | Registro ao final da Fase 1 | `CLAUDE.md` §44-A.1 |
 | **A-05** | **Provedor de geocodificação/rotas** e modelo de custo | Fase 5 | `01-DOCUMENTO-MESTRE.md` §79.2 prevê Google como inicial, abstraído no domínio |
 | **A-06** | **Adaptações visuais de C1–C8** — telas que o design aprovado não possui | Fases 3 a 8 | A propor fase a fase, com aprovação prévia |
 | **A-07** | **Dados reais da Shalon** — preços, sabores, combos, horários, faixas de distância, chave Pix, endereço definitivo | Fase 11 (seed de produção) | `01-DOCUMENTO-MESTRE.md` §78 |
 | **A-08** | **Impressão 58 mm** — viabilidade técnica real do Bluetooth pelo navegador | Fase 6 | Requer prova de conceito com o equipamento |
+| ~~A-09~~ | ~~Identidade Git~~ | — | ✅ Resolvida em D-2026-09-17-10: Marcelo <mgc.info.new@gmail.com>, apenas local |
+| **A-10** | **Criação do remoto e primeiro `push`** — host e visibilidade já decididos em D-2026-09-17-11 (**GitHub, privado**); faltam definir a conta/organização, criar o repositório remoto e autorizar o `push`. Até lá o repositório é **somente local** | Primeiro `push` | Configuração `remote` do repositório |
+| **A-11** | **Projeto Supabase**, ambientes dev/prod e gestão de segredos | Fase 2 | `05-PLANO-IMPLEMENTACAO.md` §23 |
 
 ---
 
