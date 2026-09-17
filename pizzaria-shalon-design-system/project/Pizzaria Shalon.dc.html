@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="./image-slot.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#F7F2EA;-webkit-font-smoothing:antialiased;font-family:'Be Vietnam Pro',system-ui,sans-serif}
+a{color:#C4291C;text-decoration:none}
+a:hover{color:#8E1C12}
+[data-hscroll]{scrollbar-width:none;-ms-overflow-style:none}
+[data-hscroll]::-webkit-scrollbar{display:none}
+@keyframes shalonUp{from{transform:translateY(14px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes shalonSpin{to{transform:rotate(360deg)}}
+@keyframes shalonPulse{0%,100%{opacity:1}50%{opacity:.45}}
+</style>
+</helmet>
+<div ref="{{ rootRef }}" style="--brand-yellow:#FFB61E;--brand-orange:#EE7A17;--brand-red:#C4291C;--ink:#1E1814;--ink-2:#584E45;--muted:#8B8077;--bg:#F7F2EA;--surface:#FFFFFF;--elev:#FFFCF6;--border:#E8DCCB;--success:#1B7A4F;--warning:#96610A;--danger:#C0392B;--info:#20658F;--disabled:#CFC6BA;--cta-bg:#FFB61E;--cta-fg:#1E1814;min-height:100vh;background:var(--bg);color:var(--ink);font-family:'Be Vietnam Pro',system-ui,sans-serif;font-size:16px;line-height:1.45">
+
+  <div style="display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 12px;background:#2A201A;color:#F3E4CE">
+    <span style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#B7A692;margin-right:4px">Protótipo</span>
+    <button onClick="{{ verApp }}" style="min-height:34px;padding:0 12px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:{{ tabAppBg }};color:{{ tabAppFg }};font:500 13px 'Be Vietnam Pro',system-ui;cursor:pointer">Experiência</button>
+    <button onClick="{{ verDS }}" style="min-height:34px;padding:0 12px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:{{ tabDSBg }};color:{{ tabDSFg }};font:500 13px 'Be Vietnam Pro',system-ui;cursor:pointer">Design System</button>
+    <button onClick="{{ verEstados }}" style="min-height:34px;padding:0 12px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:{{ tabEsBg }};color:{{ tabEsFg }};font:500 13px 'Be Vietnam Pro',system-ui;cursor:pointer">Estados</button>
+  </div>
+
+  <sc-if value="{{ isApp }}" hint-placeholder-val="{{ true }}">
+  <div style="max-width:1120px;margin:0 auto;padding-bottom:110px">
+
+    <header style="position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:14px;padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--border)">
+      <img src="uploads/logo%20pizza.png" alt="Pizzaria Shalon — Tradição desde 1995" style="height:46px;width:auto;display:block" />
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;align-items:flex-end">
+        <sc-if value="{{ aberta }}" hint-placeholder-val="{{ true }}">
+          <span style="display:inline-flex;align-items:center;gap:7px;padding:5px 11px;border-radius:999px;background:#E7F4EC;color:var(--success);font-size:13px;font-weight:600"><span style="width:8px;height:8px;border-radius:50%;background:var(--success)"></span>Aberto agora</span>
+        </sc-if>
+        <sc-if value="{{ fechada }}">
+          <span style="display:inline-flex;align-items:center;gap:7px;padding:5px 11px;border-radius:999px;background:#F1EBE3;color:var(--ink-2);font-size:13px;font-weight:600"><span style="width:8px;height:8px;border-radius:50%;background:var(--muted)"></span>Fechado</span>
+        </sc-if>
+        <span style="font-size:12px;color:var(--muted)">{{ horarioLabel }}</span>
+      </div>
+    </header>
+
+    <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+    <div>
+      <sc-if value="{{ fechada }}">
+        <div style="margin:14px 16px 0;display:flex;gap:12px;align-items:flex-start;padding:14px;border-radius:14px;background:#FFF7E6;border:1px solid #F0DDB5">
+          <span style="font-size:18px;line-height:1.2">🕒</span>
+          <div>
+            <p style="margin:0;font-weight:600;font-size:15px">Estamos fechados no momento.</p>
+            <p style="margin:4px 0 0;font-size:14px;color:var(--ink-2)">Você pode ver todo o cardápio, mas o envio do pedido está indisponível até reabrirmos.</p>
+          </div>
+        </div>
+      </sc-if>
+
+      <div style="padding:16px 16px 0">
+        <div style="display:flex;align-items:center;gap:10px;padding:0 14px;background:var(--surface);border:1.5px solid var(--border);border-radius:14px" style-focus="border-color:var(--brand-orange)">
+          <span aria-hidden="true" style="color:var(--muted);font-size:17px">⌕</span>
+          <input value="{{ q }}" onChange="{{ setQ }}" aria-label="Buscar no cardápio" placeholder="Buscar pizzas, sabores, combos..." style="flex:1;min-height:50px;border:0;outline:none;background:transparent;font:400 16px 'Be Vietnam Pro',system-ui;color:var(--ink)" />
+          <sc-if value="{{ temBusca }}">
+            <button onClick="{{ limparBusca }}" aria-label="Limpar busca" style="min-width:34px;min-height:34px;border:0;border-radius:999px;background:#F1EBE3;color:var(--ink-2);font-size:15px;cursor:pointer">×</button>
+          </sc-if>
+        </div>
+      </div>
+
+      <sc-if value="{{ semBusca }}" hint-placeholder-val="{{ true }}">
+      <div>
+        <section style="margin:16px;padding:20px;border-radius:20px;background:#2A201A;display:flex;flex-wrap:wrap;gap:18px;align-items:center">
+          <div style="flex:1 1 220px;min-width:200px">
+            <span style="display:inline-block;padding:4px 10px;border-radius:999px;background:rgba(255,182,30,.16);color:var(--brand-yellow);font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase">Tradição desde 1995</span>
+            <h1 style="margin:10px 0 6px;font-family:'Bricolage Grotesque',system-ui;font-size:30px;line-height:1.08;font-weight:800;color:#FFF7E8;text-wrap:balance">{{ heroTitulo }}</h1>
+            <p style="margin:0 0 16px;font-size:15px;color:#D9C9B2;max-width:34ch">Massa fresca todos os dias, assada na hora e entregue quentinha na sua casa.</p>
+            <button onClick="{{ irCombos }}" style="min-height:48px;padding:0 20px;border:0;border-radius:12px;background:var(--cta-bg);color:var(--cta-fg);font:600 16px 'Be Vietnam Pro',system-ui;cursor:pointer">Ver combos</button>
+          </div>
+          <div style="flex:0 1 240px;min-width:150px;aspect-ratio:1/1;position:relative">
+            <image-slot id="shalon-hero" shape="rounded" radius="16" placeholder="Foto da pizza em destaque"></image-slot>
+          </div>
+        </section>
+
+        <div data-hscroll="true" style="display:flex;gap:10px;overflow-x:auto;padding:4px 16px 2px;scroll-snap-type:x proximity">
+          <sc-for list="{{ chips }}" as="c" hint-placeholder-count="6">
+            <button onClick="{{ c.sel }}" style="flex:0 0 auto;min-height:44px;padding:0 16px;border-radius:999px;border:1.5px solid {{ c.bc }};background:{{ c.bg }};color:{{ c.fg }};font:600 14px 'Be Vietnam Pro',system-ui;cursor:pointer;scroll-snap-align:start">{{ c.nome }}</button>
+          </sc-for>
+        </div>
+
+        <section style="padding:22px 0 0">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:0 16px 12px">
+            <h2 style="margin:0;font-family:'Bricolage Grotesque',system-ui;font-size:21px;font-weight:700">Mais pedidos</h2>
+            <span style="font-size:13px;color:var(--muted)">Os favoritos da casa</span>
+          </div>
+          <div data-hscroll="true" style="display:flex;gap:14px;overflow-x:auto;padding:0 16px 6px;scroll-snap-type:x proximity">
+            <sc-for list="{{ populares }}" as="p" hint-placeholder-count="3">
+              <article style="flex:0 0 66%;max-width:260px;scroll-snap-align:start;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--border);border-radius:18px;overflow:hidden">
+                <div style="position:relative;aspect-ratio:4/3">
+                  <image-slot id="{{ p.slot }}" shape="rect" placeholder="{{ p.nome }}"></image-slot>
+                  <span style="position:absolute;top:10px;left:10px;padding:4px 10px;border-radius:999px;background:var(--brand-yellow);color:#1E1814;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase">Mais pedido</span>
+                </div>
+                <div style="padding:12px 14px 14px;display:flex;flex-direction:column;gap:6px;flex:1">
+                  <h3 style="margin:0;font-size:16px;font-weight:600;line-height:1.25">{{ p.nome }}</h3>
+                  <p style="margin:0;font-size:13px;color:var(--ink-2);line-height:1.4;flex:1">{{ p.desc }}</p>
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:4px">
+                    <span style="font-size:17px;font-weight:700;font-variant-numeric:tabular-nums">{{ p.preco }}</span>
+                    <button onClick="{{ p.abrir }}" style="min-height:44px;padding:0 14px;border:0;border-radius:11px;background:var(--cta-bg);color:var(--cta-fg);font:600 14px 'Be Vietnam Pro',system-ui;cursor:pointer">{{ p.cta }}</button>
+                  </div>
+                </div>
+              </article>
+            </sc-for>
+          </div>
+        </section>
+
+        <section style="padding:24px 16px 0">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:12px">
+            <h2 style="margin:0;font-family:'Bricolage Grotesque',system-ui;font-size:21px;font-weight:700">Combos para compartilhar</h2>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px">
+            <sc-for list="{{ combos }}" as="p" hint-placeholder-count="2">
+              <article style="display:flex;gap:12px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:18px">
+                <div style="flex:0 0 96px;height:96px;position:relative">
+                  <image-slot id="{{ p.slot }}" shape="rounded" radius="12" placeholder="Foto"></image-slot>
+                </div>
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                  <h3 style="margin:0;font-size:16px;font-weight:600">{{ p.nome }}</h3>
+                  <p style="margin:0;font-size:13px;color:var(--ink-2)">{{ p.resumo }}</p>
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto">
+                    <span style="font-size:17px;font-weight:700;font-variant-numeric:tabular-nums">{{ p.preco }}</span>
+                    <button onClick="{{ p.abrir }}" style="min-height:44px;padding:0 14px;border:1.5px solid var(--border);border-radius:11px;background:transparent;color:var(--ink);font:600 14px 'Be Vietnam Pro',system-ui;cursor:pointer" style-hover="border-color:var(--brand-orange)">Ver opções</button>
+                  </div>
+                </div>
+              </article>
+            </sc-for>
+          </div>
+        </section>
+
+        <section style="padding:24px 16px 0">
+          <h2 style="margin:0 0 12px;font-family:'Bricolage Grotesque',system-ui;font-size:21px;font-weight:700">Promoções</h2>
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:16px 18px;border-radius:18px;background:#FFF3DC;border:1px solid #F0DDB5">
+            <div style="flex:1 1 200px">
+              <p style="margin:0;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--warning)">Só hoje</p>
+              <p style="margin:4px 0 0;font-family:'Bricolage Grotesque',system-ui;font-size:20px;font-weight:700">Quatro Queijos com 15% off</p>
+              <p style="margin:4px 0 0;font-size:14px;color:var(--ink-2)">Válido para pizzas tradicionais e família.</p>
+            </div>
+            <button onClick="{{ abrirPromo }}" style="min-height:48px;padding:0 18px;border:0;border-radius:12px;background:var(--brand-red);color:#fff;font:600 15px 'Be Vietnam Pro',system-ui;cursor:pointer">Aproveitar</button>
+          </div>
+        </section>
+
+        <section style="padding:26px 16px 0">
+          <h2 style="margin:0 0 4px;font-family:'Bricolage Grotesque',system-ui;font-size:21px;font-weight:700">Cardápio</h2>
+          <p style="margin:0 0 14px;font-size:13px;color:var(--muted)">{{ catLabel }}</p>
+          <sc-for list="{{ grupos }}" as="g" hint-placeholder-count="2">
+            <div style="margin-bottom:22px">
+              <h3 style="margin:0 0 10px;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">{{ g.nome }}</h3>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px">
+                <sc-for list="{{ g.itens }}" as="p" hint-placeholder-count="3">
+                  <article style="display:flex;gap:12px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:16px;opacity:{{ p.op }}">
+                    <div style="flex:0 0 84px;height:84px;position:relative">
+                      <image-slot id="{{ p.slot }}" shape="rounded" radius="12" placeholder="Foto"></image-slot>
+                    </div>
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                        <h4 style="margin:0;font-size:16px;font-weight:600">{{ p.nome }}</h4>
+                        <sc-if value="{{ p.isPop }}"><span style="padding:3px 8px;border-radius:6px;background:#FFF3DC;color:var(--warning);font-size:11px;font-weight:700;text-transform:uppercase">Popular</span></sc-if>
+                        <sc-if value="{{ p.isPromo }}"><span style="padding:3px 8px;border-radius:6px;background:#FBE7E4;color:var(--brand-red);font-size:11px;font-weight:700;text-transform:uppercase">Promoção</span></sc-if>
+                        <sc-if value="{{ p.isOff }}"><span style="padding:3px 8px;border-radius:6px;background:#F1EBE3;color:var(--ink-2);font-size:11px;font-weight:700;text-transform:uppercase">Indisponível hoje</span></sc-if>
+                      </div>
+                      <p style="margin:0;font-size:13px;color:var(--ink-2);line-height:1.4">{{ p.desc }}</p>
+                      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px">
+                        <div style="display:flex;align-items:baseline;gap:8px">
+                          <sc-if value="{{ p.isPromo }}"><span style="font-size:13px;color:var(--muted);text-decoration:line-through">{{ p.precoDe }}</span></sc-if>
+                          <span style="font-size:17px;font-weight:700;font-variant-numeric:tabular-nums">{{ p.preco }}</span>
+                        </div>
+                        <sc-if value="{{ p.isOff }}">
+                          <button disabled="{{ true }}" style="min-height:44px;padding:0 14px;border:1.5px solid var(--border);border-radius:11px;background:#F5F0E8;color:var(--muted);font:600 14px 'Be Vietnam Pro',system-ui;cursor:not-allowed">Indisponível</button>
+                        </sc-if>
+                        <sc-if value="{{ p.ok }}" hint-placeholder-val="{{ true }}">
+                          <button onClick="{{ p.abrir }}" style="min-height:44px;padding:0 14px;border:0;border-radius:11px;background:var(--cta-bg);color:var(--cta-fg);font:600 14px 'Be Vietnam Pro',system-ui;cursor:pointer">{{ p.cta }}</button>
+                        </sc-if>
+                      </div>
+                    </div>
+                  </article>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ catVazia }}">
+            <div style="padding:34px 20px;text-align:center;border:1px dashed var(--border);border-radius:16px;background:var(--elev)">
+              <p style="margin:0;font-weight:600">Nada por aqui ainda</p>
+              <p style="margin:6px 0 0;font-size:14px;color:var(--ink-2)">Essa categoria está sem itens no momento.</p>
+            </div>
+          </sc-if>
+        </section>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ temBusca }}">
+      <section style="padding:20px 16px 0">
+        <h2 style="margin:0 0 12px;font-family:'Bricolage Grotesque',system-ui;font-size:19px;font-weight:700">{{ buscaLabel }}</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px">
+          <sc-for list="{{ resultados }}" as="p" hint-placeholder-count="2">
+            <article style="display:flex;gap:12px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:16px;opacity:{{ p.op }}">
+              <div style="flex:0 0 84px;height:84px;position:relative">
+                <image-slot id="{{ p.slotB }}" shape="rounded" radius="12" placeholder="Foto"></image-slot>
+              </div>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+                <h4 style="margin:0;font-size:16px;font-weight:600">{{ p.nome }}</h4>
+                <p style="margin:0;font-size:13px;color:var(--ink-2)">{{ p.desc }}</p>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px">
+                  <span style="font-size:17px;font-weight:700;font-variant-numeric:tabular-nums">{{ p.preco }}</span>
+                  <sc-if value="{{ p.ok }}" hint-placeholder-val="{{ true }}">
+                    <button onClick="{{ p.abrir }}" style="min-height:44px;padding:0 14px;border:0;border-radius:11px;background:var(--cta-bg);color:var(--cta-fg);font:600 14px 'Be Vietnam Pro',system-ui;cursor:pointer">{{ p.cta }}</button>
+                  </sc-if>
+                </div>
+              </div>
+            </article>
+          </sc-for>
+        </div>
+        <sc-if value="{{ semResultado }}">
+          <div style="padding:34px 20px;text-align:center;border:1px dashed var(--border);border-radius:16px;background:var(--elev)">
+            <p style="margin:0;font-weight:600">Não encontramos “{{ q }}”</p>
+            <p style="margin:6px 0 14px;font-size:14px;color:var(--ink-2)">Tente outro sabor, combo ou categoria.</p>
+            <button onClick="{{ limparBusca }}" style="min-height:46px;padding:0 18px;border:1.5px solid var(--border);border-radius:12px;background:transparent;color:var(--ink);font:600 15px 'Be Vietnam Pro',system-ui;cursor:pointer">Ver cardápio completo</button>
+          </div>
+        </sc-if>
+      </section>
+      </sc-if>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isCart }}">
+    <section style="padding:16px">
+      <button onClick="{{ voltarHome }}" style="min-height:44px;padding:0 4px;border:0;background:transparent;color:var(--ink-2);font:500 15px 'Be Vietnam Pro',system-ui;cursor:pointer">← Continuar comprando</button>
+      <h1 style="margin:8px 0 16px;font-family:'Bricolage Grotesque',system-ui;font-size:26px;font-weight:800">Seu carrinho</h1>
+      <sc-if value="{{ cartVazio }}">
+        <div style="padding:44px 20px;text-align:center;border:1px dashed var(--border);border-radius:18px;background:var(--elev)">
+          <p style="margin:0;font-family:'Bricolage Grotesque',system-ui;font-size:20px;font-weight:700">Seu carrinho está vazio</p>
+          <p style="margin:8px 0 18px;font-size:14px;color:var(--ink-2)">Escolha uma pizza no cardápio para começar.</p>
+          <button onClick="{{ voltarHome }}" style="min-height:48px;padding:0 20px;border:0;border-radius:12px;background:var(--cta-bg);color:var(--cta-fg);font:600 16px 'Be Vietnam Pro',system-ui;cursor:pointer">Ver cardápio</button>
+        </div>
+      </sc-if>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;align-items:start">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <sc-for list="{{ cartItens }}" as="it" hint-placeholder-count="0">
+            <article style="padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:16px">
+              <div style="display:flex;justify-content:space-between;gap:12px">
+                <div style="min-width:0">
+                  <h3 style="margin:0;font-size:16px;font-weight:600">{{ it.nome }}</h3>
+                  <sc-for list="{{ it.linhas }}" as="l" hint-placeholder-count="0">
+                    <p style="margin:4px 0 0;font-size:13px;color:var(--ink-2)">{{ l.t }}</p>
+                  </sc-for>
+                </div>
+                <div style="text-align:right;white-space:nowrap">
+                  <span style="font-size:16px;font-weight:700;font-variant-numeric:tabular-nums">{{ it.total }}</span>
+                  <sc-if value="{{ it.mostrarUnit }}"><span style="display:block;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums">{{ it.unitLabel }}</span></sc-if>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap">
+                <div style="display:flex;align-items:center;gap:2px;border:1.5px solid var(--border);border-radius:11px;overflow:hidden">
+                  <button onClick="{{ it.menos }}" aria-label="Diminuir quantidade" style="min-width:44px;min-height:44px;border:0;background:transparent;color:var(--ink);font-size:19px;cursor:pointer">−</button>
+                  <span style="min-width:28px;text-align:center;font-weight:600">{{ it.qtd }}</span>
+                  <button onClick="{{ it.mais }}" aria-label="Aumentar quantidade" style="min-width:44px;min-height:44px;border:0;background:transparent;color:var(--ink);font-size:19px;cursor:pointer">+</button>
+                </div>
+                <button onClick="{{ it.editar }}" style="min-height:44px;padding:0 14px;border:1.5px solid var(--border);border-radius:11px;background:transparent;color:var(--ink);font:600 14px 'Be Vietnam Pro',system-ui;cursor:pointer">Editar</button>
+                <button onClick="{{ it.remover }}" style="min-height:44px;padding:0 14px;border:0;border-radius:11px;background:transparent;color:var(--danger);font:600 14px 'Be Vietnam Pro',system-ui;cursor:pointer">Remover</button>
+              </div>
+            </article>
+          </sc-for>
+        </div>
+        <sc-if value="{{ temCarrinho }}">
+        <aside style="padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:16px;position:sticky;top:90px">
+          <h3 style="margin:0 0 12px;font-size:15px;font-weight:700">Resumo</h3>
+          <div style="display:flex;justify-content:space-between;font-size:15px;color:var(--ink-2);padding:4px 0"><span>Subtotal</span><span style="font-variant-numeric:tabular-nums">{{ subtotal }}</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:15px;color:var(--ink-2);padding:4px 0"><span>Taxa de entrega</span><span>{{ taxaLabelCarrinho }}</span></div>
+          <div style="height:1px;background:var(--border);margin:10px 0"></div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-weight:600">Total</span><span style="font-family:'Bricolage Grotesque',system-ui;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums">{{ totalCarrinho }}</span></div>
+          <button onClick="{{ irCheckout }}" style="width:100%;min-height:52px;margin-top:14px;border:0;border-radius:13px;background:var(--cta-bg);color:var(--cta-fg);font:600 17px 'Be Vietnam Pro',system-ui;cursor:pointer">Continuar</button>
+        </aside>
+        </sc-if>
+      </div>
+    </section>
+    </sc-if>
+
+    <sc-if value="{{ isCheckout }}">
+    <section style="padding:16px">
+      <button onClick="{{ irCarrinho }}" style="min-height:44px;padding:0 4px;border:0;background:transparent;color:var(--ink-2);font:500 15px 'Be Vietnam Pro',system-ui;cursor:pointer">← Voltar ao carrinho</button>
+      <h1 style="margin:8px 0 18px;font-family:'Bricolage Grotesque',system-ui;font-size:26px;font-weight:800">Finalizar pedido</h1>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;align-items:start">
+        <div style="display:flex;flex-direction:column;gap:16px">
+
+          <div style="padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:16px">
+            <h2 style="margin:0 0 4px;font-size:17px;font-weight:700">Seus dados</h2>
+            <p style="margin:0 0 14px;font-size:13px;color:var(--muted)">Sem cadastro e sem senha. Usamos o WhatsApp só para falar sobre este pedido.</p>
+            <label style="display:block;font-size:14px;font-weight:600;margin-bottom:6px">Nome</label>
+            <input value="{{ co.nome }}" onChange="{{ setNome }}" placeholder="Como podemos te chamar?" style="width:100%;min-height:50px;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;background:var(--surface);font:400 16px 'Be Vietnam Pro',system-ui;color:var(--ink)" style-focus="border-color:var(--brand-orange);outline:none" />
+            <label style="display:block;font-size:14px;font-weight:600;margin:14px 0 6px">WhatsApp</label>
+            <input value="{{ co.zap }}" onChange="{{ setZap }}" inputMode="tel" placeholder="(00) 00000-0000" style="width:100%;min-height:50px;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;background:var(--surface);font:400 16px 'Be Vietnam Pro',system-ui;color:var(--ink)" style-focus="border-color:var(--brand-orange);outline:none" />
+            <p style="margin:6px 0 0;font-size:12px;color:var(--muted)">Obrigatório — é por onde confirmamos seu pedido.</p>
+          </div>
+
+          <div style="padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:16px">
+            <h2 style="margin:0 0 14px;font-size:17px;font-weight:700">Como você quer receber?</h2>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+              <button onClick="{{ setEntrega }}" style="text-align:left;padding:14px;min-height:64px;border:2px solid {{ entregaBc }};border-radius:14px;background:{{ entregaBg }};cursor:pointer;font-family:'Be Vietnam Pro',system-ui">
+                <span style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;color:var(--ink)"><sc-if value="{{ isEntrega }}"><span style="color:var(--success)">✓</span></sc-if>Entrega</span>
+                <span style="display:block;font-size:13px;color:var(--ink-2);margin-top:2px">Levamos até você</span>
+              </button>
+              <button onClick="{{ setRetirada }}" style="text-align:left;padding:14px;min-height:64px;border:2px solid {{ retiradaBc }};border-radius:14px;background:{{ retiradaBg }};cursor:pointer;font-family:'Be Vietnam Pro',system-ui">
+                <span style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;color:var(--ink)"><sc-if value="{{ isRetirada }}"><span style="color:var(--success)">✓</span></sc-if>Retirada</span>
+                <span style="display:block;font-size:13px;color:var(--ink-2);margin-top:2px">Você busca na pizzaria</span>
+              </button>
+            </div>
+
+            <sc-if value="{{ isRetirada }}">
+              <div style="margin-top:14px;padding:14px;border-radius:12px;background:#F1F7F3;border:1px solid #CFE4D8">
+                <p style="margin:0;font-size:14px;font-weight:600;color:var(--success)">Retirada na Pizzaria Shalon</p>
+                <p style="margin:4px 0 0;font-size:14px;color:var(--ink-2)">Rua das Oliveiras, 120 — Centro. Sem taxa de entrega.</p>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ isEntrega }}">
+            <div style="margin-top:16px;display:flex;flex-direction:column;gap:12px">
+              <div>
+                <label style="display:block;font-size:14px;font-weight:600;margin-bottom:6px">Bairro</label>
+                <select value="{{ co.bairro }}" onChange="{{ setBairro }}" style="width:100%;min-height:50px;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;background:var(--surface);font:400 16px 'Be Vietnam Pro',system-ui;color:var(--ink)">
+                  <option value="">Selecione seu bairro</option>
+                  <sc-for list="{{ bairros }}" as="b" hint-placeholder-count="0">
+                    <option value="{{ b.nome }}">{{ b.label }}</option>
+                  </sc-for>
+                </select>
+                <sc-if value="{{ bairroOk }}">
+                  <p style="margin:8px 0 0;font-size:14px;color:var(--success);font-weight:600">Taxa de entrega: {{ taxaLabel }}</p>
+                </sc-if>
+                <sc-if value="{{ bairroBloqueado }}">
+                  <div style="margin-top:10px;display:flex;gap:10px;padding:12px;border-radius:12px;background:#FBE7E4;border:1px solid #F0C4BE">
+                    <span aria-hidden="true">!</span>
+                    <div>
+                      <p style="margin:0;font-size:14px;font-weight:600;color:var(--danger)">Ainda não realizamos entregas nessa região.</p>
+                      <p style="margin:4px 0 0;font-size:13px;color:var(--ink-2)">Você pode escolher Retirada na pizzaria.</p>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px">
+                <div><label style="display:block;font-size:14px;font-weight:600;margin-bottom:6px">Rua</label><input value="{{ co.rua }}" onChange="{{ setRua }}" placeholder="Nome da rua" style="width:100%;min-height:50px;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;font:400 16px 'Be Vietnam Pro',system-ui;color:var(--ink);background:var(--surface)" style-focus="border-color:var(--brand-orange);outline:none" /></div>
+                <div><label style="display:block;font-size:14px;font-weight:600;margin-bottom:6px">Número</label><input value="{{ co.num }}" onChange="{{ setNum }}" placeholder="123" style="width:100%;min-height:50px;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;font:400 16px 'Be Vietnam Pro',system-ui;color:var(--ink);background:var(--surface)" style-focus="border-color:var(--brand-orange);outline:none" /></div>
+                <div><label style="display:block;font-size:14px;font-weight:600;margin-bottom:6px">Complemento</label><input value="{{ co.compl }}" onChange="{{ setCompl }}" placeholder="Apto, bloco (opcional)" style="width:100%;min-height:50px;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;font:400 16px 'Be Vietnam Pro',system-ui;color:var(--ink);background:var(--surface)" style-focus="border-color:var(--brand-orange);outline:none" /></div>
+                <div><label style="display:block;font-size:14px;font-weight:600;margin-bottom:6px">CEP</label><input value="{{ co.cep }}" onChange="{{ setCep }}" inputMode="numeric" placeholder="00000-000 (opcional)" style="width:100%;min-height:50px;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;font:400 16px 'Be Vietnam Pro',system-ui;color:var(--ink);background:var(--surface)" style-focus="border-color:var(--brand-orange);outline:none" /></div>
+              </div>
+              <div><label style="display:block;font-size:14px;font-weight:600;margin-bottom:6px">Ponto de referência</label><input value="{{ co.ref }}" onChange="{{ setRef }}" placeholder="Ex.: portão azul, ao lado da padaria" style="width:100%;min-height:50px;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;font:400 16px 'Be Vietnam Pro',system-ui;color:var(--ink);background:var(--surface)" style-focus="border-color:var(--brand-orange);outline:none" /></div>
+            </div>
+            </sc-if>
+          </div>
+
+          <div style="padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:16px">
+            <h2 style="margin:0 0 4px;font-size:17px;font-weight:700">Pagamento</h2>
+            <p style="margin:0 0 14px;font-size:13px;color:var(--muted)">O pagamento é feito na entrega ou na retirada. Nada é cobrado agora.</p>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px">
+              <sc-for list="{{ pagamentos }}" as="pg" hint-placeholder-count="5">
+                <button onClick="{{ pg.sel }}" style="display:flex;align-items:center;gap:8px;min-height:52px;padding:12px 14px;border:2px solid {{ pg.bc }};border-radius:13px;background:{{ pg.bg }};color:var(--ink);font:600 15px 'Be Vietnam Pro',system-ui;cursor:pointer;text-align:left">
+                  <sc-if value="{{ pg.on }}"><span style="color:var(--success)">✓</span></sc-if>{{ pg.nome }}
+                </button>
+              </sc-for>
+            </div>
+
+            <sc-if value="{{ precisaBandeira }}">
+            <div style="margin-top:16px">
+              <p style="margin:0 0 8px;font-size:14px;font-weight:600">{{ bandeiraTitulo }}</p>
+              <div style="display:flex;flex-wrap:wrap;gap:8px">
+                <sc-for list="{{ bandeiras }}" as="bd" hint-placeholder-count="3">
+                  <button onClick="{{ bd.sel }}" style="min-height:44px;padding:0 14px;border-radius:999px;border:1.5px solid {{ bd.bc }};background:{{ bd.bg }};color:var(--ink);font:600 14px 'Be Vietnam Pro',system-ui;cursor:pointer">{{ bd.nome }}</button>
+                </sc-for>
+              </div>
+            </div>
+            </sc-if>
+
+            <sc-if value="{{ isDinheiro }}">
+            <div style="margin-top:16px;padding:14px;border-radius:13px;background:var(--elev);border:1px solid var(--border)">
+              <p style="margin:0 0 10px;font-size:15px;font-weight:600">Precisa de troco?</p>
+              <div style="display:flex;gap:10px">
+                <button onClick="{{ trocoNao }}" style="flex:1;min-height:48px;border:2px solid {{ trocoNaoBc }};border-radius:12px;background:{{ trocoNaoBg }};color:var(--ink);font:600 15px 'Be Vietnam Pro',system-ui;cursor:pointer">Não</button>
+                <button onClick="{{ trocoSim }}" style="flex:1;min-height:48px;border:2px solid {{ trocoSimBc }};border-radius:12px;background:{{ trocoSimBg }};color:var(--ink);font:600 15px 'Be Vietnam Pro',system-ui;cursor:pointer">Sim</button>
+              </div>
+              <sc-if value="{{ precisaTroco }}">
+              <div style="margin-top:12px">
+                <label style="display:block;font-size:14px;font-weight:600;margin-bottom:6px">Troco para quanto?</label>
+                <input value="{{ co.trocoValor }}" onChange="{{ setTroco }}" inputMode="decimal" placeholder="Ex.: 100,00" style="width:100%;min-height:50px;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;font:400 16px 'Be Vietnam Pro',system-ui;color:var(--ink);background:var(--surface)" style-focus="border-color:var(--brand-orange);outline:none" />
+                <div style="display:flex;justify-content:space-between;margin-top:10px;font-size:14px;color:var(--ink-2)"><span>Total do pedido</span><span style="font-variant-numeric:tabular-nums">{{ totalCheckout }}</span></div>
+                <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:15px;font-weight:700"><span>Troco esperado</span><span style="font-variant-numeric:tabular-nums">{{ trocoEsperado }}</span></div>
+              </div>
+              </sc-if>
+            </div>
+            </sc-if>
+
+            <sc-if value="{{ isPix }}">
+              <div style="margin-top:14px;padding:14px;border-radius:12px;background:var(--elev);border:1px solid var(--border);font-size:14px;color:var(--ink-2)">As instruções do Pix são enviadas no WhatsApp após a confirmação da pizzaria. Não há cobrança automática aqui.</div>
+            </sc-if>
+          </div>
+
+          <div style="padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:16px">
+            <h2 style="margin:0 0 12px;font-size:17px;font-weight:700">Resumo do pedido</h2>
+            <sc-for list="{{ resumoLinhas }}" as="r" hint-placeholder-count="4">
+              <div style="display:flex;justify-content:space-between;gap:14px;padding:6px 0;border-bottom:1px solid var(--border)">
+                <span style="font-size:14px;color:var(--muted)">{{ r.k }}</span>
+                <span style="font-size:14px;font-weight:500;text-align:right">{{ r.v }}</span>
+              </div>
+            </sc-for>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:14px">
+              <span style="font-weight:600">Total</span>
+              <span style="font-family:'Bricolage Grotesque',system-ui;font-size:24px;font-weight:800;font-variant-numeric:tabular-nums">{{ totalCheckout }}</span>
+            </div>
+            <p style="margin:12px 0 0;font-size:13px;color:var(--muted)">Ao enviar, seu pedido segue para a Pizzaria Shalon e aguarda confirmação.</p>
+          </div>
+        </div>
+
+        <aside style="position:sticky;top:90px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:16px">
+          <div style="display:flex;justify-content:space-between;font-size:15px;color:var(--ink-2);padding:3px 0"><span>Subtotal</span><span style="font-variant-numeric:tabular-nums">{{ subtotal }}</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:15px;color:var(--ink-2);padding:3px 0"><span>Taxa de entrega</span><span>{{ taxaLabel }}</span></div>
+          <div style="height:1px;background:var(--border);margin:10px 0"></div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-weight:600">Total</span><span style="font-family:'Bricolage Grotesque',system-ui;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums">{{ totalCheckout }}</span></div>
+          <sc-for list="{{ pendencias }}" as="e" hint-placeholder-count="0">
+            <p style="margin:8px 0 0;font-size:13px;color:var(--danger)">• {{ e.t }}</p>
+          </sc-for>
+          <sc-if value="{{ podeEnviar }}">
+            <button onClick="{{ enviar }}" style="width:100%;min-height:54px;margin-top:14px;border:0;border-radius:13px;background:var(--cta-bg);color:var(--cta-fg);font:700 17px 'Be Vietnam Pro',system-ui;cursor:pointer">{{ ctaEnviar }}</button>
+          </sc-if>
+          <sc-if value="{{ naoPodeEnviar }}" hint-placeholder-val="{{ true }}">
+            <button disabled="{{ true }}" style="width:100%;min-height:54px;margin-top:14px;border:0;border-radius:13px;background:#F1EBE3;color:var(--muted);font:700 17px 'Be Vietnam Pro',system-ui;cursor:not-allowed">{{ ctaEnviar }}</button>
+          </sc-if>
+        </aside>
+      </div>
+    </section>
+    </sc-if>
+
+    <sc-if value="{{ isSent }}">
+    <section style="padding:40px 20px;max-width:560px;margin:0 auto;text-align:center;animation:shalonUp .35s ease both">
+      <div style="width:76px;height:76px;margin:0 auto 18px;border-radius:50%;background:#FFF3DC;display:flex;align-items:center;justify-content:center;font-size:34px">🍕</div>
+      <h1 style="margin:0;font-family:'Bricolage Grotesque',system-ui;font-size:30px;font-weight:800">Pedido enviado!</h1>
+      <p style="margin:10px 0 0;font-size:16px;color:var(--ink-2)">Agora estamos aguardando a confirmação da Pizzaria Shalon. Você recebe um aviso no WhatsApp assim que o pedido for aceito.</p>
+      <div style="margin:22px 0;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:16px;text-align:left">
+        <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:14px;color:var(--muted)">Número do pedido</span><span style="font-family:'Bricolage Grotesque',system-ui;font-size:20px;font-weight:800">{{ pedidoNum }}</span></div>
+        <div style="height:1px;background:var(--border);margin:12px 0"></div>
+        <span style="display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;background:#FFF3DC;color:var(--warning);font-size:13px;font-weight:700"><span style="width:8px;height:8px;border-radius:50%;background:var(--warning);animation:shalonPulse 1.6s infinite"></span>Aguardando confirmação</span>
+        <div style="display:flex;justify-content:space-between;margin-top:14px;font-size:15px"><span style="color:var(--ink-2)">Total</span><span style="font-weight:700;font-variant-numeric:tabular-nums">{{ pedidoTotal }}</span></div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:15px"><span style="color:var(--ink-2)">{{ pedidoModoLabel }}</span><span style="font-weight:500;text-align:right;max-width:60%">{{ pedidoEnderecoLabel }}</span></div>
+      </div>
+      <button onClick="{{ irAcompanhar }}" style="width:100%;min-height:54px;border:0;border-radius:13px;background:var(--cta-bg);color:var(--cta-fg);font:700 17px 'Be Vietnam Pro',system-ui;cursor:pointer">Acompanhar pedido</button>
+      <button onClick="{{ novoPedido }}" style="width:100%;min-height:48px;margin-top:10px;border:0;background:transparent;color:var(--ink-2);font:500 15px 'Be Vietnam Pro',system-ui;cursor:pointer">Voltar ao cardápio</button>
+    </section>
+    </sc-if>
+
+    <sc-if value="{{ isTrack }}">
+    <section style="padding:20px 16px;max-width:620px;margin:0 auto">
+      <p style="margin:0;font-size:13px;color:var(--muted)">Acompanhamento do pedido</p>
+      <h1 style="margin:2px 0 14px;font-family:'Bricolage Grotesque',system-ui;font-size:28px;font-weight:800">{{ pedidoNum }}</h1>
+
+      <div style="padding:16px;border-radius:16px;background:{{ statusBg }};border:1px solid {{ statusBc }}">
+        <span style="display:inline-block;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.7);font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:{{ statusFg }}">{{ statusLabel }}</span>
+        <p style="margin:10px 0 0;font-size:16px;font-weight:600">{{ statusTitulo }}</p>
+        <p style="margin:4px 0 0;font-size:14px;color:var(--ink-2)">{{ statusTexto }}</p>
+        <sc-if value="{{ temMotivo }}">
+          <div style="margin-top:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.75)">
+            <p style="margin:0;font-size:13px;font-weight:700;color:var(--ink)">Motivo informado pela pizzaria</p>
+            <p style="margin:4px 0 0;font-size:14px;color:var(--ink-2)">{{ motivo }}</p>
+          </div>
+        </sc-if>
+      </div>
+
+      <sc-if value="{{ mostrarTimeline }}">
+      <div style="margin-top:18px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:16px">
+        <sc-for list="{{ timeline }}" as="s" hint-placeholder-count="6">
+          <div style="display:flex;gap:12px;align-items:flex-start;padding:8px 0">
+            <div style="flex:0 0 26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;background:{{ s.dotBg }};color:{{ s.dotFg }}">{{ s.mark }}</div>
+            <div>
+              <p style="margin:0;font-size:15px;font-weight:{{ s.w }};color:{{ s.fg }}">{{ s.nome }}</p>
+              <p style="margin:2px 0 0;font-size:13px;color:var(--muted)">{{ s.hint }}</p>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      </sc-if>
+
+      <div style="margin-top:18px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:16px">
+        <h2 style="margin:0 0 12px;font-size:16px;font-weight:700">Resumo</h2>
+        <sc-for list="{{ resumoPedido }}" as="r" hint-placeholder-count="4">
+          <div style="display:flex;justify-content:space-between;gap:14px;padding:6px 0;border-bottom:1px solid var(--border)">
+            <span style="font-size:14px;color:var(--muted)">{{ r.k }}</span>
+            <span style="font-size:14px;font-weight:500;text-align:right">{{ r.v }}</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="margin-top:18px;padding:14px;border-radius:14px;border:1px dashed var(--border);background:var(--elev)">
+        <p style="margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">Demonstração — simular status</p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <button onClick="{{ avancarStatus }}" style="min-height:44px;padding:0 14px;border:1.5px solid var(--border);border-radius:11px;background:var(--surface);color:var(--ink);font:600 14px 'Be Vietnam Pro',system-ui;cursor:pointer">Avançar status</button>
+          <button onClick="{{ simularRecusa }}" style="min-height:44px;padding:0 14px;border:1.5px solid var(--border);border-radius:11px;background:var(--surface);color:var(--ink);font:600 14px 'Be Vietnam Pro',system-ui;cursor:pointer">Recusado</button>
+          <button onClick="{{ simularCancelamento }}" style="min-height:44px;padding:0 14px;border:1.5px solid var(--border);border-radius:11px;background:var(--surface);color:var(--ink);font:600 14px 'Be Vietnam Pro',system-ui;cursor:pointer">Cancelado</button>
+          <button onClick="{{ reiniciarStatus }}" style="min-height:44px;padding:0 14px;border:0;border-radius:11px;background:transparent;color:var(--ink-2);font:600 14px 'Be Vietnam Pro',system-ui;cursor:pointer">Reiniciar</button>
+        </div>
+      </div>
+
+      <button onClick="{{ novoPedido }}" style="width:100%;min-height:48px;margin-top:16px;border:0;background:transparent;color:var(--ink-2);font:500 15px 'Be Vietnam Pro',system-ui;cursor:pointer">Fazer novo pedido</button>
+    </section>
+    </sc-if>
+
+    <sc-if value="{{ barraCarrinho }}">
+      <div style="position:fixed;left:0;right:0;bottom:0;z-index:40;padding:12px 16px 16px;background:linear-gradient(to top,rgba(247,242,234,.98) 60%,rgba(247,242,234,0))">
+        <div style="max-width:1120px;margin:0 auto">
+          <button onClick="{{ irCarrinho }}" style="width:100%;min-height:56px;display:flex;align-items:center;justify-content:center;gap:10px;border:0;border-radius:14px;background:var(--cta-bg);color:var(--cta-fg);font:700 17px 'Be Vietnam Pro',system-ui;cursor:pointer;box-shadow:0 8px 24px rgba(30,24,20,.16)">Ver carrinho • {{ cartCountLabel }} • {{ subtotal }}</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ temToast }}">
+      <div style="position:fixed;left:16px;right:16px;bottom:88px;z-index:60;display:flex;justify-content:center">
+        <div style="padding:12px 18px;border-radius:12px;background:#2A201A;color:#FFF7E8;font-size:14px;font-weight:500;box-shadow:0 10px 30px rgba(0,0,0,.2);animation:shalonUp .25s ease both">{{ toast }}</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ sheetAberto }}">
+    <div onClick="{{ fecharSheet }}" style="position:fixed;inset:0;z-index:70;background:rgba(30,24,20,.5);display:flex;align-items:flex-end;justify-content:center">
+      <div onClick="{{ stop }}" style="width:100%;max-width:560px;max-height:92vh;overflow-y:auto;background:var(--bg);border-radius:22px 22px 0 0;animation:shalonUp .28s ease both">
+        <div style="position:relative">
+          <div style="height:170px;position:relative">
+            <image-slot id="{{ sheet.slot }}" shape="rect" placeholder="Foto do produto"></image-slot>
+          </div>
+          <button onClick="{{ fecharSheet }}" aria-label="Fechar" style="position:absolute;top:12px;right:12px;min-width:40px;min-height:40px;border:0;border-radius:999px;background:rgba(255,255,255,.92);color:var(--ink);font-size:18px;cursor:pointer">×</button>
+        </div>
+        <div style="padding:16px 16px 140px">
+          <h2 style="margin:0;font-family:'Bricolage Grotesque',system-ui;font-size:24px;font-weight:800">{{ sheet.nome }}</h2>
+          <p style="margin:6px 0 0;font-size:14px;color:var(--ink-2)">{{ sheet.desc }}</p>
+          <sc-if value="{{ sheet.temPromo }}">
+            <p style="margin:8px 0 0;font-size:13px;font-weight:700;color:var(--brand-red)">{{ sheet.promoLabel }}</p>
+          </sc-if>
+
+          <sc-if value="{{ sheet.temTamanhos }}">
+          <div style="margin-top:20px">
+            <h3 style="margin:0 0 4px;font-size:16px;font-weight:700">Escolha o tamanho</h3>
+            <p style="margin:0 0 10px;font-size:13px;color:var(--muted)">Obrigatório</p>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <sc-for list="{{ tamanhos }}" as="t" hint-placeholder-count="2">
+                <button onClick="{{ t.sel }}" style="display:flex;align-items:center;gap:12px;text-align:left;padding:14px;min-height:60px;border:2px solid {{ t.bc }};border-radius:13px;background:{{ t.bg }};cursor:pointer;font-family:'Be Vietnam Pro',system-ui">
+                  <span style="flex:0 0 20px;height:20px;border-radius:50%;border:2px solid {{ t.rc }};display:flex;align-items:center;justify-content:center"><sc-if value="{{ t.on }}"><span style="width:10px;height:10px;border-radius:50%;background:var(--brand-red)"></span></sc-if></span>
+                  <span style="flex:1"><span style="display:block;font-size:15px;font-weight:600;color:var(--ink)">{{ t.nome }}</span><span style="display:block;font-size:13px;color:var(--ink-2)">{{ t.desc }}</span></span>
+                  <span style="font-size:15px;font-weight:700;font-variant-numeric:tabular-nums">{{ t.preco }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+          </sc-if>
+
+          <sc-if value="{{ sheet.temSabores }}">
+          <div style="margin-top:22px">
+            <h3 style="margin:0 0 4px;font-size:16px;font-weight:700">Escolha até 2 sabores</h3>
+            <p style="margin:0 0 10px;font-size:13px;color:var(--muted)">{{ saboresHint }}</p>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <sc-for list="{{ sabores }}" as="f" hint-placeholder-count="4">
+                <button onClick="{{ f.sel }}" disabled="{{ f.off }}" style="display:flex;align-items:center;gap:12px;text-align:left;padding:13px 14px;min-height:56px;border:2px solid {{ f.bc }};border-radius:13px;background:{{ f.bg }};cursor:{{ f.cur }};font-family:'Be Vietnam Pro',system-ui;opacity:{{ f.op }}">
+                  <span style="flex:0 0 20px;height:20px;border-radius:6px;border:2px solid {{ f.rc }};display:flex;align-items:center;justify-content:center;color:#fff;background:{{ f.boxBg }};font-size:13px;font-weight:700"><sc-if value="{{ f.on }}">✓</sc-if></span>
+                  <span style="flex:1;min-width:0"><span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:15px;font-weight:600;color:var(--ink)">{{ f.nome }}</span><sc-if value="{{ f.on }}"><span style="padding:2px 8px;border-radius:999px;background:var(--brand-red);color:#fff;font-size:11px;font-weight:700;letter-spacing:.03em">{{ f.ord }}</span></sc-if></span><span style="display:block;font-size:13px;color:var(--ink-2)">{{ f.info }}</span></span>
+                  <span style="font-size:14px;font-weight:600;color:var(--ink-2);font-variant-numeric:tabular-nums">{{ f.preco }}</span>
+                </button>
+              </sc-for>
+            </div>
+            <div style="margin-top:10px;padding:12px 14px;border-radius:12px;background:#FFF3DC;border:1px solid #F0DDB5">
+              <p style="margin:0;font-size:13px;color:#5A431A">Em pizzas meio a meio, será considerado o valor do sabor de maior preço.</p>
+            </div>
+          </div>
+          </sc-if>
+
+          <sc-if value="{{ sheet.temEscolhas }}">
+          <div style="margin-top:22px">
+            <sc-for list="{{ escolhas }}" as="gr" hint-placeholder-count="1">
+              <div style="margin-bottom:18px">
+                <h3 style="margin:0 0 10px;font-size:16px;font-weight:700">{{ gr.titulo }}</h3>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <sc-for list="{{ gr.opcoes }}" as="o" hint-placeholder-count="2">
+                    <button onClick="{{ o.sel }}" style="display:flex;align-items:center;gap:12px;text-align:left;padding:13px 14px;min-height:56px;border:2px solid {{ o.bc }};border-radius:13px;background:{{ o.bg }};cursor:pointer;font-family:'Be Vietnam Pro',system-ui">
+                      <span style="flex:0 0 20px;height:20px;border-radius:50%;border:2px solid {{ o.rc }};display:flex;align-items:center;justify-content:center"><sc-if value="{{ o.on }}"><span style="width:10px;height:10px;border-radius:50%;background:var(--brand-red)"></span></sc-if></span>
+                      <span style="flex:1;font-size:15px;font-weight:600;color:var(--ink)">{{ o.nome }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          </sc-if>
+
+          <sc-if value="{{ sheet.temBordas }}">
+          <div style="margin-top:22px">
+            <h3 style="margin:0 0 10px;font-size:16px;font-weight:700">Escolha sua borda</h3>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <sc-for list="{{ bordas }}" as="b" hint-placeholder-count="2">
+                <button onClick="{{ b.sel }}" disabled="{{ b.off }}" style="display:flex;align-items:center;gap:12px;text-align:left;padding:13px 14px;min-height:56px;border:2px solid {{ b.bc }};border-radius:13px;background:{{ b.bg }};cursor:{{ b.cur }};font-family:'Be Vietnam Pro',system-ui;opacity:{{ b.op }}">
+                  <span style="flex:0 0 20px;height:20px;border-radius:50%;border:2px solid {{ b.rc }};display:flex;align-items:center;justify-content:center"><sc-if value="{{ b.on }}"><span style="width:10px;height:10px;border-radius:50%;background:var(--brand-red)"></span></sc-if></span>
+                  <span style="flex:1;font-size:15px;font-weight:600;color:var(--ink)">{{ b.nome }}</span>
+                  <span style="font-size:14px;font-weight:600;color:var(--ink-2)">{{ b.preco }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+          </sc-if>
+
+          <sc-if value="{{ sheet.temAdicionais }}">
+          <div style="margin-top:22px">
+            <h3 style="margin:0 0 4px;font-size:16px;font-weight:700">Adicionais</h3>
+            <p style="margin:0 0 10px;font-size:13px;color:var(--muted)">Opcional</p>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <sc-for list="{{ adicionais }}" as="a" hint-placeholder-count="3">
+                <button onClick="{{ a.sel }}" style="display:flex;align-items:center;gap:12px;text-align:left;padding:13px 14px;min-height:56px;border:2px solid {{ a.bc }};border-radius:13px;background:{{ a.bg }};cursor:pointer;font-family:'Be Vietnam Pro',system-ui">
+                  <span style="flex:0 0 20px;height:20px;border-radius:6px;border:2px solid {{ a.rc }};background:{{ a.boxBg }};color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700"><sc-if value="{{ a.on }}">✓</sc-if></span>
+                  <span style="flex:1;font-size:15px;font-weight:600;color:var(--ink)">{{ a.nome }}</span>
+                  <span style="font-size:14px;font-weight:600;color:var(--ink-2)">{{ a.preco }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+          </sc-if>
+
+          <div style="margin-top:22px">
+            <h3 style="margin:0 0 8px;font-size:16px;font-weight:700">Alguma observação?</h3>
+            <textarea value="{{ sheet.obs }}" onChange="{{ setObs }}" rows="3" placeholder="Ex.: sem cebola, cortar em 8 pedaços..." style="width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;background:var(--surface);font:400 15px 'Be Vietnam Pro',system-ui;color:var(--ink);resize:vertical" style-focus="border-color:var(--brand-orange);outline:none"></textarea>
+            <p style="margin:6px 0 0;font-size:12px;color:var(--muted)">Vamos tentar atender, mas algumas solicitações podem não ser possíveis.</p>
+          </div>
+        </div>
+
+        <div style="position:sticky;bottom:0;display:flex;align-items:center;gap:12px;padding:12px 16px 16px;background:var(--surface);border-top:1px solid var(--border)">
+          <div style="display:flex;align-items:center;border:1.5px solid var(--border);border-radius:12px">
+            <button onClick="{{ qtdMenos }}" aria-label="Diminuir" style="min-width:46px;min-height:50px;border:0;background:transparent;font-size:20px;color:var(--ink);cursor:pointer">−</button>
+            <span style="min-width:26px;text-align:center;font-weight:700">{{ sheet.qtd }}</span>
+            <button onClick="{{ qtdMais }}" aria-label="Aumentar" style="min-width:46px;min-height:50px;border:0;background:transparent;font-size:20px;color:var(--ink);cursor:pointer">+</button>
+          </div>
+          <sc-if value="{{ sheetOk }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ adicionar }}" style="flex:1;min-height:52px;border:0;border-radius:13px;background:var(--cta-bg);color:var(--cta-fg);font:700 16px 'Be Vietnam Pro',system-ui;cursor:pointer">{{ sheetCta }}</button>
+          </sc-if>
+          <sc-if value="{{ sheetBloqueado }}">
+            <button disabled="{{ true }}" style="flex:1;min-height:52px;border:0;border-radius:13px;background:#F1EBE3;color:var(--muted);font:700 16px 'Be Vietnam Pro',system-ui;cursor:not-allowed">{{ sheetCta }}</button>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isDS }}">
+  <div style="max-width:1120px;margin:0 auto;padding:24px 16px 60px">
+    <h1 style="margin:0 0 4px;font-family:'Bricolage Grotesque',system-ui;font-size:30px;font-weight:800">Design System Shalon</h1>
+    <p style="margin:0 0 26px;font-size:15px;color:var(--ink-2);max-width:60ch">Tokens semânticos, tipografia e componentes usados em toda a experiência pública. Preparado para Dark Mode e para o tema alternativo vermelho sem reescrever a interface.</p>
+
+    <h2 style="margin:0 0 12px;font-size:18px;font-weight:700">Cores semânticas</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:30px">
+      <sc-for list="{{ swatches }}" as="s" hint-placeholder-count="12">
+        <div style="border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--surface)">
+          <div style="height:58px;background:{{ s.hex }}"></div>
+          <div style="padding:8px 10px">
+            <p style="margin:0;font-size:13px;font-weight:600">{{ s.nome }}</p>
+            <p style="margin:2px 0 0;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums">{{ s.hex }}</p>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+
+    <h2 style="margin:0 0 12px;font-size:18px;font-weight:700">Tipografia</h2>
+    <div style="padding:20px;background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:30px">
+      <p style="margin:0 0 14px;font-size:13px;color:var(--muted)">Bricolage Grotesque para títulos · Be Vietnam Pro para interface e preços</p>
+      <p style="margin:0 0 10px;font-family:'Bricolage Grotesque',system-ui;font-size:38px;font-weight:800;line-height:1.05">Display · 38/800</p>
+      <p style="margin:0 0 10px;font-family:'Bricolage Grotesque',system-ui;font-size:28px;font-weight:800">H1 · 28/800</p>
+      <p style="margin:0 0 10px;font-family:'Bricolage Grotesque',system-ui;font-size:21px;font-weight:700">H2 · 21/700</p>
+      <p style="margin:0 0 10px;font-size:16px;font-weight:600">H3 · 16/600 — nome do produto</p>
+      <p style="margin:0 0 10px;font-size:16px">Body · 16/400 — descrição e conteúdo corrido</p>
+      <p style="margin:0 0 10px;font-size:14px;color:var(--ink-2)">Small · 14/400 — apoio</p>
+      <p style="margin:0 0 10px;font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase">Caption · 12/600 uppercase</p>
+      <p style="margin:0 0 10px;font-size:16px;font-weight:600">Button · 16/600</p>
+      <p style="margin:0;font-size:20px;font-weight:700;font-variant-numeric:tabular-nums">Price · 20/700 tabular — R$ 62,90</p>
+    </div>
+
+    <h2 style="margin:0 0 12px;font-size:18px;font-weight:700">Componentes</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
+      <div style="padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:16px">
+        <p style="margin:0 0 12px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">Button</p>
+        <div style="display:flex;flex-wrap:wrap;gap:10px">
+          <button style="min-height:48px;padding:0 18px;border:0;border-radius:12px;background:var(--cta-bg);color:var(--cta-fg);font:600 16px 'Be Vietnam Pro',system-ui;cursor:pointer">Primário</button>
+          <button style="min-height:48px;padding:0 18px;border:0;border-radius:12px;background:var(--brand-red);color:#fff;font:600 16px 'Be Vietnam Pro',system-ui;cursor:pointer">Destaque</button>
+          <button style="min-height:48px;padding:0 18px;border:1.5px solid var(--border);border-radius:12px;background:transparent;color:var(--ink);font:600 16px 'Be Vietnam Pro',system-ui;cursor:pointer">Secundário</button>
+          <button disabled="{{ true }}" style="min-height:48px;padding:0 18px;border:0;border-radius:12px;background:#F1EBE3;color:var(--muted);font:600 16px 'Be Vietnam Pro',system-ui;cursor:not-allowed">Desabilitado</button>
+        </div>
+      </div>
+      <div style="padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:16px">
+        <p style="margin:0 0 12px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">Badge · Chip · StatusBadge</p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+          <span style="padding:4px 10px;border-radius:999px;background:var(--brand-yellow);color:#1E1814;font-size:11px;font-weight:700;text-transform:uppercase">Mais pedido</span>
+          <span style="padding:4px 10px;border-radius:6px;background:#FBE7E4;color:var(--brand-red);font-size:11px;font-weight:700;text-transform:uppercase">Promoção</span>
+          <span style="padding:4px 10px;border-radius:6px;background:#F1EBE3;color:var(--ink-2);font-size:11px;font-weight:700;text-transform:uppercase">Indisponível</span>
+          <span style="min-height:40px;display:inline-flex;align-items:center;padding:0 14px;border-radius:999px;border:1.5px solid var(--ink);background:var(--ink);color:#FFF7E8;font-size:14px;font-weight:600">Chip ativo</span>
+          <span style="min-height:40px;display:inline-flex;align-items:center;padding:0 14px;border-radius:999px;border:1.5px solid var(--border);color:var(--ink);font-size:14px;font-weight:600">Chip</span>
+          <span style="display:inline-flex;align-items:center;gap:7px;padding:5px 11px;border-radius:999px;background:#E7F4EC;color:var(--success);font-size:13px;font-weight:600"><span style="width:8px;height:8px;border-radius:50%;background:var(--success)"></span>Aberto agora</span>
+        </div>
+      </div>
+      <div style="padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:16px">
+        <p style="margin:0 0 12px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">Input · Select · QuantitySelector</p>
+        <input placeholder="SearchInput" style="width:100%;min-height:48px;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;font:400 16px 'Be Vietnam Pro',system-ui;background:var(--surface);color:var(--ink);margin-bottom:10px" style-focus="border-color:var(--brand-orange);outline:none" />
+        <select style="width:100%;min-height:48px;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;font:400 16px 'Be Vietnam Pro',system-ui;background:var(--surface);color:var(--ink);margin-bottom:10px"><option>Select</option></select>
+        <div style="display:inline-flex;align-items:center;border:1.5px solid var(--border);border-radius:12px">
+          <button style="min-width:46px;min-height:46px;border:0;background:transparent;font-size:19px;cursor:pointer">−</button>
+          <span style="min-width:26px;text-align:center;font-weight:700">2</span>
+          <button style="min-width:46px;min-height:46px;border:0;background:transparent;font-size:19px;cursor:pointer">+</button>
+        </div>
+      </div>
+      <div style="padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:16px">
+        <p style="margin:0 0 12px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">Alert</p>
+        <div style="padding:12px;border-radius:12px;background:#E7F4EC;border:1px solid #CFE4D8;color:var(--success);font-size:14px;font-weight:600;margin-bottom:8px">Taxa de entrega: R$ 6,00</div>
+        <div style="padding:12px;border-radius:12px;background:#FFF3DC;border:1px solid #F0DDB5;color:var(--warning);font-size:14px;font-weight:600;margin-bottom:8px">Estamos fechados no momento.</div>
+        <div style="padding:12px;border-radius:12px;background:#FBE7E4;border:1px solid #F0C4BE;color:var(--danger);font-size:14px;font-weight:600">Ainda não entregamos nessa região.</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isEstados }}">
+  <div style="max-width:1120px;margin:0 auto;padding:24px 16px 60px">
+    <h1 style="margin:0 0 4px;font-family:'Bricolage Grotesque',system-ui;font-size:30px;font-weight:800">Estados de interface</h1>
+    <p style="margin:0 0 26px;font-size:15px;color:var(--ink-2)">Cada estado usa os mesmos tokens e componentes da jornada principal.</p>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">
+      <div style="padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:16px">
+        <p style="margin:0 0 12px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Skeleton / Loading</p>
+        <div style="display:flex;gap:12px">
+          <div style="flex:0 0 84px;height:84px;border-radius:12px;background:#F1EBE3;animation:shalonPulse 1.4s infinite"></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:8px;padding-top:4px">
+            <div style="height:14px;width:70%;border-radius:6px;background:#F1EBE3;animation:shalonPulse 1.4s infinite"></div>
+            <div style="height:12px;width:90%;border-radius:6px;background:#F1EBE3;animation:shalonPulse 1.4s .15s infinite"></div>
+            <div style="height:12px;width:50%;border-radius:6px;background:#F1EBE3;animation:shalonPulse 1.4s .3s infinite"></div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:16px;font-size:14px;color:var(--ink-2)">
+          <span style="width:18px;height:18px;border-radius:50%;border:2.5px solid #EADFD1;border-top-color:var(--brand-orange);animation:shalonSpin .8s linear infinite"></span>Enviando pedido...
+        </div>
+      </div>
+
+      <div style="padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:16px">
+        <p style="margin:0 0 12px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Erro · Offline</p>
+        <div style="padding:16px;border-radius:12px;background:#FBE7E4;border:1px solid #F0C4BE;margin-bottom:10px">
+          <p style="margin:0;font-weight:600;color:var(--danger)">Não conseguimos carregar o cardápio</p>
+          <p style="margin:4px 0 10px;font-size:14px;color:var(--ink-2)">Tente novamente em alguns instantes.</p>
+          <button style="min-height:44px;padding:0 14px;border:1.5px solid #F0C4BE;border-radius:11px;background:transparent;color:var(--danger);font:600 14px 'Be Vietnam Pro',system-ui;cursor:pointer">Tentar de novo</button>
+        </div>
+        <div style="padding:16px;border-radius:12px;background:#F1EBE3">
+          <p style="margin:0;font-weight:600">Você está sem conexão</p>
+          <p style="margin:4px 0 0;font-size:14px;color:var(--ink-2)">Vamos recarregar automaticamente quando a internet voltar.</p>
+        </div>
+      </div>
+
+      <div style="padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:16px">
+        <p style="margin:0 0 12px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Vazios</p>
+        <div style="padding:20px;text-align:center;border:1px dashed var(--border);border-radius:12px;margin-bottom:10px">
+          <p style="margin:0;font-weight:600">Nenhum resultado</p>
+          <p style="margin:4px 0 0;font-size:14px;color:var(--ink-2)">Não encontramos “calzone”.</p>
+        </div>
+        <div style="padding:20px;text-align:center;border:1px dashed var(--border);border-radius:12px;margin-bottom:10px">
+          <p style="margin:0;font-weight:600">Categoria sem itens</p>
+        </div>
+        <div style="padding:20px;text-align:center;border:1px dashed var(--border);border-radius:12px">
+          <p style="margin:0;font-weight:600">Carrinho vazio</p>
+        </div>
+      </div>
+
+      <div style="padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:16px">
+        <p style="margin:0 0 12px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Status do pedido</p>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <sc-for list="{{ statusGaleria }}" as="s" hint-placeholder-count="8">
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:{{ s.bg }};border:1px solid {{ s.bc }}">
+              <span style="width:9px;height:9px;border-radius:50%;background:{{ s.fg }}"></span>
+              <span style="font-size:14px;font-weight:700;color:{{ s.fg }}">{{ s.label }}</span>
+              <span style="font-size:13px;color:var(--ink-2);margin-left:auto;text-align:right">{{ s.hint }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:16px">
+        <p style="margin:0 0 12px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Indisponível · Loja fechada</p>
+        <article style="display:flex;gap:12px;padding:12px;border:1px solid var(--border);border-radius:14px;opacity:.72;margin-bottom:12px">
+          <div style="flex:0 0 70px;height:70px;border-radius:10px;background:#F1EBE3"></div>
+          <div style="flex:1">
+            <p style="margin:0;font-weight:600">Pizza Pepperoni</p>
+            <p style="margin:2px 0 8px;font-size:13px;color:var(--ink-2)">Indisponível hoje</p>
+            <button disabled="{{ true }}" style="min-height:44px;padding:0 14px;border:1.5px solid var(--border);border-radius:11px;background:#F5F0E8;color:var(--muted);font:600 14px 'Be Vietnam Pro',system-ui;cursor:not-allowed">Indisponível</button>
+          </div>
+        </article>
+        <div style="padding:14px;border-radius:12px;background:#FFF7E6;border:1px solid #F0DDB5">
+          <p style="margin:0;font-weight:600">Estamos fechados no momento.</p>
+          <p style="margin:4px 0 0;font-size:14px;color:var(--ink-2)">O cardápio continua visível; o envio do pedido fica bloqueado.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;lojaAberta&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Operação&quot;},&quot;acento&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;amarelo&quot;,&quot;vermelho&quot;],&quot;default&quot;:&quot;amarelo&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Marca&quot;},&quot;heroTitulo&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Hoje pede Shalon.&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Marca&quot;}}">
+class Component extends DCLogic {
+  static DATA = {
+    loja: { nome: 'Pizzaria Shalon', fecha: '23:30', endereco: 'Rua das Oliveiras, 120 — Centro' },
+    cats: [
+      { id: 'populares', nome: 'Mais pedidos' },
+      { id: 'pizzas', nome: 'Pizzas' },
+      { id: 'brotinhos', nome: 'Brotinhos' },
+      { id: 'fogazzas', nome: 'Fogazzas' },
+      { id: 'combos', nome: 'Combos' },
+      { id: 'refrigerantes', nome: 'Refrigerantes' }
+    ],
+    sizes: {
+      broto: { id: 'broto', nome: 'Brotinho', desc: '4 fatias · 20 cm' },
+      trad: { id: 'trad', nome: 'Tradicional', desc: '8 fatias · 35 cm' },
+      familia: { id: 'familia', nome: 'Família', desc: '12 fatias · 45 cm' }
+    },
+    flavors: {
+      calabresa: { id: 'calabresa', nome: 'Calabresa', ing: 'Molho, mussarela, calabresa e cebola', precos: { broto: 34.9, trad: 56.9, familia: 72.9 } },
+      portuguesa: { id: 'portuguesa', nome: 'Portuguesa', ing: 'Presunto, ovo, cebola, ervilha e azeitona', precos: { broto: 36.9, trad: 59.9, familia: 76.9 } },
+      frango: { id: 'frango', nome: 'Frango com Catupiry', ing: 'Frango desfiado e catupiry original', precos: { broto: 38.9, trad: 62.9, familia: 79.9 } },
+      marguerita: { id: 'marguerita', nome: 'Marguerita', ing: 'Mussarela, tomate e manjericão fresco', precos: { broto: 32.9, trad: 52.9, familia: 68.9 } },
+      quatro: { id: 'quatro', nome: 'Quatro Queijos', ing: 'Mussarela, provolone, parmesão e gorgonzola', precos: { broto: 39.9, trad: 64.9, familia: 82.9 } },
+      pepperoni: { id: 'pepperoni', nome: 'Pepperoni', ing: 'Mussarela e pepperoni italiano', indisponivel: true, precos: { broto: 40.9, trad: 66.9, familia: 84.9 } }
+    },
+    bordas: [
+      { id: 'sem', nome: 'Sem borda recheada', preco: 0 },
+      { id: 'catupiry', nome: 'Catupiry', preco: 8 },
+      { id: 'cheddar', nome: 'Cheddar', preco: 8, indisponivel: true }
+    ],
+    adicionais: [
+      { id: 'bacon', nome: 'Bacon', preco: 7 },
+      { id: 'catupiry', nome: 'Catupiry extra', preco: 8 },
+      { id: 'azeitona', nome: 'Azeitona', preco: 4 },
+      { id: 'milho', nome: 'Milho', preco: 3 }
+    ],
+    bairros: [
+      { nome: 'Centro', taxa: 5 },
+      { nome: 'Jardim Aurora', taxa: 6 },
+      { nome: 'Vila Nova', taxa: 8 },
+      { nome: 'Parque das Árvores', taxa: 10 },
+      { nome: 'Bairro Alto', atendido: false }
+    ],
+    pagamentos: [
+      { id: 'pix', nome: 'Pix' },
+      { id: 'dinheiro', nome: 'Dinheiro' },
+      { id: 'debito', nome: 'Débito', bandeiras: ['Visa', 'Mastercard', 'Elo'] },
+      { id: 'credito', nome: 'Crédito', bandeiras: ['Visa', 'Mastercard', 'Elo', 'Hipercard'] },
+      { id: 'voucher', nome: 'Voucher', bandeiras: ['Alelo', 'Sodexo', 'VR'] }
+    ],
+    produtos: [
+      { id: 'pz-calabresa', cat: 'pizzas', tipo: 'pizza', nome: 'Pizza Calabresa', desc: 'Molho artesanal, mussarela, calabresa fatiada e cebola', sabor: 'calabresa', sizes: ['broto', 'trad', 'familia'], popular: true },
+      { id: 'pz-portuguesa', cat: 'pizzas', tipo: 'pizza', nome: 'Pizza Portuguesa', desc: 'Presunto, ovo, cebola, ervilha e azeitona', sabor: 'portuguesa', sizes: ['broto', 'trad', 'familia'], popular: true },
+      { id: 'pz-frango', cat: 'pizzas', tipo: 'pizza', nome: 'Pizza Frango com Catupiry', desc: 'Frango desfiado no molho da casa com catupiry original', sabor: 'frango', sizes: ['broto', 'trad', 'familia'], popular: true },
+      { id: 'pz-marguerita', cat: 'pizzas', tipo: 'pizza', nome: 'Pizza Marguerita', desc: 'Mussarela, tomate italiano e manjericão fresco', sabor: 'marguerita', sizes: ['broto', 'trad', 'familia'] },
+      { id: 'pz-quatro', cat: 'pizzas', tipo: 'pizza', nome: 'Pizza Quatro Queijos', desc: 'Mussarela, provolone, parmesão e gorgonzola', sabor: 'quatro', sizes: ['trad', 'familia'], descontoPct: 15 },
+      { id: 'pz-pepperoni', cat: 'pizzas', tipo: 'pizza', nome: 'Pizza Pepperoni', desc: 'Mussarela e pepperoni italiano fatiado', sabor: 'pepperoni', sizes: ['trad', 'familia'], indisponivel: true },
+      { id: 'br-calabresa', cat: 'brotinhos', tipo: 'pizza', nome: 'Brotinho Calabresa', desc: 'Versão individual, 4 fatias', sabor: 'calabresa', sizes: ['broto'] },
+      { id: 'br-frango', cat: 'brotinhos', tipo: 'pizza', nome: 'Brotinho Frango com Catupiry', desc: 'Versão individual, 4 fatias', sabor: 'frango', sizes: ['broto'] },
+      { id: 'fg-frango', cat: 'fogazzas', tipo: 'simples', nome: 'Fogazza de Frango', desc: 'Massa recheada e assada na hora, com catupiry', preco: 28.9, adicionais: true, popular: true },
+      { id: 'fg-calabresa', cat: 'fogazzas', tipo: 'simples', nome: 'Fogazza de Calabresa', desc: 'Calabresa, mussarela e cebola', preco: 26.9, adicionais: true },
+      { id: 'rf-coca2l', cat: 'refrigerantes', tipo: 'simples', nome: 'Coca-Cola 2L', desc: 'Garrafa 2 litros gelada', preco: 14 },
+      { id: 'rf-guarana2l', cat: 'refrigerantes', tipo: 'simples', nome: 'Guaraná 2L', desc: 'Garrafa 2 litros gelada', preco: 12 },
+      { id: 'rf-lata', cat: 'refrigerantes', tipo: 'simples', nome: 'Refrigerante lata 350ml', desc: 'Coca-Cola, Guaraná ou Fanta', preco: 6.5 },
+      { id: 'cb-familia', cat: 'combos', tipo: 'combo', nome: 'Combo Família Shalon', desc: 'Para a mesa toda: pizza grande com até 2 sabores e refrigerante 2L.', resumo: '1 Pizza Família + Refrigerante 2L', preco: 89.9, comboSize: 'familia', sabores: 2, adicionais: true, bordas: true, popular: true, grupos: [{ id: 'refri', titulo: 'Escolha o refrigerante', opcoes: ['Coca-Cola 2L', 'Guaraná 2L'] }] },
+      { id: 'cb-dupla', cat: 'combos', tipo: 'combo', nome: 'Combo Dupla', desc: 'Pizza tradicional com até 2 sabores e dois refrigerantes lata.', resumo: '1 Pizza Tradicional + 2 latas 350ml', preco: 69.9, comboSize: 'trad', sabores: 2, adicionais: true, bordas: true, grupos: [{ id: 'refri', titulo: 'Escolha as latas', opcoes: ['2 Coca-Cola', '2 Guaraná', '1 de cada'] }] }
+    ],
+    fluxo: [
+      { id: 'aguardando', label: 'Aguardando confirmação', titulo: 'Seu pedido foi enviado', texto: 'A Pizzaria Shalon ainda está avaliando o pedido. Isso costuma levar poucos minutos.', hint: 'Enviado às 19:42', bg: '#FFF3DC', bc: '#F0DDB5', fg: '#96610A' },
+      { id: 'aceito', label: 'Aceito', titulo: 'Pedido confirmado pela pizzaria', texto: 'Tudo certo! Já entrou na fila de produção.', hint: 'Confirmado', bg: '#E7F4EC', bc: '#CFE4D8', fg: '#1B7A4F' },
+      { id: 'preparo', label: 'Em preparo', titulo: 'Sua pizza está no forno', texto: 'Massa aberta, recheio montado e forno a 350°C.', hint: 'Em produção', bg: '#FFF3DC', bc: '#F0DDB5', fg: '#96610A' },
+      { id: 'pronto', label: 'Pronto', titulo: 'Pedido pronto', texto: 'Saindo do forno e sendo embalado agora.', hint: 'Embalando', bg: '#E7F4EC', bc: '#CFE4D8', fg: '#1B7A4F' },
+      { id: 'entrega', label: 'Saiu para entrega', titulo: 'Saiu para entrega', texto: 'O entregador está a caminho do seu endereço.', hint: 'A caminho', bg: '#E8F1F7', bc: '#CBDEEA', fg: '#20658F' },
+      { id: 'concluido', label: 'Concluído', titulo: 'Pedido entregue', texto: 'Bom apetite! Obrigado por pedir na Shalon.', hint: 'Finalizado', bg: '#E7F4EC', bc: '#CFE4D8', fg: '#1B7A4F' }
+    ],
+    encerrados: {
+      recusado: { id: 'recusado', label: 'Recusado', titulo: 'A pizzaria não pôde aceitar este pedido', texto: 'Nenhuma cobrança foi feita. Você pode montar um novo pedido quando quiser.', motivo: 'Ingrediente indisponível: catupiry original acabou hoje.', bg: '#FBE7E4', bc: '#F0C4BE', fg: '#C0392B' },
+      cancelado: { id: 'cancelado', label: 'Cancelado', titulo: 'Pedido cancelado após a confirmação', texto: 'O pedido havia sido aceito e foi cancelado depois. Qualquer dúvida, fale com a pizzaria pelo WhatsApp.', motivo: 'Cancelado a pedido do cliente.', bg: '#F1EBE3', bc: '#E8DCCB', fg: '#584E45' }
+    }
+  };
+
+  state = {
+    view: 'app', screen: 'home', q: '', cat: 'populares',
+    sheet: null, cart: [], toast: null, enviando: false,
+    co: { nome: '', zap: '', modo: 'entrega', rua: '', num: '', compl: '', bairro: '', ref: '', cep: '', pag: '', bandeira: '', trocoNeed: null, trocoValor: '' },
+    pedido: null, statusId: 'aguardando'
+  };
+
+  get D() { return this.constructor.DATA; }
+  get aberta() { return this.props.lojaAberta !== false; }
+
+  componentDidMount() { this.applyAccent(); }
+  componentDidUpdate() { this.applyAccent(); }
+  applyAccent() {
+    const el = this._root; if (!el) return;
+    const red = this.props.acento === 'vermelho';
+    el.style.setProperty('--cta-bg', red ? '#C4291C' : '#FFB61E');
+    el.style.setProperty('--cta-fg', red ? '#FFFFFF' : '#1E1814');
+  }
+
+  fmt(v) { return 'R$ ' + (Math.round(v * 100) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  prod(id) { return this.D.produtos.find(p => p.id === id); }
+  toast(t) { this.setState({ toast: t }); clearTimeout(this._tt); this._tt = setTimeout(() => this.setState({ toast: null }), 2200); }
+
+  saborList(p) {
+    const sid = p.tipo === 'combo' ? p.comboSize : (this.state.sheet ? this.state.sheet.sizeId : p.sizes[0]);
+    return Object.values(this.D.flavors).map(f => ({ f, preco: f.precos[sid] || 0 }));
+  }
+
+  unit(p, s) {
+    let base = 0;
+    if (p.tipo === 'pizza') {
+      const vals = s.flavors.map(id => (this.D.flavors[id].precos[s.sizeId] || 0));
+      base = vals.length ? Math.max.apply(null, vals) : 0;
+    } else if (p.tipo === 'combo') base = p.preco;
+    else base = p.preco;
+    if (p.tipo !== 'simples' || p.adicionais) {
+      const b = this.D.bordas.find(x => x.id === s.bordaId);
+      if (b && (p.tipo === 'pizza' || p.tipo === 'combo')) base += b.preco;
+    }
+    s.adicionais.forEach(id => { const a = this.D.adicionais.find(x => x.id === id); if (a) base += a.preco; });
+    if (p.descontoPct) base = base * (1 - p.descontoPct / 100);
+    return base;
+  }
+
+  precoVitrine(p) {
+    if (p.tipo === 'pizza') {
+      const sid = p.sizes.includes('trad') ? 'trad' : p.sizes[0];
+      let v = this.D.flavors[p.sabor].precos[sid];
+      if (p.descontoPct) v = v * (1 - p.descontoPct / 100);
+      return v;
+    }
+    return p.preco;
+  }
+  precoDe(p) {
+    const sid = p.sizes && p.sizes.includes('trad') ? 'trad' : (p.sizes ? p.sizes[0] : null);
+    return sid ? this.D.flavors[p.sabor].precos[sid] : p.preco;
+  }
+
+  open(pid, editIndex) {
+    const p = this.prod(pid);
+    if (!p || p.indisponivel) return;
+    let s;
+    if (editIndex != null) {
+      s = Object.assign({}, this.state.cart[editIndex].cfg, { pid, editIndex });
+    } else {
+      s = {
+        pid, editIndex: null,
+        sizeId: p.tipo === 'pizza' ? (p.sizes.includes('trad') ? 'trad' : p.sizes[0]) : (p.comboSize || null),
+        flavors: p.tipo === 'pizza' ? [p.sabor] : [],
+        bordaId: 'sem', adicionais: [], obs: '', qtd: 1, picks: {}
+      };
+      if (p.grupos) p.grupos.forEach(g => { s.picks[g.id] = g.opcoes[0]; });
+    }
+    this.setState({ sheet: s });
+  }
+  patch(o) { this.setState({ sheet: Object.assign({}, this.state.sheet, o) }); }
+
+  linhas(p, s) {
+    const out = [];
+    if (s.sizeId && this.D.sizes[s.sizeId] && p.tipo === 'pizza') out.push({ t: 'Tamanho: ' + this.D.sizes[s.sizeId].nome });
+    if (s.flavors.length) out.push({ t: (s.flavors.length > 1 ? 'Meio a meio: ' : 'Sabor: ') + s.flavors.map(id => this.D.flavors[id].nome).join(' / ') });
+    if (p.grupos) p.grupos.forEach(g => { if (s.picks[g.id]) out.push({ t: g.titulo.replace('Escolha o ', '').replace('Escolha as ', '') + ': ' + s.picks[g.id] }); });
+    const b = this.D.bordas.find(x => x.id === s.bordaId);
+    if (b && b.preco > 0) out.push({ t: 'Borda: ' + b.nome });
+    if (s.adicionais.length) out.push({ t: 'Adicionais: ' + s.adicionais.map(id => this.D.adicionais.find(a => a.id === id).nome).join(', ') });
+    if (s.obs) out.push({ t: 'Obs.: ' + s.obs });
+    return out;
+  }
+
+  addToCart() {
+    const s = this.state.sheet, p = this.prod(s.pid);
+    const cfg = { sizeId: s.sizeId, flavors: s.flavors.slice(), bordaId: s.bordaId, adicionais: s.adicionais.slice(), obs: s.obs, qtd: s.qtd, picks: Object.assign({}, s.picks) };
+    const item = { pid: p.id, cfg, unit: this.unit(p, cfg) };
+    const cart = this.state.cart.slice();
+    if (s.editIndex != null) cart[s.editIndex] = item; else cart.push(item);
+    this.setState({ cart, sheet: null });
+    this.toast(s.editIndex != null ? 'Item atualizado' : p.nome + ' adicionado ao carrinho');
+  }
+
+  taxa() {
+    const { co } = this.state;
+    if (co.modo !== 'entrega') return 0;
+    const b = this.D.bairros.find(x => x.nome === co.bairro);
+    return b && b.atendido !== false ? b.taxa : 0;
+  }
+  subtotal() { return this.state.cart.reduce((a, i) => a + i.unit * i.cfg.qtd, 0); }
+  total() { return this.subtotal() + this.taxa(); }
+
+  pend() {
+    const { co, cart } = this.state, e = [];
+    if (!cart.length) e.push({ t: 'Adicione pelo menos um item.' });
+    if (co.nome.trim().length < 2) e.push({ t: 'Informe seu nome.' });
+    if (co.zap.replace(/\D/g, '').length < 10) e.push({ t: 'Informe um WhatsApp válido.' });
+    if (co.modo === 'entrega') {
+      const b = this.D.bairros.find(x => x.nome === co.bairro);
+      if (!b) e.push({ t: 'Selecione o bairro.' });
+      else if (b.atendido === false) e.push({ t: 'Região sem entrega — escolha Retirada.' });
+      if (!co.rua.trim()) e.push({ t: 'Informe a rua.' });
+      if (!co.num.trim()) e.push({ t: 'Informe o número.' });
+    }
+    if (!co.pag) e.push({ t: 'Escolha a forma de pagamento.' });
+    else {
+      const pg = this.D.pagamentos.find(x => x.id === co.pag);
+      if (pg && pg.bandeiras && !co.bandeira) e.push({ t: 'Escolha a bandeira do cartão.' });
+      if (co.pag === 'dinheiro' && co.trocoNeed === null) e.push({ t: 'Informe se precisa de troco.' });
+      if (co.pag === 'dinheiro' && co.trocoNeed === true) {
+        const v = parseFloat(String(co.trocoValor).replace(/\./g, '').replace(',', '.'));
+        if (!v || v < this.total()) e.push({ t: 'O valor do troco deve ser maior que o total.' });
+      }
+    }
+    if (!this.aberta) e.push({ t: 'A loja está fechada agora.' });
+    return e;
+  }
+
+  setCo(o) { this.setState({ co: Object.assign({}, this.state.co, o) }); }
+  maskZap(v) {
+    const d = v.replace(/\D/g, '').slice(0, 11);
+    if (d.length <= 2) return d.length ? '(' + d : '';
+    if (d.length <= 6) return '(' + d.slice(0, 2) + ') ' + d.slice(2);
+    if (d.length <= 10) return '(' + d.slice(0, 2) + ') ' + d.slice(2, 6) + '-' + d.slice(6);
+    return '(' + d.slice(0, 2) + ') ' + d.slice(2, 7) + '-' + d.slice(7);
+  }
+
+  enviar() {
+    if (this.state.enviando) return;
+    this.setState({ enviando: true });
+    setTimeout(() => {
+      const n = 'Pedido #' + (1000 + Math.floor(Math.random() * 900));
+      this.setState({
+        enviando: false, screen: 'sent', statusId: 'aguardando',
+        pedido: { num: n, total: this.total(), subtotal: this.subtotal(), taxa: this.taxa(), co: Object.assign({}, this.state.co), itens: this.state.cart.slice() }
+      });
+    }, 900);
+  }
+
+  resumo(src) {
+    const co = src.co, out = [];
+    out.push({ k: 'Cliente', v: co.nome + ' · ' + co.zap });
+    out.push({ k: 'Recebimento', v: co.modo === 'entrega' ? 'Entrega' : 'Retirada na pizzaria' });
+    if (co.modo === 'entrega') out.push({ k: 'Endereço', v: co.rua + ', ' + co.num + (co.compl ? ' — ' + co.compl : '') + ' · ' + co.bairro });
+    else out.push({ k: 'Endereço', v: this.D.loja.endereco });
+    src.itens.forEach(i => {
+      const p = this.prod(i.pid);
+      out.push({ k: i.cfg.qtd + '× ' + p.nome, v: this.fmt(i.unit * i.cfg.qtd) });
+    });
+    out.push({ k: 'Subtotal', v: this.fmt(src.subtotal) });
+    out.push({ k: 'Taxa de entrega', v: co.modo === 'entrega' ? (src.taxa ? this.fmt(src.taxa) : 'A definir') : 'Sem taxa' });
+    const pg = this.D.pagamentos.find(x => x.id === co.pag);
+    out.push({ k: 'Pagamento', v: (pg ? pg.nome : '—') + (co.bandeira ? ' · ' + co.bandeira : '') + ' (na ' + (co.modo === 'entrega' ? 'entrega' : 'retirada') + ')' });
+    if (co.pag === 'dinheiro' && co.trocoNeed) {
+      const v = parseFloat(String(co.trocoValor).replace(/\./g, '').replace(',', '.')) || 0;
+      out.push({ k: 'Troco para', v: this.fmt(v) + ' · troco ' + this.fmt(Math.max(0, v - src.total)) });
+    }
+    return out;
+  }
+
+  renderVals() {
+    const st = this.state, D = this.D, F = v => this.fmt(v);
+    const ink = '#1E1814', border = '#E8DCCB', selBg = '#FFF3DC', selBc = '#EE7A17';
+    const view = st.view;
+    const pedidoAtual = st.pedido || { num: '', total: 0, subtotal: 0, taxa: 0, co: st.co, itens: st.cart };
+
+    const card = (p, slotPrefix) => ({
+      id: p.id, nome: p.nome, desc: p.desc, resumo: p.resumo || p.desc,
+      slot: (slotPrefix || 'p') + '-' + p.id, slotB: 'b-' + p.id,
+      preco: (p.tipo === 'pizza' ? 'a partir de ' : '') + F(this.precoVitrine(p)),
+      precoDe: F(this.precoDe(p)),
+      isPop: !!p.popular, isPromo: !!p.descontoPct, isOff: !!p.indisponivel, ok: !p.indisponivel,
+      op: p.indisponivel ? 0.6 : 1,
+      cta: p.tipo === 'simples' && !p.adicionais ? 'Adicionar' : 'Ver opções',
+      abrir: () => { if (p.tipo === 'simples' && !p.adicionais) { const cfg = { sizeId: null, flavors: [], bordaId: 'sem', adicionais: [], obs: '', qtd: 1, picks: {} }; this.setState({ cart: this.state.cart.concat([{ pid: p.id, cfg, unit: p.preco }]) }); this.toast(p.nome + ' adicionado'); } else this.open(p.id); }
+    });
+
+    const qn = st.q.trim().toLowerCase();
+    const matches = qn ? D.produtos.filter(p => (p.nome + ' ' + p.desc + ' ' + (p.resumo || '')).toLowerCase().includes(qn)) : [];
+    const catsVis = st.cat === 'populares' ? D.cats.filter(c => c.id !== 'populares') : D.cats.filter(c => c.id === st.cat);
+    const grupos = catsVis.map(c => ({ id: c.id, nome: c.nome, itens: D.produtos.filter(p => p.cat === c.id).map(p => card(p, 'm')) })).filter(g => g.itens.length);
+
+    const vals = {
+      rootRef: el => { this._root = el; },
+      isApp: view === 'app', isDS: view === 'ds', isEstados: view === 'estados',
+      verApp: () => this.setState({ view: 'app' }), verDS: () => this.setState({ view: 'ds' }), verEstados: () => this.setState({ view: 'estados' }),
+      tabAppBg: view === 'app' ? '#FFB61E' : 'transparent', tabAppFg: view === 'app' ? ink : '#E8D8C2',
+      tabDSBg: view === 'ds' ? '#FFB61E' : 'transparent', tabDSFg: view === 'ds' ? ink : '#E8D8C2',
+      tabEsBg: view === 'estados' ? '#FFB61E' : 'transparent', tabEsFg: view === 'estados' ? ink : '#E8D8C2',
+
+      aberta: this.aberta, fechada: !this.aberta,
+      horarioLabel: this.aberta ? 'Pedidos até ' + D.loja.fecha : 'Reabrimos amanhã às 18:00',
+      heroTitulo: this.props.heroTitulo || 'Hoje pede Shalon.',
+
+      isHome: st.screen === 'home', isCart: st.screen === 'cart', isCheckout: st.screen === 'checkout', isSent: st.screen === 'sent', isTrack: st.screen === 'track',
+      voltarHome: () => this.setState({ screen: 'home' }),
+      irCarrinho: () => this.setState({ screen: 'cart' }),
+      irCheckout: () => this.setState({ screen: 'checkout' }),
+      irAcompanhar: () => this.setState({ screen: 'track' }),
+      novoPedido: () => this.setState({ screen: 'home', cart: [], pedido: null, statusId: 'aguardando', co: Object.assign({}, st.co, { pag: '', bandeira: '', trocoNeed: null, trocoValor: '' }) }),
+      irCombos: () => this.setState({ cat: 'combos', q: '' }),
+      abrirPromo: () => this.open('pz-quatro'),
+
+      q: st.q, setQ: e => this.setState({ q: e.target.value }), limparBusca: () => this.setState({ q: '' }),
+      temBusca: qn.length > 0, semBusca: qn.length === 0,
+      buscaLabel: matches.length ? matches.length + ' resultado(s) para “' + st.q + '”' : 'Busca',
+      resultados: matches.map(p => card(p, 'b')), semResultado: qn.length > 0 && matches.length === 0,
+
+      chips: D.cats.map(c => ({
+        nome: c.nome, bg: st.cat === c.id ? ink : 'transparent', fg: st.cat === c.id ? '#FFF7E8' : ink,
+        bc: st.cat === c.id ? ink : border, sel: () => this.setState({ cat: c.id })
+      })),
+      catLabel: st.cat === 'populares' ? 'Todas as categorias' : D.cats.find(c => c.id === st.cat).nome,
+      populares: D.produtos.filter(p => p.popular).map(p => card(p, 'top')),
+      combos: D.produtos.filter(p => p.cat === 'combos').map(p => card(p, 'cb')),
+      grupos, catVazia: grupos.length === 0,
+
+      cartItens: st.cart.map((i, idx) => {
+        const p = this.prod(i.pid);
+        return {
+          nome: i.cfg.qtd + '× ' + p.nome, qtd: i.cfg.qtd, linhas: this.linhas(p, i.cfg), total: F(i.unit * i.cfg.qtd),
+          unitLabel: F(i.unit) + ' cada', mostrarUnit: i.cfg.qtd > 1,
+          mais: () => { const c = st.cart.slice(); c[idx] = Object.assign({}, i, { cfg: Object.assign({}, i.cfg, { qtd: i.cfg.qtd + 1 }) }); this.setState({ cart: c }); },
+          menos: () => { const c = st.cart.slice(); if (i.cfg.qtd <= 1) c.splice(idx, 1); else c[idx] = Object.assign({}, i, { cfg: Object.assign({}, i.cfg, { qtd: i.cfg.qtd - 1 }) }); this.setState({ cart: c }); },
+          remover: () => { const c = st.cart.slice(); c.splice(idx, 1); this.setState({ cart: c }); this.toast('Item removido'); },
+          editar: () => this.open(i.pid, idx)
+        };
+      }),
+      cartVazio: st.cart.length === 0, temCarrinho: st.cart.length > 0,
+      cartCountLabel: st.cart.length === 1 ? '1 item' : st.cart.length + ' itens',
+      barraCarrinho: st.cart.length > 0 && (st.screen === 'home'),
+      subtotal: F(this.subtotal()),
+      taxaLabelCarrinho: 'calculada no checkout',
+      totalCarrinho: F(this.subtotal()),
+      totalCheckout: F(this.total()),
+      taxaLabel: st.co.modo === 'retirada' ? 'Sem taxa (retirada)' : (this.taxa() ? F(this.taxa()) : 'Informe o bairro'),
+
+      temToast: !!st.toast, toast: st.toast,
+      stop: e => e.stopPropagation(),
+
+      co: st.co,
+      setNome: e => this.setCo({ nome: e.target.value }),
+      setZap: e => this.setCo({ zap: this.maskZap(e.target.value) }),
+      setRua: e => this.setCo({ rua: e.target.value }), setNum: e => this.setCo({ num: e.target.value }),
+      setCompl: e => this.setCo({ compl: e.target.value }), setCep: e => this.setCo({ cep: e.target.value }),
+      setRef: e => this.setCo({ ref: e.target.value }),
+      setBairro: e => this.setCo({ bairro: e.target.value }),
+      setTroco: e => this.setCo({ trocoValor: e.target.value }),
+      setEntrega: () => this.setCo({ modo: 'entrega' }), setRetirada: () => this.setCo({ modo: 'retirada', bairro: '' }),
+      isEntrega: st.co.modo === 'entrega', isRetirada: st.co.modo === 'retirada',
+      entregaBg: st.co.modo === 'entrega' ? selBg : '#fff', entregaBc: st.co.modo === 'entrega' ? selBc : border,
+      retiradaBg: st.co.modo === 'retirada' ? selBg : '#fff', retiradaBc: st.co.modo === 'retirada' ? selBc : border,
+      bairros: D.bairros.map(b => ({ nome: b.nome, label: b.atendido === false ? b.nome + ' — fora da área' : b.nome + ' · ' + F(b.taxa) })),
+      bairroOk: !!(st.co.modo === 'entrega' && st.co.bairro && D.bairros.find(b => b.nome === st.co.bairro && b.atendido !== false)),
+      bairroBloqueado: !!(st.co.modo === 'entrega' && st.co.bairro && D.bairros.find(b => b.nome === st.co.bairro && b.atendido === false)),
+
+      pagamentos: D.pagamentos.map(pg => ({
+        nome: pg.nome, on: st.co.pag === pg.id,
+        bg: st.co.pag === pg.id ? selBg : '#fff', bc: st.co.pag === pg.id ? selBc : border,
+        sel: () => this.setCo({ pag: pg.id, bandeira: '', trocoNeed: pg.id === 'dinheiro' ? null : null, trocoValor: '' })
+      })),
+      precisaBandeira: !!(st.co.pag && D.pagamentos.find(p => p.id === st.co.pag && p.bandeiras)),
+      bandeiraTitulo: 'Bandeira aceita',
+      bandeiras: (() => { const pg = D.pagamentos.find(p => p.id === st.co.pag); return pg && pg.bandeiras ? pg.bandeiras.map(b => ({ nome: b, bg: st.co.bandeira === b ? selBg : '#fff', bc: st.co.bandeira === b ? selBc : border, sel: () => this.setCo({ bandeira: b }) })) : []; })(),
+      isDinheiro: st.co.pag === 'dinheiro', isPix: st.co.pag === 'pix',
+      trocoSim: () => this.setCo({ trocoNeed: true }), trocoNao: () => this.setCo({ trocoNeed: false, trocoValor: '' }),
+      precisaTroco: st.co.trocoNeed === true,
+      trocoSimBg: st.co.trocoNeed === true ? selBg : '#fff', trocoSimBc: st.co.trocoNeed === true ? selBc : border,
+      trocoNaoBg: st.co.trocoNeed === false ? selBg : '#fff', trocoNaoBc: st.co.trocoNeed === false ? selBc : border,
+      trocoEsperado: (() => { const v = parseFloat(String(st.co.trocoValor).replace(/\./g, '').replace(',', '.')) || 0; return F(Math.max(0, v - this.total())); })(),
+
+      resumoLinhas: this.resumo({ co: st.co, itens: st.cart, subtotal: this.subtotal(), taxa: this.taxa(), total: this.total() }),
+      pendencias: this.pend(),
+      podeEnviar: this.pend().length === 0 && !st.enviando,
+      naoPodeEnviar: this.pend().length > 0 || st.enviando,
+      ctaEnviar: st.enviando ? 'Enviando...' : (!this.aberta ? 'Loja fechada' : 'Enviar pedido'),
+      enviar: () => this.enviar(),
+
+      pedidoNum: pedidoAtual.num, pedidoTotal: F(pedidoAtual.total),
+      pedidoModoLabel: pedidoAtual.co.modo === 'entrega' ? 'Entrega em' : 'Retirada em',
+      pedidoEnderecoLabel: pedidoAtual.co.modo === 'entrega' ? (pedidoAtual.co.rua + ', ' + pedidoAtual.co.num + ' · ' + pedidoAtual.co.bairro) : D.loja.endereco,
+      resumoPedido: this.resumo(pedidoAtual),
+
+      swatches: [
+        { nome: 'primary', hex: '#FFB61E' }, { nome: 'secondary', hex: '#EE7A17' }, { nome: 'accent', hex: '#C4291C' },
+        { nome: 'background', hex: '#F7F2EA' }, { nome: 'surface', hex: '#FFFFFF' }, { nome: 'surface-elevated', hex: '#FFFCF6' },
+        { nome: 'text-primary', hex: '#1E1814' }, { nome: 'text-secondary', hex: '#584E45' }, { nome: 'text-muted', hex: '#8B8077' },
+        { nome: 'border', hex: '#E8DCCB' }, { nome: 'success', hex: '#1B7A4F' }, { nome: 'warning', hex: '#96610A' },
+        { nome: 'danger', hex: '#C0392B' }, { nome: 'info', hex: '#20658F' }, { nome: 'disabled', hex: '#CFC6BA' }
+      ],
+      statusGaleria: D.fluxo.map(s => ({ label: s.label, hint: s.hint, bg: s.bg, bc: s.bc, fg: s.fg }))
+        .concat([D.encerrados.recusado, D.encerrados.cancelado].map(s => ({ label: s.label, hint: s.motivo, bg: s.bg, bc: s.bc, fg: s.fg })))
+    };
+
+    const cur = D.encerrados[st.statusId] || D.fluxo.find(s => s.id === st.statusId) || D.fluxo[0];
+    const idx = D.fluxo.findIndex(s => s.id === st.statusId);
+    Object.assign(vals, {
+      statusLabel: cur.label, statusTitulo: cur.titulo, statusTexto: cur.texto,
+      statusBg: cur.bg, statusBc: cur.bc, statusFg: cur.fg,
+      temMotivo: !!cur.motivo, motivo: cur.motivo || '',
+      mostrarTimeline: idx >= 0,
+      timeline: D.fluxo.map((s, i) => ({
+        nome: s.label, hint: i <= idx ? s.hint : 'Aguardando',
+        mark: i < idx ? '✓' : (i === idx ? '•' : String(i + 1)),
+        dotBg: i < idx ? '#E7F4EC' : (i === idx ? '#FFB61E' : '#F1EBE3'),
+        dotFg: i < idx ? '#1B7A4F' : (i === idx ? '#1E1814' : '#8B8077'),
+        fg: i <= idx ? '#1E1814' : '#8B8077', w: i === idx ? '700' : '500'
+      })),
+      avancarStatus: () => { const i = D.fluxo.findIndex(s => s.id === st.statusId); const n = D.fluxo[Math.min(D.fluxo.length - 1, (i < 0 ? 0 : i + 1))]; this.setState({ statusId: n.id }); },
+      simularRecusa: () => this.setState({ statusId: 'recusado' }),
+      simularCancelamento: () => this.setState({ statusId: 'cancelado' }),
+      reiniciarStatus: () => this.setState({ statusId: 'aguardando' })
+    });
+
+    if (st.sheet) {
+      const s = st.sheet, p = this.prod(s.pid);
+      const unit = this.unit(p, s);
+      const temSabores = p.tipo === 'pizza' || (p.tipo === 'combo' && p.sabores);
+      const maiorNome = s.flavors.length > 1 ? D.flavors[s.flavors.slice().sort((a, b) => (D.flavors[b].precos[s.sizeId || p.comboSize] || 0) - (D.flavors[a].precos[s.sizeId || p.comboSize] || 0))[0]].nome : null;
+      Object.assign(vals, {
+        sheetAberto: true, fecharSheet: () => this.setState({ sheet: null }),
+        sheet: {
+          nome: p.nome, desc: p.desc, qtd: s.qtd, obs: s.obs, slot: 'sheet-' + p.id,
+          temTamanhos: p.tipo === 'pizza' && p.sizes.length > 1,
+          temSabores: !!temSabores, temBordas: p.tipo === 'pizza' || !!p.bordas,
+          temAdicionais: p.tipo === 'pizza' || !!p.adicionais, temEscolhas: !!p.grupos,
+          temPromo: !!p.descontoPct, promoLabel: p.descontoPct ? 'Promoção: ' + p.descontoPct + '% de desconto aplicado' : ''
+        },
+        saboresHint: s.flavors.length > 1 ? 'Meio a meio — vale o preço do sabor ' + maiorNome : (s.flavors.length === 0 ? 'Escolha ao menos 1 sabor para continuar' : 'Escolha 1 sabor, ou 2 para meio a meio'),
+        tamanhos: (p.sizes || []).map(id => {
+          const z = D.sizes[id], on = s.sizeId === id;
+          let pr = D.flavors[s.flavors[0] || p.sabor].precos[id];
+          if (p.descontoPct) pr = pr * (1 - p.descontoPct / 100);
+          return { nome: z.nome, desc: z.desc, preco: F(pr), on, bg: on ? selBg : '#fff', bc: on ? selBc : border, rc: on ? selBc : '#CFC6BA', sel: () => this.patch({ sizeId: id }) };
+        }),
+        sabores: this.saborList(p).map(({ f, preco }) => {
+          const on = s.flavors.includes(f.id), off = !!f.indisponivel;
+          const pos = s.flavors.indexOf(f.id);
+          return {
+            nome: f.nome, info: off ? 'Indisponível hoje' : f.ing, preco: F(preco), on, off,
+            ord: pos === 0 ? '1º sabor' : (pos === 1 ? '2º sabor' : ''),
+            bg: on ? selBg : '#fff', bc: on ? selBc : border, rc: on ? selBc : '#CFC6BA', boxBg: on ? selBc : 'transparent',
+            cur: off ? 'not-allowed' : 'pointer', op: off ? 0.55 : 1,
+            sel: () => {
+              if (off) return;
+              let fl = s.flavors.slice();
+              if (fl.includes(f.id)) { fl = fl.filter(x => x !== f.id); }
+              else if (fl.length < 2) fl.push(f.id);
+              else fl = [fl[0], f.id];
+              this.patch({ flavors: fl });
+            }
+          };
+        }),
+        bordas: D.bordas.map(b => {
+          const on = s.bordaId === b.id, off = !!b.indisponivel;
+          return { nome: b.nome + (off ? ' (indisponível hoje)' : ''), preco: b.preco ? '+ ' + F(b.preco) : 'Grátis', on, off, bg: on ? selBg : '#fff', bc: on ? selBc : border, rc: on ? selBc : '#CFC6BA', cur: off ? 'not-allowed' : 'pointer', op: off ? 0.55 : 1, sel: () => { if (!off) this.patch({ bordaId: b.id }); } };
+        }),
+        adicionais: D.adicionais.map(a => {
+          const on = s.adicionais.includes(a.id);
+          return { nome: a.nome, preco: '+ ' + F(a.preco), on, bg: on ? selBg : '#fff', bc: on ? selBc : border, rc: on ? selBc : '#CFC6BA', boxBg: on ? selBc : 'transparent', sel: () => this.patch({ adicionais: on ? s.adicionais.filter(x => x !== a.id) : s.adicionais.concat([a.id]) }) };
+        }),
+        escolhas: (p.grupos || []).map(g => ({
+          titulo: g.titulo,
+          opcoes: g.opcoes.map(o => { const on = s.picks[g.id] === o; return { nome: o, on, bg: on ? selBg : '#fff', bc: on ? selBc : border, rc: on ? selBc : '#CFC6BA', sel: () => this.patch({ picks: Object.assign({}, s.picks, { [g.id]: o }) }) }; })
+        })),
+        setObs: e => this.patch({ obs: e.target.value }),
+        qtdMais: () => this.patch({ qtd: s.qtd + 1 }), qtdMenos: () => this.patch({ qtd: Math.max(1, s.qtd - 1) }),
+        sheetCta: (s.editIndex != null ? 'Salvar • ' : 'Adicionar • ') + F(unit * s.qtd),
+        sheetOk: !(temSabores && s.flavors.length === 0), sheetBloqueado: !!(temSabores && s.flavors.length === 0),
+        adicionar: () => this.addToCart()
+      });
+    } else {
+      Object.assign(vals, { sheetAberto: false, sheet: { nome: '', desc: '', qtd: 1, obs: '', slot: 'sheet-none' }, tamanhos: [], sabores: [], bordas: [], adicionais: [], escolhas: [], sheetOk: false, sheetBloqueado: true, sheetCta: '', saboresHint: '' });
+    }
+    return vals;
+  }
+}
+</script>
+</body>
+</html>
