@@ -1,0 +1,130 @@
+import { Input, Select, Textarea } from "@/ui/components";
+import { Cartao } from "@/ui/patterns";
+import { salvarProduto } from "@/application/catalogo/acoes";
+import { TIPOS_PRODUTO, type Categoria, type ProdutoAdmin } from "@/application/catalogo/tipos";
+import { FormularioAcao } from "./FormularioAcao";
+
+/**
+ * Dados básicos do produto — o passo "1 · Dados básicos" do modal do design.
+ *
+ * O protótipo tinha um seletor de tipo em pílulas e o aviso de que "as seções
+ * de personalização mudam conforme o tipo — refrigerante não recebe sabores
+ * nem borda" (RN-FOG-001 e RN-BEB-001). A regra continua; aqui o tipo é um
+ * select porque o formulário é renderizado no servidor, sem estado de
+ * cliente para trocar as pílulas.
+ *
+ * "Preço base" existe, como no design, mas com o esclarecimento que o
+ * protótipo não dava: para pizza a autoridade de preço é a VARIAÇÃO por
+ * tamanho (02 §5.2), não este campo.
+ */
+export function FormularioProduto({
+  produto,
+  categorias,
+}: {
+  produto?: ProdutoAdmin;
+  categorias: Categoria[];
+}) {
+  const novo = !produto;
+
+  return (
+    <Cartao
+      titulo="1 · Dados básicos"
+      {...(novo
+        ? {
+            descricao:
+              "Cada sabor de pizza é um produto próprio. Tamanhos e preços vêm depois de salvar.",
+          }
+        : {})}
+    >
+      <FormularioAcao acao={salvarProduto} rotulo={novo ? "Criar produto" : "Salvar alterações"}>
+        {produto ? <input type="hidden" name="id" value={produto.id} /> : null}
+
+        <Select
+          label="Tipo de produto"
+          name="tipo"
+          required
+          defaultValue={produto?.tipo ?? "pizza"}
+          hint="Fogazza e bebida não herdam regras de pizza: não recebem tamanho de pizza, meio a meio nem borda."
+        >
+          {TIPOS_PRODUTO.map((t) => (
+            <option key={t.valor} value={t.valor}>
+              {t.rotulo}
+            </option>
+          ))}
+        </Select>
+
+        <Input
+          label="Nome do produto"
+          name="nome"
+          required
+          defaultValue={produto?.nome ?? ""}
+          placeholder="Ex.: Pizza Calabresa"
+        />
+
+        <Textarea
+          label="Descrição que o cliente vê no cardápio"
+          name="descricao"
+          defaultValue={produto?.descricao ?? ""}
+        />
+
+        <Select
+          label="Categoria"
+          name="categoria_id"
+          required
+          defaultValue={produto?.categoria_id ?? ""}
+        >
+          <option value="" disabled>
+            Escolha a categoria
+          </option>
+          {categorias.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+              {c.is_active ? "" : " (inativa)"}
+            </option>
+          ))}
+        </Select>
+
+        <Input
+          label="Preço próprio"
+          name="preco"
+          inputMode="decimal"
+          defaultValue={produto?.preco_base === null || produto === undefined ? "" : String(produto.preco_base).replace(".", ",")}
+          placeholder="Ex.: 56,90"
+          hint="Use para bebida, fogazza e combo. Pizza com tamanhos ignora este campo — o preço é por tamanho."
+        />
+
+        <Input
+          label="Limite de quantidade por pedido (opcional)"
+          name="limite_por_pedido"
+          type="number"
+          min={1}
+          defaultValue={produto?.limite_por_pedido ?? ""}
+        />
+
+        <Input
+          label="Limite de adicionais (opcional)"
+          name="limite_adicionais"
+          type="number"
+          min={0}
+          defaultValue={produto?.limite_adicionais ?? ""}
+          hint="Em branco: sem limite."
+        />
+
+        <Input label="Ordem no cardápio" name="ordem" type="number" min={0} defaultValue={produto?.ordem ?? 0} />
+
+        <label className="flex min-h-touch items-center gap-[10px] text-[14px] font-semibold text-ink">
+          <input
+            type="checkbox"
+            name="destaque"
+            defaultChecked={produto?.destaque ?? false}
+            className="h-5 w-5 accent-[var(--brand-orange)]"
+          />
+          Recomendado pela Shalon
+        </label>
+        <p className="m-0 -mt-1 text-[12px] text-muted">
+          Destaque é escolha manual e independe do ranking de &ldquo;Mais pedidos&rdquo;.
+        </p>
+      </FormularioAcao>
+    </Cartao>
+  );
+}

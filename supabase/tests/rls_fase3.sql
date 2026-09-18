@@ -467,6 +467,11 @@ select pg_temp.checar('5.11 TODOS os tamanhos fora derrubam a pizza', 'false',
 update public.product_variants set is_temporarily_available = true
   where product_id = 'eeeeeeee-0000-0000-0000-000000000001';
 
+-- Produto sem preço nenhum não é vendável, ainda que ativo (migration 0029).
+-- "Nova Pizza Teste" foi criada no grupo 2 sem preço e sem tamanho.
+select pg_temp.checar('5.12 produto SEM preco algum nao esta disponivel', 'false',
+  public.produto_disponivel('0e0e0e0e-0000-0000-0000-000000000001')::text);
+
 -- =============================================================================
 -- 6. COMBOS (RN-COMBO-001 a RN-COMBO-006)
 -- =============================================================================
