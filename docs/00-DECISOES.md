@@ -360,6 +360,170 @@ publicado e **nunca** `force push`.
 
 ---
 
+### D-2026-09-18-20 — Provedor de rotas: Google Maps Platform, com a regra agnóstica
+
+**Decisão:** o provedor de geocodificação e distância de rota da V1 será o
+**Google Maps Platform**, conforme definido pelo usuário em 18/09/2026.
+
+**A regra comercial continua agnóstica ao fornecedor.** `CLAUDE.md` §20 e
+79.2 exigem abstração interna, e a Fase 3 respeitou isso: a configuração
+guarda faixas de km e taxa, `store_settings` guarda coordenadas e
+`geocode_provider` como REGISTRO do que geocodificou — não como acoplamento.
+Nenhuma chamada ao Google existe no código.
+
+**Não antecipado:** a integração em si (chave de API, cálculo de distância,
+aplicação da taxa a um pedido) é da **Fase 5**. Segredo de API jamais vai
+para tabela acessível ao cliente (03 §7.2).
+
+**Pendência relacionada:** A-05 deixa de ser "qual provedor" e passa a ser
+"contratar, configurar e integrar na Fase 5, com modelo de custo".
+
+---
+
+### D-2026-09-18-21 — Interpretações adotadas na Fase 3
+
+Três pontos em que os documentos não eram explícitos. Nenhum inventa regra
+comercial; todos são a leitura mais conservadora e estão registrados para
+poderem ser revertidos com uma decisão.
+
+**1. Adicional sem regra cadastrada é permitido.** RN-BORDA-003 diz
+explicitamente que a borda compatível com o tamanho vale por padrão, e a
+tabela guarda a exceção. Para adicionais, RN-ADD-002 fala em "regras de
+compatibilidade" sem definir o padrão. Adotado o mesmo comportamento das
+bordas: sem regra em `product_addon_rules`, o adicional ativo e com preço no
+tamanho é permitido. O design reforça essa leitura ("Bordas e adicionais
+seguem as listas ativas nas abas correspondentes"). Uma linha com
+`is_allowed = false` proíbe.
+
+**2. Fronteira das faixas de entrega: `(min, max]`.** 02 §3.3 pede "regra
+clara de fronteira para evitar buracos" e exemplifica `0–2`, `>2–4`. A faixa
+cobre acima do mínimo até o máximo inclusive, e a faixa que começa em 0
+também cobre a distância 0. A constraint de não sobreposição no banco usa
+exatamente esse intervalo.
+
+**3. Produto sem preço algum não está disponível.** RN-DISP-001 separa
+cadastro de operação, mas nenhum documento trata do produto recém-criado que
+ainda não tem preço. Um produto assim não é vendável: se tem variação, ao
+menos uma precisa estar disponível; se não tem, `base_price` precisa existir.
+Isto foi encontrado ao verificar a tela, não no papel.
+
+---
+
+### D-2026-09-18-22 — Adaptações entre o design aprovado e as regras V2
+
+`CLAUDE.md` §7 manda preservar o design; §54 manda respeitar a experiência
+aprovada. Mas a regra normativa vigente prevalece sobre o comportamento
+antigo do protótipo. As cinco adaptações abaixo preservam a linguagem visual
+e mudam só o que a regra exige.
+
+| # | Protótipo | Fase 3 | Por quê |
+|---|---|---|---|
+| 1 | Aba **"Sabores"** em Produtos | removida | D-2026-09-17-04: sabor de pizza É produto. Uma aba de sabores reintroduziria a entidade que o modelo eliminou |
+| 2 | Configurações › **"Bairros e taxas"**, "sem GPS ou cálculo por distância" | **faixas de distância** e taxa | D-2026-09-17-02 e 79.2: a cobrança por bairro está superada |
+| 3 | Modal do combo: "defina as escolhas permitidas… a composição é dinâmica" | composição **fixa**, item a item | D-2026-09-17-03 e 79.5: combo fixo, sem substituição |
+| 4 | Modal de produto | **rota própria** (`/admin/produtos/[id]`) | formulário validado no servidor, endereço compartilhável e botão "voltar" funcionando. Conteúdo e sequência numerada preservados |
+| 5 | — (não existia) | aba **"Banners"** | escopo da Fase 3 (§7.2, item 11); o protótipo não tinha a tela administrativa. Montada só com o design system aprovado |
+
+**Adiado, não removido:** a seção **"Impressora"** das Configurações não foi
+implementada. Impressão 58 mm é da **Fase 6** e depende de prova de conceito
+com o equipamento (A-08). Uma aba com botão "Teste de impressão" que não
+imprime seria pior que a ausência dela.
+
+---
+
+### D-2026-09-18-23 — Tema claro/escuro é preferência do dispositivo
+
+**Decisão:** a seção "Aparência" grava a escolha em **cookie do navegador**,
+não em `store_settings`.
+
+**Motivo:** gravar no banco faria a preferência de uma pessoa valer para toda
+a equipe, o que nenhum documento pede. O §7.1 da Fase 3 fala em "temas e
+branding **quando forem configurações persistentes**" — claro/escuro não é.
+O acento amarelo/vermelho continua decidido pela ÁREA (amarelo no público,
+vermelho no administrativo), como no design; no protótipo ele era trocado
+pelo painel de ajustes da própria demonstração, mecanismo que PI-004 manda
+não transportar.
+
+**Por que cookie e não `localStorage`:** com cookie o servidor já sabe o tema
+e devolve o HTML certo de primeira. Com `localStorage` seria preciso um
+script bloqueante corrigindo o `<html>` antes da pintura, o que provoca
+divergência de hidratação — erro real, verificado no navegador antes da
+troca de abordagem.
+
+---
+
+### D-2026-09-18-24 — Escopo da auditoria na Fase 3
+
+**Decisão:** são auditadas as **configurações críticas** listadas em 03 §7.2
+— loja, horários, faixas de entrega, formas de pagamento, bandeiras, limites
+de alerta e chave Pix — mais as **promoções**.
+
+**Promoções entram por escolha, não por exigência:** não constam da lista
+mínima de §22.2, mas "quem colocou este preço e quando" é exatamente a
+pergunta que a auditoria existe para responder. Auditar a mais não viola
+regra alguma.
+
+**Catálogo NÃO é auditado** (produto, categoria, tamanho, borda, adicional,
+combo, banner). §22.2 não exige, e registrar cada ajuste de ordenação
+transformaria a auditoria em ruído, atrapalhando encontrar o que importa.
+Reversível: é uma trigger por tabela.
+
+**A chave Pix é auditada com o valor mascarado.** Registra-se que mudou, quem
+mudou e quando; o valor não é copiado para dentro do log (03 §31).
+
+---
+
+### D-2026-09-18-25 — Logo otimizado (A-12 resolvida)
+
+**Decisão:** `public/marca/logo-shalon.png` passou de **1.409 kB (1774×887)**
+para **62,5 kB (512×256)** — redução de 95,6%.
+
+**Sem alteração de aparência:** o logo é exibido entre 38 px e 56 px de
+altura. Mesmo no maior desses tamanhos, a diferença medida em relação ao
+original é de **1,27 de 255 por canal** (máxima de 15) — custo do
+redimensionamento, não de compressão. Continua PNG; não houve conversão de
+formato nem recorte.
+
+**O original aprovado permanece intacto** em
+`pizzaria-shalon-design-system/project/uploads/logo pizza.png`, e qualquer
+regeneração deve partir de lá. Detalhes em `public/marca/LEIA-ME.md`.
+
+---
+
+### D-2026-09-18-26 — `sharp` como dependência direta
+
+**Decisão:** `sharp` 0.35.4 passa a ser dependência direta do projeto.
+
+**Motivo:** o pipeline de imagem da Fase 3 exige validar o tipo real do
+arquivo, redimensionar, comprimir e remover metadados (03 §24). Não existe
+alternativa no projeto e o pacote já vinha na árvore como dependência
+transitiva do Next — depender dele indiretamente é que seria frágil.
+
+**Uso:** exclusivamente no servidor, dentro de Server Actions. Não entra no
+bundle do navegador.
+
+---
+
+### D-2026-09-18-27 — Seed estrutural: só o que a documentação nomeia
+
+**Decisão:** a Fase 3 semeia apenas as **5 categorias iniciais** (79.6) e as
+**6 formas de pagamento** (79.12). Nada mais.
+
+**Deliberadamente NÃO semeados**, porque exigiriam inventar valor comercial
+que nenhum documento define — e `CLAUDE.md` §54 proíbe:
+
+| O quê | Por que não |
+|---|---|
+| `store_settings` | endereço, coordenadas e horários reais da Shalon são A-07 |
+| `pizza_sizes` | "Tradicional" e "Brotinho" são nomes conhecidos, mas número de fatias e máximo de sabores não constam de documento algum |
+| `alert_thresholds` | as chaves são conhecidas; os minutos, não |
+| `payment_brands` | quais bandeiras a Shalon aceita é A-07 |
+
+A tela de Configurações trata o estado "loja ainda não configurada" como
+situação legítima, e a Owner preenche sem alterar código (§7.5).
+
+---
+
 # Decisões em aberto
 
 Nenhuma implementação que dependa destes pontos deve começar antes da decisão.
@@ -370,16 +534,18 @@ Nenhuma implementação que dependa destes pontos deve começar antes da decisã
 | ~~A-02~~ | ~~Gestor de pacotes~~ | — | ✅ Resolvida em D-2026-09-17-07: npm |
 | ~~A-03~~ | ~~Estratégia de estilização~~ | — | ✅ Resolvida em D-2026-09-17-07: Tailwind CSS, sem redesign |
 | ~~A-04~~ | ~~Versões efetivamente adotadas~~ | — | ✅ Resolvida em D-2026-09-17-12; registradas em `CLAUDE.md` §44-A.1 |
-| **A-12** | **Otimização do logo** — `public/marca/logo-shalon.png` tem 1,4 MB (1774×887) e é exibido a 38–46px de altura | Fase 3 (pipeline de imagens) | `05-PLANO-IMPLEMENTACAO.md` §7.3 |
+| ~~A-12~~ | ~~Otimização do logo~~ | — | ✅ Resolvida em D-2026-09-18-25: 1.409 kB → 62,5 kB, sem mudança de aparência |
 | **A-13** | **Revisar TypeScript 7 e ESLint 10** quando `typescript-eslint` e `eslint-plugin-react` passarem a suportá-los | Manutenção | `CLAUDE.md` §44-A.1 |
-| **A-05** | **Provedor de geocodificação/rotas** e modelo de custo | Fase 5 | `01-DOCUMENTO-MESTRE.md` §79.2 prevê Google como inicial, abstraído no domínio |
-| **A-06** | **Adaptações visuais de C1–C8** — telas que o design aprovado não possui | Fases 3 a 8 | A propor fase a fase, com aprovação prévia |
+| **A-05** | **Contratação e integração do Google Maps Platform** — o provedor foi decidido em D-2026-09-18-20; falta contratar, guardar a chave fora do repositório e integrar. A regra continua agnóstica ao fornecedor | Fase 5 | `01-DOCUMENTO-MESTRE.md` §79.2 · `03-RLS-RBAC-SEGURANCA.md` §7.2 |
+| **A-06** | **Adaptações visuais de C1–C8** — telas que o design aprovado não possui. As cinco da Fase 3 estão registradas em D-2026-09-18-22; as demais seguem fase a fase | Fases 4 a 8 | A propor fase a fase, com aprovação prévia |
 | **A-07** | **Dados reais da Shalon** — preços, sabores, combos, horários, faixas de distância, chave Pix, endereço definitivo | Fase 11 (seed de produção) | `01-DOCUMENTO-MESTRE.md` §78 |
 | **A-08** | **Impressão 58 mm** — viabilidade técnica real do Bluetooth pelo navegador | Fase 6 | Requer prova de conceito com o equipamento |
 | ~~A-09~~ | ~~Identidade Git~~ | — | ✅ Resolvida em D-2026-09-17-10: Marcelo <mgc.info.new@gmail.com>, apenas local |
 | ~~A-10~~ | ~~Criação do remoto e primeiro `push`~~ | — | ✅ Resolvida em D-2026-09-18-19: `github.com/mgcnew/pizzaria-shalon`, privado |
 | **A-11** | **Projeto Supabase de PRODUÇÃO** e separação dev/prod — o de desenvolvimento existe (D-2026-09-18-15); falta o de produção e a gestão de segredos dele | Fase 11 | `05-PLANO-IMPLEMENTACAO.md` §15 |
 | **A-14** | **Criação de usuários internos pela interface** — hoje depende de SQL. A tela de gestão de equipe é da Fase 8; até lá, novos acessos são criados manualmente | Fase 8 | `05-PLANO-IMPLEMENTACAO.md` §12.3 |
+| **A-16** | **Ranking "Mais pedidos"** — RN-POP-001 a RN-POP-004 dependem de pedidos concluídos, que não existem antes da Fase 5. O `is_featured` (destaque manual) já está implementado e é independente | Fase 8 | `02-MODELO-DADOS-SUPABASE.md` §6.3 |
+| **A-17** | **Busca pública sem acento e sem caixa** — 02 §22 recomenda avaliar `unaccent` + `pg_trgm` com consulta real para medir, o que só existe com cardápio populado | Fase 4 | `02-MODELO-DADOS-SUPABASE.md` §22 |
 | **A-15** | **Política de senha, MFA e recuperação** do Supabase Auth — não configuradas; a V1 usa o padrão do projeto | Fase 10 (hardening) | `03-RLS-RBAC-SEGURANCA.md` §25 |
 
 ---

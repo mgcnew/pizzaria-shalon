@@ -967,6 +967,18 @@ Acrescentadas na Fase 2:
 |---|---|
 | @supabase/ssr | 0.12.7 |
 
+Acrescentada na Fase 3:
+
+| Pacote | Versão |
+|---|---|
+| sharp | 0.35.4 |
+
+`sharp` é o processador de imagem do pipeline do catálogo — validação do tipo
+real do arquivo, redimensionamento, compressão e remoção de metadados
+(03-RLS-RBAC-SEGURANCA.md §24). Já vinha na árvore como dependência
+transitiva do Next; passou a ser direta porque o projeto o usa de fato. Roda
+apenas no servidor e não entra no bundle do navegador.
+
 **Duas versões NÃO são a mais recente do registro, por incompatibilidade
 comprovada — não por preferência:**
 
