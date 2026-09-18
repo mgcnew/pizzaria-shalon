@@ -961,6 +961,12 @@ Instaladas e validadas na Fase 1, em 17/09/2026. Fixadas pelo
 | @types/node | 22.20.3 |
 | @types/react · @types/react-dom | 19.3.0 |
 
+Acrescentadas na Fase 2:
+
+| Pacote | Versão |
+|---|---|
+| @supabase/ssr | 0.12.7 |
+
 **Duas versões NÃO são a mais recente do registro, por incompatibilidade
 comprovada — não por preferência:**
 

@@ -272,6 +272,67 @@ não muda (CLAUDE.md §44-A.2).
 
 ---
 
+### D-2026-09-18-15 — Projeto Supabase de desenvolvimento
+
+**Decisão:** criado o projeto **`pizzaria-shalon-dev`** (`gyifopivitrnzldirmdq`,
+região `sa-east-1`, Postgres 17, custo US$ 0/mês) na organização da Shalon.
+
+É ambiente de **desenvolvimento**. O projeto de produção será criado na Fase 11,
+recebendo as mesmas migrations versionadas.
+
+**Motivo:** a Fase 2 exige testar RLS positiva e negativamente
+(`05-PLANO-IMPLEMENTACAO.md` §6.6). Policy não testada contra um Postgres real
+está escrita, não verificada.
+
+**Credenciais:** `.env.local`, fora do versionamento, contendo apenas a chave
+**publicável** — que nada concede por si, já que todo acesso passa por RLS. A
+`service_role` não foi usada em momento algum e não existe no projeto.
+
+---
+
+### D-2026-09-18-16 — Usuário Owner/Admin inicial de desenvolvimento
+
+**Decisão:** criado `dona@pizzariashalon.dev` (funcionário "Ana Shalon", papel
+Owner/Admin) apenas no ambiente de desenvolvimento, para validar o fluxo de
+autenticação de ponta a ponta.
+
+**Não é seed de produção** (PI-009, `05-PLANO-IMPLEMENTACAO.md` §15.1). A carga
+inicial real será consciente e validada na Fase 11, com credencial definida pela
+proprietária.
+
+---
+
+### D-2026-09-18-17 — Tela de login criada sem redesenhar
+
+**Decisão:** o design aprovado não possui tela de autenticação — o protótipo do
+Claude Design não tem login. A tela foi montada usando **exclusivamente** o
+design system aprovado: tokens da marca, Bricolage Grotesque no título, campos
+de 50px com foco laranja, cartão sobre `--surface` com raio 18, CTA no par
+`--cta-bg`/`--cta-fg` e alerta na família tonal de perigo. Os componentes
+`Input` e `Button` já extraídos foram reaproveitados; nenhum estilo novo foi
+inventado.
+
+O acento vermelho foi aplicado por a tela pertencer à experiência
+administrativa, cujo padrão no design é `acento: vermelho`.
+
+**Formalizada em:** pendência A-06 (adaptações visuais), item resolvido para o
+login.
+
+---
+
+### D-2026-09-18-18 — Autorização nunca deriva do nome do cargo
+
+**Decisão:** confirmada na implementação. `has_permission(code)` é a única porta
+usada pelas policies; nenhuma policy compara `roles.name` com texto. A função
+verifica, no momento da chamada: usuário ativo, funcionário ativo, papel ativo e
+permissão concedida.
+
+Consequência verificada em teste: desligar o funcionário ou marcar
+`app_users.is_active = false` derruba o acesso imediatamente, mesmo com JWT
+ainda válido (`03-RLS-RBAC-SEGURANCA.md` §5.4).
+
+---
+
 # Decisões em aberto
 
 Nenhuma implementação que dependa destes pontos deve começar antes da decisão.
@@ -290,7 +351,9 @@ Nenhuma implementação que dependa destes pontos deve começar antes da decisã
 | **A-08** | **Impressão 58 mm** — viabilidade técnica real do Bluetooth pelo navegador | Fase 6 | Requer prova de conceito com o equipamento |
 | ~~A-09~~ | ~~Identidade Git~~ | — | ✅ Resolvida em D-2026-09-17-10: Marcelo <mgc.info.new@gmail.com>, apenas local |
 | **A-10** | **Criação do remoto e primeiro `push`** — host e visibilidade já decididos em D-2026-09-17-11 (**GitHub, privado**); faltam definir a conta/organização, criar o repositório remoto e autorizar o `push`. Até lá o repositório é **somente local** | Primeiro `push` | Configuração `remote` do repositório |
-| **A-11** | **Projeto Supabase**, ambientes dev/prod e gestão de segredos | Fase 2 | `05-PLANO-IMPLEMENTACAO.md` §23 |
+| **A-11** | **Projeto Supabase de PRODUÇÃO** e separação dev/prod — o de desenvolvimento existe (D-2026-09-18-15); falta o de produção e a gestão de segredos dele | Fase 11 | `05-PLANO-IMPLEMENTACAO.md` §15 |
+| **A-14** | **Criação de usuários internos pela interface** — hoje depende de SQL. A tela de gestão de equipe é da Fase 8; até lá, novos acessos são criados manualmente | Fase 8 | `05-PLANO-IMPLEMENTACAO.md` §12.3 |
+| **A-15** | **Política de senha, MFA e recuperação** do Supabase Auth — não configuradas; a V1 usa o padrão do projeto | Fase 10 (hardening) | `03-RLS-RBAC-SEGURANCA.md` §25 |
 
 ---
 

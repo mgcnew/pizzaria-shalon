@@ -1028,9 +1028,9 @@ Antes da primeira alteração de código, confirmar:
 - [x] frontend aprovado disponível;
 - [x] código versionado em Git;
 - [x] working tree limpo ou estado conhecido;
-- [ ] projeto Supabase correto identificado;
+- [x] projeto Supabase correto identificado;
 - [ ] ambientes dev/prod diferenciados;
-- [ ] segredos fora do repositório;
+- [x] segredos fora do repositório;
 - [x] nenhuma documentação antiga conflitante no contexto do Claude.
 
 ---
