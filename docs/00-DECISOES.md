@@ -200,8 +200,10 @@ conteúdo (hashes de árvore idênticos), mensagens e datas.
 
 **Decisão:** o projeto será hospedado no **GitHub**, em repositório **privado**.
 
-**Neste momento o repositório permanece somente local.** Não criar repositório
-remoto e não executar `push` até autorização explícita.
+~~**Neste momento o repositório permanece somente local.** Não criar repositório
+remoto e não executar `push` até autorização explícita.~~
+**Superado em 18/09/2026 por D-2026-09-18-19:** o `push` foi autorizado e o
+remoto privado existe. A exigência de repositório **privado** continua vigente.
 
 **Motivo:** o repositório contém documentação operacional e comercial da Shalon
 e, a partir da Fase 2, passará a envolver configuração de ambientes. Repositório
@@ -333,6 +335,31 @@ ainda válido (`03-RLS-RBAC-SEGURANCA.md` §5.4).
 
 ---
 
+### D-2026-09-18-19 — Remoto privado criado e primeiro `push`
+
+**Decisão:** o repositório local passou a ter o remoto `origin` em
+`github.com/mgcnew/pizzaria-shalon`, **privado**, e o histórico completo foi
+enviado. Autorizado pelo usuário em 18/09/2026, após o checkpoint da Fase 2.
+
+**Conta:** `mgcnew` (GitHub), a mesma já autenticada na máquina. A identidade
+dos commits permanece `Marcelo <mgc.info.new@gmail.com>`, configurada apenas
+neste repositório (D-2026-09-17-10).
+
+**Visibilidade:** privado, conforme D-2026-09-17-11 — requisito, não
+preferência. Tornar o repositório público exigiria nova decisão registrada.
+
+**O que NÃO foi enviado:** `.env.local` e qualquer credencial. Antes do `push`
+foi verificado que nenhum arquivo `.env` com valores está versionado, que
+`.env.local` é ignorado pelo `.gitignore`, e que não existe `service_role`,
+chave publicável ou JWT no conteúdo versionado — as únicas ocorrências do termo
+`service_role` são comentários afirmando que ela não é usada.
+
+**Consequência operacional:** a partir daqui, `git push` deixa de ser proibido,
+mas continuam valendo `CLAUDE.md` §42 e §43 — **nunca** reescrever histórico já
+publicado e **nunca** `force push`.
+
+---
+
 # Decisões em aberto
 
 Nenhuma implementação que dependa destes pontos deve começar antes da decisão.
@@ -350,7 +377,7 @@ Nenhuma implementação que dependa destes pontos deve começar antes da decisã
 | **A-07** | **Dados reais da Shalon** — preços, sabores, combos, horários, faixas de distância, chave Pix, endereço definitivo | Fase 11 (seed de produção) | `01-DOCUMENTO-MESTRE.md` §78 |
 | **A-08** | **Impressão 58 mm** — viabilidade técnica real do Bluetooth pelo navegador | Fase 6 | Requer prova de conceito com o equipamento |
 | ~~A-09~~ | ~~Identidade Git~~ | — | ✅ Resolvida em D-2026-09-17-10: Marcelo <mgc.info.new@gmail.com>, apenas local |
-| **A-10** | **Criação do remoto e primeiro `push`** — host e visibilidade já decididos em D-2026-09-17-11 (**GitHub, privado**); faltam definir a conta/organização, criar o repositório remoto e autorizar o `push`. Até lá o repositório é **somente local** | Primeiro `push` | Configuração `remote` do repositório |
+| ~~A-10~~ | ~~Criação do remoto e primeiro `push`~~ | — | ✅ Resolvida em D-2026-09-18-19: `github.com/mgcnew/pizzaria-shalon`, privado |
 | **A-11** | **Projeto Supabase de PRODUÇÃO** e separação dev/prod — o de desenvolvimento existe (D-2026-09-18-15); falta o de produção e a gestão de segredos dele | Fase 11 | `05-PLANO-IMPLEMENTACAO.md` §15 |
 | **A-14** | **Criação de usuários internos pela interface** — hoje depende de SQL. A tela de gestão de equipe é da Fase 8; até lá, novos acessos são criados manualmente | Fase 8 | `05-PLANO-IMPLEMENTACAO.md` §12.3 |
 | **A-15** | **Política de senha, MFA e recuperação** do Supabase Auth — não configuradas; a V1 usa o padrão do projeto | Fase 10 (hardening) | `03-RLS-RBAC-SEGURANCA.md` §25 |
