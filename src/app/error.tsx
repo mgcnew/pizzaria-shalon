@@ -1,14 +1,18 @@
 "use client";
 
 import { useEffect } from "react";
-import { logger } from "@/lib/logger";
 import { toPublicMessage } from "@/lib/errors";
 
 /**
  * Fronteira de erro da aplicação (CLAUDE.md §37).
  *
  * Mostra mensagem segura ao usuário e oferece nova tentativa. O detalhe
- * interno vai para o log redigido, nunca para a tela.
+ * interno nunca vai para a tela.
+ *
+ * NÃO usa `@/lib/logger`: fronteira de erro é obrigatoriamente componente de
+ * cliente, e importar o logger daqui levava a lista de campos sensíveis dele
+ * para dentro do bundle do navegador. Aqui só se registra o `digest`, que é
+ * um identificador opaco — o erro completo fica no log do servidor.
  */
 export default function Erro({
   error,
@@ -18,7 +22,14 @@ export default function Erro({
   reset: () => void;
 }) {
   useEffect(() => {
-    logger.error("erro nao tratado na interface", { digest: error.digest });
+    console.error(
+      JSON.stringify({
+        nivel: "error",
+        ts: new Date().toISOString(),
+        msg: "erro nao tratado na interface",
+        digest: error.digest,
+      }),
+    );
   }, [error]);
 
   return (
