@@ -49,8 +49,8 @@ export function DrawerAdmin({ nome, papeis }: { nome: string; papeis: string[] }
               <Image
                 src="/marca/logo-shalon.png"
                 alt="Pizzaria Shalon"
-                width={1774}
-                height={887}
+                width={512}
+                height={256}
                 className="h-[34px] w-auto"
               />
               <button

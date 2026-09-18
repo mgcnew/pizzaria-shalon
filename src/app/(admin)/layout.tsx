@@ -44,8 +44,8 @@ export default async function LayoutAdmin({
           <Image
             src="/marca/logo-shalon.png"
             alt="Pizzaria Shalon"
-            width={1774}
-            height={887}
+            width={512}
+            height={256}
             className="h-[38px] w-auto"
           />
         </div>

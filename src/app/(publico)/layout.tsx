@@ -21,8 +21,8 @@ export default function LayoutPublico({ children }: { children: React.ReactNode 
           <Image
             src="/marca/logo-shalon.png"
             alt="Pizzaria Shalon — Tradição desde 1995"
-            width={1774}
-            height={887}
+            width={512}
+            height={256}
             priority
             className="h-[46px] w-auto"
           />
