@@ -1,24 +1,40 @@
 import "server-only";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { lerEnvPublico } from "@/infrastructure/env";
 
 /**
- * Cliente Supabase do servidor.
+ * Cliente Supabase do servidor, ligado aos cookies da requisição.
  *
- * Marcado com `server-only`: importá-lo de um componente cliente quebra o
- * build, o que impede vazamento acidental para o navegador.
+ * `server-only`: importar isto de um componente cliente quebra o build, o que
+ * impede vazamento acidental para o navegador.
  *
- * Fase 1 entrega apenas a estrutura. Continua usando a chave anônima: a
- * autoridade sobre os dados é do RLS, não do cliente (CLAUDE.md §12).
- * Não existe cliente `service_role` neste projeto e ele não deve ser criado
- * sem justificativa registrada (CLAUDE.md §13).
- *
- * A integração com sessão/cookies do Supabase Auth pertence à Fase 2.
+ * Usa exclusivamente a chave publicável. A autoridade sobre os dados é do RLS,
+ * não do cliente (CLAUDE.md §12). Não existe cliente `service_role` neste
+ * projeto e ele não deve ser criado sem justificativa registrada (§13).
  */
-
-export function getSupabaseServerClient(): SupabaseClient {
+export async function getSupabaseServerClient(): Promise<SupabaseClient> {
   const env = lerEnvPublico();
-  return createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  const cookieStore = await cookies();
+
+  return createServerClient(
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        setAll: (cookiesToSet) => {
+          try {
+            for (const { name, value, options } of cookiesToSet) {
+              cookieStore.set(name, value, options);
+            }
+          } catch {
+            // Server Component não pode escrever cookie; o middleware renova
+            // a sessão. Ignorar aqui é o comportamento recomendado.
+          }
+        },
+      },
+    },
+  );
 }

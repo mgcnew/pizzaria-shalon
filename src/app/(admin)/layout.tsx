@@ -1,25 +1,39 @@
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { MENU_ADMIN } from "@/ui/navegacao";
 import { DrawerAdmin } from "@/ui/components/DrawerAdmin";
+import { obterSessaoInterna } from "@/application/auth/sessao";
+import { sair } from "@/app/(auth)/admin/login/actions";
 
 /**
  * Shell administrativo — sidebar + cabeçalho do design aprovado.
  *
  * Preserva do protótipo: sidebar escura de 232px fixa no desktop, cabeçalho
- * sticky com título e contexto da página, e o tema de acento vermelho
- * (`data-acento="vermelho"`), que é o padrão do administrativo.
+ * sticky, bloco de identificação do usuário no rodapé da sidebar e o tema de
+ * acento vermelho (`data-acento="vermelho"`), padrão do administrativo.
  *
- * DIFERENÇA DELIBERADA EM RELAÇÃO AO PROTÓTIPO: o design decidia
- * sidebar × drawer medindo `window.innerWidth` em JavaScript. Aqui a decisão
- * é CSS puro (`hidden lg:flex`), conforme PI-004 — mesmo resultado visual,
- * sem medir viewport em JS, sem flash de layout e sem problema de hidratação.
+ * DIFERENÇA DELIBERADA: o design decidia sidebar × drawer medindo
+ * `window.innerWidth` em JavaScript. Aqui a decisão é CSS puro
+ * (`hidden lg:flex`), conforme PI-004.
  *
- * FASE 1: sem dados reais, sem badge de contagem, sem troca de perfil e sem
- * toggle de loja — tudo isso depende de Auth/RBAC (Fase 2) e de regras de
- * operação (Fase 3+).
+ * FASE 2: a sessão real substitui o placeholder de usuário. Continuam ausentes
+ * badge de contagem e toggle de loja, que dependem de regras de operação
+ * (Fase 3+). A troca de perfil do protótipo NÃO foi implementada: perfil não
+ * se troca por clique, decorre do papel atribuído (CLAUDE.md §14).
  */
-export default function LayoutAdmin({ children }: { children: React.ReactNode }) {
+export default async function LayoutAdmin({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const sessao = await obterSessaoInterna();
+
+  // O middleware já barra quem não está autenticado. Esta verificação cobre
+  // o caso de estar autenticado SEM ser usuário interno ativo — por exemplo,
+  // acesso revogado enquanto a sessão seguia aberta (§5.4).
+  if (!sessao) redirect("/admin/login");
+
   return (
     <div data-acento="vermelho" className="flex min-h-screen bg-bg">
       <nav
@@ -45,11 +59,28 @@ export default function LayoutAdmin({ children }: { children: React.ReactNode })
             <span className="flex-1">{item.nome}</span>
           </Link>
         ))}
+
+        <div className="mt-auto border-t border-white/12 px-[10px] pb-1 pt-3">
+          <p className="m-0 text-[13px] font-semibold text-sidebar-ink">
+            {sessao.nome}
+          </p>
+          <p className="mt-[2px] text-[12px] text-white/45">
+            {sessao.papeis.join(" · ") || "Sem papel atribuído"}
+          </p>
+          <form action={sair}>
+            <button
+              type="submit"
+              className="mt-2 min-h-[36px] cursor-pointer border-0 bg-transparent p-0 text-[12.5px] font-semibold text-white/60 hover:text-white"
+            >
+              Sair
+            </button>
+          </form>
+        </div>
       </nav>
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex flex-wrap items-center gap-3 border-b border-border-shalon bg-surface px-4 py-3">
-          <DrawerAdmin />
+          <DrawerAdmin nome={sessao.nome} papeis={sessao.papeis} />
           <div className="min-w-[120px] flex-1">
             <h1 className="m-0 font-display text-[20px] font-extrabold leading-[1.15] text-ink">
               Pizzaria Shalon

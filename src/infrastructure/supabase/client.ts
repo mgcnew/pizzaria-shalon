@@ -1,23 +1,23 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { lerEnvPublico } from "@/infrastructure/env";
+"use client";
+
+import { createBrowserClient } from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * Cliente Supabase do navegador.
  *
- * Fase 1 entrega apenas a ESTRUTURA: nenhum projeto real está conectado e
- * nenhuma consulta é feita. Tabelas, RLS, RPCs e Auth são escopo da Fase 2
- * (05-PLANO-IMPLEMENTACAO.md §6) e não devem ser antecipados.
- *
- * Este cliente usa exclusivamente a chave anônima pública. A `service_role`
- * nunca entra aqui nem em qualquer código que chegue ao navegador
- * (CLAUDE.md §13).
+ * Só a chave publicável chega aqui — e ela não concede nada por si: todo
+ * acesso passa por RLS (CLAUDE.md §12 e §13).
  */
-
 let cache: SupabaseClient | null = null;
 
 export function getSupabaseBrowserClient(): SupabaseClient {
   if (cache) return cache;
-  const env = lerEnvPublico();
-  cache = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) {
+    throw new Error("Configuração de ambiente ausente.");
+  }
+  cache = createBrowserClient(url, key);
   return cache;
 }
