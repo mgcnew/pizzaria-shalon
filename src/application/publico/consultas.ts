@@ -1,8 +1,11 @@
 import "server-only";
 import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
 import { logger } from "@/lib/logger";
+import type { DadosDoConfigurador, DadosPorTamanho } from "@/ui/configurador/tipos";
 import type {
   BannerPublico,
+  ConfiguracaoItem,
+  ItemMontado,
   CategoriaPublica,
   ComponenteCombo,
   HorarioPublico,
@@ -145,4 +148,81 @@ export async function listarMaisPedidos(limite = 6): Promise<ProdutoPublico[]> {
   return ranking
     .map((r) => porId.get(r.produto_id))
     .filter((p): p is ProdutoPublico => p !== undefined && p.disponivel);
+}
+
+/**
+ * Junta tudo que o configurador precisa para um produto.
+ *
+ * Existe para que a página pública e o administrativo carreguem EXATAMENTE
+ * os mesmos dados. Antes isso morava dentro da página de produto; quando o
+ * balcão passou a precisar da mesma tela, copiar seria criar duas verdades
+ * sobre quais sabores e bordas existem.
+ *
+ * Bordas, adicionais e sabores são carregados de uma vez para os tamanhos
+ * existentes — tipicamente dois ou três —, e o configurador troca entre eles
+ * sem nova ida ao servidor.
+ */
+export async function montarDadosDoConfigurador(
+  slug: string,
+): Promise<DadosDoConfigurador | null> {
+  const produto = await obterProdutoPublico(slug);
+  if (produto === null) return null;
+
+  const tamanhos = produto.tem_tamanhos ? await listarTamanhos(produto.id) : [];
+
+  const porTamanho: DadosPorTamanho = {};
+  await Promise.all(
+    tamanhos.map(async (t) => {
+      const [sabores, bordas, adicionais] = await Promise.all([
+        t.max_sabores > 1 ? listarSabores(t.tamanho_id) : Promise.resolve([]),
+        listarBordas(produto.id, t.tamanho_id),
+        produto.adicionais_ligados
+          ? listarAdicionais(produto.id, t.tamanho_id)
+          : Promise.resolve([]),
+      ]);
+      porTamanho[t.tamanho_id] = { sabores, bordas, adicionais };
+    }),
+  );
+
+  const primeiroTamanho = tamanhos.find((t) => t.disponivel) ?? null;
+
+  // O primeiro preço vem do servidor, pela mesma `montar_item` de sempre.
+  const montadoInicial = produto.disponivel
+    ? await montarItemNoServidor({
+        produto_id: produto.id,
+        variacao_id: primeiroTamanho?.variacao_id ?? null,
+        sabores: primeiroTamanho ? [primeiroTamanho.variacao_id] : [],
+        quantidade: 1,
+      })
+    : { ok: false as const, erro: "Indisponível no momento." };
+
+  return { produto, tamanhos, porTamanho, montadoInicial };
+}
+
+/**
+ * `montar_item` chamada daqui, e não pela Server Action.
+ *
+ * É a MESMA função do banco — a única autoridade de preço. A Server Action
+ * existe para o navegador; esta chamada existe para o servidor, que já está
+ * montando a página e não precisa passar por ela.
+ */
+async function montarItemNoServidor(config: ConfiguracaoItem): Promise<ItemMontado> {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("montar_item", {
+    p_item: {
+      produto_id: config.produto_id,
+      variacao_id: config.variacao_id ?? null,
+      sabores: config.sabores ?? [],
+      borda_id: config.borda_id ?? null,
+      adicionais: config.adicionais ?? [],
+      observacao: config.observacao ?? "",
+      quantidade: config.quantidade ?? 1,
+    },
+  });
+
+  if (error) {
+    logger.error("publico:montarItemNoServidor", { code: (error as { code?: string }).code });
+    return { ok: false, erro: "Não foi possível montar este item agora." };
+  }
+  return data as ItemMontado;
 }

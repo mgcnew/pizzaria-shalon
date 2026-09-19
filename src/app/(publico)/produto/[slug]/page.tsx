@@ -5,11 +5,8 @@ import { notFound } from "next/navigation";
 import { formatBRL } from "@/lib/format";
 import { Badge } from "@/ui/components";
 import {
-  listarAdicionais,
-  listarBordas,
   listarComponentesDoCombo,
-  listarSabores,
-  listarTamanhos,
+  montarDadosDoConfigurador,
   obterLojaPublica,
   obterProdutoPublico,
   urlDaImagem,
@@ -17,8 +14,7 @@ import {
 import { AvisoLojaFechada } from "../../_ui/AvisoLojaFechada";
 import { BotaoFavorito } from "../../_ui/BotaoFavorito";
 import { Compartilhar } from "../../_ui/Compartilhar";
-import { montarItem } from "@/application/publico/acoes";
-import { Configurador, type DadosPorTamanho } from "../../_ui/Configurador";
+import { Configurador } from "../../_ui/Configurador";
 
 /**
  * Página de produto — RN-LINK-001 e RN-LINK-002.
@@ -53,41 +49,16 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
   const [produto, loja] = await Promise.all([obterProdutoPublico(slug), obterLojaPublica()]);
   if (!produto) notFound();
 
-  const tamanhos = produto.tem_tamanhos ? await listarTamanhos(produto.id) : [];
-
-  // Bordas, adicionais e sabores dependem do TAMANHO. Carregados de uma vez
-  // para os tamanhos existentes (tipicamente dois ou três), o configurador
-  // troca entre eles sem ida e volta ao servidor.
-  const porTamanho: DadosPorTamanho = {};
-  await Promise.all(
-    tamanhos.map(async (t) => {
-      const [sabores, bordas, adicionais] = await Promise.all([
-        t.max_sabores > 1 ? listarSabores(t.tamanho_id) : Promise.resolve([]),
-        listarBordas(produto.id, t.tamanho_id),
-        produto.adicionais_ligados
-          ? listarAdicionais(produto.id, t.tamanho_id)
-          : Promise.resolve([]),
-      ]);
-      porTamanho[t.tamanho_id] = { sabores, bordas, adicionais };
-    }),
-  );
+  // Tamanhos, sabores, bordas, adicionais e o primeiro preço vêm prontos da
+  // MESMA função que o balcão usa para montar item (complemento da Fase 6).
+  // Duplicar esse carregamento criaria duas verdades sobre quais sabores e
+  // bordas existem.
+  const dadosDoConfigurador = await montarDadosDoConfigurador(slug);
 
   const componentes =
     produto.tipo === "combo" ? await listarComponentesDoCombo(produto.id) : [];
 
   const imagem = produto.imagem_path ? await urlDaImagem(produto.imagem_path) : null;
-
-  // Primeiro preço calculado no servidor: a tela abre já com valor, e o
-  // configurador não precisa de efeito de montagem para buscá-lo.
-  const primeiroTamanho = tamanhos.find((t) => t.disponivel) ?? null;
-  const montadoInicial = produto.disponivel
-    ? await montarItem({
-        produto_id: produto.id,
-        variacao_id: primeiroTamanho?.variacao_id ?? null,
-        sabores: primeiroTamanho ? [primeiroTamanho.variacao_id] : [],
-        quantidade: 1,
-      })
-    : { ok: false as const, erro: "Indisponível no momento." };
 
   return (
     <>
@@ -172,14 +143,8 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
           </section>
         ) : null}
 
-        {produto.disponivel ? (
-          <Configurador
-            produto={produto}
-            tamanhos={tamanhos}
-            porTamanho={porTamanho}
-            lojaAberta={loja?.aberta ?? false}
-            montadoInicial={montadoInicial}
-          />
+        {produto.disponivel && dadosDoConfigurador !== null ? (
+          <Configurador dados={dadosDoConfigurador} lojaAberta={loja?.aberta ?? false} />
         ) : (
           <div className="mt-5 rounded-14 border border-dashed border-border-shalon bg-elev px-5 py-8 text-center">
             <p className="m-0 font-semibold text-ink">Indisponível hoje</p>

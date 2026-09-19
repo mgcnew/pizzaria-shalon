@@ -2,7 +2,9 @@
 
 import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
 import { logger } from "@/lib/logger";
-import type { ConfiguracaoItem, ItemMontado, Revalidacao } from "./tipos";
+import type { DadosDoConfigurador } from "@/ui/configurador/tipos";
+import { buscar, montarDadosDoConfigurador } from "./consultas";
+import type { ConfiguracaoItem, ItemMontado, ResultadoBusca, Revalidacao } from "./tipos";
 
 /**
  * Operações comerciais da experiência pública.
@@ -63,4 +65,40 @@ export async function revalidarCarrinho(itens: unknown[]): Promise<Revalidacao> 
     return { ok: false, erro: "Não foi possível revalidar o carrinho agora." };
   }
   return data as Revalidacao;
+}
+
+/**
+ * Carrega tudo que o configurador precisa, sob demanda.
+ *
+ * A página pública monta isso durante a renderização; o balcão precisa
+ * buscar quando o atendente escolhe o produto. A FUNÇÃO é a mesma
+ * (`montarDadosDoConfigurador`), então as duas telas enxergam exatamente os
+ * mesmos tamanhos, sabores, bordas e adicionais.
+ *
+ * Usa apenas projeções públicas, concedidas a `anon` e a `authenticated`:
+ * não há caminho privilegiado de catálogo para o administrativo.
+ */
+export async function carregarConfigurador(
+  slug: unknown,
+): Promise<DadosDoConfigurador | null> {
+  if (typeof slug !== "string" || slug.length === 0 || slug.length > 160) return null;
+  try {
+    return await montarDadosDoConfigurador(slug);
+  } catch (erro) {
+    logger.error("publico:carregarConfigurador", {
+      code: (erro as { code?: string })?.code,
+    });
+    return null;
+  }
+}
+
+/** Busca do catálogo, usada pelo balcão para achar o produto (RN-BUSCA). */
+export async function buscarProdutos(termo: unknown): Promise<ResultadoBusca[]> {
+  if (typeof termo !== "string" || termo.trim().length < 2) return [];
+  try {
+    return await buscar(termo.trim());
+  } catch (erro) {
+    logger.error("publico:buscarProdutos", { code: (erro as { code?: string })?.code });
+    return [];
+  }
 }
