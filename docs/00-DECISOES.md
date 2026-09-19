@@ -900,7 +900,19 @@ exatamente o que CLAUDE.md §17 proíbe.
 reprecifica com a mesma `montar_item` do cardápio. Quando o configurador for
 extraído para uso comum, a tela ganha o botão sem mudar nada do domínio.
 
-Registrado como limitação conhecida, não como regra nova.
+**A MESMA dependência atinge os pedidos manuais** (RN-MAN-001 a 003, plano
+§10.4), que estão no escopo da Fase 6 e **não foram entregues nesta
+execução**. Registrar um pedido de WhatsApp, telefone, balcão ou iFood exige
+montar itens — ou seja, o mesmo configurador. A infraestrutura existe e não
+precisa mudar: `orders.create_manual` está semeada desde a Fase 2, `source`
+existe em `orders`, e `criar_pedido` já é a única porta de criação. Falta a
+tela.
+
+Não foi entregue uma versão reduzida do configurador para "resolver" os dois
+casos: seriam duas formas diferentes de montar a mesma pizza, e a primeira
+divergência apareceria no primeiro ajuste de regra.
+
+Registrado como limitação conhecida e escopo em aberto, não como regra nova.
 
 ---
 
