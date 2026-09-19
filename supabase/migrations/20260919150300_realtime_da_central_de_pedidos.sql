@@ -1,0 +1,11 @@
+-- 0053 — Realtime da central de pedidos
+-- CLAUDE.md §40 · 01-DOCUMENTO-MESTRE.md §79.12
+--
+-- §40: realtime só onde traz valor operacional claro. Este é o caso citado
+-- no próprio documento — chegada e alteração de pedido na área interna.
+-- Nenhuma outra tabela entra na publicação.
+--
+-- A autorização continua sendo a do RLS: o assinante recebe o que a policy
+-- `orders_select` deixaria ele ler, e ela exige `orders.view`. Realtime não
+-- é uma porta lateral.
+alter publication supabase_realtime add table public.orders;
