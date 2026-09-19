@@ -106,6 +106,7 @@ Exemplos:
 - `orders.view`
 - `orders.create_manual`
 - `orders.accept`
+- `orders.confirm_pix`
 - `orders.request_change`
 - `orders.cancel`
 - `orders.override_delivery_fee`

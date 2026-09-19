@@ -145,6 +145,169 @@ Não alterar a implementação do provedor apenas por falta da chave.
 
 ---
 
+## POC da impressora térmica 58 mm
+
+> **OBRIGATÓRIA ANTES DE PRODUÇÃO — BLOQUEIA APENAS O TRANSPORTE FÍSICO DA
+> IMPRESSÃO, NÃO O RESTO DA FASE 6.**
+
+### Situação atual
+
+- O equipamento **não foi acessado por este ambiente** e nenhuma impressão
+  física foi realizada. Fabricante, modelo, interfaces, perfil Bluetooth
+  (Clássico ou BLE) e suporte a ESC/POS **não estão determinados** —
+  e não serão inventados.
+- Não existia nenhuma implementação de impressão no código antes desta fase;
+  a investigação partiu do zero.
+- O que a Fase 6 entregou é a **representação determinística da comanda**, em
+  domínio puro, sem escolher transporte: mesmas entradas produzem sempre as
+  mesmas linhas, com largura útil de 32 colunas. Isso é testável sem
+  hardware e não compromete nenhuma estratégia futura. Comanda normal e
+  documento **ALTERAÇÃO** estão prontos e cobertos por teste; o registro de
+  emissão e reimpressão também (`order_prints`).
+- **A impressão NÃO está validada.** Nada no sistema deve afirmar que uma
+  comanda foi impressa: o domínio distingue *solicitada*, *enviada*,
+  *confirmada* e *erro*, e sem confirmação física do equipamento o estado
+  nunca chega a "confirmada".
+
+### O fato técnico que decide a arquitetura
+
+**A Web Bluetooth API só fala BLE/GATT. Ela não fala Bluetooth Clássico
+(SPP/RFCOMM).**
+
+Boa parte das impressoras térmicas 58 mm de baixo custo é Bluetooth Clássico
+com perfil serial. Se a impressora da Shalon for Clássica, **nenhum navegador,
+em nenhum sistema, conseguirá falar com ela diretamente** — e a questão deixa
+de ser "qual navegador" e passa a ser "qual ponte".
+
+Por isso a primeira informação a obter não é uma preferência de
+implementação: é **o perfil Bluetooth do equipamento**.
+
+### Informações que precisamos obter do equipamento
+
+| # | Informação | Como costuma ser obtida |
+|---|---|---|
+| 1 | Fabricante e modelo | etiqueta na base do aparelho ou embalagem |
+| 2 | Nome anunciado no Bluetooth | tela de pareamento do celular (ex.: `PT-210`, `MTP-2`, `Printer001`) |
+| 3 | **Clássico ou BLE** | se aparece no pareamento comum do Android → Clássico; se só é achado por apps BLE → BLE; alguns são dual-mode |
+| 4 | Suporte a **ESC/POS** | manual, ou teste com app genérico de ESC/POS |
+| 5 | Interfaces além do Bluetooth | USB, serial, rede |
+| 6 | Onde já imprime hoje | qual app/celular/sistema a Shalon usa atualmente e que funciona |
+| 7 | Largura útil real | 32 ou 42 colunas, conforme fonte; papel de 58 mm costuma dar 32 em fonte A |
+| 8 | Guilhotina/corte | muitas 58 mm não têm; é serrilha manual |
+
+O item 6 é o mais valioso: **se já existe um caminho que imprime hoje**, ele
+é a prova de conceito mais barata disponível.
+
+### Estratégias tecnicamente possíveis
+
+Ordenadas por risco, da menor para a maior mudança arquitetural. Nenhuma
+delas foi escolhida — a escolha depende do perfil Bluetooth.
+
+#### E1 — Web Bluetooth direto (BLE apenas)
+
+O navegador abre GATT e escreve os bytes numa característica.
+
+- **Funciona se:** a impressora for BLE (ou dual-mode) e expuser
+  característica gravável.
+- **Chrome/Edge no Android e no desktop:** suportado.
+- **Safari (iOS e macOS): não suportado.** A Apple não implementou Web
+  Bluetooth. Isso elimina iPhone e iPad de qualquer variante desta
+  estratégia — sem "talvez": é impossível hoje.
+- **Firefox:** não suportado.
+- Exige **HTTPS** e **gesto do usuário** para abrir o seletor de dispositivo.
+- O pareamento **não é necessariamente persistente**: reconectar a cada
+  sessão prejudica "reimprimir rápido no balcão", que é o caso de uso real.
+- Sem mudança arquitetural na aplicação.
+
+#### E2 — App-ponte no Android que já domina o Bluetooth Clássico
+
+A aplicação entrega os bytes ESC/POS a um app de impressão instalado no
+aparelho (via esquema de URL/intent), e o app fala com a impressora.
+
+- **Funciona com impressora Clássica**, que é o caso mais provável.
+- Continua sendo **nossa aplicação web**: não vira Capacitor, não vira app
+  nativo, não muda arquitetura. O que muda é que o aparelho do balcão
+  precisa ter o app instalado.
+- Só Android.
+- Confirmação de impressão costuma ser limitada — o que reforça a
+  necessidade dos estados *enviada* ≠ *confirmada*.
+
+#### E3 — Ponte local no balcão (máquina fixa)
+
+Um pequeno serviço na máquina do balcão mantém a conexão (Bluetooth ou USB)
+e expõe um endpoint em `localhost`; o navegador envia os bytes para ele.
+
+- Funciona com Clássico e com USB; é a opção com **melhor confirmação real**
+  de sucesso ou erro.
+- Exige uma máquina sempre ligada no balcão.
+- **Risco a verificar:** página em HTTPS chamando `http://localhost` envolve
+  regras de conteúdo misto e de acesso a rede privada, que variam por
+  navegador e versão. Precisa ser testado no navegador que a Shalon usará,
+  não presumido.
+- Introduz um componente novo a instalar e manter.
+
+#### E4 — Diálogo de impressão do sistema
+
+Usar o driver do sistema operacional e `window.print()`.
+
+- Não produz ESC/POS: produz raster, com margens e escala do driver.
+- Em 58 mm costuma dar problema de largura e desperdiçar papel.
+- No Android, a maioria dessas impressoras **não expõe serviço de impressão
+  do sistema** sem um app dedicado — o que recai em E2.
+- Serve, no máximo, como alternativa de contingência.
+
+### Riscos por plataforma
+
+| Plataforma | E1 Web Bluetooth | E2 App-ponte | E3 Ponte local | Observação |
+|---|---|---|---|---|
+| Android + Chrome | possível, só se BLE | possível | possível | plataforma mais provável do balcão |
+| iPhone/iPad (Safari) | **impossível** | não se aplica | possível via rede | se a operação precisar de iOS, E1 está descartada |
+| Windows/macOS + Chrome/Edge | possível, só se BLE | não se aplica | possível | |
+| Qualquer + Firefox | **impossível** | — | possível | |
+| Qualquer navegador | — | — | — | **HTTPS é obrigatório** para Web Bluetooth |
+
+### Testes físicos obrigatórios
+
+Quando o equipamento estiver disponível, executar a menor POC possível —
+`aplicação → comando de teste → impressora → papel` — cujo objetivo **não é
+comanda bonita**, e sim provar que bytes saem da aplicação e chegam ao papel
+de forma repetível:
+
+| # | Teste | O que precisa ser observado |
+|---|---|---|
+| 1 | Texto simples | sai legível, sem caracteres perdidos |
+| 2 | **Acentos e cedilha** | "Calabresa com Açúcar, Coração, Ão" saem corretos; identificar a tabela de código aceita (CP860, CP850, Latin-1) |
+| 3 | Quebra de linha | linha longa quebra onde o domínio decidiu, não onde a impressora achou |
+| 4 | **Largura útil** | confirmar 32 ou 42 colunas imprimindo uma régua de caracteres |
+| 5 | Corte | **somente se suportado**; se for serrilha manual, registrar isso e não emitir comando de corte |
+| 6 | Reconexão e reimpressão | imprimir, sair da tela, voltar e reimprimir sem reparear tudo de novo |
+| 7 | **Impressora desligada/desconectada** | a aplicação precisa falhar com mensagem clara e **não** marcar como impresso |
+| 8 | Papel acabando/acabado | o que o equipamento reporta, se reporta algo |
+| 9 | Duas impressões seguidas | não embaralhar conteúdo nem truncar a segunda |
+| 10 | Comanda real completa | pedido com meio a meio, borda, adicionais e observação longa |
+| 11 | Documento **ALTERAÇÃO** | sai visualmente distinto da comanda normal |
+
+### Critério para considerar a POC aprovada
+
+Todos os itens abaixo, sem exceção:
+
+1. perfil Bluetooth e suporte a ESC/POS **determinados**, não presumidos;
+2. uma estratégia entre E1–E3 **escolhida e registrada** em `00-DECISOES.md`,
+   com o motivo;
+3. testes 1, 2, 3, 4, 6, 7 e 10 da tabela acima **executados no equipamento
+   real**, com resultado registrado aqui;
+4. impressão repetível: três comandas seguidas, em momentos diferentes, sem
+   intervenção manual além do esperado;
+5. falha tratada: com a impressora desligada, a aplicação não afirma sucesso;
+6. o aparelho e o navegador usados no teste **são os que a Shalon usará**;
+7. se a estratégia exigir app-ponte ou serviço local, isso vira decisão
+   registrada, com instruções de instalação — não um detalhe de bastidor.
+
+Enquanto qualquer item estiver aberto, a impressão permanece **implementada,
+não validada**.
+
+---
+
 ## Estado da Fase 5
 
 **Implementada e aprovada para continuidade do desenvolvimento**, com

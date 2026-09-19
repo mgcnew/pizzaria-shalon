@@ -810,6 +810,146 @@ assumida, nunca entrega R$ 0,00.
 
 ---
 
+### D-2026-09-19-40 — `orders.confirm_pix`: uma permissão nova, porque a matriz pedia uma
+
+**Decisão.** Criada a permissão semântica `orders.confirm_pix`, concedida ao
+Dono/Admin. O Atendente padrão **não** a recebe.
+
+**Motivo.** A matriz de acesso (03 §6) diz, para Pix antecipado: Atendente
+padrão "confirmar **se autorizado**", Dono "confirmar". Isso descreve uma
+permissão concedível — nem automática para o balcão, nem exclusiva do Dono
+para sempre.
+
+Nenhuma permissão existente expressava isso: `orders.accept` é a operação
+seguinte, e `finance.create` é lançamento financeiro. Confirmar recebimento
+de dinheiro é ação semântica própria (CLAUDE.md §14).
+
+**Consequência prática:** hoje o Atendente não confirma Pix. Quando a Shalon
+quiser que o balcão confirme, concede a permissão pela gestão de papéis
+(Fase 8). Enquanto isso, quem confirma é a Owner.
+
+**Onde está:** migration 0047 · `03-RLS-RBAC-SEGURANCA.md` §5.
+
+---
+
+### D-2026-09-19-41 — A máquina de estados vive no banco, e a interface pergunta
+
+**Decisão.** `orders` **não tem policy de UPDATE para ninguém**. Toda
+transição passa por `comando_pedido`: comando nomeado, permissão própria,
+pré-condição verificada, histórico e auditoria. E a interface não decide
+quais botões existem — ela pergunta a `acoes_do_pedido`.
+
+**Motivo.** Com uma policy de UPDATE, quem a tivesse gravaria qualquer status
+direto em `/rest/v1` — exatamente o "dropdown genérico capaz de gravar
+qualquer status" proibido por CLAUDE.md §21. Esconder o botão não seria
+segurança.
+
+E se a interface calculasse sozinha quando "aceitar" se aplica, passariam a
+existir duas verdades sobre a mesma regra, que divergem no primeiro ajuste.
+Por isso o servidor responde "para este pedido, neste estado, com estas
+permissões, as ações são estas", e a tela só desenha.
+
+O grafo permitido está em TABELA (`order_status_transitions`), não em
+`case`: dá para consultar, dá para testar sem executar comando nenhum, e a
+interface pode perguntar em vez de adivinhar.
+
+**Onde está:** migrations 0048, 0054, 0057.
+
+---
+
+### D-2026-09-19-42 — A comanda é representação; o transporte é outra coisa
+
+**Decisão.** `src/domain/pedidos/comanda.ts` produz a comanda como LINHAS de
+32 colunas, determinísticas, em domínio puro. Nenhum byte de ESC/POS,
+nenhum Bluetooth, nenhuma rede.
+
+**Motivo.** O transporte físico não foi escolhido, e não pode ser: depende do
+perfil Bluetooth do equipamento, que ninguém mediu (A-08). Escolher agora um
+formato de bytes amarraria a comanda a uma impressora desconhecida. Separar
+permite testar tudo que é decidível — conteúdo, largura, quebra, destaque —
+sem hardware.
+
+**Decorrência importante:** `order_prints` distingue *solicitada*, *enviada*,
+*confirmada* e *erro*, e nenhum caminho pula para "confirmada". "O navegador
+disparou" não é "o papel saiu", e vários transportes possíveis simplesmente
+não confirmam. Hoje quem confirma é a pessoa que olhou para a impressora.
+
+**O que a comanda NÃO tem:** subtotal, taxa e total. RN-PRINT-003 manda
+priorizar a produção, e quem fecha conta tem as telas do financeiro. A única
+informação de dinheiro é o TROCO, e só em entrega — porque quem sai com a
+moto precisa levar o valor certo.
+
+---
+
+### D-2026-09-19-43 — O alcance do editor de alteração, dito abertamente
+
+**Decisão.** O FLUXO de alteração está completo (RN-ALT-001 a 007): propor
+com motivo, guardar antes e depois, aguardar o cliente quando itens ou total
+mudam, aplicar criando revisão sem sobrescrever o histórico, e a recusa não
+cancelar nada.
+
+O EDITOR da tela administrativa, porém, ajusta quantidades e remove linhas.
+**Acrescentar um item novo ao pedido não está na interface.**
+
+**Motivo.** Adicionar item exige o configurador de pizza inteiro — tamanho,
+sabores, borda, adicionais — dentro do administrativo. Inventar uma versão
+simplificada dele criaria uma segunda forma de montar pizza, que é
+exatamente o que CLAUDE.md §17 proíbe.
+
+**O servidor já aceita:** `propor_alteracao` recebe qualquer configuração e
+reprecifica com a mesma `montar_item` do cardápio. Quando o configurador for
+extraído para uso comum, a tela ganha o botão sem mudar nada do domínio.
+
+Registrado como limitação conhecida, não como regra nova.
+
+---
+
+### D-2026-09-19-44 — A-16 resolvida: "Mais pedidos" passa a existir
+
+**Decisão.** `mais_pedidos` calcula o ranking no banco (RN-POP-001 a 004):
+janela móvel de 30 dias, somente pedidos concluídos, por QUANTIDADE, até 6
+produtos, apenas ativos e disponíveis, sem impulso artificial.
+
+**Os dois pontos que exigiam cuidado:**
+
+- **meio a meio** conta a FRAÇÃO de cada sabor. É para isso que
+  `order_item_flavors.portion` existe desde a Fase 5 — o ranking não precisa
+  interpretar texto;
+- **combo conta como combo**, e não como seus componentes: publicamente, o
+  que foi vendido é o combo.
+
+Sem pedidos concluídos, a lista volta vazia e a seção **não é renderizada**.
+Continua valendo que Destaque manual (`is_featured`, RN-DEST-001) é outra
+coisa, e as duas não se misturam.
+
+---
+
+### D-2026-09-19-45 — Um defeito que só o teste de clique duplo encontrou
+
+**O defeito.** `comando_pedido` validava a transição comparando o status
+calculado com o atual. Quando davam iguais, o bloco de transição era pulado
+— e a função respondia `ok: true` sem fazer nada.
+
+Na prática: aceitar um pedido JÁ aceito respondia "aceito". Concluir um JÁ
+concluído respondia "concluído". Nada corrompia, mas a operação recebia
+confirmação de um ato que não aconteceu, e a auditoria ganhava registro de
+algo que não mudou.
+
+**Por que a correção óbvia não servia.** Proibir status igual quebraria
+`aprovar_entrega`, que legitimamente mantém o status quando o Pix ainda
+bloqueia (D-2026-09-19-37).
+
+**A correção.** O comando passa a conferir se a ação **se aplica**, usando a
+mesma `acoes_do_pedido` que a interface consulta para decidir os botões.
+Interface e servidor deixam de poder divergir.
+
+**No mesmo lote:** a segunda proposta de alteração respondia "este pedido não
+pode ser alterado" quando o problema real era "já existe uma proposta
+aguardando o cliente". A ordem das verificações foi corrigida para dizer o
+que está de fato no caminho (migration 0057).
+
+---
+
 # Decisões em aberto
 
 Nenhuma implementação que dependa destes pontos deve começar antes da decisão.
@@ -825,12 +965,12 @@ Nenhuma implementação que dependa destes pontos deve começar antes da decisã
 | **A-05** | **Credencial do Google Maps Platform** — a integração está escrita, coberta por teste e atrás do contrato de provedor (D-2026-09-19-35), mas nunca foi exercitada contra o Google. Deixa de ser decisão em aberto e passa a ser **dívida de validação**: os passos exatos, as restrições de chave e o roteiro de E2E estão em `06-PENDENCIAS-VALIDACAO-PRODUCAO.md`. **Não bloqueia as próximas fases; bloqueia a produção** | Antes da produção | `06-PENDENCIAS-VALIDACAO-PRODUCAO.md` |
 | **A-06** | **Adaptações visuais de C1–C8** — telas que o design aprovado não possui. As cinco da Fase 3 estão registradas em D-2026-09-18-22; as demais seguem fase a fase | Fases 4 a 8 | A propor fase a fase, com aprovação prévia |
 | **A-07** | **Dados reais da Shalon** — preços, sabores, combos, horários, faixas de distância, chave Pix, endereço definitivo | Fase 11 (seed de produção) | `01-DOCUMENTO-MESTRE.md` §78 |
-| **A-08** | **Impressão 58 mm** — viabilidade técnica real do Bluetooth pelo navegador | Fase 6 | Requer prova de conceito com o equipamento |
+| **A-08** | **Impressão 58 mm** — a representação da comanda está implementada e testada em domínio puro; o **transporte físico não**. O fato decisivo é que a Web Bluetooth API não fala Bluetooth Clássico/SPP, só BLE — então a primeira informação necessária é o perfil do equipamento, e não uma preferência de implementação. Estratégias possíveis, riscos por plataforma, testes físicos obrigatórios e critério de aprovação da POC estão em `06-PENDENCIAS-VALIDACAO-PRODUCAO.md`. **Não bloqueia o restante da Fase 6** | Antes da produção | `06-PENDENCIAS-VALIDACAO-PRODUCAO.md` |
 | ~~A-09~~ | ~~Identidade Git~~ | — | ✅ Resolvida em D-2026-09-17-10: Marcelo <mgc.info.new@gmail.com>, apenas local |
 | ~~A-10~~ | ~~Criação do remoto e primeiro `push`~~ | — | ✅ Resolvida em D-2026-09-18-19: `github.com/mgcnew/pizzaria-shalon`, privado |
 | **A-11** | **Projeto Supabase de PRODUÇÃO** e separação dev/prod — o de desenvolvimento existe (D-2026-09-18-15); falta o de produção e a gestão de segredos dele | Fase 11 | `05-PLANO-IMPLEMENTACAO.md` §15 |
 | **A-14** | **Criação de usuários internos pela interface** — hoje depende de SQL. A tela de gestão de equipe é da Fase 8; até lá, novos acessos são criados manualmente | Fase 8 | `05-PLANO-IMPLEMENTACAO.md` §12.3 |
-| **A-16** | **Ranking "Mais pedidos"** — RN-POP-001 a RN-POP-004 dependem de pedidos CONCLUÍDOS. A Fase 5 criou a estrutura (inclusive `portion`, que permite ranquear meio a meio sem ler texto), mas concluir pedido é da Fase 6. Confirmado na Fase 4: a seção NÃO é renderizada por falta de base, e o destaque manual (`is_featured`), que é outro conceito, já funciona | Fase 8 | `02-MODELO-DADOS-SUPABASE.md` §6.3 |
+| ~~A-16~~ | ~~Ranking "Mais pedidos"~~ | — | ✅ Resolvida em D-2026-09-19-44: `mais_pedidos`, 30 dias móveis, concluídos, por quantidade, meio a meio por fração |
 | ~~A-17~~ | ~~Busca pública sem acento e sem caixa~~ | — | ✅ Resolvida em D-2026-09-19-28: `unaccent` + filtrar antes de precificar; sem índice, por medição |
 | **A-15** | **Política de senha, MFA e recuperação** do Supabase Auth — não configuradas; a V1 usa o padrão do projeto | Fase 10 (hardening) | `03-RLS-RBAC-SEGURANCA.md` §25 |
 
