@@ -5,6 +5,7 @@ import {
   buscar,
   listarCardapio,
   listarCategoriasPublicas,
+  listarMaisPedidos,
   obterLojaPublica,
 } from "@/application/publico/consultas";
 import { AvisoLojaFechada } from "./_ui/AvisoLojaFechada";
@@ -28,11 +29,12 @@ export const metadata: Metadata = {
  *
  * O QUE MUDOU, e por quê:
  *
- *  · "Mais pedidos" NÃO é renderizado. RN-POP-001 manda calcular dos pedidos
- *    concluídos dos últimos 30 dias, e pedido é da Fase 5 — não existe base.
- *    Inventar ranking a partir de destaque manual seria mentir para o
- *    cliente, e RN-DEST-001 diz que são coisas diferentes. A seção volta na
- *    fase em que houver dado (A-16);
+ *  · "Mais pedidos" agora é renderizado — e SÓ quando há base. O ranking
+ *    vem de `mais_pedidos` (RN-POP-001 a 004): 30 dias móveis, pedidos
+ *    concluídos, por quantidade, meio a meio contando a fração de cada
+ *    sabor. Sem pedidos concluídos, a lista volta vazia e a seção não
+ *    aparece — em vez de inventar ranking a partir do destaque manual, que
+ *    é outra coisa (RN-DEST-001);
  *
  *  · a faixa fixa de promoção do protótipo ("Quatro Queijos com 15% off")
  *    virou uma seção alimentada pelas promoções vigentes de verdade. Se não
@@ -112,6 +114,10 @@ export default async function Home({
     );
   }
 
+  // RN-POP: o ranking é do servidor. Lista vazia é resposta legítima e
+  // significa "ainda não há base", não "falhou".
+  const maisPedidos = await listarMaisPedidos();
+
   const destaques = cardapio.filter((p) => p.destaque && p.disponivel);
   const emPromocao = cardapio.filter((p) => p.em_promocao && p.disponivel);
   const combos = cardapio.filter((p) => p.tipo === "combo");
@@ -159,6 +165,16 @@ export default async function Home({
         <Secao titulo="Recomendados pela Shalon" legenda="Escolha da casa">
           <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
             {destaques.map((p) => (
+              <CardProduto key={p.id} produto={p} />
+            ))}
+          </div>
+        </Secao>
+      ) : null}
+
+      {maisPedidos.length > 0 ? (
+        <Secao titulo="Mais pedidos" legenda="Últimos 30 dias">
+          <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
+            {maisPedidos.map((p) => (
               <CardProduto key={p.id} produto={p} />
             ))}
           </div>

@@ -3,8 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatBRL } from "@/lib/format";
 import { descreverEstado } from "@/domain/pedidos/estados";
-import { pedidoPorToken, pixDoPedido } from "@/application/checkout/consultas";
+import { alteracaoDoPedido, pedidoPorToken, pixDoPedido } from "@/application/checkout/consultas";
 import { ChavePix } from "../../_ui/ChavePix";
+import { DecidirAlteracao } from "../../_ui/DecidirAlteracao";
 
 export const metadata: Metadata = {
   title: "Acompanhar pedido",
@@ -46,6 +47,13 @@ export default async function Page({
   const pix =
     pedido.pagamento.pix_status === "pending" ? await pixDoPedido(token) : { ok: false as const };
 
+  // RN-ALT-004: quando há proposta aguardando, ela vem ANTES de tudo — é o
+  // que o cliente precisa resolver para o pedido andar.
+  const alteracao =
+    pedido.status === "change_requested_waiting_customer"
+      ? await alteracaoDoPedido(token)
+      : { ok: false as const };
+
   return (
     <section className="mx-auto max-w-[680px] px-4 py-4">
       {novo === "1" ? (
@@ -59,6 +67,8 @@ export default async function Page({
           </p>
         </div>
       ) : null}
+
+      {alteracao.ok ? <DecidirAlteracao token={token} proposta={alteracao} /> : null}
 
       <p className="m-0 text-[13px] text-muted">Pedido</p>
       <h1 className="m-0 font-display text-[28px] font-extrabold text-ink">
