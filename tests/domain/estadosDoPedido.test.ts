@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { descreverEstado, type EstadoDoPedido } from "@/domain/pedidos/estados";
+import {
+  descreverEstado,
+  exigeAtencao,
+  rotuloInterno,
+  type EstadoDoPedido,
+} from "@/domain/pedidos/estados";
 
 const TODOS: EstadoDoPedido[] = [
   "waiting_pix_confirmation",
@@ -41,5 +46,33 @@ describe("descrição dos estados do pedido", () => {
     const d = descreverEstado("estado_que_nao_existe");
     expect(d.titulo).not.toContain("estado_que_nao_existe");
     expect(d.emAberto).toBe(true);
+  });
+});
+
+describe("rótulos internos da operação", () => {
+  it("nomeia todos os estados para quem opera", () => {
+    for (const estado of TODOS) {
+      const r = rotuloInterno(estado);
+      expect(r.rotulo.length).toBeGreaterThan(0);
+      expect(r.rotulo).not.toBe(estado);
+    }
+  });
+
+  it("um estado desconhecido não quebra a fila", () => {
+    expect(rotuloInterno("bananas").tom).toBe("neutro");
+  });
+
+  it("exige atenção apenas o que depende de alguém agir agora", () => {
+    const pendentes = TODOS.filter((e) => exigeAtencao(e));
+    expect(pendentes).toEqual([
+      "waiting_pix_confirmation",
+      "waiting_delivery_approval",
+      "waiting_store_confirmation",
+    ]);
+  });
+
+  it("pedido em produção não é interrupção", () => {
+    expect(exigeAtencao("in_production")).toBe(false);
+    expect(exigeAtencao("completed")).toBe(false);
   });
 });

@@ -132,3 +132,49 @@ const DESCONHECIDO: DescricaoDoEstado = {
 export function descreverEstado(estado: string): DescricaoDoEstado {
   return DESCRICOES[estado as EstadoDoPedido] ?? DESCONHECIDO;
 }
+
+/**
+ * Como cada estado é dito para QUEM OPERA.
+ *
+ * Diferente de `descreverEstado`, que fala com o cliente. No balcão o que
+ * importa é o que precisa ser feito agora, e o rótulo é curto porque
+ * convive com muitos pedidos na mesma tela.
+ *
+ * O tom acompanha as famílias tonais do design. Ele NUNCA é a única pista:
+ * o rótulo sempre aparece junto (CLAUDE.md §38).
+ */
+export type TomVisual = "sucesso" | "atencao" | "perigo" | "info" | "neutro";
+
+const ROTULOS_INTERNOS: Record<EstadoDoPedido, { rotulo: string; tom: TomVisual }> = {
+  waiting_pix_confirmation: { rotulo: "Aguardando Pix", tom: "atencao" },
+  waiting_delivery_approval: { rotulo: "Aprovar entrega", tom: "atencao" },
+  waiting_store_confirmation: { rotulo: "Novo pedido", tom: "info" },
+  change_requested_waiting_customer: { rotulo: "Aguardando cliente", tom: "atencao" },
+  confirmed: { rotulo: "Aceito", tom: "sucesso" },
+  in_production: { rotulo: "Em produção", tom: "info" },
+  ready_for_pickup: { rotulo: "Pronto — retirada", tom: "sucesso" },
+  ready_for_delivery: { rotulo: "Pronto — entrega", tom: "sucesso" },
+  out_for_delivery: { rotulo: "Saiu para entrega", tom: "info" },
+  delivery_failed: { rotulo: "Falha na entrega", tom: "perigo" },
+  completed: { rotulo: "Concluído", tom: "neutro" },
+  rejected: { rotulo: "Rejeitado", tom: "perigo" },
+  cancelled: { rotulo: "Cancelado", tom: "perigo" },
+};
+
+export function rotuloInterno(estado: string): { rotulo: string; tom: TomVisual } {
+  return ROTULOS_INTERNOS[estado as EstadoDoPedido] ?? { rotulo: estado, tom: "neutro" };
+}
+
+/**
+ * Estados que exigem alguém agora.
+ *
+ * Usado para ordenar a fila e para o alerta: pedido novo, Pix por conferir e
+ * entrega por aprovar são interrupções, o resto é andamento.
+ */
+export function exigeAtencao(estado: string): boolean {
+  return (
+    estado === "waiting_store_confirmation" ||
+    estado === "waiting_pix_confirmation" ||
+    estado === "waiting_delivery_approval"
+  );
+}
