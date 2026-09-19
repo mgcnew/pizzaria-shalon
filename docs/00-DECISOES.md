@@ -778,6 +778,38 @@ chave da tentativa, como a produção faz.
 
 ---
 
+### D-2026-09-19-39 — Fase 5 aprovada condicionalmente, e a dívida de validação ganha documento próprio
+
+**Decisão.** A Fase 5 está **implementada e aprovada para continuidade do
+desenvolvimento**. A validação real do Google Maps e o E2E completo
+permanecem **pendentes e obrigatórios antes da produção**. A integração
+Google **não** está marcada como validada.
+
+**Motivo.** A configuração de billing do Google Cloud será feita depois. Isso
+é calendário, não impedimento técnico: o provedor está atrás da abstração, o
+comportamento sem credencial é fail-closed (D-2026-09-19-35) e a retirada não
+depende do Google. Parar o desenvolvimento por causa disso custaria mais do
+que carregar a pendência de forma explícita.
+
+**O que muda na forma de registrar.** Passam a existir duas categorias
+distintas de pendência:
+
+- **decisão em aberto** — ninguém decidiu, e isso bloqueia implementação:
+  continua na tabela deste documento;
+- **dívida de validação** — o código existe e está testado, mas nunca foi
+  exercitado contra o mundo real: vai para
+  `06-PENDENCIAS-VALIDACAO-PRODUCAO.md`.
+
+O `06` é a fonte consolidada da segunda categoria, para que amanhã ninguém
+precise reconstruir de memória o que faltava. Ele **não é normativo**: não
+decide regra, preço, taxa nem segurança.
+
+**O que NÃO foi feito:** a implementação do provedor não foi alterada por
+falta da chave. Sem provedor, nada de distância em linha reta, nada de taxa
+assumida, nunca entrega R$ 0,00.
+
+---
+
 # Decisões em aberto
 
 Nenhuma implementação que dependa destes pontos deve começar antes da decisão.
@@ -790,7 +822,7 @@ Nenhuma implementação que dependa destes pontos deve começar antes da decisã
 | ~~A-04~~ | ~~Versões efetivamente adotadas~~ | — | ✅ Resolvida em D-2026-09-17-12; registradas em `CLAUDE.md` §44-A.1 |
 | ~~A-12~~ | ~~Otimização do logo~~ | — | ✅ Resolvida em D-2026-09-18-25: 1.409 kB → 62,5 kB, sem mudança de aparência |
 | **A-13** | **Revisar TypeScript 7 e ESLint 10** quando `typescript-eslint` e `eslint-plugin-react` passarem a suportá-los | Manutenção | `CLAUDE.md` §44-A.1 |
-| **A-05** | **Credencial do Google Maps Platform** — a integração está ESCRITA e atrás do contrato de provedor (D-2026-09-19-35), mas nunca foi exercitada contra o Google. Falta, exatamente: (1) habilitar **Geocoding API** e **Routes API** no projeto do Google Cloud; (2) criar **uma chave server-side**, com restrição por IP de saída do servidor e restrição de API limitada a essas duas; (3) colocá-la em `GOOGLE_MAPS_SERVER_KEY` — nunca em `NEXT_PUBLIC_*`, nunca no Git; (4) preencher também `SHALON_CHECKOUT_ORIGIN_SECRET` (D-2026-09-19-32). Sem isso a entrega fica indisponível e só a retirada funciona | Fase 5 | `01-DOCUMENTO-MESTRE.md` §79.2 · `03-RLS-RBAC-SEGURANCA.md` §7.2 · `.env.example` |
+| **A-05** | **Credencial do Google Maps Platform** — a integração está escrita, coberta por teste e atrás do contrato de provedor (D-2026-09-19-35), mas nunca foi exercitada contra o Google. Deixa de ser decisão em aberto e passa a ser **dívida de validação**: os passos exatos, as restrições de chave e o roteiro de E2E estão em `06-PENDENCIAS-VALIDACAO-PRODUCAO.md`. **Não bloqueia as próximas fases; bloqueia a produção** | Antes da produção | `06-PENDENCIAS-VALIDACAO-PRODUCAO.md` |
 | **A-06** | **Adaptações visuais de C1–C8** — telas que o design aprovado não possui. As cinco da Fase 3 estão registradas em D-2026-09-18-22; as demais seguem fase a fase | Fases 4 a 8 | A propor fase a fase, com aprovação prévia |
 | **A-07** | **Dados reais da Shalon** — preços, sabores, combos, horários, faixas de distância, chave Pix, endereço definitivo | Fase 11 (seed de produção) | `01-DOCUMENTO-MESTRE.md` §78 |
 | **A-08** | **Impressão 58 mm** — viabilidade técnica real do Bluetooth pelo navegador | Fase 6 | Requer prova de conceito com o equipamento |

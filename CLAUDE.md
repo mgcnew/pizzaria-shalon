@@ -35,6 +35,14 @@ Antes de qualquer implementação relevante, leia:
 5. `docs/05-PLANO-IMPLEMENTACAO.md`
 6. este `CLAUDE.md`
 
+Consulte também, quando o trabalho tocar algo que depende de serviço externo,
+equipamento físico ou dado real da Shalon:
+
+7. `docs/06-PENDENCIAS-VALIDACAO-PRODUCAO.md` — **não é fonte normativa**.
+   Lista o que está implementado e testado mas ainda não foi exercitado contra
+   o mundo real. Não bloqueia as fases seguintes; bloqueia a produção. Não
+   considere validado o que estiver aberto ali.
+
 Não trabalhe usando somente contexto de conversa.
 
 Os documentos no repositório são a fonte persistente de verdade.

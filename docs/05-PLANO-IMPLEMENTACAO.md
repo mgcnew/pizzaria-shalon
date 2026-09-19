@@ -1083,6 +1083,22 @@ E também consegue tratar:
 
 ---
 
+# 25-A. DÍVIDA DE VALIDAÇÃO PARA PRODUÇÃO
+
+Nem toda pendência bloqueia a fase seguinte. Existe código escrito, revisado e
+coberto por teste automatizado que ainda não foi exercitado contra o mundo
+real — uma API de terceiro, um equipamento físico, os dados verdadeiros da
+Shalon.
+
+Essas pendências ficam em `06-PENDENCIAS-VALIDACAO-PRODUCAO.md`, com situação
+atual, passos de configuração e roteiro de validação. Elas **não impedem**
+avançar nas fases; **impedem liberar para produção**.
+
+Nenhuma delas pode ser dada por resolvida sem execução real registrada
+naquele documento.
+
+---
+
 # 26. PRÓXIMO PASSO
 
 Após este plano, criar o arquivo raiz:
