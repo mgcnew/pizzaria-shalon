@@ -914,6 +914,10 @@ divergência apareceria no primeiro ajuste de regra.
 
 Registrado como limitação conhecida e escopo em aberto, não como regra nova.
 
+> **SUPERADO em D-2026-09-19-50.** O configurador foi extraído para uso
+> comum; o editor de alteração passou a acrescentar itens e os pedidos
+> manuais foram entregues. O texto acima fica como histórico da decisão.
+
 ---
 
 ### D-2026-09-19-44 — A-16 resolvida: "Mais pedidos" passa a existir
@@ -959,6 +963,133 @@ Interface e servidor deixam de poder divergir.
 pode ser alterado" quando o problema real era "já existe uma proposta
 aguardando o cliente". A ordem das verificações foi corrigida para dizer o
 que está de fato no caminho (migration 0057).
+
+---
+
+### D-2026-09-19-46 — Um configurador só, com invólucros diferentes
+
+**Decisão.** A lógica de configuração comercial de item vive em
+`src/ui/configurador/NucleoConfigurador.tsx` e serve os três usos: cardápio
+público, pedido manual do balcão e inclusão de item numa alteração.
+
+**O que ficou em cada camada:**
+
+| Camada | Responsabilidade |
+|---|---|
+| `montar_item` (banco) | valida e precifica — **única autoridade de preço** |
+| `montarDadosDoConfigurador` | carrega tamanhos, sabores, bordas, adicionais e o primeiro preço |
+| `NucleoConfigurador` | escolhas, recálculo a cada mudança, desenho |
+| Invólucro público | adicionar ao carrinho local, aviso de loja fechada |
+| Invólucro admin (`EscolherProduto`) | busca de produto e entrega do item ao rascunho |
+
+**O que NÃO foi criado:** `montar_item_admin`, tabela paralela, regra
+especial de balcão ou cálculo em React. O administrativo usa as mesmas
+projeções públicas de catálogo, que já eram concedidas a `authenticated`.
+
+**Consequência verificada:** o atendente não contorna disponibilidade nem
+compatibilidade. Sabor esgotado, borda fora do tamanho e produto pausado são
+recusados no balcão exatamente como no cardápio — e isso está coberto por
+teste (`pedido_manual_fase6.sql`).
+
+**Regressão do público:** conferida no navegador depois da extração —
+tamanho, meio a meio, borda por tamanho, preço vindo do servidor, aviso de
+loja fechada. E as 96 asserções da Fase 4 seguem passando.
+
+---
+
+### D-2026-09-19-47 — Pedido manual entra pela MESMA porta
+
+**Decisão.** Não existe `criar_pedido_manual`. `criar_pedido` passou a
+aceitar duas provas de legitimidade:
+
+- o **segredo de origem** (0040) — caminho do cliente público;
+- uma **sessão interna com `orders.create_manual`** — caminho do balcão.
+
+Todo o resto é o mesmo código: revalidação, recálculo, mínimo de entrega,
+faixa de taxa, forma de pagamento, snapshots, estado inicial e
+idempotência.
+
+**Motivo.** 03 §9.2 exige que criar pedido seja "uma única operação de
+domínio transacional". Uma segunda função duplicaria seis regras de dinheiro
+que divergiriam no primeiro ajuste.
+
+**A origem é de quem lança.** O cliente público não escolhe canal: para ele
+`source` é sempre `shalon_link`. Só o lançamento interno escolhe entre os
+valores normativos `whatsapp`, `phone`, `counter`, `ifood` e `other` (02
+§19). Sem isso, bastaria declarar "balcão" para tentar fugir de alguma regra.
+
+**iFood** significa apenas transcrição manual: não há integração, nada é
+sincronizado, e a tela diz isso.
+
+**Quem lançou fica registrado** em `orders.created_by_user_id`, com entrada
+de auditoria própria (§33).
+
+---
+
+### D-2026-09-19-48 — Estado inicial do pedido manual: LACUNA NORMATIVA
+
+**O que os documentos dizem.** `01 §32` e `§79.1` preveem o lançamento
+manual e a preservação da origem. RN-MAN-001 a 003 tratam de canal, origem e
+de que o pedido manual "não deve virar atalho para corromper preços, estados
+ou histórico". **Nenhum documento define um estado inicial próprio para ele.**
+
+**O que foi implementado.** A mesma regra do pedido público, sem exceção:
+Pix por chave → `waiting_pix_confirmation`; acima do raio →
+`waiting_delivery_approval`; caso contrário →
+`waiting_store_confirmation`. O atendente então aceita com o comando de
+sempre.
+
+**Por que essa escolha.** Ela **não cria regra nova** — reusa a que já existe.
+A alternativa ("pedido do balcão nasce aceito") seria regra de negócio
+inédita, e mudaria quando a comanda pode sair e quando a produção começa.
+
+**A pergunta que fica para a Shalon:** o pedido lançado pelo balcão deve
+nascer **já aceito**, já que o atendente está criando e aceitando no mesmo
+ato? Hoje ele exige dois gestos: lançar e aceitar. O segundo gesto mantém o
+aceite explícito, com autor e horário (§33) — mas é um clique a mais no
+balcão cheio.
+
+**Enquanto não houver decisão, vale o que está implementado.** Trocar é uma
+linha na função e uma migration.
+
+---
+
+### D-2026-09-19-49 — Loja fechada bloqueia o CHECKOUT, não o balcão
+
+**Interpretação adotada.** `01 §79.1` diz: "Quando fechada, o cardápio
+continua visível, mas **o checkout fica bloqueado**". A verificação de loja
+aberta foi mantida **somente no caminho público**; o lançamento interno
+acontece mesmo com a loja pausada.
+
+**Motivo.** A pausa temporária é o botão que a Shalon usa quando a cozinha
+está afogada — ela fecha o link público. Travar o balcão no mesmo instante
+impediria de atender quem está fisicamente na frente do atendente, ou ao
+telefone.
+
+**É interpretação, não regra escrita.** Se a intenção for que a pausa feche
+também o balcão, é uma condição a mais na função — e passa a ser decisão
+registrada.
+
+---
+
+### D-2026-09-19-50 — Alteração com versão: edição obsoleta é recusada
+
+**Decisão.** `propor_alteracao` aceita a `versao` do pedido (o `updated_at`)
+e recusa a proposta quando ela mudou.
+
+**Motivo.** CLAUDE.md §34: "não aceite silenciosamente edição baseada em
+versão obsoleta". Dois atendentes com o editor aberto, ou um editor aberto
+enquanto o pedido avança de estado, produziriam uma proposta construída
+sobre um pedido que já não é aquele — e o cliente aprovaria uma diferença
+que não existe mais.
+
+O editor agora também **acrescenta itens**, usando o configurador
+compartilhado. Todo item — os que ficaram, os que mudaram de quantidade e os
+acrescentados — é reprecificado pelo servidor na proposta.
+
+**Supera parcialmente D-2026-09-19-43**, que registrava a limitação do
+editor e a ausência dos pedidos manuais. As duas foram resolvidas por esta
+extração; o texto anterior fica como histórico.
 
 ---
 

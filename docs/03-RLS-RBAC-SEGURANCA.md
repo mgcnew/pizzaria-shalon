@@ -398,7 +398,17 @@ aberta, a função exige um **segredo de origem**, guardado em
 `server_secrets`, conhecido apenas pelo servidor. Sem ele, a chamada é
 recusada sem revelar por quê.
 
-Vale para `criar_pedido`, `cotar_entrega` e `origem_da_loja`.
+Vale para `cotar_entrega` e `origem_da_loja`.
+
+Para `criar_pedido` existe uma **segunda prova de legitimidade**, e só ela:
+uma sessão interna com `orders.create_manual`, que é o lançamento manual do
+balcão (§9.2 continua valendo — a operação é a mesma, transacional e única).
+Quem não apresenta nenhuma das duas provas recebe a mesma recusa genérica.
+
+A origem (`source`) é escolhida por quem lança: o cliente público é sempre
+`shalon_link`; só o lançamento interno seleciona entre os canais previstos.
+Sem essa separação, bastaria declarar-se "balcão" para tentar escapar de
+alguma regra.
 
 **Este segredo NÃO é `service_role`** e não concede acesso a nada. Ele
 responde a uma única pergunta: "esta chamada partiu do nosso servidor?".
