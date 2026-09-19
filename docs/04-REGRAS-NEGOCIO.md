@@ -73,6 +73,16 @@ Uma categoria pode ser pausada temporariamente sem ser inativada. Enquanto pausa
 ### RN-DISP-005 — Histórico
 Inativação ou indisponibilidade nunca altera itens de pedidos históricos.
 
+### RN-DISP-006 — Produto sem preço aplicável não está disponível
+Produto sem preço aplicável **não pode ser considerado disponível para venda**, ainda que o cadastro esteja ativo e a categoria não esteja pausada.
+
+Preço aplicável significa:
+
+- produto **com** variação por tamanho: ao menos uma variação ativa e disponível, já que a autoridade de preço é a variação (`02-MODELO-DADOS-SUPABASE.md` §5.2);
+- produto **sem** variação: preço próprio definido.
+
+Esta regra também cobre o estado normal de um cadastro recém-criado, ainda incompleto: ele existe, é editável e não aparece para venda. *(Decisão aprovada em 18/09/2026; histórico em `docs/00-DECISOES.md` D-2026-09-18-21.)*
+
 ---
 
 # PARTE II — CARDÁPIO E PRECIFICAÇÃO
@@ -147,6 +157,17 @@ O limite de adicionais pode ser configurado por produto/grupo ou inexistir.
 
 ### RN-ADD-005
 Em pizza meio a meio, adicionais aplicam-se à pizza inteira, nunca a apenas uma metade na V1.
+
+### RN-ADD-006 — Padrão de compatibilidade
+Na ausência de regra específica cadastrada para o par produto × adicional, o adicional é **permitido**, seguindo o mesmo princípio que RN-BORDA-003 aplica às bordas: o cadastro registra a exceção, não a permissão.
+
+Essa permissão por omissão **não dispensa nenhuma das demais condições**. O adicional só é oferecido quando, cumulativamente:
+
+- o recurso de adicionais está ligado globalmente (RN-ADD-001);
+- o adicional está ativo e disponível;
+- existe preço cadastrado para o tamanho em questão (RN-ADD-002).
+
+Uma regra cadastrada como proibição prevalece sobre o padrão; entre regras aplicáveis, a mais específica (com tamanho) prevalece sobre a genérica. *(Decisão aprovada em 18/09/2026; histórico em `docs/00-DECISOES.md` D-2026-09-18-21.)*
 
 ### RN-OBS-001
 Remoção de ingredientes e pedidos especiais são registrados como observação livre do item. Não existe ficha técnica estrutural na V1.
@@ -382,6 +403,13 @@ Pedido armazena snapshot de distância de rota e taxa aplicada.
 
 ### RN-ENT-014
 Override manual de taxa é excepcional, permissionado e auditado. Se alterar total de pedido já enviado, exige aceite do cliente antes de prosseguir.
+
+### RN-ENT-015 — Fronteira das faixas de distância
+As faixas usam a convenção **`(min, max]`**: a faixa cobre distâncias **acima** de `min_distance_km` e **até** `max_distance_km` inclusive. A faixa cuja distância inicial é `0` cobre também a distância `0`.
+
+A convenção é única e obrigatória em toda a V1 — configuração, cálculo e validação —, de modo que cada distância pertença a **exatamente uma** faixa ativa: sem sobreposição e sem buraco entre faixas contíguas.
+
+Distância não coberta por faixa ativa alguma **nunca** produz taxa zero: o resultado é entrega fora de área, conforme RN-ENT-012. *(Decisão aprovada em 18/09/2026; histórico em `docs/00-DECISOES.md` D-2026-09-18-21.)*
 
 ---
 

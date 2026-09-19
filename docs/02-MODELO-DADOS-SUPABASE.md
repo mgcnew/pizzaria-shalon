@@ -123,7 +123,7 @@ Deve suportar horário atravessando meia-noite. Não assumir que `closes_at < op
 - `max_distance_km > min_distance_km`
 - `fee >= 0`
 - faixas ativas não podem se sobrepor;
-- deve haver regra clara de fronteira para evitar buracos (`0–2`, `>2–4`, etc.); implementação deve usar comparação consistente.
+- **fronteira `(min, max]`**: a faixa cobre acima de `min_distance_km` e até `max_distance_km` inclusive; a faixa iniciada em `0` cobre também a distância `0` (RN-ENT-015). A convenção é única em toda a V1, para que cada distância pertença a exatamente uma faixa ativa — sem sobreposição e sem buraco entre faixas contíguas.
 
 ## 3.4 `alert_thresholds`
 
@@ -261,6 +261,8 @@ Categorias iniciais são dados, não enum estrutural: Pizzas Salgadas, Pizzas Do
 
 `base_price` atende produtos simples e combos. Pizza com tamanho usa `product_variants.price` como autoridade.
 
+Produto sem preço aplicável não é considerado disponível para venda (RN-DISP-006): com variação, exige ao menos uma variação ativa e disponível; sem variação, exige `base_price` definido.
+
 ## 5.3 `pizza_sizes`
 
 - `id uuid PK`
@@ -344,6 +346,8 @@ Define compatibilidade e limite por produto.
 - `size_id uuid nullable FK`
 - `is_allowed boolean`
 - `created_at`
+
+Esta tabela registra a **exceção**, não a permissão: sem linha para o par produto × adicional, o adicional é permitido, desde que atendidas as demais condições de RN-ADD-006. A linha com `is_allowed = false` proíbe, e a regra com `size_id` preenchido prevalece sobre a genérica.
 
 O limite máximo de adicionais pode ficar em campo próprio de `products` (`max_addons`) ou tabela de configuração por grupo. Recomenda-se `products.max_addons integer nullable` se a regra continuar simples.
 

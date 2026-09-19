@@ -380,11 +380,24 @@ para tabela acessível ao cliente (03 §7.2).
 
 ---
 
-### D-2026-09-18-21 — Interpretações adotadas na Fase 3
+### D-2026-09-18-21 — Interpretações adotadas na Fase 3 → **aprovadas e normativas**
+
+> **APROVADAS PELO USUÁRIO EM 18/09/2026.** As três deixaram de ser
+> interpretações reversíveis e passaram a integrar a fonte de verdade:
+>
+> | # | Onde vive agora |
+> |---|---|
+> | 1. Adicional sem regra específica | `04-REGRAS-NEGOCIO.md` **RN-ADD-006** · `02-MODELO-DADOS-SUPABASE.md` §5.10 |
+> | 2. Fronteira `(min, max]` | `04-REGRAS-NEGOCIO.md` **RN-ENT-015** · `02-MODELO-DADOS-SUPABASE.md` §3.3 |
+> | 3. Produto sem preço aplicável | `04-REGRAS-NEGOCIO.md` **RN-DISP-006** · `02-MODELO-DADOS-SUPABASE.md` §5.2 |
+>
+> Alterá-las agora exige o mesmo rito de qualquer regra normativa. O texto
+> abaixo é preservado como **histórico de como se chegou a elas** — este log
+> não é fonte normativa (ver "O que este documento NÃO é").
 
 Três pontos em que os documentos não eram explícitos. Nenhum inventa regra
-comercial; todos são a leitura mais conservadora e estão registrados para
-poderem ser revertidos com uma decisão.
+comercial; todos são a leitura mais conservadora e estavam registrados para
+poderem ser revertidos com uma decisão — decisão que veio, aprovando-os.
 
 **1. Adicional sem regra cadastrada é permitido.** RN-BORDA-003 diz
 explicitamente que a borda compatível com o tamanho vale por padrão, e a
