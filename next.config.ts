@@ -22,6 +22,15 @@ const nextConfig: NextConfig = {
     // Build falha se houver erro de tipo. Não afrouxar (CLAUDE.md §36).
     ignoreBuildErrors: false,
   },
+  experimental: {
+    serverActions: {
+      // O envio de imagem do catálogo aceita até 8 MB (03 §24), mas o limite
+      // padrão de corpo de Server Action no Next é 1 MB — e ele falha com
+      // "Body exceeded 1 MB limit", mensagem que não diz nada à Owner.
+      // Encontrado com uma foto real de produto na Fase 3.
+      bodySizeLimit: "9mb",
+    },
+  },
   images: {
     // Imagens do catálogo ficam no Storage do Supabase (CLAUDE.md §35: nunca
     // Base64 no banco). O host é lido do ambiente, não fixado no código —

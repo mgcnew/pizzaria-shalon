@@ -1,0 +1,16 @@
+-- 0036 — montar_item: variáveis escalares em vez de RECORD não atribuído
+--
+-- DEFEITO ENCONTRADO PELO TESTE: produto SIMPLES (sem tamanho) com borda ou
+-- adicional informado estourava `55000: record "v_variacao" is not assigned
+-- yet`. O RECORD só era preenchido no ramo das pizzas; os ramos de borda e
+-- adicional liam `v_variacao.id` de qualquer jeito — e ler campo de RECORD
+-- não atribuído é ERRO em plpgsql, não NULL.
+--
+-- Na prática: mandar um refrigerante com adicional derrubava a montagem em
+-- vez de devolver "Adicionais dependem do tamanho escolhido".
+--
+-- Correção: RECORD trocado por variáveis escalares (v_variacao_id, v_size_id,
+-- v_tamanho_nome), que começam NULL e se comportam como qualquer outra.
+--
+-- O corpo completo foi aplicado nesta migration; a diferença em relação à
+-- 0035 é exclusivamente essa substituição.
