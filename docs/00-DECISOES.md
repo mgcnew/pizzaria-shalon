@@ -638,6 +638,146 @@ acentuação. A assertiva de domínio continua assim (é citada nos testes e
 
 ---
 
+### D-2026-09-19-32 — O segredo de origem: como aceitar uma distância sem confiar no navegador
+
+**Decisão.** Existe um segredo compartilhado entre o servidor Node e o
+Postgres, guardado em `server_secrets` e exigido por `criar_pedido`,
+`cotar_entrega` e `origem_da_loja`.
+
+**O problema que ele resolve.** `criar_pedido` precisa ser `SECURITY
+DEFINER`, porque 03 §9.1 proíbe dar INSERT em `orders` ao papel `anon`. Isso
+a deixa exposta em `/rest/v1/rpc`. E a DISTÂNCIA não pode ser calculada
+dentro do banco: ela vem do provedor de rotas, chamado pelo servidor. Sem
+prova de origem, qualquer pessoa chamaria a RPC do navegador informando
+"0,5 km" e pagaria a menor taxa.
+
+**O que ele NÃO é.** Não é `service_role` e não concede acesso a nada. Não
+dispensa RLS, não dispensa a revalidação e não autoriza preço: `criar_pedido`
+continua recalculando tudo. Ele responde a uma única pergunta — "esta chamada
+partiu do nosso servidor?".
+
+**Consequência operacional.** O valor nasceu aleatório na migration 0040,
+nunca esteve no Git, e precisa ser lido UMA vez pela Owner
+(`select public.ler_segredo_do_servidor('checkout_origem')`, que exige
+`settings.manage`) e colocado em `SHALON_CHECKOUT_ORIGIN_SECRET`. Sem ele, o
+checkout não cria pedido algum — e falha dizendo isso, em vez de criar um
+pedido com taxa errada.
+
+**Onde está:** migrations 0040, 0042, 0044 e 0045 · `.env.example`.
+
+---
+
+### D-2026-09-19-33 — O token de acompanhamento vem da chave da tentativa
+
+**Decisão.** O token de `/pedido/[token]` é `HMAC-SHA256(segredo,
+"tracking:" || idempotency_key)`, e não um valor sorteado. O banco guarda
+apenas o SHA-256 dele.
+
+**Motivo.** Clique duplo, retry de rede e botão de voltar reenviam a MESMA
+tentativa. Com token sorteado, a segunda tentativa devolveria `ja_existia:
+true` e um token NOVO — que não abriria pedido nenhum, porque o hash gravado
+é o do primeiro. O cliente perderia o acesso ao pedido que acabou de fazer.
+Derivando da chave da tentativa, o reenvio reproduz exatamente o mesmo token.
+
+Continua imprevisível para quem não tem o segredo, que é o que RN-PED-004
+exige. E o índice único sobre o hash garante que dois pedidos jamais
+compartilhem um token.
+
+**Onde está:** `src/application/checkout/segredo.ts`.
+
+---
+
+### D-2026-09-19-34 — A cotação de entrega é informação, não autoridade
+
+**Decisão.** A taxa mostrada no checkout vem de `cotar_entrega`, que usa
+exatamente a mesma `faixa_para_distancia` que `criar_pedido` usará. No envio,
+endereço e rota são geocodificados e medidos DE NOVO; a coordenada e a
+distância que a tela viu não voltam como verdade.
+
+**Motivo.** É o mesmo princípio do preço do item (CLAUDE.md §16) aplicado à
+entrega. Aceitar de volta a distância cotada seria aceitar um número que
+passou pelo navegador. O custo é uma segunda chamada ao provedor por pedido —
+e vale a pena.
+
+**Consequência.** Quando a cotação e o envio divergem (endereço corrigido,
+provedor fora do ar), quem manda é o envio: ou o pedido nasce com a taxa
+recalculada, ou não nasce.
+
+---
+
+### D-2026-09-19-35 — Sem credencial do Google, a entrega fica indisponível
+
+**Decisão.** Não existe caminho intermediário. Ou há `GOOGLE_MAPS_SERVER_KEY`
+e a distância é de rota viária, ou o provedor `indisponivel` recusa tudo com
+`motivo: "configuracao"` e o checkout oferece retirada.
+
+**O que foi recusado:** estimar por linha reta, por CEP ou por bairro como
+"aproximação temporária". CLAUDE.md §20 proíbe distância em linha reta para
+cobrança, e falha de cálculo nunca pode virar taxa R$ 0,00.
+
+**Estado atual:** a credencial NÃO existe neste ambiente. A integração está
+escrita e testada contra o contrato, com dublê determinístico; ela nunca foi
+exercitada contra o Google. A-05 permanece aberta, agora com passos exatos
+(ver a tabela de decisões em aberto).
+
+---
+
+### D-2026-09-19-36 — "Meus pedidos" é deste aparelho, e a tela diz isso
+
+**Decisão.** A lista de pedidos vem dos TOKENS que este navegador guardou ao
+criar cada pedido. Nada de consulta por WhatsApp, por nome ou por número.
+
+**Motivo.** CLAUDE.md §29 e 03 §12.1: WhatsApp é identificador operacional,
+não credencial. "Digite seu WhatsApp e veja seus pedidos" transformaria um
+dado que qualquer pessoa conhece em chave de acesso ao histórico alheio.
+
+O estado de cada pedido é buscado no servidor a cada abertura — o navegador
+guarda o token, nunca o status. E a tela afirma a limitação em vez de deixar
+o cliente descobrir que "sumiu": a lista é deste aparelho e não é
+sincronizada.
+
+---
+
+### D-2026-09-19-37 — Aprovação de entrega é dimensão própria, não um status
+
+**Decisão.** `requires_delivery_approval` e `delivery_approval_status` são
+colunas separadas do `status` do pedido.
+
+**Motivo.** Um pedido pode, ao mesmo tempo, aguardar confirmação de Pix
+(RN-PGTO-010, que impede a produção) e aguardar aprovação da entrega
+(RN-ENT-011, que é sobre a área atendida). Se as duas condições disputassem o
+mesmo campo, uma seria perdida — e seria preciso inventar uma precedência que
+nenhum documento decidiu.
+
+A precedência EXISTE, mas só para o `status` inicial, e está escrita na
+função: Pix por chave define o status; acima do raio, `waiting_delivery_
+approval`; caso contrário, `waiting_store_confirmation`. As duas dimensões
+coexistem sem se sobrescrever.
+
+---
+
+### D-2026-09-19-38 — Defeitos da Fase 5, e um que era do arnês de teste
+
+**1. Função de janela dentro de agregado.** `row_number() over (...)` dentro
+de `jsonb_agg` derrubava QUALQUER pizza — inteira ou meio a meio — com erro
+42P20. Apareceu na primeira criação de pedido ponta a ponta. Corrigido na
+migration 0042, calculando a ordem em subconsulta.
+
+**2. `EXECUTE` revogado de quem precisava executar.** A 0044 revogou de
+`anon` as funções `origem_da_loja` e `cotar_entrega` — mas o Server Action
+fala com o Supabase usando a chave publicável e é, para o Postgres, `anon`.
+Toda cotação daria 42501. A postura correta é a mesma de `criar_pedido`:
+função exposta, barrada pelo SEGREDO. Corrigido na 0045. Trocar por
+`service_role` "para resolver" seria exatamente o atalho proibido por §13.
+
+**3. Arnês de teste reusando o mesmo token.** A suíte da Fase 5 mandava o
+mesmo `tracking_token` em todos os pedidos e batia no índice único ao criar o
+segundo. Era defeito DO TESTE — e confirmou uma propriedade desejada: dois
+pedidos não podem compartilhar token. O arnês passou a derivar o token da
+chave da tentativa, como a produção faz.
+
+---
+
 # Decisões em aberto
 
 Nenhuma implementação que dependa destes pontos deve começar antes da decisão.
@@ -650,7 +790,7 @@ Nenhuma implementação que dependa destes pontos deve começar antes da decisã
 | ~~A-04~~ | ~~Versões efetivamente adotadas~~ | — | ✅ Resolvida em D-2026-09-17-12; registradas em `CLAUDE.md` §44-A.1 |
 | ~~A-12~~ | ~~Otimização do logo~~ | — | ✅ Resolvida em D-2026-09-18-25: 1.409 kB → 62,5 kB, sem mudança de aparência |
 | **A-13** | **Revisar TypeScript 7 e ESLint 10** quando `typescript-eslint` e `eslint-plugin-react` passarem a suportá-los | Manutenção | `CLAUDE.md` §44-A.1 |
-| **A-05** | **Contratação e integração do Google Maps Platform** — o provedor foi decidido em D-2026-09-18-20; falta contratar, guardar a chave fora do repositório e integrar. A regra continua agnóstica ao fornecedor | Fase 5 | `01-DOCUMENTO-MESTRE.md` §79.2 · `03-RLS-RBAC-SEGURANCA.md` §7.2 |
+| **A-05** | **Credencial do Google Maps Platform** — a integração está ESCRITA e atrás do contrato de provedor (D-2026-09-19-35), mas nunca foi exercitada contra o Google. Falta, exatamente: (1) habilitar **Geocoding API** e **Routes API** no projeto do Google Cloud; (2) criar **uma chave server-side**, com restrição por IP de saída do servidor e restrição de API limitada a essas duas; (3) colocá-la em `GOOGLE_MAPS_SERVER_KEY` — nunca em `NEXT_PUBLIC_*`, nunca no Git; (4) preencher também `SHALON_CHECKOUT_ORIGIN_SECRET` (D-2026-09-19-32). Sem isso a entrega fica indisponível e só a retirada funciona | Fase 5 | `01-DOCUMENTO-MESTRE.md` §79.2 · `03-RLS-RBAC-SEGURANCA.md` §7.2 · `.env.example` |
 | **A-06** | **Adaptações visuais de C1–C8** — telas que o design aprovado não possui. As cinco da Fase 3 estão registradas em D-2026-09-18-22; as demais seguem fase a fase | Fases 4 a 8 | A propor fase a fase, com aprovação prévia |
 | **A-07** | **Dados reais da Shalon** — preços, sabores, combos, horários, faixas de distância, chave Pix, endereço definitivo | Fase 11 (seed de produção) | `01-DOCUMENTO-MESTRE.md` §78 |
 | **A-08** | **Impressão 58 mm** — viabilidade técnica real do Bluetooth pelo navegador | Fase 6 | Requer prova de conceito com o equipamento |
@@ -658,7 +798,7 @@ Nenhuma implementação que dependa destes pontos deve começar antes da decisã
 | ~~A-10~~ | ~~Criação do remoto e primeiro `push`~~ | — | ✅ Resolvida em D-2026-09-18-19: `github.com/mgcnew/pizzaria-shalon`, privado |
 | **A-11** | **Projeto Supabase de PRODUÇÃO** e separação dev/prod — o de desenvolvimento existe (D-2026-09-18-15); falta o de produção e a gestão de segredos dele | Fase 11 | `05-PLANO-IMPLEMENTACAO.md` §15 |
 | **A-14** | **Criação de usuários internos pela interface** — hoje depende de SQL. A tela de gestão de equipe é da Fase 8; até lá, novos acessos são criados manualmente | Fase 8 | `05-PLANO-IMPLEMENTACAO.md` §12.3 |
-| **A-16** | **Ranking "Mais pedidos"** — RN-POP-001 a RN-POP-004 dependem de pedidos concluídos, que não existem antes da Fase 5. Confirmado na Fase 4: a seção NÃO é renderizada por falta de base, e o destaque manual (`is_featured`), que é outro conceito, já funciona | Fase 8 | `02-MODELO-DADOS-SUPABASE.md` §6.3 |
+| **A-16** | **Ranking "Mais pedidos"** — RN-POP-001 a RN-POP-004 dependem de pedidos CONCLUÍDOS. A Fase 5 criou a estrutura (inclusive `portion`, que permite ranquear meio a meio sem ler texto), mas concluir pedido é da Fase 6. Confirmado na Fase 4: a seção NÃO é renderizada por falta de base, e o destaque manual (`is_featured`), que é outro conceito, já funciona | Fase 8 | `02-MODELO-DADOS-SUPABASE.md` §6.3 |
 | ~~A-17~~ | ~~Busca pública sem acento e sem caixa~~ | — | ✅ Resolvida em D-2026-09-19-28: `unaccent` + filtrar antes de precificar; sem índice, por medição |
 | **A-15** | **Política de senha, MFA e recuperação** do Supabase Auth — não configuradas; a V1 usa o padrão do projeto | Fase 10 (hardening) | `03-RLS-RBAC-SEGURANCA.md` §25 |
 

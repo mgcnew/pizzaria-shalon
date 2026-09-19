@@ -385,6 +385,48 @@ O servidor deve:
 
 Se houver divergência comercial em relação ao carrinho, retornar dados para confirmação do cliente em vez de aceitar silenciosamente.
 
+## 9.3 Prova de origem servidor → banco
+
+A operação de §9.2 é `SECURITY DEFINER`, porque §9.1 proíbe dar INSERT a
+`anon`. Isso a deixa acessível em `/rest/v1/rpc`. E o passo 10 — rota e taxa
+por provedor confiável — não pode acontecer dentro do banco: o provedor é
+chamado pelo servidor da aplicação.
+
+Portanto a distância entra como PARÂMETRO. Para que isso não vire uma porta
+aberta, a função exige um **segredo de origem**, guardado em
+`server_secrets`, conhecido apenas pelo servidor. Sem ele, a chamada é
+recusada sem revelar por quê.
+
+Vale para `criar_pedido`, `cotar_entrega` e `origem_da_loja`.
+
+**Este segredo NÃO é `service_role`** e não concede acesso a nada. Ele
+responde a uma única pergunta: "esta chamada partiu do nosso servidor?".
+Todo o resto — RLS, revalidação, recálculo de preço — continua valendo
+integralmente. Ele não é substituto de nenhuma dessas verificações.
+
+**Regras de operação:**
+
+- o valor nasce aleatório em migration e nunca é versionado;
+- a leitura administrativa (`ler_segredo_do_servidor`) exige `settings.manage`;
+- `server_secrets` tem RLS habilitado e **nenhuma policy**: nenhum papel o lê
+  por consulta;
+- o segredo não aparece em log, nem em mensagem de erro ao cliente.
+
+## 9.4 Projeções públicas do checkout
+
+Além das projeções de catálogo, o cliente público enxerga apenas:
+
+| Função | Quem executa | O que devolve |
+|---|---|---|
+| `formas_pagamento_publicas(modalidade)` | `anon` | formas ativas da modalidade e suas bandeiras. Sem `code` interno. Pix por chave só aparece quando habilitado |
+| `pedido_por_token(token)` | `anon` | §10: um pedido, só os dados públicos dele |
+| `pix_para_pagamento(token)` | `anon` | chave Pix, e somente para um pedido que está aguardando Pix |
+| `origem_da_loja(segredo)` | servidor (§9.3) | coordenada configurada da loja e raio automático |
+| `cotar_entrega(km, segredo)` | servidor (§9.3) | taxa da faixa correspondente, pela mesma regra da criação |
+
+Coordenada da loja não é dado de cardápio: ela sai por §9.3, não por projeção
+pública.
+
 ---
 
 # 10. Tracking público
