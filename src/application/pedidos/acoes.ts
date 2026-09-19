@@ -1,9 +1,11 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
 import { obterLojaPublica } from "@/application/publico/consultas";
+import { cotarEntrega } from "@/application/checkout/acoes";
 import { logger } from "@/lib/logger";
 import {
   montarAlteracao,
@@ -61,6 +63,8 @@ export async function executarComando(entrada: unknown): Promise<ResultadoComand
 
 const alteracaoSchema = z.object({
   pedido_id: z.string().uuid(),
+  /** Versão do pedido sobre a qual a proposta foi construída (§34). */
+  versao: z.string().min(10).max(40).optional(),
   motivo: z.string().min(3).max(400),
   itens: z
     .array(
@@ -92,7 +96,11 @@ export async function proporAlteracao(entrada: unknown): Promise<ResultadoComand
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase.rpc("propor_alteracao", {
     p_order_id: validado.data.pedido_id,
-    p_dados: { motivo: validado.data.motivo, itens: validado.data.itens },
+    p_dados: {
+      motivo: validado.data.motivo,
+      versao: validado.data.versao ?? null,
+      itens: validado.data.itens,
+    },
   });
 
   if (error) return falha("proporAlteracao", error);
@@ -263,4 +271,162 @@ export async function confirmarImpressao(
     return { ok: false, erro: "Não foi possível registrar o resultado." };
   }
   return data as { ok: boolean; erro?: string };
+}
+
+// ---------------------------------------------------------- pedido manual
+
+const itemManualSchema = z.object({
+  linha: z.string().min(1).max(400),
+  produto_id: z.string().uuid(),
+  variacao_id: z.string().uuid().nullish(),
+  sabores: z.array(z.string().uuid()).max(4).optional(),
+  borda_id: z.string().uuid().nullish(),
+  adicionais: z.array(z.string().uuid()).max(20).optional(),
+  observacao: z.string().max(300).optional(),
+  quantidade: z.number().int().min(1).max(99),
+});
+
+const pedidoManualSchema = z.object({
+  idempotency_key: z.string().uuid(),
+  origem: z.enum(["whatsapp", "phone", "counter", "ifood", "other"]),
+  modalidade: z.enum(["delivery", "pickup"]),
+  cliente: z.object({
+    nome: z.string().min(2).max(120),
+    whatsapp: z.string().min(8).max(24),
+  }),
+  endereco: z
+    .object({
+      logradouro: z.string().min(2).max(160),
+      numero: z.string().min(1).max(20),
+      complemento: z.string().max(80).nullish(),
+      bairro: z.string().min(2).max(80),
+      cidade: z.string().min(2).max(80),
+      uf: z.string().length(2),
+      cep: z.string().max(12).nullish(),
+      referencia: z.string().max(160).nullish(),
+    })
+    .nullish(),
+  itens: z.array(itemManualSchema).min(1).max(60),
+  pagamento: z.object({
+    forma_id: z.string().uuid(),
+    bandeira_id: z.string().uuid().nullish(),
+    precisa_troco: z.boolean().optional(),
+    troco_para: z.number().nonnegative().nullish(),
+  }),
+  observacao_geral: z.string().max(500).nullish(),
+});
+
+export type ResultadoPedidoManual =
+  | { ok: true; ja_existia: boolean; pedido_id: string; numero: number; status: string; total: number; token: string | null }
+  | { ok: false; erro: string; fora_de_area?: boolean; rota_indisponivel?: boolean; endereco_ambiguo?: boolean };
+
+/**
+ * Lança um pedido recebido por fora do link (RN-MAN-001 a 003).
+ *
+ * PASSA PELA MESMA PORTA do pedido público: `criar_pedido`. Ela reconhece o
+ * lançamento interno por `orders.create_manual` e recusa quem não a tem —
+ * esconder o botão não seria segurança (CLAUDE.md §12).
+ *
+ * Por consequência, o pedido do balcão obedece às mesmas regras: itens
+ * revalidados, preços recalculados, disponibilidade conferida, mínimo de
+ * entrega, faixa de taxa, forma de pagamento e estado inicial. Estar no
+ * administrativo não contorna nada.
+ *
+ * O token de acompanhamento é ALEATÓRIO aqui, e não derivado do segredo de
+ * origem: o balcão precisa funcionar mesmo sem a credencial do checkout
+ * público configurada. A proteção contra reenvio continua sendo a chave de
+ * idempotência.
+ */
+export async function criarPedidoManual(entrada: unknown): Promise<ResultadoPedidoManual> {
+  const validado = pedidoManualSchema.safeParse(entrada);
+  if (!validado.success) {
+    return { ok: false, erro: "Confira os dados do pedido antes de lançar." };
+  }
+  const dados = validado.data;
+
+  let rota: { distancia_km: number; provedor: string } | null = null;
+  let enderecoParaBanco: Record<string, unknown> | null = null;
+
+  if (dados.modalidade === "delivery") {
+    if (!dados.endereco) return { ok: false, erro: "Informe o endereço de entrega." };
+
+    // Mesma medição do checkout público. Sem provedor de rotas configurado,
+    // isto falha com mensagem honesta — e NÃO inventa distância nem taxa
+    // (CLAUDE.md §20). A retirada segue funcionando normalmente.
+    const medida = await cotarEntrega(dados.endereco);
+    if (!medida.ok) {
+      return {
+        ok: false,
+        erro: medida.erro,
+        ...(medida.motivo === "fora_de_area" ? { fora_de_area: true } : {}),
+        ...(medida.motivo === "rota_indisponivel" || medida.motivo === "nao_configurado"
+          ? { rota_indisponivel: true }
+          : {}),
+        ...(medida.motivo === "endereco_ambiguo" || medida.motivo === "endereco_nao_encontrado"
+          ? { endereco_ambiguo: true }
+          : {}),
+      };
+    }
+
+    rota = { distancia_km: medida.distancia_km, provedor: medida.provedor };
+    enderecoParaBanco = {
+      logradouro: dados.endereco.logradouro,
+      numero: dados.endereco.numero,
+      complemento: dados.endereco.complemento ?? null,
+      bairro: dados.endereco.bairro,
+      cidade: dados.endereco.cidade,
+      uf: dados.endereco.uf,
+      cep: dados.endereco.cep ?? null,
+      referencia: dados.endereco.referencia ?? null,
+      latitude: medida.latitude,
+      longitude: medida.longitude,
+      confianca: medida.confianca,
+      provedor: medida.provedor,
+      ajustado_no_mapa: false,
+    };
+  }
+
+  const token = randomBytes(32).toString("hex");
+  const supabase = await getSupabaseServerClient();
+
+  // Sem segredo de origem: é o caminho interno, e quem autoriza é a
+  // permissão do usuário.
+  const { data, error } = await supabase.rpc("criar_pedido", {
+    p_pedido: {
+      idempotency_key: dados.idempotency_key,
+      tracking_token: token,
+      origem: dados.origem,
+      modalidade: dados.modalidade,
+      cliente: dados.cliente,
+      endereco: enderecoParaBanco,
+      rota,
+      itens: dados.itens,
+      pagamento: dados.pagamento,
+      observacao_geral: dados.observacao_geral ?? null,
+    },
+    p_segredo: "",
+  });
+
+  if (error) {
+    logger.error("pedidos:criarPedidoManual", { code: (error as { code?: string }).code });
+    return { ok: false, erro: "Não foi possível lançar o pedido agora. Tente de novo." };
+  }
+
+  const resposta = data as Record<string, unknown>;
+  if (!resposta?.["ok"]) {
+    return { ...(resposta as object), ok: false } as ResultadoPedidoManual;
+  }
+
+  revalidatePath(ROTA);
+  return {
+    ok: true,
+    ja_existia: Boolean(resposta["ja_existia"]),
+    pedido_id: String(resposta["pedido_id"]),
+    numero: Number(resposta["numero"]),
+    status: String(resposta["status"]),
+    total: Number(resposta["total"]),
+    // No reenvio da mesma tentativa o pedido já existe e este token não é o
+    // dele: dizer o contrário daria um link que não abre nada.
+    token: resposta["ja_existia"] ? null : token,
+  };
 }

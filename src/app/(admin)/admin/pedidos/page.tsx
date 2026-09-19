@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Abas, type Aba } from "@/ui/patterns";
-import { obterSessaoInterna } from "@/application/auth/sessao";
+import { obterSessaoInterna, podeNaUI } from "@/application/auth/sessao";
 import { obterLojaPublica } from "@/application/publico/consultas";
 import { listarFila } from "@/application/pedidos/consultas";
 import { CentralDePedidos } from "./_ui/CentralDePedidos";
@@ -59,12 +59,25 @@ export default async function Page({
               : `Operando como ${sessao.papeis.join(", ") || "usuário interno"}.`}
           </p>
         </div>
-        <Link
-          href="/admin/pedidos?aba=abertos"
-          className="min-h-touch inline-flex items-center rounded-11 border-[1.5px] border-border-shalon px-[14px] text-[13.5px] font-semibold text-ink no-underline"
-        >
-          Atualizar
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          {/* RN-MAN-001: o balcão lança pedidos de WhatsApp, telefone,
+              balcão, iFood ou outro canal. A permissão real é conferida no
+              servidor; aqui o botão só não aparece para quem não a tem. */}
+          {podeNaUI(sessao, "orders.create_manual") ? (
+            <Link
+              href="/admin/pedidos/novo"
+              className="min-h-touch inline-flex items-center rounded-11 border-0 bg-cta px-[14px] text-[13.5px] font-semibold text-cta-fg no-underline"
+            >
+              Novo pedido
+            </Link>
+          ) : null}
+          <Link
+            href="/admin/pedidos?aba=abertos"
+            className="min-h-touch inline-flex items-center rounded-11 border-[1.5px] border-border-shalon px-[14px] text-[13.5px] font-semibold text-ink no-underline"
+          >
+            Atualizar
+          </Link>
+        </div>
       </header>
 
       <Abas abas={ABAS} atual={encerrados ? "encerrados" : "abertos"} parametro="aba" base="/admin/pedidos" />

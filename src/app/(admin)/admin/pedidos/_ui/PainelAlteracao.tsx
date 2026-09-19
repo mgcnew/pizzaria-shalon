@@ -3,7 +3,12 @@
 import { useState, useTransition } from "react";
 import { formatBRL } from "@/lib/format";
 import { proporAlteracao, retirarAlteracao } from "@/application/pedidos/acoes";
-import type { ItemDoPedido, RevisaoDoPedido } from "@/application/pedidos/tipos";
+import type {
+  ItemDoPedido,
+  ItemDoRascunho,
+  RevisaoDoPedido,
+} from "@/application/pedidos/tipos";
+import { EscolherProduto } from "./EscolherProduto";
 
 /**
  * Alteração do pedido pela pizzaria.
@@ -12,26 +17,29 @@ import type { ItemDoPedido, RevisaoDoPedido } from "@/application/pedidos/tipos"
  * guardar antes e depois, e — quando itens ou total mudam — aguardar o
  * cliente sem avançar sozinho. É isso que está implementado.
  *
- * O ALCANCE DESTE EDITOR, dito abertamente: ele ajusta quantidades e remove
- * linhas. Acrescentar um item novo exigiria o configurador de pizza inteiro
- * (tamanho, sabores, borda, adicionais) dentro do administrativo, e
- * inventar uma versão simplificada dele produziria uma segunda forma de
- * montar pizza — exatamente o que CLAUDE.md §17 proíbe.
+ * O editor ajusta quantidades, remove linhas e ACRESCENTA itens novos —
+ * inclusive pizza meio a meio com borda e adicionais —, usando o mesmo
+ * configurador do cardápio público. Não existe um segundo jeito de montar
+ * pizza no administrativo (CLAUDE.md §17).
  *
- * O SERVIDOR já aceita qualquer configuração: `propor_alteracao` reprecifica
- * com a mesma `montar_item` do cardápio. Quando o configurador for extraído
- * para uso comum, esta tela ganha o botão sem mudar nada do domínio.
+ * Nenhum preço é calculado aqui. Cada item é precificado pelo servidor ao
+ * ser montado, e a proposta inteira é reprecificada por `propor_alteracao`
+ * com a mesma `montar_item` do cardápio.
  *
- * Nenhum preço é calculado aqui. O total da proposta volta do servidor.
+ * A proposta viaja com a VERSÃO do pedido: se ele mudou enquanto o editor
+ * estava aberto, o servidor recusa em vez de sobrescrever (CLAUDE.md §34).
  */
 export function PainelAlteracao({
   pedidoId,
+  versao,
   itens,
   podeAlterar,
   podeRetirar,
   revisaoAberta,
 }: {
   pedidoId: string;
+  /** `updated_at` do pedido quando esta tela foi montada. */
+  versao: string;
   itens: ItemDoPedido[];
   podeAlterar: boolean;
   podeRetirar: boolean;
@@ -42,12 +50,14 @@ export function PainelAlteracao({
   const [quantidades, setQuantidades] = useState<Record<number, number>>(() =>
     Object.fromEntries(itens.map((i) => [i.linha, i.quantidade])),
   );
+  const [novos, setNovos] = useState<ItemDoRascunho[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [ocupado, iniciar] = useTransition();
 
   const restantes = itens.filter((i) => (quantidades[i.linha] ?? 0) > 0);
   const mudou =
+    novos.length > 0 ||
     restantes.length !== itens.length ||
     itens.some((i) => quantidades[i.linha] !== i.quantidade);
 
@@ -57,11 +67,25 @@ export function PainelAlteracao({
     iniciar(async () => {
       const r = await proporAlteracao({
         pedido_id: pedidoId,
+        versao,
         motivo: motivo.trim(),
-        itens: restantes.map((i) => ({
-          ...i.configuracao,
-          quantidade: quantidades[i.linha] ?? i.quantidade,
-        })),
+        itens: [
+          ...restantes.map((i) => ({
+            ...i.configuracao,
+            quantidade: quantidades[i.linha] ?? i.quantidade,
+          })),
+          // Os acrescentados agora entram como CONFIGURAÇÃO — ids, não
+          // preço. O servidor reprecifica todos do mesmo jeito.
+          ...novos.map((i) => ({
+            produto_id: i.produtoId,
+            variacao_id: i.variacaoId,
+            sabores: i.sabores,
+            borda_id: i.bordaId,
+            adicionais: i.adicionais,
+            observacao: i.observacao,
+            quantidade: i.quantidade,
+          })),
+        ],
       });
       if (!r.ok) {
         setErro(r.erro);
@@ -69,6 +93,7 @@ export function PainelAlteracao({
       }
       setAbrindo(false);
       setMotivo("");
+      setNovos([]);
       setAviso("Alteração registrada.");
     });
   }
@@ -178,6 +203,38 @@ export function PainelAlteracao({
         })}
       </ul>
 
+      {novos.length > 0 ? (
+        <ul className="m-0 mt-2 list-none p-0">
+          {novos.map((i) => (
+            <li
+              key={i.linha}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-10 bg-ts px-3 py-2"
+            >
+              <span className="text-[14px] text-tsf">
+                + {i.quantidade}× {i.nome}
+                {i.rotulos.length > 0 ? (
+                  <span className="block text-[12px] text-ink-2">{i.rotulos.join(" · ")}</span>
+                ) : null}
+              </span>
+              <button
+                type="button"
+                onClick={() => setNovos((lista) => lista.filter((x) => x.linha !== i.linha))}
+                className="min-h-touch cursor-pointer border-0 bg-transparent text-[12.5px] font-semibold text-danger"
+              >
+                Remover
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      <div className="mt-3">
+        <EscolherProduto
+          aoAdicionar={(item) => setNovos((lista) => [...lista, item])}
+          rotuloAcao="Acrescentar à alteração"
+        />
+      </div>
+
       <label htmlFor="motivo-alteracao" className="mt-3 mb-[6px] block text-[13.5px] font-semibold text-ink">
         Motivo da alteração
       </label>
@@ -199,7 +256,12 @@ export function PainelAlteracao({
       <div className="mt-2 flex flex-wrap gap-2">
         <button
           type="button"
-          disabled={ocupado || motivo.trim().length < 3 || !mudou || restantes.length === 0}
+          disabled={
+            ocupado ||
+            motivo.trim().length < 3 ||
+            !mudou ||
+            restantes.length + novos.length === 0
+          }
           onClick={enviar}
           className="min-h-touch cursor-pointer rounded-11 border-0 bg-cta px-4 text-[14px] font-semibold text-cta-fg disabled:cursor-not-allowed disabled:bg-tn disabled:text-muted"
         >
@@ -211,6 +273,7 @@ export function PainelAlteracao({
             setAbrindo(false);
             setQuantidades(Object.fromEntries(itens.map((i) => [i.linha, i.quantidade])));
             setMotivo("");
+            setNovos([]);
           }}
           className="min-h-touch cursor-pointer rounded-11 border-[1.5px] border-border-shalon bg-surface px-4 text-[14px] font-semibold text-ink"
         >
@@ -218,7 +281,7 @@ export function PainelAlteracao({
         </button>
       </div>
 
-      {restantes.length === 0 ? (
+      {restantes.length + novos.length === 0 ? (
         <p className="m-0 mt-2 text-[12.5px] text-twf">
           Um pedido não pode ficar sem itens. Para não atender, use rejeitar ou cancelar.
         </p>

@@ -103,6 +103,11 @@ export type PedidoAdministrativo = {
   id: string;
   numero: number;
   status: EstadoDoPedido | string;
+  /**
+   * `updated_at` do pedido. Viaja com a proposta de alteração para que o
+   * servidor recuse uma edição feita sobre versão obsoleta (CLAUDE.md §34).
+   */
+  versao: string;
   modalidade: Modalidade;
   origem: string;
   criado_em: string;
@@ -149,3 +154,38 @@ export type PedidoAdministrativo = {
 export type ResultadoComando =
   | { ok: true; status: string }
   | { ok: false; erro: string; bloqueio?: "pix" | "entrega" | "alteracao" };
+
+/**
+ * Os canais previstos para pedido manual (RN-MAN-001).
+ *
+ * Os valores são os NORMATIVOS de `orders.source` (02 §19) — não strings
+ * novas. `shalon_link` não aparece aqui de propósito: ele identifica o
+ * pedido que veio do próprio link, e o balcão não o escolhe.
+ */
+export const ORIGENS_MANUAIS = [
+  { valor: "whatsapp", rotulo: "WhatsApp" },
+  { valor: "phone", rotulo: "Telefone" },
+  { valor: "counter", rotulo: "Balcão" },
+  { valor: "ifood", rotulo: "iFood" },
+  { valor: "other", rotulo: "Outro" },
+] as const;
+
+export type OrigemManual = (typeof ORIGENS_MANUAIS)[number]["valor"];
+
+/** Um item já configurado, aguardando virar pedido. */
+export type ItemDoRascunho = {
+  linha: string;
+  produtoId: string;
+  produtoSlug: string;
+  nome: string;
+  variacaoId: string | null;
+  sabores: string[];
+  bordaId: string | null;
+  adicionais: string[];
+  observacao: string;
+  quantidade: number;
+  /** Preço que o SERVIDOR calculou para esta configuração. */
+  precoUnitario: number;
+  total: number;
+  rotulos: string[];
+};

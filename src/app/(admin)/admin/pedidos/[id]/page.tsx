@@ -159,6 +159,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           <Cartao titulo="Alteração" largura="cheio">
             <PainelAlteracao
               pedidoId={pedido.id}
+              versao={pedido.versao}
               itens={pedido.itens}
               podeAlterar={pedido.pode_alterar}
               podeRetirar={pedido.pode_retirar_alteracao}
