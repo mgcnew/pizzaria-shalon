@@ -537,6 +537,107 @@ situação legítima, e a Owner preenche sem alterar código (§7.5).
 
 ---
 
+### D-2026-09-19-28 — A-17 resolvida por medição, e sem índice
+
+**Decisão:** a busca pública normaliza acento e caixa com `unaccent`, e
+**nenhum índice foi criado**.
+
+**Medição, com 801 produtos** — mais de dez vezes o cardápio previsto:
+
+| | Antes | Depois |
+|---|---|---|
+| `buscar_catalogo('medicao 42')` | 78 ms | **26,8 ms** |
+| `cardapio_publico()` sozinho | 60 ms | — |
+
+Os 60 ms mostraram onde estava o custo: o cardápio INTEIRO era precificado —
+preço efetivo e disponibilidade linha a linha — antes de o filtro descartar
+790 linhas. Um índice trigram atacaria justamente a parte barata. O que
+resolveu foi inverter a ordem: filtrar nas tabelas-base e só então precificar
+o que sobrou (migration 0033).
+
+**Por que nenhum índice:** com dezenas de produtos, a varredura sequencial é
+o plano correto, e índice não usado é peso morto (`CLAUDE.md` §39, "meça
+antes de grandes otimizações"). Se o cardápio crescer uma ordem de grandeza,
+a medição deve ser refeita.
+
+**Formalizada em:** `02-MODELO-DADOS-SUPABASE.md` §22 · migration 0033.
+
+---
+
+### D-2026-09-19-29 — Adaptações entre o design aprovado e a Fase 4
+
+O protótipo público do Claude Design é a referência visual, e foi seguido de
+perto. As diferenças abaixo existem porque a REGRA NORMATIVA pede — não por
+preferência.
+
+| # | Protótipo | Fase 4 | Por quê |
+|---|---|---|---|
+| 1 | *(não existia)* | **menu hambúrguer** com Meus pedidos, Histórico e Favoritos | 79.8 exige. Montado com a linguagem do drawer administrativo aprovado |
+| 2 | *(não existia)* | **favoritar** no card e na página do produto | 79.8 e RN-FAV-001 preveem favoritos; o protótipo só os cita no menu |
+| 3 | Selo **"Popular"** | selo **"Destaque"** | RN-DEST-001 (escolha manual) e RN-POP-001 (ranking de vendas) são coisas diferentes. Chamar destaque de "popular" diria ao cliente algo que não é verdade |
+| 4 | Seção **"Mais pedidos"** | **ausente** | RN-POP-001 calcula dos pedidos concluídos dos últimos 30 dias, e pedido é da Fase 5. Sem base, a seção não é renderizada (A-16) |
+| 5 | Faixa fixa "Quatro Queijos com 15% off" | seção de **promoções vigentes reais** | anunciar oferta inexistente seria pior que não ter a seção |
+| 6 | **Sheet** de produto | **rota** `/produto/[slug]` | RN-LINK-001 exige link compartilhável. O conteúdo e a sequência do sheet foram preservados |
+| 7 | Grupos de escolha no combo | composição **fixa**, só leitura | D-2026-09-17-03: combo da V1 não é configurador |
+
+**Preservado integralmente:** cabeçalho com logo e pílula de situação, hero
+escuro com selo "Tradição desde 1995", busca, categorias horizontais, cards,
+aviso de loja fechada, estados vazios, barra de carrinho que só aparece com
+itens, ausência de navegação inferior, microcopy do meio a meio e da
+observação, tokens, tipografia, raios e animações.
+
+---
+
+### D-2026-09-19-30 — O preço nunca é calculado em React
+
+**Decisão:** `montar_item` (migration 0032) é a **única** via de precificação
+da experiência pública. A mesma função serve para:
+
+1. a prévia enquanto o cliente monta a pizza;
+2. a linha que entra no carrinho;
+3. a revalidação antes de seguir para o checkout.
+
+**Consequência prática:** não existe soma de preço em componente React — nem
+do meio a meio, nem de borda, nem de adicionais. O configurador chama a
+Server Action a cada escolha e EXIBE o que voltou. Prévia e realidade não
+podem divergir porque são o mesmo cálculo (`CLAUDE.md` §16 e §17).
+
+**Revalidação (79.9):** diferença comercial devolve `exige_reconfirmacao`, a
+tela mostra **anterior → atual** e o avanço fica bloqueado até o aceite.
+Falha na revalidação também bloqueia: sem conferência, o valor em tela é só
+o que o navegador guardou.
+
+---
+
+### D-2026-09-19-31 — Defeitos encontrados verificando, não lendo
+
+Quatro defeitos que só apareceram ao exercitar o sistema. Ficam registrados
+porque todos são do mesmo tipo: o caminho feliz funcionava.
+
+**1. Revalidação quebrava exatamente quando um preço mudava.**
+`v_motivos := v_motivos || 'preco_alterado'` — em `text[] || 'literal'` o
+Postgres lê o literal como ARRAY, não como elemento (erro 22P02). Enquanto
+nada mudava, tudo passava. Corrigido na migration 0034, e a interface passou
+a BLOQUEAR quando a revalidação falha, em vez de seguir com o preço antigo.
+
+**2. Produto simples com adicional derrubava a montagem.** RECORD só
+preenchido no ramo das pizzas, lido nos ramos de borda e adicional — e ler
+RECORD não atribuído é erro em plpgsql, não NULL. Migration 0036.
+
+**3. Envio de imagem com mais de 1 MB falhava no administrativo.** O limite
+de corpo de Server Action do Next é 1 MB por padrão, enquanto o pipeline
+aceita 8 MB (03 §24). A mensagem — "Body exceeded 1 MB limit" — não dizia
+nada à Owner. Corrigido em `next.config.ts`. **Defeito da Fase 3**,
+encontrado no console durante a Fase 4.
+
+**4. Mensagem técnica chegando ao cliente.** O carrinho exibia "Sabor
+indisponivel no tamanho escolhido (RN-PIZZA-004)", com código de regra e sem
+acentuação. A assertiva de domínio continua assim (é citada nos testes e
+útil no log); quem traduz é `montar_item`, na fronteira com a interface
+(migration 0035).
+
+---
+
 # Decisões em aberto
 
 Nenhuma implementação que dependa destes pontos deve começar antes da decisão.
@@ -557,8 +658,8 @@ Nenhuma implementação que dependa destes pontos deve começar antes da decisã
 | ~~A-10~~ | ~~Criação do remoto e primeiro `push`~~ | — | ✅ Resolvida em D-2026-09-18-19: `github.com/mgcnew/pizzaria-shalon`, privado |
 | **A-11** | **Projeto Supabase de PRODUÇÃO** e separação dev/prod — o de desenvolvimento existe (D-2026-09-18-15); falta o de produção e a gestão de segredos dele | Fase 11 | `05-PLANO-IMPLEMENTACAO.md` §15 |
 | **A-14** | **Criação de usuários internos pela interface** — hoje depende de SQL. A tela de gestão de equipe é da Fase 8; até lá, novos acessos são criados manualmente | Fase 8 | `05-PLANO-IMPLEMENTACAO.md` §12.3 |
-| **A-16** | **Ranking "Mais pedidos"** — RN-POP-001 a RN-POP-004 dependem de pedidos concluídos, que não existem antes da Fase 5. O `is_featured` (destaque manual) já está implementado e é independente | Fase 8 | `02-MODELO-DADOS-SUPABASE.md` §6.3 |
-| **A-17** | **Busca pública sem acento e sem caixa** — 02 §22 recomenda avaliar `unaccent` + `pg_trgm` com consulta real para medir, o que só existe com cardápio populado | Fase 4 | `02-MODELO-DADOS-SUPABASE.md` §22 |
+| **A-16** | **Ranking "Mais pedidos"** — RN-POP-001 a RN-POP-004 dependem de pedidos concluídos, que não existem antes da Fase 5. Confirmado na Fase 4: a seção NÃO é renderizada por falta de base, e o destaque manual (`is_featured`), que é outro conceito, já funciona | Fase 8 | `02-MODELO-DADOS-SUPABASE.md` §6.3 |
+| ~~A-17~~ | ~~Busca pública sem acento e sem caixa~~ | — | ✅ Resolvida em D-2026-09-19-28: `unaccent` + filtrar antes de precificar; sem índice, por medição |
 | **A-15** | **Política de senha, MFA e recuperação** do Supabase Auth — não configuradas; a V1 usa o padrão do projeto | Fase 10 (hardening) | `03-RLS-RBAC-SEGURANCA.md` §25 |
 
 ---
