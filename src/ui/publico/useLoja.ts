@@ -60,6 +60,8 @@ export function useLoja() {
     hidratado: estado.hidratado,
     carrinho: estado.carrinho,
     favoritos: estado.favoritos,
+    /** Pedidos feitos neste aparelho (03 §11). Só tokens, nunca status. */
+    pedidos: estado.pedidos,
     expirou: estado.expirou,
     itens: estado.carrinho.itens,
     quantidadeTotal: totalDeItens(estado.carrinho),

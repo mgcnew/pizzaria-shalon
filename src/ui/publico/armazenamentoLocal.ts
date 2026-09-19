@@ -6,6 +6,13 @@ import {
   type Carrinho,
 } from "@/domain/carrinho/carrinho";
 import { lerFavoritos, SEM_FAVORITOS, type Favoritos } from "@/domain/carrinho/favoritos";
+import {
+  ehTokenValido,
+  lerPedidosLocais,
+  registrarPedidoLocal,
+  SEM_PEDIDOS,
+  type PedidoLocal,
+} from "@/domain/pedidos/locais";
 
 /**
  * Armazenamento local do cliente público.
@@ -24,6 +31,8 @@ import { lerFavoritos, SEM_FAVORITOS, type Favoritos } from "@/domain/carrinho/f
 
 const CHAVE_CARRINHO = "shalon:carrinho";
 const CHAVE_FAVORITOS = "shalon:favoritos";
+const CHAVE_DISPOSITIVO = "shalon:dispositivo";
+const CHAVE_PEDIDOS = "shalon:pedidos";
 
 export type EstadoLocal = {
   carrinho: Carrinho;
@@ -36,6 +45,10 @@ export type EstadoLocal = {
    * "nenhum favorito" antes de saber se há algum.
    */
   hidratado: boolean;
+  /** Credencial deste navegador (03 §11). Criada na primeira compra. */
+  dispositivo: string | null;
+  /** Tokens dos pedidos feitos aqui. Não é histórico do cliente (§29). */
+  pedidos: PedidoLocal[];
 };
 
 const VAZIO: EstadoLocal = {
@@ -43,6 +56,8 @@ const VAZIO: EstadoLocal = {
   favoritos: SEM_FAVORITOS,
   expirou: false,
   hidratado: false,
+  dispositivo: null,
+  pedidos: SEM_PEDIDOS,
 };
 
 let estado: EstadoLocal = VAZIO;
@@ -87,11 +102,15 @@ function iniciar(): void {
   const expirou = tinhaItens && carrinho.itens.length === 0;
   if (expirou) gravarJson(CHAVE_CARRINHO, carrinho);
 
+  const dispositivoGuardado = lerJson(CHAVE_DISPOSITIVO);
+
   estado = {
     carrinho,
     favoritos: lerFavoritos(lerJson(CHAVE_FAVORITOS)),
     expirou,
     hidratado: true,
+    dispositivo: ehTokenValido(dispositivoGuardado) ? dispositivoGuardado : null,
+    pedidos: lerPedidosLocais(lerJson(CHAVE_PEDIDOS)),
   };
 }
 
@@ -133,5 +152,38 @@ export function definirFavoritos(favoritos: Favoritos): void {
 export function reconhecerExpiracao(): void {
   if (!estado.expirou) return;
   estado = { ...estado, expirou: false };
+  avisar();
+}
+
+/**
+ * Devolve a credencial deste navegador, criando-a se ainda não existir.
+ *
+ * 03 §11: é um identificador aleatório, gerado por `crypto`, guardado como
+ * hash no banco. Não é login, não carrega dado do cliente e não vale nada em
+ * outro aparelho.
+ *
+ * Só é chamada quando o cliente decide enviar um pedido — visitar o cardápio
+ * não marca ninguém.
+ */
+export function garantirDispositivo(): string | null {
+  iniciar();
+  if (estado.dispositivo !== null) return estado.dispositivo;
+  if (typeof window === "undefined" || !window.crypto?.getRandomValues) return null;
+
+  const bytes = new Uint8Array(32);
+  window.crypto.getRandomValues(bytes);
+  const token = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+
+  estado = { ...estado, dispositivo: token };
+  gravarJson(CHAVE_DISPOSITIVO, token);
+  avisar();
+  return token;
+}
+
+/** Guarda o token de acompanhamento do pedido recém-criado. */
+export function registrarPedido(pedido: PedidoLocal): void {
+  const pedidos = registrarPedidoLocal(lerEstado().pedidos, pedido);
+  estado = { ...estado, pedidos };
+  gravarJson(CHAVE_PEDIDOS, pedidos);
   avisar();
 }

@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ListaDePedidos } from "../_ui/ListaDePedidos";
 
 export const metadata: Metadata = { title: "Histórico" };
 
 /**
- * Histórico de pedidos.
+ * Histórico — os pedidos já encerrados neste aparelho.
  *
- * Mesma situação de "Meus pedidos": a tela existe, o estado é real — não há
- * pedido — e nada é inventado. Pedido é da Fase 5; "Pedir novamente" (que
- * monta um carrinho NOVO com preços e disponibilidade atuais, 79.8) depende
- * dele.
+ * "Pedir novamente" monta um carrinho NOVO, com preços e disponibilidade do
+ * dia (79.8), e depende das operações internas da Fase 6. Até lá a tela não
+ * oferece o botão, em vez de oferecer um que não cumpre o que promete.
  */
 export default function Page() {
   return (
@@ -21,21 +21,11 @@ export default function Page() {
         Histórico
       </h1>
 
-      <div className="rounded-18 border border-dashed border-border-shalon bg-elev px-5 py-[44px] text-center">
-        <p className="m-0 font-display text-[20px] font-bold text-ink">
-          Nada por aqui ainda
-        </p>
-        <p className="mb-[18px] mt-2 text-[14px] text-ink-2">
-          Seus pedidos anteriores vão aparecer nesta tela, com a opção de pedir de novo pelos
-          preços do dia.
-        </p>
-        <Link
-          href="/favoritos"
-          className="inline-flex min-h-touch-cta items-center rounded-12 border-[1.5px] border-border-shalon px-5 text-[16px] font-semibold text-ink"
-        >
-          Ver favoritos
-        </Link>
-      </div>
+      <ListaDePedidos mostrar="concluidos" />
+
+      <p className="m-0 mt-4 text-[12.5px] text-muted">
+        Esta lista é deste aparelho e não é sincronizada entre dispositivos.
+      </p>
     </section>
   );
 }

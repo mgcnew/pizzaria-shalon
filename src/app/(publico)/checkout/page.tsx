@@ -1,14 +1,31 @@
 import type { Metadata } from "next";
-import { PlaceholderFase } from "@/ui/patterns/PlaceholderFase";
+import { notFound } from "next/navigation";
+import { obterLojaPublica } from "@/application/publico/consultas";
+import { formasDePagamento } from "@/application/checkout/consultas";
+import { Checkout } from "../_ui/Checkout";
 
-export const metadata: Metadata = { title: "Checkout" };
+export const metadata: Metadata = { title: "Finalizar pedido" };
 
-export default function Page() {
+/**
+ * Checkout.
+ *
+ * As duas listas de formas de pagamento vêm prontas do servidor porque a
+ * modalidade muda com um toque e ir ao servidor a cada troca daria uma
+ * espera sem motivo — são poucas linhas em cada uma.
+ */
+export default async function Page() {
+  const [loja, entrega, retirada] = await Promise.all([
+    obterLojaPublica(),
+    formasDePagamento("delivery"),
+    formasDePagamento("pickup"),
+  ]);
+
+  if (loja === null) notFound();
+
   return (
-    <PlaceholderFase
-      titulo="Finalizar pedido"
-      fase="Fase 5"
-      descricao="Identificação, entrega ou retirada, endereço, pagamento e revisão final."
+    <Checkout
+      loja={loja}
+      formasPorModalidade={{ delivery: entrega, pickup: retirada }}
     />
   );
 }
