@@ -1093,6 +1093,55 @@ extração; o texto anterior fica como histórico.
 
 ---
 
+### D-2026-09-19-51 — Recuperação de senha antecipada da Fase 10
+
+**Decisão.** O painel ganhou "Esqueci minha senha": `/admin/esqueci-senha`
+pede o link e `/admin/redefinir-senha` define a senha nova.
+
+**Por que antes da hora.** A-15 coloca política de senha, MFA e recuperação
+na Fase 10 (hardening). A recuperação foi trazida para cá a pedido da
+proprietária, por necessidade concreta: sem ela, perder a senha do painel
+significa depender do painel do Supabase para voltar a entrar.
+
+**O que NÃO foi antecipado:** política de senha (só o mínimo de 8
+caracteres, acima do mínimo do Supabase), MFA, expiração e bloqueio por
+tentativa. **A-15 continua aberta** para esses.
+
+**Duas propriedades que valem registrar:**
+
+- **Não revela se a conta existe.** A resposta é idêntica com e-mail
+  cadastrado ou não — senão a tela viraria um verificador de quem trabalha
+  na Shalon (§25), o que já é a postura do login.
+- **A senha nunca passa por código de cliente.** O token do link só existe
+  no navegador (vem no fragmento da URL), então a página é de cliente; mas a
+  senha nova vai para uma Server Action, como no login (§31).
+
+Ao final, a sessão criada pelo link é encerrada: entrar de novo com a senha
+nova é a prova de que ela funciona.
+
+---
+
+### D-2026-09-19-52 — Segundo usuário Owner: Marcelo
+
+**Decisão.** A conta `mgc.info.new@gmail.com`, que já existia em
+`auth.users` sem vínculo interno, recebeu funcionário próprio ("Marcelo") e
+papel Owner/Admin.
+
+**Por que funcionário próprio.** Apontar a conta para o registro "Ana
+Shalon" misturaria duas pessoas no mesmo funcionário, e a autoria das
+operações no histórico e na auditoria deixaria de significar alguma coisa
+(§33).
+
+**A conta `dona@pizzariashalon.dev` foi preservada** como estava. Ela
+continua sendo usuário de desenvolvimento (D-2026-09-18-16) e não é seed de
+produção.
+
+**Continua valendo A-14:** criar usuário interno ainda depende de SQL. A
+tela de gestão de equipe é da Fase 8; até lá, cada novo acesso é um
+lançamento manual como este.
+
+---
+
 # Decisões em aberto
 
 Nenhuma implementação que dependa destes pontos deve começar antes da decisão.
@@ -1115,7 +1164,7 @@ Nenhuma implementação que dependa destes pontos deve começar antes da decisã
 | **A-14** | **Criação de usuários internos pela interface** — hoje depende de SQL. A tela de gestão de equipe é da Fase 8; até lá, novos acessos são criados manualmente | Fase 8 | `05-PLANO-IMPLEMENTACAO.md` §12.3 |
 | ~~A-16~~ | ~~Ranking "Mais pedidos"~~ | — | ✅ Resolvida em D-2026-09-19-44: `mais_pedidos`, 30 dias móveis, concluídos, por quantidade, meio a meio por fração |
 | ~~A-17~~ | ~~Busca pública sem acento e sem caixa~~ | — | ✅ Resolvida em D-2026-09-19-28: `unaccent` + filtrar antes de precificar; sem índice, por medição |
-| **A-15** | **Política de senha, MFA e recuperação** do Supabase Auth — não configuradas; a V1 usa o padrão do projeto | Fase 10 (hardening) | `03-RLS-RBAC-SEGURANCA.md` §25 |
+| **A-15** | **Política de senha, MFA e bloqueio por tentativa** do Supabase Auth — não configurados; a V1 usa o padrão do projeto. A **recuperação de senha** saiu desta pendência: foi implementada em D-2026-09-19-51, com o mínimo de 8 caracteres. O que resta é política de complexidade, MFA, expiração e bloqueio | Fase 10 (hardening) | `03-RLS-RBAC-SEGURANCA.md` §25 |
 
 ---
 

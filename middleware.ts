@@ -12,6 +12,21 @@ import { createServerClient } from "@supabase/ssr";
  * protege os dados é o RLS (CLAUDE.md §12). Mesmo que alguém contorne o
  * middleware, o banco continua negando.
  */
+/**
+ * Rotas do administrativo que NÃO exigem sessão.
+ *
+ * `redefinir-senha` precisa estar aqui por um detalhe do fluxo: o link de
+ * recuperação chega com o token no fragmento da URL, que só existe no
+ * navegador. Quando a requisição passa pelo middleware ainda não há sessão
+ * nenhuma — se a rota fosse protegida, o usuário seria mandado para o login
+ * antes de a página ter chance de consumir o token.
+ */
+const ROTAS_ADMIN_PUBLICAS = new Set([
+  "/admin/login",
+  "/admin/esqueci-senha",
+  "/admin/redefinir-senha",
+]);
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -43,7 +58,7 @@ export async function middleware(request: NextRequest) {
 
   const ehRotaAdmin =
     request.nextUrl.pathname.startsWith("/admin") &&
-    request.nextUrl.pathname !== "/admin/login";
+    !ROTAS_ADMIN_PUBLICAS.has(request.nextUrl.pathname);
 
   if (ehRotaAdmin && !user) {
     const destino = request.nextUrl.clone();

@@ -33,6 +33,13 @@ cenários aqui. Policy sem teste negativo não é considerada pronta
 
 ## Usuário de desenvolvimento
 
-`dona@pizzariashalon.dev` — funcionário "Ana Shalon", papel Owner/Admin. Existe
-**apenas no ambiente de desenvolvimento** e não é seed de produção (PI-009). A
-senha está fora do repositório; peça a quem configurou o ambiente.
+Dois usuários Owner/Admin, **apenas no ambiente de desenvolvimento** e nenhum
+deles seed de produção (PI-009):
+
+- `dona@pizzariashalon.dev` — funcionário "Ana Shalon" (D-2026-09-18-16);
+- `mgc.info.new@gmail.com` — funcionário "Marcelo" (D-2026-09-19-52).
+
+Nenhuma senha está no repositório. Quem perder a sua usa **Esqueci minha
+senha** na tela de login — o link chega por e-mail (D-2026-09-19-51). Criar
+um usuário interno novo ainda depende de SQL: a tela de equipe é da Fase 8
+(A-14).

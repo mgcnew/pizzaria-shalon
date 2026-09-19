@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import Link from "next/link";
 import { Input } from "@/ui/components";
 import { Button } from "@/ui/components";
 import { entrar, type EstadoLogin } from "./actions";
@@ -49,6 +50,13 @@ export function FormularioLogin({ proximo }: { proximo: string }) {
       <Button type="submit" tamanho="lg" fullWidth disabled={enviando}>
         {enviando ? "Entrando..." : "Entrar"}
       </Button>
+
+      <Link
+        href="/admin/esqueci-senha"
+        className="inline-flex min-h-touch items-center justify-center text-[14px] font-semibold text-ink-2"
+      >
+        Esqueci minha senha
+      </Link>
     </form>
   );
 }
