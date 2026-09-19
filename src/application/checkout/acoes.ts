@@ -379,3 +379,30 @@ export async function resumoDosPedidos(
 
   return resultados.filter((p) => p !== null);
 }
+
+/**
+ * O cliente decide a alteração proposta pela pizzaria (RN-ALT-004).
+ *
+ * Quem decide é ele, aqui — não uma resposta no WhatsApp. Recusar NÃO
+ * cancela o pedido (RN-ALT-006): devolve o pedido ao estado anterior e a
+ * pizzaria resolve o que fazer.
+ */
+export async function decidirAlteracao(
+  token: unknown,
+  aceita: boolean,
+): Promise<{ ok: boolean; erro?: string }> {
+  const validado = z.string().regex(/^[0-9a-f]{64}$/).safeParse(token);
+  if (!validado.success) return { ok: false, erro: "Link inválido." };
+
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("decidir_alteracao", {
+    p_token: validado.data,
+    p_aceita: aceita,
+  });
+
+  if (error) {
+    logger.error("checkout:decidirAlteracao", { code: (error as { code?: string }).code });
+    return { ok: false, erro: "Não foi possível registrar sua resposta agora." };
+  }
+  return data as { ok: boolean; erro?: string };
+}

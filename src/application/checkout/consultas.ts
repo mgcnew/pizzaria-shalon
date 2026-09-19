@@ -59,3 +59,39 @@ export async function pixDoPedido(token: string): Promise<PixParaPagamento> {
   }
   return (data ?? { ok: false }) as PixParaPagamento;
 }
+
+export type AlteracaoProposta =
+  | {
+      ok: true;
+      motivo: string;
+      itens_antes: { quantidade: number; nome: string; total: number }[];
+      itens_depois: {
+        nome: string;
+        quantidade: number;
+        total: number;
+        rotulos: string[];
+        observacao: string | null;
+      }[];
+      subtotal_antes: number;
+      subtotal_depois: number;
+      total_antes: number;
+      total_depois: number;
+    }
+  | { ok: false };
+
+/**
+ * A proposta de alteração aguardando este cliente (RN-ALT-005).
+ *
+ * Traz antes e depois, e nada mais: motivo interno, autor da proposta e
+ * histórico administrativo não saem da projeção (03 §10.2).
+ */
+export async function alteracaoDoPedido(token: string): Promise<AlteracaoProposta> {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("alteracao_do_pedido", { p_token: token });
+
+  if (error) {
+    logger.error("checkout:alteracaoDoPedido", { code: (error as { code?: string }).code });
+    return { ok: false };
+  }
+  return (data ?? { ok: false }) as AlteracaoProposta;
+}

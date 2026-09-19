@@ -1,5 +1,6 @@
 import "server-only";
 import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
+import { logger } from "@/lib/logger";
 import type {
   BannerPublico,
   CategoriaPublica,
@@ -111,4 +112,37 @@ export async function produtosPorId(ids: readonly string[]): Promise<ProdutoPubl
 export async function urlDaImagem(caminho: string): Promise<string> {
   const supabase = await getSupabaseServerClient();
   return supabase.storage.from("catalogo").getPublicUrl(caminho).data.publicUrl;
+}
+
+/**
+ * "Mais pedidos" (RN-POP-001 a RN-POP-004).
+ *
+ * O ranking é calculado no banco: 30 dias móveis, somente pedidos
+ * concluídos, por QUANTIDADE, com meio a meio contando a fração de cada
+ * sabor e combo contando como combo.
+ *
+ * Aqui só se busca os produtos correspondentes, preservando a ordem do
+ * ranking — `produtosPorId` devolve na ordem do catálogo, que é outra.
+ *
+ * Sem base, volta lista vazia e a seção não é renderizada. Nenhum impulso
+ * artificial, nenhuma mistura com Destaque manual (RN-DEST-001).
+ */
+export async function listarMaisPedidos(limite = 6): Promise<ProdutoPublico[]> {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("mais_pedidos", { p_limite: limite });
+
+  if (error) {
+    logger.error("publico:listarMaisPedidos", { code: (error as { code?: string }).code });
+    return [];
+  }
+
+  const ranking = (data ?? []) as { produto_id: string; quantidade: number }[];
+  if (ranking.length === 0) return [];
+
+  const produtos = await produtosPorId(ranking.map((r) => r.produto_id));
+  const porId = new Map(produtos.map((p) => [p.id, p]));
+
+  return ranking
+    .map((r) => porId.get(r.produto_id))
+    .filter((p): p is ProdutoPublico => p !== undefined && p.disponivel);
 }
