@@ -20,111 +20,127 @@ import { FormularioAcao } from "./FormularioAcao";
 export function FormularioProduto({
   produto,
   categorias,
+  integrado = false,
 }: {
   produto?: ProdutoAdmin;
   categorias: Categoria[];
+  integrado?: boolean;
 }) {
   const novo = !produto;
+  const descricao = novo
+    ? "Cada sabor de pizza é um produto próprio. Tamanhos e preços vêm depois de salvar."
+    : undefined;
+
+  const formulario = (
+    <FormularioAcao acao={salvarProduto} rotulo={novo ? "Criar produto" : "Salvar alterações"}>
+      {produto ? <input type="hidden" name="id" value={produto.id} /> : null}
+
+      <Select
+        label="Tipo de produto"
+        name="tipo"
+        required
+        defaultValue={produto?.tipo ?? "pizza"}
+        hint="Fogazza e bebida não herdam regras de pizza: não recebem tamanho de pizza, meio a meio nem borda."
+      >
+        {TIPOS_PRODUTO.map((t) => (
+          <option key={t.valor} value={t.valor}>
+            {t.rotulo}
+          </option>
+        ))}
+      </Select>
+
+      <Input
+        label="Nome do produto"
+        name="nome"
+        required
+        defaultValue={produto?.nome ?? ""}
+        placeholder="Ex.: Pizza Calabresa"
+      />
+
+      <Textarea
+        label="Descrição que o cliente vê no cardápio"
+        name="descricao"
+        defaultValue={produto?.descricao ?? ""}
+      />
+
+      <Select
+        label="Categoria"
+        name="categoria_id"
+        required
+        defaultValue={produto?.categoria_id ?? ""}
+      >
+        <option value="" disabled>
+          Escolha a categoria
+        </option>
+        {categorias.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+            {c.is_active ? "" : " (inativa)"}
+          </option>
+        ))}
+      </Select>
+
+      <Input
+        label="Preço próprio"
+        name="preco"
+        inputMode="decimal"
+        defaultValue={produto?.preco_base === null || produto === undefined ? "" : String(produto.preco_base).replace(".", ",")}
+        placeholder="Ex.: 56,90"
+        hint="Use para bebida, fogazza e combo. Pizza com tamanhos ignora este campo — o preço é por tamanho."
+      />
+
+      <Input
+        label="Limite de quantidade por pedido (opcional)"
+        name="limite_por_pedido"
+        type="number"
+        min={1}
+        defaultValue={produto?.limite_por_pedido ?? ""}
+      />
+
+      <Input
+        label="Limite de adicionais (opcional)"
+        name="limite_adicionais"
+        type="number"
+        min={0}
+        defaultValue={produto?.limite_adicionais ?? ""}
+        hint="Em branco: sem limite."
+      />
+
+      <Input label="Ordem no cardápio" name="ordem" type="number" min={0} defaultValue={produto?.ordem ?? 0} />
+
+      <label className="flex min-h-touch items-center gap-[10px] text-[14px] font-semibold text-ink">
+        <input
+          type="checkbox"
+          name="destaque"
+          defaultChecked={produto?.destaque ?? false}
+          className="h-5 w-5 accent-[var(--brand-orange)]"
+        />
+        Recomendado pela Shalon
+      </label>
+      <p className="m-0 -mt-1 text-[12px] text-muted">
+        Destaque é escolha manual e independe do ranking de &ldquo;Mais pedidos&rdquo;.
+      </p>
+    </FormularioAcao>
+  );
+
+  if (integrado) {
+    return (
+      <section className="rounded-16 border border-border-shalon bg-surface p-4 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0">
+        <div className="mb-4">
+          <h3 className="m-0 text-[15.5px] font-bold text-ink">1 · Dados básicos</h3>
+          {descricao ? <p className="mt-1 text-[12.5px] text-muted">{descricao}</p> : null}
+        </div>
+        {formulario}
+      </section>
+    );
+  }
 
   return (
     <Cartao
       titulo="1 · Dados básicos"
-      {...(novo
-        ? {
-            descricao:
-              "Cada sabor de pizza é um produto próprio. Tamanhos e preços vêm depois de salvar.",
-          }
-        : {})}
+      {...(descricao ? { descricao } : {})}
     >
-      <FormularioAcao acao={salvarProduto} rotulo={novo ? "Criar produto" : "Salvar alterações"}>
-        {produto ? <input type="hidden" name="id" value={produto.id} /> : null}
-
-        <Select
-          label="Tipo de produto"
-          name="tipo"
-          required
-          defaultValue={produto?.tipo ?? "pizza"}
-          hint="Fogazza e bebida não herdam regras de pizza: não recebem tamanho de pizza, meio a meio nem borda."
-        >
-          {TIPOS_PRODUTO.map((t) => (
-            <option key={t.valor} value={t.valor}>
-              {t.rotulo}
-            </option>
-          ))}
-        </Select>
-
-        <Input
-          label="Nome do produto"
-          name="nome"
-          required
-          defaultValue={produto?.nome ?? ""}
-          placeholder="Ex.: Pizza Calabresa"
-        />
-
-        <Textarea
-          label="Descrição que o cliente vê no cardápio"
-          name="descricao"
-          defaultValue={produto?.descricao ?? ""}
-        />
-
-        <Select
-          label="Categoria"
-          name="categoria_id"
-          required
-          defaultValue={produto?.categoria_id ?? ""}
-        >
-          <option value="" disabled>
-            Escolha a categoria
-          </option>
-          {categorias.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-              {c.is_active ? "" : " (inativa)"}
-            </option>
-          ))}
-        </Select>
-
-        <Input
-          label="Preço próprio"
-          name="preco"
-          inputMode="decimal"
-          defaultValue={produto?.preco_base === null || produto === undefined ? "" : String(produto.preco_base).replace(".", ",")}
-          placeholder="Ex.: 56,90"
-          hint="Use para bebida, fogazza e combo. Pizza com tamanhos ignora este campo — o preço é por tamanho."
-        />
-
-        <Input
-          label="Limite de quantidade por pedido (opcional)"
-          name="limite_por_pedido"
-          type="number"
-          min={1}
-          defaultValue={produto?.limite_por_pedido ?? ""}
-        />
-
-        <Input
-          label="Limite de adicionais (opcional)"
-          name="limite_adicionais"
-          type="number"
-          min={0}
-          defaultValue={produto?.limite_adicionais ?? ""}
-          hint="Em branco: sem limite."
-        />
-
-        <Input label="Ordem no cardápio" name="ordem" type="number" min={0} defaultValue={produto?.ordem ?? 0} />
-
-        <label className="flex min-h-touch items-center gap-[10px] text-[14px] font-semibold text-ink">
-          <input
-            type="checkbox"
-            name="destaque"
-            defaultChecked={produto?.destaque ?? false}
-            className="h-5 w-5 accent-[var(--brand-orange)]"
-          />
-          Recomendado pela Shalon
-        </label>
-        <p className="m-0 -mt-1 text-[12px] text-muted">
-          Destaque é escolha manual e independe do ranking de &ldquo;Mais pedidos&rdquo;.
-        </p>
-      </FormularioAcao>
+      {formulario}
     </Cartao>
   );
 }

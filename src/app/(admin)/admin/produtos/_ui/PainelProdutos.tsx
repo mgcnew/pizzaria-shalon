@@ -6,6 +6,7 @@ import { listarProdutos, listarCategorias } from "@/application/catalogo/consult
 import { alternarDisponibilidadeProduto } from "@/application/catalogo/acoes";
 import { TIPOS_PRODUTO, type ProdutoAdmin } from "@/application/catalogo/tipos";
 import { BotaoAcao } from "./BotaoAcao";
+import { FiltrosProdutos } from "./FiltrosProdutos";
 
 /**
  * Lista de produtos — a aba "Produtos" do design aprovado.
@@ -68,7 +69,8 @@ export async function PainelProdutos({
     if (termo && !`${p.nome} ${p.categoria_nome}`.toLowerCase().includes(termo)) return false;
     if (categoria && p.categoria_id !== categoria) return false;
     if (situacao === "disponivel" && !p.disponivel) return false;
-    if (situacao === "hoje" && p.disponivel_hoje) return false;
+    if (situacao === "indisponivel" && p.disponivel) return false;
+    if (situacao === "hoje" && (!p.ativo || p.disponivel_hoje)) return false;
     if (situacao === "inativo" && p.ativo) return false;
     if (situacao === "promo" && !p.em_promocao) return false;
     return true;
@@ -76,58 +78,12 @@ export async function PainelProdutos({
 
   return (
     <div>
-      {/* GET simples: o filtro vira parâmetro na URL e a página continua
-          Server Component — nada de estado de cliente para isto (PI-004). */}
-      <form className="mb-[14px] flex flex-wrap items-end gap-[10px]">
-        <input type="hidden" name="aba" value="produtos" />
-        <input
-          type="search"
-          name="busca"
-          defaultValue={busca}
-          placeholder="Buscar produto ou categoria"
-          aria-label="Buscar produto ou categoria"
-          className="min-h-[46px] flex-[1_1_220px] rounded-11 border-[1.5px] border-border-shalon bg-surface px-[14px] py-[10px] text-[15px] text-ink placeholder:text-muted focus:border-brand-orange focus:outline-none"
-        />
-        <select
-          name="categoria"
-          defaultValue={categoria}
-          aria-label="Filtrar por categoria"
-          className="min-h-[46px] rounded-11 border-[1.5px] border-border-shalon bg-surface px-3 py-[10px] text-[14px] font-medium text-ink focus:border-brand-orange focus:outline-none"
-        >
-          <option value="">Todas as categorias</option>
-          {categorias.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <select
-          name="situacao"
-          defaultValue={situacao}
-          aria-label="Filtrar por situação"
-          className="min-h-[46px] rounded-11 border-[1.5px] border-border-shalon bg-surface px-3 py-[10px] text-[14px] font-medium text-ink focus:border-brand-orange focus:outline-none"
-        >
-          <option value="">Qualquer status</option>
-          <option value="disponivel">Disponíveis</option>
-          <option value="hoje">Indisponíveis hoje</option>
-          <option value="inativo">Inativos</option>
-          <option value="promo">Em promoção</option>
-        </select>
-        <button
-          type="submit"
-          className="min-h-[46px] cursor-pointer rounded-11 border-[1.5px] border-border-shalon bg-transparent px-4 text-[14px] font-semibold text-ink hover:border-brand-orange"
-        >
-          Filtrar
-        </button>
-        {podeGerenciar ? (
-          <Link
-            href="/admin/produtos/novo"
-            className="inline-flex min-h-[46px] items-center rounded-11 bg-cta px-4 text-[14px] font-bold text-cta-fg"
-          >
-            + Novo produto
-          </Link>
-        ) : null}
-      </form>
+      <FiltrosProdutos
+        busca={busca}
+        categoria={categoria}
+        situacao={situacao}
+        categorias={categorias.map((item) => ({ id: item.id, nome: item.name }))}
+      />
 
       {filtrados.length === 0 ? (
         <EmptyState

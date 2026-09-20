@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { obterSessaoInterna, podeNaUI } from "@/application/auth/sessao";
+import { listarCategorias } from "@/application/catalogo/consultas";
 import { PainelProdutos } from "./_ui/PainelProdutos";
 import { PainelCategorias } from "./_ui/PainelCategorias";
 import { PainelTamanhos } from "./_ui/PainelTamanhos";
@@ -9,6 +11,7 @@ import { PainelPromocoes } from "./_ui/PainelPromocoes";
 import { PainelBanners } from "./_ui/PainelBanners";
 import { MenuFerramentasCatalogo } from "./_ui/MenuFerramentasCatalogo";
 import { ModalFerramentaCatalogo } from "./_ui/ModalFerramentaCatalogo";
+import { FormularioProduto } from "./_ui/FormularioProduto";
 
 export const metadata: Metadata = { title: "Produtos" };
 
@@ -58,6 +61,8 @@ export default async function Page({
   // (CLAUDE.md §12).
   const sessao = await obterSessaoInterna();
   const podeGerenciar = podeNaUI(sessao, "catalog.manage");
+  const novoProduto = um("novo") === "1" && aba === "produtos" && podeGerenciar;
+  const categoriasDoNovoProduto = novoProduto ? await listarCategorias() : [];
 
   return (
     <div className="flex flex-col gap-4">
@@ -68,10 +73,20 @@ export default async function Page({
             Gerencie os itens e a estrutura do cardápio.
           </p>
         </div>
-        <MenuFerramentasCatalogo
-          ferramentas={FERRAMENTAS}
-          atual={aba === "produtos" ? undefined : aba}
-        />
+        <div className="flex flex-wrap justify-end gap-2">
+          {podeGerenciar ? (
+            <Link
+              href="/admin/produtos?novo=1"
+              className="inline-flex min-h-touch items-center rounded-11 bg-cta px-4 text-[14px] font-bold text-cta-fg shadow-[0_5px_16px_rgb(30_24_20/0.08)]"
+            >
+              + Novo produto
+            </Link>
+          ) : null}
+          <MenuFerramentasCatalogo
+            ferramentas={FERRAMENTAS}
+            atual={aba === "produtos" ? undefined : aba}
+          />
+        </div>
       </div>
 
       {!podeGerenciar ? (
@@ -104,6 +119,12 @@ export default async function Page({
           {aba === "combos" ? <PainelCombos podeGerenciar={podeGerenciar} /> : null}
           {aba === "promocoes" ? <PainelPromocoes podeGerenciar={podeGerenciar} /> : null}
           {aba === "banners" ? <PainelBanners podeGerenciar={podeGerenciar} /> : null}
+        </ModalFerramentaCatalogo>
+      ) : null}
+
+      {novoProduto ? (
+        <ModalFerramentaCatalogo titulo="Novo produto" variante="formulario">
+          <FormularioProduto categorias={categoriasDoNovoProduto} integrado />
         </ModalFerramentaCatalogo>
       ) : null}
     </div>

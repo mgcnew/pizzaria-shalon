@@ -35,7 +35,7 @@ export function MenuFerramentasCatalogo({
   }, [aberto]);
 
   return (
-    <div ref={raizRef} className="relative z-20 shrink-0">
+    <div ref={raizRef} className="relative z-40 shrink-0">
       <button
         type="button"
         aria-haspopup="menu"

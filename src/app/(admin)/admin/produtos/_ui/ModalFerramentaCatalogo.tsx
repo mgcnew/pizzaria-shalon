@@ -7,9 +7,11 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 export function ModalFerramentaCatalogo({
   titulo,
   children,
+  variante = "ferramenta",
 }: {
   titulo: string;
   children: ReactNode;
+  variante?: "ferramenta" | "formulario";
 }) {
   const router = useRouter();
   const painelRef = useRef<HTMLElement>(null);
@@ -77,7 +79,12 @@ export function ModalFerramentaCatalogo({
         role={desktop ? "dialog" : undefined}
         aria-modal={desktop ? true : undefined}
         aria-labelledby="ferramenta-catalogo-titulo"
-        className="relative flex w-full flex-col bg-bg lg:max-h-[calc(100vh-48px)] lg:max-w-[1040px] lg:overflow-hidden lg:rounded-18 lg:border lg:border-border-shalon lg:bg-surface lg:shadow-[0_22px_70px_rgb(30_24_20/0.26)]"
+        className={[
+          "relative flex w-full flex-col bg-bg lg:overflow-hidden lg:rounded-18 lg:border lg:border-border-shalon lg:bg-surface lg:shadow-[0_22px_70px_rgb(30_24_20/0.26)]",
+          variante === "formulario"
+            ? "lg:max-h-[86vh] lg:max-w-[760px]"
+            : "lg:max-h-[calc(100vh-48px)] lg:max-w-[1040px]",
+        ].join(" ")}
       >
         <header className="mb-4 flex items-center gap-3 border-b border-border-shalon pb-3 lg:mb-0 lg:shrink-0 lg:bg-surface lg:px-5 lg:py-4">
           <Link
@@ -104,7 +111,14 @@ export function ModalFerramentaCatalogo({
           </button>
         </header>
 
-        <div className="lg:overflow-y-auto lg:bg-bg lg:p-5">{children}</div>
+        <div
+          className={[
+            "lg:overflow-y-auto lg:p-5",
+            variante === "formulario" ? "lg:bg-surface" : "lg:bg-bg",
+          ].join(" ")}
+        >
+          {children}
+        </div>
       </section>
     </div>
   );
