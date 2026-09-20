@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Abas, type Aba } from "@/ui/patterns";
 import { obterSessaoInterna, podeNaUI } from "@/application/auth/sessao";
 import { PainelProdutos } from "./_ui/PainelProdutos";
 import { PainelCategorias } from "./_ui/PainelCategorias";
@@ -8,6 +7,8 @@ import { PainelBordasAdicionais } from "./_ui/PainelBordasAdicionais";
 import { PainelCombos } from "./_ui/PainelCombos";
 import { PainelPromocoes } from "./_ui/PainelPromocoes";
 import { PainelBanners } from "./_ui/PainelBanners";
+import { MenuFerramentasCatalogo } from "./_ui/MenuFerramentasCatalogo";
+import { ModalFerramentaCatalogo } from "./_ui/ModalFerramentaCatalogo";
 
 export const metadata: Metadata = { title: "Produtos" };
 
@@ -25,11 +26,11 @@ export const metadata: Metadata = { title: "Produtos" };
  * "Banners" foi acrescentada: é escopo da Fase 3 (§7.2, item 11) e o
  * protótipo não tinha a tela de administração correspondente.
  *
- * A aba viaja na URL, não em estado de cliente (PI-004).
+ * A ferramenta selecionada viaja na URL. No desktop ela abre em modal e no
+ * mobile ocupa a página, sempre com navegação SPA e URL compartilhável.
  */
 
-const ABAS: readonly Aba[] = [
-  { nome: "Produtos", valor: "produtos" },
+const FERRAMENTAS = [
   { nome: "Categorias", valor: "categorias" },
   { nome: "Tamanhos", valor: "tamanhos" },
   { nome: "Bordas", valor: "bordas" },
@@ -37,7 +38,7 @@ const ABAS: readonly Aba[] = [
   { nome: "Combos", valor: "combos" },
   { nome: "Promoções", valor: "promocoes" },
   { nome: "Banners", valor: "banners" },
-];
+] as const;
 
 export default async function Page({
   searchParams,
@@ -50,7 +51,7 @@ export default async function Page({
     return typeof v === "string" ? v : "";
   };
 
-  const aba = ABAS.some((a) => a.valor === um("aba")) ? um("aba") : "produtos";
+  const aba = FERRAMENTAS.some((a) => a.valor === um("aba")) ? um("aba") : "produtos";
 
   // A interface esconde o que não se aplica. Quem autoriza de verdade é o
   // RLS: mesmo que alguém chame a Server Action direto, a escrita é recusada
@@ -60,7 +61,18 @@ export default async function Page({
 
   return (
     <div className="flex flex-col gap-4">
-      <Abas abas={ABAS} atual={aba} parametro="aba" base="/admin/produtos" />
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="m-0 font-display text-[22px] font-extrabold text-ink">Produtos</h2>
+          <p className="mb-0 mt-1 text-[13.5px] text-muted">
+            Gerencie os itens e a estrutura do cardápio.
+          </p>
+        </div>
+        <MenuFerramentasCatalogo
+          ferramentas={FERRAMENTAS}
+          atual={aba === "produtos" ? undefined : aba}
+        />
+      </div>
 
       {!podeGerenciar ? (
         <p className="m-0 rounded-12 border border-tib bg-ti px-3 py-[10px] text-[13.5px] font-semibold text-tif">
@@ -77,17 +89,23 @@ export default async function Page({
           podeGerenciar={podeGerenciar}
         />
       ) : null}
-      {aba === "categorias" ? <PainelCategorias podeGerenciar={podeGerenciar} /> : null}
-      {aba === "tamanhos" ? <PainelTamanhos podeGerenciar={podeGerenciar} /> : null}
-      {aba === "bordas" ? (
-        <PainelBordasAdicionais tipo="borda" podeGerenciar={podeGerenciar} />
+      {aba !== "produtos" ? (
+        <ModalFerramentaCatalogo
+          titulo={FERRAMENTAS.find((ferramenta) => ferramenta.valor === aba)?.nome ?? "Cardápio"}
+        >
+          {aba === "categorias" ? <PainelCategorias podeGerenciar={podeGerenciar} /> : null}
+          {aba === "tamanhos" ? <PainelTamanhos podeGerenciar={podeGerenciar} /> : null}
+          {aba === "bordas" ? (
+            <PainelBordasAdicionais tipo="borda" podeGerenciar={podeGerenciar} />
+          ) : null}
+          {aba === "adicionais" ? (
+            <PainelBordasAdicionais tipo="adicional" podeGerenciar={podeGerenciar} />
+          ) : null}
+          {aba === "combos" ? <PainelCombos podeGerenciar={podeGerenciar} /> : null}
+          {aba === "promocoes" ? <PainelPromocoes podeGerenciar={podeGerenciar} /> : null}
+          {aba === "banners" ? <PainelBanners podeGerenciar={podeGerenciar} /> : null}
+        </ModalFerramentaCatalogo>
       ) : null}
-      {aba === "adicionais" ? (
-        <PainelBordasAdicionais tipo="adicional" podeGerenciar={podeGerenciar} />
-      ) : null}
-      {aba === "combos" ? <PainelCombos podeGerenciar={podeGerenciar} /> : null}
-      {aba === "promocoes" ? <PainelPromocoes podeGerenciar={podeGerenciar} /> : null}
-      {aba === "banners" ? <PainelBanners podeGerenciar={podeGerenciar} /> : null}
     </div>
   );
 }
