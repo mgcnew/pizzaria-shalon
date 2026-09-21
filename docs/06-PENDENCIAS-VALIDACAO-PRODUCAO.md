@@ -1,7 +1,7 @@
 # 06 — PENDÊNCIAS DE VALIDAÇÃO PARA PRODUÇÃO
 ## Sistema de Gestão e Pedidos — Pizzaria Shalon
 
-**Versão:** 1.0 — aberto em 19/09/2026
+**Versão:** 1.1 — aberto em 19/09/2026, Fase 6 encerrada em 21/09/2026
 **Status:** documento vivo
 **Função:** concentrar, em um lugar só, o que **não impede** o desenvolvimento
 das próximas fases mas **precisa ser resolvido e testado antes da produção**.
@@ -315,3 +315,25 @@ validação real de Google Maps e E2E **pendentes antes da produção**, conform
 a seção acima.
 
 A integração Google **não está validada**.
+
+---
+
+## Estado da Fase 6
+
+**Encerrada e aprovada em 21/09/2026.** Operação interna de pedidos,
+máquina de estados, alteração com aprovação do cliente, central em tempo
+real, pedidos manuais e configurador compartilhado estão implementados,
+testados e com as regras reconciliadas.
+
+As duas lacunas normativas que a fase havia registrado em vez de inventar
+regra foram resolvidas pela Shalon e promovidas a regra em
+`04-REGRAS-NEGOCIO.md` §24 — RN-MAN-004, RN-MAN-005 e RN-MAN-006, decisão
+`D-2026-09-21-53`. **Nenhuma decisão normativa da Fase 6 continua em
+aberto.**
+
+**A única pendência da fase é física**, e é a seção acima: a POC da
+impressora 58 mm. A comanda é gerada de forma determinística e o registro de
+emissão e reimpressão existe; o **transporte físico não foi exercitado**.
+Isso não bloqueia a Fase 7 — bloqueia a produção.
+
+A impressão **não está validada**.
