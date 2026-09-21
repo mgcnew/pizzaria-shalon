@@ -8,15 +8,23 @@ export function ModalFerramentaCatalogo({
   titulo,
   children,
   variante = "ferramenta",
+  tamanho = "amplo",
 }: {
   titulo: string;
   children: ReactNode;
   variante?: "ferramenta" | "formulario";
+  tamanho?: "compacto" | "regular" | "medio" | "amplo";
 }) {
   const router = useRouter();
   const painelRef = useRef<HTMLElement>(null);
   const fecharRef = useRef<HTMLButtonElement>(null);
   const [desktop, setDesktop] = useState(false);
+  const larguraDesktop = {
+    compacto: "lg:max-w-[680px]",
+    regular: "lg:max-w-[760px]",
+    medio: "lg:max-w-[840px]",
+    amplo: "lg:max-w-[1040px]",
+  }[tamanho];
 
   useEffect(() => {
     const consulta = window.matchMedia("(min-width: 1024px)");
@@ -83,7 +91,7 @@ export function ModalFerramentaCatalogo({
           "relative flex w-full flex-col bg-bg lg:overflow-hidden lg:rounded-18 lg:border lg:border-border-shalon lg:bg-surface lg:shadow-[0_22px_70px_rgb(30_24_20/0.26)]",
           variante === "formulario"
             ? "lg:max-h-[86vh] lg:max-w-[760px]"
-            : "lg:max-h-[calc(100vh-48px)] lg:max-w-[1040px]",
+            : `lg:max-h-[calc(100vh-48px)] ${larguraDesktop}`,
         ].join(" ")}
       >
         <header className="mb-4 flex items-center gap-3 border-b border-border-shalon pb-3 lg:mb-0 lg:shrink-0 lg:bg-surface lg:px-5 lg:py-4">

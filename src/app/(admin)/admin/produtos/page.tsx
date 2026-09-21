@@ -55,6 +55,14 @@ export default async function Page({
   };
 
   const aba = FERRAMENTAS.some((a) => a.valor === um("aba")) ? um("aba") : "produtos";
+  const tamanhoDaFerramenta =
+    aba === "tamanhos" || aba === "adicionais" || aba === "promocoes"
+      ? "compacto"
+      : aba === "categorias" || aba === "bordas" || aba === "banners"
+        ? "regular"
+        : aba === "combos"
+          ? "medio"
+          : "amplo";
 
   // A interface esconde o que não se aplica. Quem autoriza de verdade é o
   // RLS: mesmo que alguém chame a Server Action direto, a escrita é recusada
@@ -107,6 +115,7 @@ export default async function Page({
       {aba !== "produtos" ? (
         <ModalFerramentaCatalogo
           titulo={FERRAMENTAS.find((ferramenta) => ferramenta.valor === aba)?.nome ?? "Cardápio"}
+          tamanho={tamanhoDaFerramenta}
         >
           {aba === "categorias" ? <PainelCategorias podeGerenciar={podeGerenciar} /> : null}
           {aba === "tamanhos" ? <PainelTamanhos podeGerenciar={podeGerenciar} /> : null}
