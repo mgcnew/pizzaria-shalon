@@ -40,6 +40,27 @@ const ETAPAS: readonly { valor: EtapaNovoPedido; nome: string; numero: number }[
  * significa apenas que o atendente está transcrevendo um pedido recebido
  * lá — não há integração, e nenhum status é sincronizado.
  */
+/**
+ * O que dizer depois de lançar — e RN-MAN-004 mudou essa frase.
+ *
+ * O lançamento interno JÁ É o aceite: não existe mais um segundo clique de
+ * "aceitar" para um pedido que o próprio atendente acabou de registrar. Mas
+ * RN-MAN-005 preserva os bloqueios, e nesses casos a tela precisa dizer a
+ * verdade — o pedido ficou parado, e o motivo tem nome.
+ */
+function explicarLancamento(status: string): string {
+  if (status === "waiting_pix_confirmation") {
+    return "O pedido ficou aguardando a confirmação do Pix. Ele não vai para a produção, e a comanda não sai, até alguém confirmar o recebimento.";
+  }
+  if (status === "waiting_delivery_approval") {
+    return "O endereço está acima do raio de entrega automática, então o pedido ficou aguardando a aprovação da entrega antes de seguir.";
+  }
+  if (status === "confirmed") {
+    return "Lançar já foi aceitar: o pedido entrou aceito, com seu nome e o horário no histórico, e a comanda pode sair agora.";
+  }
+  return "O pedido entrou na fila.";
+}
+
 export function NovoPedido({
   formasPorModalidade,
   emModal = false,
@@ -79,7 +100,9 @@ export function NovoPedido({
   const [trocoPara, setTrocoPara] = useState("");
 
   const [erro, setErro] = useState<string | null>(null);
-  const [criado, setCriado] = useState<{ numero: number; token: string | null } | null>(null);
+  const [criado, setCriado] = useState<
+    { numero: number; token: string | null; status: string } | null
+  >(null);
   const [enviando, iniciar] = useTransition();
 
   /**
@@ -163,7 +186,7 @@ export function NovoPedido({
         setErro(r.erro);
         return;
       }
-      setCriado({ numero: r.numero, token: r.token });
+      setCriado({ numero: r.numero, token: r.token, status: r.status });
       router.refresh();
     });
   }
@@ -174,10 +197,7 @@ export function NovoPedido({
         <p className="m-0 font-display text-[20px] font-bold text-tsf">
           Pedido #{criado.numero} lançado
         </p>
-        <p className="m-0 mt-1 text-[14px] text-ink-2">
-          Ele entrou na fila como qualquer outro e ainda precisa ser aceito — o aceite
-          continua sendo um ato explícito, com autor e horário.
-        </p>
+        <p className="m-0 mt-1 text-[14px] text-ink-2">{explicarLancamento(criado.status)}</p>
         {criado.token !== null ? (
           <p className="m-0 mt-2 break-all text-[13px] text-ink-2">
             Link de acompanhamento para mandar ao cliente:{" "}
