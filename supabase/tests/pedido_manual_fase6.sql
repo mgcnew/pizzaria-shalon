@@ -82,7 +82,10 @@ select g, false, '00:00', '23:59', g from generate_series(0,6) g;
 
 delete from public.delivery_fee_bands;
 insert into public.delivery_fee_bands (min_distance_km, max_distance_km, fee, is_active, sort_order)
-values (0, 4, 8.00, true, 1);
+values (0, 4, 8.00, true, 1),
+       -- Acima do raio automático (4 km) e dentro do máximo: é a faixa que
+       -- produz o bloqueio `waiting_delivery_approval` (RN-MAN-005).
+       (4, 10, 14.00, true, 2);
 
 -- Dois tamanhos: um aceita meio a meio, o outro não (RN-PIZZA-004).
 insert into public.pizza_sizes (id, name, slice_count, max_flavors, sort_order) values
@@ -125,8 +128,15 @@ insert into public.addon_size_prices (addon_id, size_id, price, is_active) value
 insert into public.combo_components (combo_product_id, component_product_id, component_variant_id, quantity, sort_order)
 values ('b7b7b7b7-1000-0000-0000-000000000004','b7b7b7b7-1000-0000-0000-000000000001','a7a7a7a7-1000-0000-0000-000000000001', 1, 1);
 
+-- Pix por chave habilitado: é o outro bloqueio normativo de RN-MAN-005.
+insert into public.pix_key_settings (is_enabled, key_type, pix_key, recipient_name)
+values (true, 'telefone', '+5500000000000', 'Pizzaria Shalon F6M');
+update public.payment_methods set is_active = true where code = 'pix_chave';
+
 select set_config('teste.dinheiro', (select id::text from public.payment_methods where code='dinheiro'), true);
 select set_config('teste.credito',  (select id::text from public.payment_methods where code='credito'), true);
+select set_config('teste.pix',      (select id::text from public.payment_methods where code='pix_chave'), true);
+select set_config('teste.segredo',  (select valor from public.server_secrets where chave='checkout_origem'), true);
 
 create or replace function pg_temp.manual(p jsonb default '{}'::jsonb)
 returns jsonb language plpgsql as $$
@@ -142,14 +152,45 @@ begin
       'modalidade', coalesce(p ->> 'modalidade', 'pickup'),
       'cliente', jsonb_build_object('nome', coalesce(p ->> 'nome', 'Cliente Manual'),
                                     'whatsapp', coalesce(p ->> 'whatsapp', '(11) 97000-0001')),
+      'endereco', case when coalesce(p ->> 'modalidade','pickup') = 'pickup' then null
+                       else jsonb_build_object('logradouro','Rua M','numero','20','bairro','Centro',
+                         'cidade','Cidade','uf','XX','latitude',-23.51,'longitude',-46.61,
+                         'confianca','exata','provedor','teste') end,
+      'rota', case when coalesce(p ->> 'modalidade','pickup') = 'pickup' then null
+                   else jsonb_build_object('distancia_km', coalesce((p ->> 'km')::numeric, 2.0),
+                                           'provedor','teste') end,
       'itens', coalesce(p -> 'itens', jsonb_build_array(jsonb_build_object(
                  'produto_id','b7b7b7b7-1000-0000-0000-000000000001',
                  'variacao_id','a7a7a7a7-1000-0000-0000-000000000001','quantidade',1))),
       'pagamento', coalesce(p -> 'pagamento',
-                     jsonb_build_object('forma_id', current_setting('teste.dinheiro', true))),
+                     jsonb_build_object('forma_id',
+                       coalesce(p ->> 'forma', current_setting('teste.dinheiro', true)))),
       'observacao_geral', p ->> 'observacao'
     ),
     '');
+end;
+$$;
+
+-- O caminho do CLIENTE, com a prova de origem do servidor. Serve para provar
+-- que a decisão da Shalon mudou o balcão e NÃO mudou o público.
+create or replace function pg_temp.publico(p jsonb default '{}'::jsonb)
+returns jsonb language plpgsql as $$
+declare
+  v_idem text := coalesce(p ->> 'idem', gen_random_uuid()::text);
+begin
+  return public.criar_pedido(
+    jsonb_build_object(
+      'idempotency_key', v_idem,
+      'tracking_token', md5(v_idem) || md5(v_idem || ':2'),
+      'modalidade', 'pickup',
+      'cliente', jsonb_build_object('nome', coalesce(p ->> 'nome', 'Cliente Publico'),
+                                    'whatsapp', coalesce(p ->> 'whatsapp', '(11) 97000-0500')),
+      'itens', jsonb_build_array(jsonb_build_object(
+                 'produto_id','b7b7b7b7-1000-0000-0000-000000000001',
+                 'variacao_id','a7a7a7a7-1000-0000-0000-000000000001','quantidade',1)),
+      'pagamento', jsonb_build_object('forma_id', current_setting('teste.dinheiro', true))
+    ),
+    current_setting('teste.segredo', true));
 end;
 $$;
 
@@ -307,8 +348,10 @@ select pg_temp.checar('bandeira obrigatoria vale no balcao tambem', 'true',
      'pagamento', jsonb_build_object('forma_id', current_setting('teste.credito', true))))
    ->> 'erro') ilike '%bandeira%')::text);
 
--- RN-MAN: o pedido manual nasce na fila, como qualquer outro.
-select pg_temp.checar('pedido manual nasce aguardando aceite', 'waiting_store_confirmation',
+-- RN-MAN-004: o lançamento interno JÁ É o aceite. Sem bloqueio, o pedido
+-- manual nasce `confirmed` — o atendente não precisa aceitar o que ele mesmo
+-- acabou de lançar.
+select pg_temp.checar('pedido manual nasce aceito', 'confirmed',
   (pg_temp.manual('{"idem":"77000015-0000-0000-0000-000000000015"}'::jsonb) ->> 'status'));
 
 -- CLAUDE.md §34: clique duplo não vira dois pedidos.
@@ -336,9 +379,25 @@ select pg_temp.checar('atendente NAO le a auditoria', '0',
   (select count(*)::text from public.audit_logs
     where action = 'criar_pedido_manual'));
 
-select pg_temp.checar('historico do manual diz que foi a equipe', 'Pedido lançado pela equipe',
+-- RN-MAN-004: a aceitação ocorrida na criação é identificável no histórico.
+select pg_temp.checar('historico diz que o lancamento ja foi o aceite',
+  'Pedido lançado e aceito pela equipe no mesmo ato',
   (select reason from public.order_status_history
     where order_id = current_setting('teste.p_autor', true)::uuid));
+
+select pg_temp.checar('historico do manual nasce ja em confirmed', 'confirmed',
+  (select to_status from public.order_status_history
+    where order_id = current_setting('teste.p_autor', true)::uuid));
+
+-- §33: o aceite não é um estado órfão. Tem autor e tem horário, exatamente
+-- como teria se viesse do comando `aceitar`.
+select pg_temp.checar('aceite na criacao registra o autor', 'true',
+  (select (accepted_by = 'b7b7b7b7-0000-0000-0000-000000000002')::text
+     from public.orders where id = current_setting('teste.p_autor', true)::uuid));
+
+select pg_temp.checar('aceite na criacao registra o horario', 'true',
+  (select (accepted_at is not null)::text
+     from public.orders where id = current_setting('teste.p_autor', true)::uuid));
 
 reset role;
 
@@ -355,6 +414,11 @@ select pg_temp.checar('lancamento manual fica auditado', 'true',
 
 select pg_temp.checar('auditoria guarda a origem do lancamento', 'counter',
   (select after_data ->> 'origem' from public.audit_logs
+    where action = 'criar_pedido_manual'
+      and entity_id = current_setting('teste.p_autor', true)::uuid));
+
+select pg_temp.checar('auditoria marca que o lancamento ja aceitou', 'true',
+  (select after_data ->> 'aceito_na_criacao' from public.audit_logs
     where action = 'criar_pedido_manual'
       and entity_id = current_setting('teste.p_autor', true)::uuid));
 
@@ -391,6 +455,94 @@ select pg_temp.checar('anon nao lanca pedido sem o segredo', 'Não foi possível
    ), 'chute') ->> 'erro'));
 
 reset role;
+
+-- =============================================================================
+-- RN-MAN-004/005/006 — nascer aceito é o caso SEM bloqueio, nunca um atalho
+-- =============================================================================
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"77777777-2222-2222-2222-222222222222","role":"authenticated"}';
+
+-- RN-MAN-005, bloqueio 1: Pix por chave. Selecionar Pix não é pagar (§23);
+-- alguém ainda precisa confirmar o recebimento. O lançamento interno NÃO
+-- pula essa etapa só porque quem lançou trabalha na pizzaria.
+select pg_temp.checar('manual com Pix NAO nasce aceito', 'waiting_pix_confirmation',
+  (pg_temp.manual(jsonb_build_object('idem','77000030-0000-0000-0000-000000000030',
+     'forma', current_setting('teste.pix', true))) ->> 'status'));
+
+-- RN-MAN-005, bloqueio 2: entrega acima do raio automático. Aprovar exige
+-- `orders.accept` — que não é a mesma permissão de lançar pedido manual.
+select pg_temp.checar('manual acima do raio NAO nasce aceito', 'waiting_delivery_approval',
+  (pg_temp.manual('{"idem":"77000031-0000-0000-0000-000000000031","modalidade":"delivery","km":6}'::jsonb)
+   ->> 'status'));
+
+select pg_temp.checar('manual dentro do raio nasce aceito', 'confirmed',
+  (pg_temp.manual('{"idem":"77000032-0000-0000-0000-000000000032","modalidade":"delivery","km":2}'::jsonb)
+   ->> 'status'));
+
+-- RN-MAN-004 mudou o BALCÃO e não mudou o PÚBLICO: o pedido do cliente
+-- continua sendo uma solicitação que aguarda a Shalon.
+select pg_temp.checar('pedido publico continua aguardando confirmacao', 'waiting_store_confirmation',
+  (pg_temp.publico('{"idem":"77000033-0000-0000-0000-000000000033"}'::jsonb) ->> 'status'));
+
+-- §32 e RN-PRINT-001: a comanda sai quando o pedido está liberado. Como o
+-- manual já nasce liberado, ela sai sem clique artificial de aceite.
+select set_config('teste.p_comanda',
+  (pg_temp.manual('{"idem":"77000034-0000-0000-0000-000000000034"}'::jsonb) ->> 'pedido_id'), true);
+
+select pg_temp.checar('comanda sai no manual recem-lancado', 'true',
+  (public.registrar_impressao(current_setting('teste.p_comanda', true)::uuid,
+     'comanda', 'PIZZARIA SHALON', 'manual') ->> 'ok'));
+
+-- E continua NÃO saindo quando há bloqueio: o pedido travado no Pix não vai
+-- para a produção por ter sido lançado pelo balcão.
+select set_config('teste.p_travado',
+  (pg_temp.manual(jsonb_build_object('idem','77000035-0000-0000-0000-000000000035',
+     'forma', current_setting('teste.pix', true))) ->> 'pedido_id'), true);
+
+select pg_temp.checar('comanda NAO sai no manual travado no Pix',
+  'A comanda só sai depois que o pedido for aceito.',
+  (public.registrar_impressao(current_setting('teste.p_travado', true)::uuid,
+     'comanda', 'PIZZARIA SHALON', 'manual') ->> 'erro'));
+
+reset role;
+
+-- ------------------------------------------------------- RN-MAN-006
+-- A pausa fecha o link público e não fecha o balcão.
+update public.store_settings
+   set is_temporarily_closed = true,
+       temporary_closed_at = now(),
+       temporary_close_reason = 'Cozinha cheia — teste';
+
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+
+select pg_temp.checar('loja pausada bloqueia o checkout publico', 'true',
+  (pg_temp.publico('{"idem":"77000036-0000-0000-0000-000000000036","whatsapp":"(11) 97000-0501"}'::jsonb)
+   ->> 'loja_fechada'));
+
+reset role;
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"77777777-2222-2222-2222-222222222222","role":"authenticated"}';
+
+select pg_temp.checar('loja pausada NAO impede o balcao', 'confirmed',
+  (pg_temp.manual('{"idem":"77000037-0000-0000-0000-000000000037"}'::jsonb) ->> 'status'));
+
+-- A pausa NÃO é autorização para vender o que não está disponível: o produto
+-- pausado continua recusado no balcão, com a loja pausada.
+select pg_temp.checar('loja pausada NAO libera produto indisponivel', 'true',
+  ((pg_temp.manual(jsonb_build_object('idem','77000038-0000-0000-0000-000000000038',
+      'itens', jsonb_build_array(jsonb_build_object(
+        'linha','l1','produto_id','b7b7b7b7-1000-0000-0000-000000000003',
+        'variacao_id','a7a7a7a7-1000-0000-0000-000000000004','quantidade',1))))
+    ->> 'reconfirmar') is not null)::text);
+
+reset role;
+
+update public.store_settings
+   set is_temporarily_closed = false,
+       temporary_closed_at = null,
+       temporary_close_reason = null;
 
 -- =============================================================================
 -- ALTERAÇÃO — acrescentar item, e a versão do pedido
