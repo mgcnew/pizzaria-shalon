@@ -17,6 +17,14 @@ import {
 import type { FormaDePagamento } from "@/application/checkout/tipos";
 import { EscolherProduto } from "./EscolherProduto";
 
+export type EtapaNovoPedido = "cliente" | "itens" | "pagamento";
+
+const ETAPAS: readonly { valor: EtapaNovoPedido; nome: string; numero: number }[] = [
+  { valor: "cliente", nome: "Cliente", numero: 1 },
+  { valor: "itens", nome: "Itens", numero: 2 },
+  { valor: "pagamento", nome: "Pagamento", numero: 3 },
+];
+
 /**
  * Novo pedido — lançamento manual pela equipe (RN-MAN-001 a 003).
  *
@@ -34,10 +42,19 @@ import { EscolherProduto } from "./EscolherProduto";
  */
 export function NovoPedido({
   formasPorModalidade,
+  emModal = false,
+  etapaAtual,
+  aoMudarEtapa,
 }: {
   formasPorModalidade: Record<Modalidade, FormaDePagamento[]>;
+  emModal?: boolean;
+  etapaAtual?: EtapaNovoPedido;
+  aoMudarEtapa?: (etapa: EtapaNovoPedido) => void;
 }) {
   const router = useRouter();
+  const [etapaInterna, setEtapaInterna] = useState<EtapaNovoPedido>("cliente");
+  const etapa = etapaAtual ?? etapaInterna;
+  const mudarEtapa = aoMudarEtapa ?? setEtapaInterna;
 
   const [origem, setOrigem] = useState<OrigemManual>("whatsapp");
   const [modalidade, setModalidade] = useState<Modalidade>("delivery");
@@ -86,15 +103,18 @@ export function NovoPedido({
     cidade.trim().length > 1 &&
     /^[A-Za-z]{2}$/.test(uf);
 
+  const clienteCompleto =
+    nome.trim().length >= 2 &&
+    whatsapp.replace(/\D/g, "").length >= 10 &&
+    (modalidade === "pickup" || enderecoCompleto);
+
   const podeLancar =
     !enviando &&
     itens.length > 0 &&
-    nome.trim().length >= 2 &&
-    whatsapp.replace(/\D/g, "").length >= 10 &&
+    clienteCompleto &&
     forma !== null &&
     (!forma.exige_bandeira || bandeiraId !== "") &&
-    (!precisaTroco || trocoPara.trim() !== "") &&
-    (modalidade === "pickup" || enderecoCompleto);
+    (!precisaTroco || trocoPara.trim() !== "");
 
   function lancar() {
     if (!podeLancar || forma === null) return;
@@ -174,10 +194,81 @@ export function NovoPedido({
     );
   }
 
+  const indiceDaEtapa = ETAPAS.findIndex((item) => item.valor === etapa);
+  const classeDaEtapa = (alvo: EtapaNovoPedido) =>
+    emModal && etapa !== alvo ? "hidden" : "";
+
   return (
-    <div className="grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(340px,1fr))]">
+    <div
+      className={
+        emModal
+          ? "flex flex-col gap-4"
+          : "grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(340px,1fr))]"
+      }
+    >
+      {emModal ? (
+        <div
+          className="flex items-start px-2 py-1"
+          aria-label="Etapas do novo pedido"
+        >
+          {ETAPAS.map((item, indice) => {
+            const ativa = etapa === item.valor;
+            const concluida =
+              item.valor === "cliente"
+                ? clienteCompleto
+                : item.valor === "itens"
+                  ? itens.length > 0
+                  : podeLancar;
+            const liberada =
+              item.valor === "cliente" ||
+              (item.valor === "itens" && clienteCompleto) ||
+              (item.valor === "pagamento" && clienteCompleto && itens.length > 0);
+            const etapaAnteriorConcluida =
+              indice === 1 ? clienteCompleto : indice === 2 ? itens.length > 0 : false;
+
+            return (
+              <div key={item.valor} className="contents">
+                {indice > 0 ? (
+                  <span
+                    aria-hidden="true"
+                    className={[
+                      "mt-[17px] h-px min-w-3 flex-1",
+                      etapaAnteriorConcluida ? "bg-brand-orange/55" : "bg-border-shalon",
+                    ].join(" ")}
+                  />
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => mudarEtapa(item.valor)}
+                  disabled={!liberada}
+                  aria-current={ativa ? "step" : undefined}
+                  className={[
+                    "group flex min-w-[76px] cursor-pointer flex-col items-center border-0 bg-transparent px-1 text-center disabled:cursor-not-allowed",
+                    ativa ? "text-ink" : concluida ? "text-tsf" : "text-muted",
+                  ].join(" ")}
+                >
+                  <span
+                    className={[
+                      "flex h-[34px] w-[34px] items-center justify-center rounded-pill border-2 text-[11px] font-extrabold transition-colors",
+                      ativa
+                        ? "border-cta bg-cta text-cta-fg shadow-[0_4px_12px_rgb(30_24_20/0.12)]"
+                        : concluida
+                          ? "border-tsb bg-ts text-tsf"
+                          : "border-border-shalon bg-surface text-muted group-enabled:group-hover:border-brand-orange",
+                    ].join(" ")}
+                  >
+                    {concluida && !ativa ? "✓" : item.numero}
+                  </span>
+                  <span className="mt-1.5 text-[11.5px] font-bold leading-tight">{item.nome}</span>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+
       <div className="flex flex-col gap-4">
-        <fieldset className="m-0 flex flex-col gap-3 rounded-16 border border-border-shalon bg-surface p-4">
+        <fieldset className={`m-0 flex flex-col gap-3 rounded-16 border border-border-shalon bg-surface p-4 ${classeDaEtapa("cliente")}`}>
           <legend className="px-1 text-[15px] font-bold text-ink">Canal e modalidade</legend>
 
           <Select
@@ -224,7 +315,7 @@ export function NovoPedido({
           </div>
         </fieldset>
 
-        <fieldset className="m-0 flex flex-col gap-3 rounded-16 border border-border-shalon bg-surface p-4">
+        <fieldset className={`m-0 flex flex-col gap-3 rounded-16 border border-border-shalon bg-surface p-4 ${classeDaEtapa("cliente")}`}>
           <legend className="px-1 text-[15px] font-bold text-ink">Cliente</legend>
           <Input label="Nome" value={nome} onChange={(e) => setNome(e.target.value)} maxLength={120} />
           <Input
@@ -239,7 +330,7 @@ export function NovoPedido({
         </fieldset>
 
         {modalidade === "delivery" ? (
-          <fieldset className="m-0 flex flex-col gap-3 rounded-16 border border-border-shalon bg-surface p-4">
+          <fieldset className={`m-0 flex flex-col gap-3 rounded-16 border border-border-shalon bg-surface p-4 ${classeDaEtapa("cliente")}`}>
             <legend className="px-1 text-[15px] font-bold text-ink">Endereço de entrega</legend>
             <div className="flex gap-3">
               <div className="flex-[3]">
@@ -286,7 +377,7 @@ export function NovoPedido({
           </fieldset>
         ) : null}
 
-        <fieldset className="m-0 flex flex-col gap-3 rounded-16 border border-border-shalon bg-surface p-4">
+        <fieldset className={`m-0 flex flex-col gap-3 rounded-16 border border-border-shalon bg-surface p-4 ${classeDaEtapa("pagamento")}`}>
           <legend className="px-1 text-[15px] font-bold text-ink">Pagamento esperado</legend>
           {formas.length === 0 ? (
             <p className="m-0 text-[14px] text-ink-2">
@@ -351,7 +442,7 @@ export function NovoPedido({
           )}
         </fieldset>
 
-        <fieldset className="m-0 rounded-16 border border-border-shalon bg-surface p-4">
+        <fieldset className={`m-0 rounded-16 border border-border-shalon bg-surface p-4 ${classeDaEtapa("pagamento")}`}>
           <legend className="px-1 text-[15px] font-bold text-ink">Observação</legend>
           <Textarea
             label="Observação do pedido"
@@ -364,7 +455,7 @@ export function NovoPedido({
       </div>
 
       <div className="flex flex-col gap-4">
-        <section className="rounded-16 border border-border-shalon bg-surface p-4">
+        <section className={`rounded-16 border border-border-shalon bg-surface p-4 ${classeDaEtapa("itens")}`}>
           <h2 className="m-0 mb-3 text-[15px] font-bold text-ink">Itens</h2>
 
           {itens.length === 0 ? (
@@ -409,7 +500,7 @@ export function NovoPedido({
           <EscolherProduto aoAdicionar={(item) => setItens((lista) => [...lista, item])} />
         </section>
 
-        <section className="rounded-16 border border-border-shalon bg-surface p-4">
+        <section className={`rounded-16 border border-border-shalon bg-surface p-4 ${classeDaEtapa("pagamento")}`}>
           <div className="flex justify-between text-[14.5px] text-ink-2">
             <span>Subtotal dos itens</span>
             <span className="tabular-nums">{formatBRL(subtotal)}</span>
@@ -445,6 +536,32 @@ export function NovoPedido({
           </p>
         </section>
       </div>
+
+      {emModal ? (
+        <div className="flex items-center justify-between gap-3 border-t border-border-shalon pt-4">
+          {indiceDaEtapa > 0 ? (
+            <button
+              type="button"
+              onClick={() => mudarEtapa(ETAPAS[indiceDaEtapa - 1]!.valor)}
+              className="inline-flex min-h-touch cursor-pointer items-center rounded-11 border border-border-shalon bg-surface px-4 text-[13.5px] font-semibold text-ink hover:border-brand-orange"
+            >
+              ← Voltar
+            </button>
+          ) : (
+            <span />
+          )}
+          {indiceDaEtapa < ETAPAS.length - 1 ? (
+            <button
+              type="button"
+              onClick={() => mudarEtapa(ETAPAS[indiceDaEtapa + 1]!.valor)}
+              disabled={etapa === "cliente" ? !clienteCompleto : itens.length === 0}
+              className="inline-flex min-h-touch cursor-pointer items-center rounded-11 border-0 bg-cta px-4 text-[13.5px] font-bold text-cta-fg disabled:cursor-not-allowed disabled:bg-tn disabled:text-muted"
+            >
+              Continuar →
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

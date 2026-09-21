@@ -3,9 +3,11 @@ import Link from "next/link";
 import { Abas, type Aba } from "@/ui/patterns";
 import { obterSessaoInterna, podeNaUI } from "@/application/auth/sessao";
 import { obterLojaPublica } from "@/application/publico/consultas";
+import { formasDePagamento } from "@/application/checkout/consultas";
 import { listarFila } from "@/application/pedidos/consultas";
 import { CentralDePedidos } from "./_ui/CentralDePedidos";
 import { CartaoPedido } from "./_ui/CartaoPedido";
+import { ModalNovoPedido } from "./_ui/ModalNovoPedido";
 
 export const metadata: Metadata = { title: "Pedidos" };
 
@@ -27,13 +29,18 @@ const ABAS: readonly Aba[] = [
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ aba?: string }>;
+  searchParams: Promise<{ aba?: string; novo?: string }>;
 }) {
-  const { aba } = await searchParams;
+  const { aba, novo } = await searchParams;
   const encerrados = aba === "encerrados";
 
   const sessao = await obterSessaoInterna();
+  const podeCriarPedido = podeNaUI(sessao, "orders.create_manual");
+  const abrirNovoPedido = novo === "1" && podeCriarPedido;
   const [pedidos, loja] = await Promise.all([listarFila(encerrados), obterLojaPublica()]);
+  const [formasEntrega, formasRetirada] = abrirNovoPedido
+    ? await Promise.all([formasDePagamento("delivery"), formasDePagamento("pickup")])
+    : [[], []];
 
   // O horário é formatado AQUI, no fuso configurado da loja. Deixar para o
   // navegador faria o balcão e a cozinha verem horas diferentes se algum
@@ -63,13 +70,21 @@ export default async function Page({
           {/* RN-MAN-001: o balcão lança pedidos de WhatsApp, telefone,
               balcão, iFood ou outro canal. A permissão real é conferida no
               servidor; aqui o botão só não aparece para quem não a tem. */}
-          {podeNaUI(sessao, "orders.create_manual") ? (
-            <Link
-              href="/admin/pedidos/novo"
-              className="min-h-touch inline-flex items-center rounded-11 border-0 bg-cta px-[14px] text-[13.5px] font-semibold text-cta-fg no-underline"
-            >
-              Novo pedido
-            </Link>
+          {podeCriarPedido ? (
+            <>
+              <Link
+                href="/admin/pedidos/novo"
+                className="min-h-touch inline-flex items-center rounded-11 border-0 bg-cta px-[14px] text-[13.5px] font-semibold text-cta-fg no-underline lg:hidden"
+              >
+                Novo pedido
+              </Link>
+              <Link
+                href="/admin/pedidos?novo=1"
+                className="min-h-touch hidden items-center rounded-11 border-0 bg-cta px-[14px] text-[13.5px] font-semibold text-cta-fg no-underline lg:inline-flex"
+              >
+                Novo pedido
+              </Link>
+            </>
           ) : null}
           <Link
             href="/admin/pedidos?aba=abertos"
@@ -99,6 +114,12 @@ export default async function Page({
       ) : (
         <CentralDePedidos pedidos={pedidos} hora={hora} />
       )}
+
+      {abrirNovoPedido ? (
+        <ModalNovoPedido
+          formasPorModalidade={{ delivery: formasEntrega, pickup: formasRetirada }}
+        />
+      ) : null}
     </div>
   );
 }
