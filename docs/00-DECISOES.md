@@ -1028,6 +1028,10 @@ de auditoria própria (§33).
 
 ### D-2026-09-19-48 — Estado inicial do pedido manual: LACUNA NORMATIVA
 
+> **RESOLVIDA em D-2026-09-21-53.** A lacuna virou regra: **RN-MAN-004** e
+> **RN-MAN-005** em `04-REGRAS-NEGOCIO.md` §24. O registro abaixo é o
+> histórico de como a pergunta foi feita, não a regra vigente.
+
 **O que os documentos dizem.** `01 §32` e `§79.1` preveem o lançamento
 manual e a preservação da origem. RN-MAN-001 a 003 tratam de canal, origem e
 de que o pedido manual "não deve virar atalho para corromper preços, estados
@@ -1052,9 +1056,15 @@ balcão cheio.
 **Enquanto não houver decisão, vale o que está implementado.** Trocar é uma
 linha na função e uma migration.
 
+**Foi uma linha e uma migration.** A Shalon respondeu que sim: ver
+D-2026-09-21-53.
+
 ---
 
 ### D-2026-09-19-49 — Loja fechada bloqueia o CHECKOUT, não o balcão
+
+> **PROMOVIDA em D-2026-09-21-53.** A interpretação virou regra escrita:
+> **RN-MAN-006** em `04-REGRAS-NEGOCIO.md` §24, com ponteiro em RN-LOJA-002.
 
 **Interpretação adotada.** `01 §79.1` diz: "Quando fechada, o cardápio
 continua visível, mas **o checkout fica bloqueado**". A verificação de loja
@@ -1069,6 +1079,9 @@ telefone.
 **É interpretação, não regra escrita.** Se a intenção for que a pausa feche
 também o balcão, é uma condição a mais na função — e passa a ser decisão
 registrada.
+
+**A Shalon confirmou a interpretação** e pediu que ela fosse promovida a
+regra. O código não mudou; a autoridade dele, sim (D-2026-09-21-53).
 
 ---
 
@@ -1139,6 +1152,50 @@ produção.
 **Continua valendo A-14:** criar usuário interno ainda depende de SQL. A
 tela de gestão de equipe é da Fase 8; até lá, cada novo acesso é um
 lançamento manual como este.
+
+---
+
+### D-2026-09-21-53 — As duas lacunas da Fase 6, resolvidas
+
+**Decisão da Shalon**, em 21/09/2026, sobre os dois pontos que a Fase 6
+deixou registrados em vez de inventar: D-2026-09-19-48 (estado inicial do
+pedido manual) e D-2026-09-19-49 (loja pausada).
+
+**1. Pedido manual nasce aceito.** Virou **RN-MAN-004**. O raciocínio da
+Shalon é uma distinção semântica, não uma economia de clique: pedido público
+é *solicitação* do cliente e por isso aguarda; pedido manual é *registro* de
+um pedido que a pizzaria já recebeu e já aceitou pelo balcão, telefone,
+WhatsApp ou iFood. Pedir ao atendente que aceite o que ele mesmo acabou de
+lançar é cerimônia sem conteúdo.
+
+O aceite não some do histórico: a criação preenche `accepted_by` e
+`accepted_at` como o comando de aceite preencheria, o histórico diz "Pedido
+lançado e aceito pela equipe no mesmo ato" e a auditoria carrega
+`aceito_na_criacao`.
+
+**2. E nascer aceito é o caso SEM bloqueio.** Virou **RN-MAN-005**. A ordem
+das condições na função é o que faz a regra valer: os bloqueios são testados
+antes. Pix por chave continua aguardando confirmação do recebimento; entrega
+acima do raio automático continua aguardando aprovação — inclusive porque
+aprovar exige `orders.accept`, que não é a mesma permissão de
+`orders.create_manual`. A comanda segue a regra de sempre: sai porque o
+pedido está liberado, não porque foi lançado pelo balcão.
+
+**3. Pausa fecha o público, não o balcão.** Virou **RN-MAN-006**, com
+ponteiro em RN-LOJA-002. Aqui o código não mudou — a 0058 já se comportava
+assim, mas como *interpretação declarada*. O que mudou foi a autoridade: era
+leitura de `01 §79.1`, agora é regra escrita. E a regra diz explicitamente o
+que a pausa NÃO autoriza: produto indisponível continua recusado no balcão
+com a loja pausada, e isso tem teste.
+
+**Onde foi formalizada.** `04-REGRAS-NEGOCIO.md` §24 (RN-MAN-004/005/006) e
+§2 (RN-LOJA-002 aponta para RN-MAN-006); `02-MODELO-DADOS-SUPABASE.md`, na
+nota de `accepted_by`. Migration `0060`.
+
+**O que NÃO mudou, de propósito.** Continua havendo uma porta de criação
+(`criar_pedido`), uma máquina de estados (`comando_pedido`) e uma autoridade
+de preço (`montar_item`). A decisão custou uma condição a mais no bloco de
+estado inicial e duas colunas preenchidas no INSERT.
 
 ---
 

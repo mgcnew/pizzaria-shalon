@@ -43,7 +43,7 @@ A interface nunca é autoridade para preço, permissão, estado, disponibilidade
 A loja possui horários configuráveis por dia da semana, incluindo dias fechados.
 
 ### RN-LOJA-002 — Fechamento temporário
-Usuário autorizado pode pausar o recebimento de pedidos sem esconder o cardápio. O checkout fica bloqueado até a reabertura.
+Usuário autorizado pode pausar o recebimento de pedidos sem esconder o cardápio. O checkout fica bloqueado até a reabertura. O bloqueio é do **canal público**: o lançamento manual interno continua permitido (RN-MAN-006).
 
 ### RN-LOJA-003 — Sem agendamento
 A V1 não aceita pedidos para data/horário futuro. Loja fechada significa navegação permitida e checkout bloqueado.
@@ -605,6 +605,49 @@ A origem do pedido é preservada para relatórios.
 
 ### RN-MAN-003
 Pedido manual deve respeitar as regras estruturais do domínio e não deve virar atalho para corromper preços, estados ou histórico.
+
+### RN-MAN-004 — Estado inicial: o lançamento interno já é o aceite
+Pedido público é **solicitação** do cliente e aguarda a confirmação da Shalon.
+Pedido manual é **registro** de um pedido que a Shalon já recebeu e já aceitou
+por outro canal — balcão, telefone, WhatsApp, iFood ou outro. Por isso o
+pedido manual criado por usuário interno autorizado nasce **aceito/liberado
+para operação**, sem exigir o segundo gesto de "aceitar".
+
+A aceitação ocorrida na criação deve ser identificável: autor e horário do
+aceite ficam registrados como ficariam se viessem do comando de aceite, e o
+histórico e a auditoria dizem que o lançamento e o aceite foram o mesmo ato.
+
+Decisão de 21/09/2026, que resolve a lacuna registrada em D-2026-09-19-48.
+
+### RN-MAN-005 — Nascer aceito é o caso sem bloqueio
+RN-MAN-004 não contorna bloqueio normativo nenhum. Quando existe condição que
+impeça a liberação operacional, o pedido manual preserva o estado/bloqueio
+correspondente em vez de ser forçado para a produção. Em particular:
+
+- Pix antecipado por chave continua aguardando confirmação do recebimento
+  (RN-PGTO-010, §23 do CLAUDE.md);
+- entrega acima do raio automático continua aguardando aprovação
+  (RN-ENT-011).
+
+Só quando nada bloqueia o pedido manual nasce aceito. A consequência prática
+para a comanda é a regra de sempre: ela sai porque o pedido está liberado
+(RN-PRINT-001), e não sai enquanto houver bloqueio.
+
+### RN-MAN-006 — Pausa fecha o público, não o balcão
+A pausa/fechamento operacional do canal público bloqueia novos checkouts
+públicos (RN-LOJA-002) e **não** impede usuário interno autorizado de criar
+pedido manual. Mesmo com o link público pausado continuam podendo ser
+registrados pedidos de balcão, telefone, WhatsApp, iFood e outros canais
+manuais permitidos.
+
+Isso não reabre o checkout público e não afrouxa mais nada: o pedido manual
+continua sujeito às permissões, às regras de catálogo, à disponibilidade dos
+produtos, aos preços, às compatibilidades e aos demais bloqueios operacionais
+aplicáveis. Pausa da loja **não** é autorização para vender produto
+indisponível.
+
+Decisão de 21/09/2026, que promove a interpretação registrada em
+D-2026-09-19-49.
 
 ---
 

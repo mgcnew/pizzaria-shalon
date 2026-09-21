@@ -538,7 +538,9 @@ Campos sugeridos:
 - `rejection_reason text nullable`
 - `cancellation_reason text nullable`
 - `accepted_at timestamptz nullable`
-- `accepted_by uuid nullable`
+- `accepted_by uuid nullable` — no pedido manual, RN-MAN-004 faz a criação já
+  preencher as duas colunas: lançar é aceitar, e o aceite não fica sem autor
+  nem sem horário
 - `ready_at timestamptz nullable`
 - `completed_at timestamptz nullable`
 - `cancelled_at timestamptz nullable`
