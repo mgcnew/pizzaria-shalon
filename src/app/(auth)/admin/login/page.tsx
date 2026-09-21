@@ -35,7 +35,7 @@ export default async function PaginaLogin({
       <div className="w-full max-w-[420px]">
         <div className="mb-6 flex justify-center">
           <Image
-            src="/marca/logo-shalon.png"
+            src="/marca/logo-shalon.webp"
             alt="Pizzaria Shalon — Tradição desde 1995"
             width={512}
             height={256}

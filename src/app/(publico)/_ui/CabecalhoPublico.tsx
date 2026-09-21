@@ -61,7 +61,7 @@ export async function CabecalhoPublico() {
     <header className="sticky top-0 z-30 flex items-center gap-[14px] border-b border-border-shalon bg-surface px-4 py-3">
       <Link href="/" aria-label="Pizzaria Shalon — início" className="flex shrink-0 items-center">
         <Image
-          src="/marca/logo-shalon.png"
+          src="/marca/logo-shalon.webp"
           alt="Pizzaria Shalon — Tradição desde 1995"
           width={512}
           height={256}

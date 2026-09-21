@@ -47,7 +47,7 @@ export function DrawerAdmin({ nome, papeis }: { nome: string; papeis: string[] }
           >
             <div className="flex items-center justify-between px-2 pb-[14px] pt-1">
               <Image
-                src="/marca/logo-shalon.png"
+                src="/marca/logo-shalon.webp"
                 alt="Pizzaria Shalon"
                 width={512}
                 height={256}

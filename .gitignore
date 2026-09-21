@@ -82,3 +82,14 @@ desktop.ini
 
 # Ferramentas locais de desenvolvimento
 .claude/
+
+# Fontes raster originais dos assets públicos. As versões WebP otimizadas
+# ficam em public/categorias e public/marca e são as únicas enviadas ao deploy.
+/public/bebidas.png
+/public/combos.png
+/public/fogazza.png
+/public/logo.png
+/public/marca/logo.png
+/public/pizza doce.png
+/public/pizza salgada.png
+/public/tudo.png

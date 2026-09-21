@@ -42,7 +42,7 @@ export default async function LayoutAdmin({
       >
         <div className="flex items-center gap-[10px] px-2 pb-4 pt-1">
           <Image
-            src="/marca/logo-shalon.png"
+            src="/marca/logo-shalon.webp"
             alt="Pizzaria Shalon"
             width={512}
             height={256}
