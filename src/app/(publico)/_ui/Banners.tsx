@@ -1,7 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 import { listarBanners, urlDaImagem } from "@/application/publico/consultas";
 import type { BannerPublico } from "@/application/publico/tipos";
+import { CarrosselBanners } from "./CarrosselBanners";
 
 /**
  * Carrossel de banners do cardápio.
@@ -30,68 +30,43 @@ function destino(b: BannerPublico): string | null {
   }
 }
 
-export async function Banners() {
+export async function Banners({
+  nomeLoja,
+  temCombos,
+}: {
+  nomeLoja: string;
+  temCombos: boolean;
+}) {
   const banners = await listarBanners();
-  if (banners.length === 0) return null;
+  if (banners.length === 0) {
+    return (
+      <section className="mx-4 mt-4 flex flex-wrap items-center gap-[18px] rounded-20 bg-sidebar p-5">
+        <div className="min-w-[200px] flex-[1_1_220px]">
+          <span className="inline-block rounded-pill bg-brand-yellow/15 px-[10px] py-1 text-[12px] font-semibold uppercase tracking-[0.04em] text-brand-yellow">
+            Tradição desde 1995
+          </span>
+          <h1 className="mb-[6px] mt-[10px] text-balance font-display text-[30px] font-extrabold leading-[1.08] text-dark-ink">
+            {nomeLoja}
+          </h1>
+          <p className="m-0 mb-4 max-w-[34ch] text-[15px] text-dark-ink-2">
+            Massa fresca todos os dias, assada na hora e entregue quentinha na sua casa.
+          </p>
+          {temCombos ? (
+            <Link
+              href="#combos"
+              className="inline-flex min-h-touch-cta items-center rounded-12 bg-cta px-5 text-[16px] font-semibold text-cta-fg"
+            >
+              Ver combos
+            </Link>
+          ) : null}
+        </div>
+      </section>
+    );
+  }
 
   const cartoes = await Promise.all(
     banners.map(async (b) => ({ ...b, url: await urlDaImagem(b.imagem_path), href: destino(b) })),
   );
 
-  return (
-    <section aria-label="Destaques da Shalon" className="pt-4">
-      <div className="flex snap-x snap-proximity gap-[14px] overflow-x-auto px-4 pb-[6px]">
-        {cartoes.map((b) => {
-          const conteudo = (
-            <>
-              <Image
-                src={b.url}
-                alt={b.titulo ?? "Banner da Pizzaria Shalon"}
-                width={640}
-                height={320}
-                className="h-[150px] w-full object-cover"
-              />
-              {b.titulo || b.corpo ? (
-                <div className="px-[14px] py-3">
-                  {b.titulo ? (
-                    <p className="m-0 font-display text-[18px] font-bold text-ink">{b.titulo}</p>
-                  ) : null}
-                  {b.corpo ? (
-                    <p className="mt-1 text-[13.5px] text-ink-2">{b.corpo}</p>
-                  ) : null}
-                </div>
-              ) : null}
-            </>
-          );
-
-          const classe =
-            "block w-[min(86%,520px)] shrink-0 snap-start overflow-hidden rounded-18 border border-border-shalon bg-surface";
-
-          if (!b.href) {
-            return (
-              <div key={b.id} className={classe}>
-                {conteudo}
-              </div>
-            );
-          }
-
-          return b.destino_tipo === "external" ? (
-            <a
-              key={b.id}
-              href={b.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={classe}
-            >
-              {conteudo}
-            </a>
-          ) : (
-            <Link key={b.id} href={b.href} className={classe}>
-              {conteudo}
-            </Link>
-          );
-        })}
-      </div>
-    </section>
-  );
+  return <CarrosselBanners banners={cartoes} />;
 }

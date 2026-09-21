@@ -101,7 +101,7 @@ export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean 
       <>
       <Cartao
         titulo="Enviar imagem de banner"
-        descricao="A imagem é validada, redimensionada e convertida para WebP antes de ir para o Storage."
+        descricao="Prefira uma imagem horizontal na proporção 2:1 (recomendado: 1600×800). Ela será redimensionada e convertida para WebP."
       >
         <FormularioAcao acao={enviarImagem} rotulo="Enviar imagem" variante="secundario">
           <input type="hidden" name="uso" value="banner" />

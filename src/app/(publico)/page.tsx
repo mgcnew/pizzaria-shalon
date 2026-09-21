@@ -131,31 +131,10 @@ export default async function Home({
       <AvisoLojaFechada loja={loja} />
       <Busca termo="" />
 
-      {/* Hero do design: fundo #2A201A, selo "Tradição desde 1995",
-          título em Bricolage Grotesque e CTA no par CTA. */}
-      <section className="mx-4 mt-4 flex flex-wrap items-center gap-[18px] rounded-20 bg-sidebar p-5">
-        <div className="min-w-[200px] flex-[1_1_220px]">
-          <span className="inline-block rounded-pill bg-brand-yellow/15 px-[10px] py-1 text-[12px] font-semibold uppercase tracking-[0.04em] text-brand-yellow">
-            Tradição desde 1995
-          </span>
-          <h1 className="mb-[6px] mt-[10px] text-balance font-display text-[30px] font-extrabold leading-[1.08] text-[#FFF7E8]">
-            {loja?.nome_exibicao ?? loja?.nome ?? "Pizzaria Shalon"}
-          </h1>
-          <p className="m-0 mb-4 max-w-[34ch] text-[15px] text-[#D9C9B2]">
-            Massa fresca todos os dias, assada na hora e entregue quentinha na sua casa.
-          </p>
-          {combos.length > 0 ? (
-            <Link
-              href="#combos"
-              className="inline-flex min-h-touch-cta items-center rounded-12 bg-cta px-5 text-[16px] font-semibold text-cta-fg"
-            >
-              Ver combos
-            </Link>
-          ) : null}
-        </div>
-      </section>
-
-      <Banners />
+      <Banners
+        nomeLoja={loja?.nome_exibicao ?? loja?.nome ?? "Pizzaria Shalon"}
+        temCombos={combos.length > 0}
+      />
 
       <div className="pt-4">
         <ChipsCategorias categorias={categorias} />

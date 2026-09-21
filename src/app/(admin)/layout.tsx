@@ -1,8 +1,7 @@
 import Image from "next/image";
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { MENU_ADMIN } from "@/ui/navegacao";
 import { DrawerAdmin } from "@/ui/components/DrawerAdmin";
+import { MenuLateralAdmin } from "@/ui/components/MenuLateralAdmin";
 import { obterSessaoInterna } from "@/application/auth/sessao";
 import { sair } from "@/app/(auth)/admin/login/actions";
 
@@ -36,47 +35,47 @@ export default async function LayoutAdmin({
 
   return (
     <div data-acento="vermelho" className="flex min-h-screen bg-bg">
-      <nav
+      <aside
         aria-label="Navegação principal do administrativo"
-        className="sticky top-0 hidden h-screen w-sidebar shrink-0 flex-col gap-1 overflow-y-auto bg-sidebar px-3 py-4 lg:flex"
+        className="sticky top-0 hidden h-screen w-sidebar shrink-0 flex-col overflow-y-auto border-r border-white/10 bg-[linear-gradient(165deg,#30241d_0%,#211813_100%)] px-3 pb-3 pt-4 shadow-[8px_0_28px_rgb(0_0_0/0.12)] lg:flex"
       >
-        <div className="flex items-center gap-[10px] px-2 pb-4 pt-1">
+        <div className="border-b border-white/10 px-2 pb-4 pt-1">
           <Image
             src="/marca/logo-shalon.webp"
             alt="Pizzaria Shalon"
             width={512}
             height={256}
-            className="h-[38px] w-auto"
+            className="h-[42px] w-auto"
           />
+          <p className="mb-0 mt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-brand-yellow">
+            Painel administrativo
+          </p>
         </div>
 
-        {MENU_ADMIN.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="flex min-h-touch items-center gap-[10px] rounded-10 px-3 text-[14px] font-semibold text-sidebar-ink hover:bg-white/10"
-          >
-            <span className="flex-1">{item.nome}</span>
-          </Link>
-        ))}
+        <MenuLateralAdmin />
 
-        <div className="mt-auto border-t border-white/12 px-[10px] pb-1 pt-3">
-          <p className="m-0 text-[13px] font-semibold text-sidebar-ink">
-            {sessao.nome}
-          </p>
-          <p className="mt-[2px] text-[12px] text-white/45">
-            {sessao.papeis.join(" · ") || "Sem papel atribuído"}
-          </p>
+        <div className="mt-auto rounded-14 border border-white/[0.08] bg-black/10 p-3">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-pill bg-white/[0.08] text-[14px] font-bold uppercase text-brand-yellow">
+              {sessao.nome.charAt(0)}
+            </span>
+            <div className="min-w-0">
+              <p className="m-0 truncate text-[13px] font-bold text-dark-ink">{sessao.nome}</p>
+              <p className="mt-0.5 truncate text-[11px] text-dark-muted">
+                {sessao.papeis.join(" · ") || "Sem papel atribuído"}
+              </p>
+            </div>
+          </div>
           <form action={sair}>
             <button
               type="submit"
-              className="mt-2 min-h-[36px] cursor-pointer border-0 bg-transparent p-0 text-[12.5px] font-semibold text-white/60 hover:text-white"
+              className="mt-3 flex min-h-[38px] w-full cursor-pointer items-center justify-center rounded-10 border border-white/10 bg-white/[0.05] px-3 text-[12.5px] font-semibold text-sidebar-ink transition-colors hover:border-white/20 hover:bg-white/[0.1] hover:text-white"
             >
               Sair
             </button>
           </form>
         </div>
-      </nav>
+      </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex flex-wrap items-center gap-3 border-b border-border-shalon bg-surface px-4 py-3">

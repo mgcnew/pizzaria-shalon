@@ -56,9 +56,12 @@ export default async function Page({
 
   const aba = FERRAMENTAS.some((a) => a.valor === um("aba")) ? um("aba") : "produtos";
   const tamanhoDaFerramenta =
-    aba === "tamanhos" || aba === "adicionais" || aba === "promocoes"
+    aba === "tamanhos" ||
+    aba === "adicionais" ||
+    aba === "promocoes" ||
+    aba === "banners"
       ? "compacto"
-      : aba === "categorias" || aba === "bordas" || aba === "banners"
+      : aba === "categorias" || aba === "bordas"
         ? "regular"
         : aba === "combos"
           ? "medio"
