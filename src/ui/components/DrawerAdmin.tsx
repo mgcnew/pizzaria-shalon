@@ -20,7 +20,7 @@ import { MENU_ADMIN } from "@/ui/navegacao";
  * Fase 1: navegação apenas. Sem badge de contagem, sem permissões, sem troca
  * de perfil — tudo isso depende de RBAC (Fase 2).
  */
-export function DrawerAdmin({ nome, papeis }: { nome: string; papeis: string[] }) {
+export function DrawerAdmin() {
   const [aberto, setAberto] = useState(false);
 
   return (
@@ -63,7 +63,7 @@ export function DrawerAdmin({ nome, papeis }: { nome: string; papeis: string[] }
               </button>
             </div>
 
-            {MENU_ADMIN.map((item) => (
+            {MENU_ADMIN.filter((item) => item.href !== "/admin/configuracoes").map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -74,12 +74,6 @@ export function DrawerAdmin({ nome, papeis }: { nome: string; papeis: string[] }
               </Link>
             ))}
 
-            <div className="mt-auto border-t border-white/12 px-[10px] pb-1 pt-3">
-              <p className="m-0 text-[13px] font-semibold text-sidebar-ink">{nome}</p>
-              <p className="mt-[2px] text-[12px] text-white/45">
-                {papeis.join(" · ") || "Sem papel atribuído"}
-              </p>
-            </div>
           </nav>
         </div>
       ) : null}

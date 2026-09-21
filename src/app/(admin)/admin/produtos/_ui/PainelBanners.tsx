@@ -101,7 +101,7 @@ export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean 
       <>
       <Cartao
         titulo="Enviar imagem de banner"
-        descricao="Prefira uma imagem horizontal na proporção 2:1 (recomendado: 1600×800). Ela será redimensionada e convertida para WebP."
+        descricao="Use uma imagem horizontal na proporção 2:1 para preencher corretamente o carrossel promocional."
       >
         <FormularioAcao acao={enviarImagem} rotulo="Enviar imagem" variante="secundario">
           <input type="hidden" name="uso" value="banner" />
@@ -110,12 +110,16 @@ export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean 
             name="arquivo"
             type="file"
             accept="image/jpeg,image/png,image/webp,image/avif"
+            hint="Recomendado: 1600×800 px ou 1200×600 px (proporção 2:1). JPEG, PNG, WebP ou AVIF, até 8 MB. Imagens em outra proporção podem ser recortadas."
             required
           />
         </FormularioAcao>
       </Cartao>
 
-      <Cartao titulo="Novo banner">
+      <Cartao
+        titulo="Novo banner"
+        descricao="Para divulgar uma promoção no carrossel, escolha Promoção no campo Destino. O banner sairá do ar junto com o fim da oferta."
+      >
         {imagens.length === 0 ? (
           <p className="m-0 text-[13.5px] text-muted">
             Envie uma imagem primeiro — banner sem imagem não é aceito.

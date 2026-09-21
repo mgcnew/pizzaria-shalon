@@ -12,7 +12,7 @@ const GRUPOS = [
   },
   {
     titulo: "Gestão",
-    rotas: ["/admin/financeiro", "/admin/equipe", "/admin/relatorios", "/admin/configuracoes"],
+    rotas: ["/admin/financeiro", "/admin/equipe", "/admin/relatorios"],
   },
 ] as const;
 
@@ -101,7 +101,7 @@ export function MenuLateralAdmin() {
   const pathname = usePathname();
 
   return (
-    <div className="flex flex-col gap-4 py-3">
+    <div className="flex flex-col gap-3 py-3">
       {GRUPOS.map((grupo) => (
         <div key={grupo.titulo}>
           <p className="mb-1.5 mt-0 px-3 text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
