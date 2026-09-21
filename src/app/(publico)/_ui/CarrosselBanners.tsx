@@ -20,7 +20,7 @@ function ChamadaBanner({ banner }: { banner: BannerDoCarrossel }) {
     </>
   );
   const classe =
-    "mt-4 inline-flex min-h-touch items-center gap-2 rounded-12 bg-cta px-4 text-[14px] font-bold text-cta-fg shadow-[0_8px_24px_rgb(0_0_0/0.18)] transition-transform hover:-translate-y-0.5";
+    "motion-interactive mt-4 inline-flex min-h-touch items-center gap-2 rounded-12 bg-cta px-4 text-[14px] font-bold text-cta-fg shadow-[0_8px_24px_rgb(0_0_0/0.18)] transition-transform hover:-translate-y-0.5";
 
   if (!banner.href) return null;
 
@@ -65,7 +65,7 @@ export function CarrosselBanners({ banners }: { banners: BannerDoCarrossel[] }) 
       }}
       className="relative mx-4 mt-4 h-[clamp(240px,45vw,360px)] overflow-hidden rounded-20 bg-sidebar shadow-[0_12px_30px_rgb(30_24_20/0.14)]"
     >
-      <div key={banner.id} className="absolute inset-0 [animation:shalonFadeIn_320ms_ease-out_both]">
+      <div key={banner.id} className="motion-tab-in absolute inset-0">
         <Image
           src={banner.url}
           alt={banner.titulo ?? "Destaque da Pizzaria Shalon"}
@@ -104,11 +104,17 @@ export function CarrosselBanners({ banners }: { banners: BannerDoCarrossel[] }) 
               onClick={() => setAtual(indice)}
               aria-label={`Mostrar destaque ${indice + 1} de ${banners.length}`}
               aria-current={indice === atual ? "true" : undefined}
-              className={[
-                "h-2.5 cursor-pointer rounded-pill border-0 transition-[width,background-color]",
-                indice === atual ? "w-6 bg-brand-yellow" : "w-2.5 bg-white/65 hover:bg-white",
-              ].join(" ")}
-            />
+              className="flex h-2.5 w-6 cursor-pointer items-center justify-center border-0 bg-transparent p-0"
+            >
+              <span
+                className={[
+                  "motion-interactive block h-2.5 w-6 rounded-pill transition-[background-color,transform]",
+                  indice === atual
+                    ? "scale-x-100 bg-brand-yellow"
+                    : "scale-x-[0.42] bg-white/65 hover:bg-white",
+                ].join(" ")}
+              />
+            </button>
           ))}
         </div>
       ) : null}

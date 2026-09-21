@@ -43,6 +43,9 @@ equipamento físico ou dado real da Shalon:
    o mundo real. Não bloqueia as fases seguintes; bloqueia a produção. Não
    considere validado o que estiver aberto ali.
 
+8. `docs/07-MOVIMENTO-E-DESEMPENHO.md` quando o trabalho alterar transições,
+   animações, drawers, modais, abas, feedback de carregamento ou desempenho visual.
+
 Não trabalhe usando somente contexto de conversa.
 
 Os documentos no repositório são a fonte persistente de verdade.
@@ -82,6 +85,12 @@ Fonte de verdade para ordem de execução, dependências, gates e Definition of 
 `CLAUDE.md`
 
 Define **como você deve trabalhar** no projeto.
+
+## 3.7 Movimento e desempenho
+`07-MOVIMENTO-E-DESEMPENHO.md`
+
+Fonte técnica para durações, curvas, propriedades animáveis, acessibilidade e
+limites de desempenho das transições da interface.
 
 ---
 

@@ -120,7 +120,7 @@ export function MenuLateralAdmin() {
                   href={item.href}
                   aria-current={ativo ? "page" : undefined}
                   className={[
-                    "group flex min-h-touch items-center gap-2.5 rounded-12 border px-2.5 py-2 text-[13.5px] font-semibold transition-colors duration-150",
+                    "motion-interactive group flex min-h-touch items-center gap-2.5 rounded-12 border px-2.5 py-2 text-[13.5px] font-semibold transition-colors",
                     ativo
                       ? "border-brand-yellow/45 bg-brand-yellow/[0.13] text-dark-ink"
                       : "border-transparent text-sidebar-ink hover:border-white/10 hover:bg-white/[0.07] hover:text-dark-ink",
@@ -128,7 +128,7 @@ export function MenuLateralAdmin() {
                 >
                   <span
                     className={[
-                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-10 transition-colors duration-150",
+                      "motion-interactive flex h-8 w-8 shrink-0 items-center justify-center rounded-10 transition-colors",
                       ativo
                         ? "bg-brand-yellow text-ink"
                         : "bg-white/[0.07] text-brand-yellow group-hover:bg-white/[0.11]",

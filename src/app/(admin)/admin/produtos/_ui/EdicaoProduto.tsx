@@ -233,7 +233,7 @@ export async function EdicaoProduto({ id, emModal = false }: { id: string; emMod
 
   if (emModal) {
     return (
-      <ModalFerramentaCatalogo titulo={`Editar · ${produto.nome}`} tamanho="regular">
+      <ModalFerramentaCatalogo titulo={`Editar · ${produto.nome}`} tamanho="compacto">
         {abas}
       </ModalFerramentaCatalogo>
     );

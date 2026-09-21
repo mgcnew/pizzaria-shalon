@@ -33,7 +33,7 @@ export function AbasEdicaoProduto({ secoes }: { secoes: SecaoEdicaoProduto[] }) 
               aria-selected={selecionada}
               onClick={() => setAtiva(secao.id)}
               className={[
-                "inline-flex min-h-touch shrink-0 cursor-pointer items-center gap-2 rounded-11 border-0 px-3 text-[12.5px] font-bold transition-colors",
+                "motion-interactive inline-flex min-h-touch shrink-0 cursor-pointer items-center gap-2 rounded-11 border-0 px-3 text-[12.5px] font-bold transition-colors",
                 selecionada
                   ? "bg-cta text-cta-fg shadow-[0_4px_12px_rgb(30_24_20/0.1)]"
                   : "bg-transparent text-ink-2 hover:bg-surface hover:text-ink",
@@ -54,9 +54,11 @@ export function AbasEdicaoProduto({ secoes }: { secoes: SecaoEdicaoProduto[] }) 
       </div>
 
       <div
+        key={secaoAtual.id}
         role="tabpanel"
         id={`painel-produto-${secaoAtual.id}`}
         aria-labelledby={`aba-produto-${secaoAtual.id}`}
+        className="motion-tab-in"
       >
         {secaoAtual.conteudo}
       </div>

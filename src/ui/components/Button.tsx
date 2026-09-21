@@ -58,7 +58,7 @@ export function Button({
 }: Props) {
   const base =
     "inline-flex items-center justify-center gap-2 font-semibold cursor-pointer " +
-    "transition-colors disabled:cursor-not-allowed";
+    "motion-interactive transition-colors disabled:cursor-not-allowed";
 
   const estiloDesabilitado = disabled
     ? "border-0 bg-tn text-muted hover:border-transparent"

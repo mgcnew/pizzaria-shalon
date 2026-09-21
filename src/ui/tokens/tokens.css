@@ -115,6 +115,14 @@
   /* --- Véus de sobreposição --------------------------------------------- */
   --shalon-scrim-sheet: rgb(30 24 20 / 0.5);
   --shalon-scrim-drawer: rgb(30 24 20 / 0.55);
+
+  /* --- Movimento --------------------------------------------------------
+   * Três velocidades, uma curva. Ver docs/07-MOVIMENTO-E-DESEMPENHO.md.
+   */
+  --shalon-motion-fast: 120ms;
+  --shalon-motion-base: 180ms;
+  --shalon-motion-slow: 220ms;
+  --shalon-ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* =========================================================================

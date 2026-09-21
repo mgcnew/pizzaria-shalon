@@ -38,7 +38,7 @@ export function Input({ label, hint, labelOculto = false, id, className = "", ..
           "w-full min-h-[50px] rounded-12 border-[1.5px] border-border-shalon",
           "bg-surface px-[14px] py-[12px] text-[16px] text-ink",
           "placeholder:text-muted",
-          "focus:border-brand-orange focus:outline-none",
+          "motion-interactive transition-colors focus:border-brand-orange focus:outline-none",
           className,
         ].join(" ")}
         {...props}

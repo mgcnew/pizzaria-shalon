@@ -78,7 +78,7 @@ export function ModalFerramentaCatalogo({
         type="button"
         aria-label="Fechar janela"
         onClick={() => router.push("/admin/produtos")}
-        className="absolute inset-0 hidden cursor-default border-0 bg-[var(--shalon-scrim-sheet)] lg:block"
+        className="motion-backdrop-in absolute inset-0 hidden cursor-default border-0 bg-[var(--shalon-scrim-sheet)] lg:block"
         tabIndex={-1}
       />
 
@@ -88,7 +88,7 @@ export function ModalFerramentaCatalogo({
         aria-modal={desktop ? true : undefined}
         aria-labelledby="ferramenta-catalogo-titulo"
         className={[
-          "relative flex w-full flex-col bg-bg lg:overflow-hidden lg:rounded-18 lg:border lg:border-border-shalon lg:bg-surface lg:shadow-[0_22px_70px_rgb(30_24_20/0.26)]",
+          "motion-modal-in relative flex w-full flex-col bg-bg lg:overflow-hidden lg:rounded-18 lg:border lg:border-border-shalon lg:bg-surface lg:shadow-[0_22px_70px_rgb(30_24_20/0.26)]",
           variante === "formulario"
             ? "lg:max-h-[86vh] lg:max-w-[760px]"
             : `lg:max-h-[calc(100vh-48px)] ${larguraDesktop}`,
@@ -121,7 +121,7 @@ export function ModalFerramentaCatalogo({
 
         <div
           className={[
-            "lg:overflow-y-auto lg:p-5",
+            "scrollbar-subtle lg:min-h-0 lg:overflow-y-auto lg:p-5",
             variante === "formulario" ? "lg:bg-surface" : "lg:bg-bg",
           ].join(" ")}
         >

@@ -110,7 +110,7 @@ export function MenuPublico() {
         aria-label="Abrir menu"
         aria-expanded={aberto}
         aria-controls="menu-publico"
-        className="group flex min-h-touch min-w-touch shrink-0 cursor-pointer items-center justify-center rounded-12 border-[1.5px] border-border-shalon bg-surface text-ink transition-colors hover:border-brand-orange hover:bg-elev"
+        className="motion-interactive group flex min-h-touch min-w-touch shrink-0 cursor-pointer items-center justify-center rounded-12 border-[1.5px] border-border-shalon bg-surface text-ink transition-colors hover:border-brand-orange hover:bg-elev"
       >
         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-5 w-5">
           <path d="M5 7.5h14M5 12h14M5 16.5h14" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
@@ -119,7 +119,7 @@ export function MenuPublico() {
 
       {aberto ? (
         <div
-          className="fixed inset-0 z-80 flex justify-end bg-[var(--shalon-scrim-drawer)] [animation:shalonFadeIn_180ms_ease-out_both]"
+          className="motion-backdrop-in fixed inset-0 z-80 flex justify-end bg-[var(--shalon-scrim-drawer)]"
           role="dialog"
           aria-modal="true"
           aria-labelledby="menu-publico-titulo"
@@ -135,7 +135,7 @@ export function MenuPublico() {
           <aside
             ref={painelRef}
             id="menu-publico"
-            className="flex h-full w-[min(88vw,340px)] shrink-0 flex-col overflow-y-auto rounded-l-22 border-l border-white/10 bg-[linear-gradient(160deg,#30241d_0%,#211813_100%)] px-4 pb-5 pt-4 shadow-[-16px_0_40px_rgb(0_0_0/0.22)] [animation:shalonDrawerIn_260ms_cubic-bezier(0.22,1,0.36,1)_both]"
+            className="motion-drawer-right-in flex h-full w-[min(88vw,340px)] shrink-0 flex-col overflow-y-auto rounded-l-22 border-l border-white/10 bg-[linear-gradient(160deg,#30241d_0%,#211813_100%)] px-4 pb-5 pt-4 shadow-[-16px_0_40px_rgb(0_0_0/0.22)]"
           >
             <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-4 pl-1">
               <div>
@@ -151,7 +151,7 @@ export function MenuPublico() {
                 type="button"
                 onClick={() => setAberto(false)}
                 aria-label="Fechar menu"
-                className="flex min-h-touch min-w-touch cursor-pointer items-center justify-center rounded-12 border border-white/15 bg-white/[0.06] text-dark-ink transition-colors hover:border-white/25 hover:bg-white/[0.12]"
+                className="motion-interactive flex min-h-touch min-w-touch cursor-pointer items-center justify-center rounded-12 border border-white/15 bg-white/[0.06] text-dark-ink transition-colors hover:border-white/25 hover:bg-white/[0.12]"
               >
                 <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-5 w-5">
                   <path d="m7 7 10 10M17 7 7 17" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
@@ -170,7 +170,7 @@ export function MenuPublico() {
                     onClick={() => setAberto(false)}
                     aria-current={ativo ? "page" : undefined}
                     className={[
-                      "group flex min-h-[66px] items-center gap-3 rounded-14 border px-3 py-[10px] transition-[background-color,border-color,transform] hover:translate-x-0.5",
+                      "motion-interactive group flex min-h-[66px] items-center gap-3 rounded-14 border px-3 py-[10px] transition-colors",
                       ativo
                         ? "border-brand-yellow/55 bg-brand-yellow/[0.13]"
                         : "border-white/[0.08] bg-white/[0.045] hover:border-white/15 hover:bg-white/[0.09]",
@@ -190,7 +190,7 @@ export function MenuPublico() {
                         {item.descricao}
                       </span>
                     </span>
-                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-4 w-4 shrink-0 text-dark-muted transition-transform group-hover:translate-x-0.5">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="motion-interactive h-4 w-4 shrink-0 text-dark-muted transition-transform group-hover:translate-x-0.5">
                       <path d="m9 6 6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </Link>

@@ -15,7 +15,7 @@ export function Busca({ termo }: { termo: string }) {
       <form
         role="search"
         action="/"
-        className="flex min-h-[50px] items-center gap-[10px] rounded-10 border-[1.5px] border-border-shalon bg-surface px-[14px] transition-colors focus-within:border-brand-orange"
+        className="motion-interactive flex min-h-[50px] items-center gap-[10px] rounded-10 border-[1.5px] border-border-shalon bg-surface px-[14px] transition-colors focus-within:border-brand-orange"
       >
         <svg
           aria-hidden="true"
@@ -46,7 +46,7 @@ export function Busca({ termo }: { termo: string }) {
           <Link
             href="/"
             aria-label="Limpar busca"
-            className="flex min-h-touch min-w-touch items-center justify-center rounded-10 bg-tn text-[18px] text-ink-2 transition-colors hover:bg-border-shalon hover:text-ink"
+            className="motion-interactive flex min-h-touch min-w-touch items-center justify-center rounded-10 bg-tn text-[18px] text-ink-2 transition-colors hover:bg-border-shalon hover:text-ink"
           >
             ×
           </Link>

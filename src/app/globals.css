@@ -56,11 +56,74 @@
   [data-hscroll="true"]::-webkit-scrollbar {
     display: none;
   }
+
+  /* Scroll interno de modais: visível para orientação, sem competir com o conteúdo. */
+  .scrollbar-subtle {
+    scrollbar-color: var(--shalon-muted) transparent;
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-subtle::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollbar-subtle::-webkit-scrollbar-track {
+    background: transparent;
+    margin-block: 8px;
+  }
+
+  .scrollbar-subtle::-webkit-scrollbar-thumb {
+    background-color: color-mix(in srgb, var(--shalon-muted) 58%, transparent);
+    border-radius: 999px;
+  }
+
+  .scrollbar-subtle::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in srgb, var(--shalon-muted) 78%, transparent);
+  }
+
+  /* Movimento reutilizável. Somente propriedades baratas para composição. */
+  .motion-interactive {
+    transition-duration: var(--shalon-motion-fast);
+    transition-timing-function: var(--shalon-ease-standard);
+  }
+
+  .motion-backdrop-in {
+    animation: shalonFadeIn var(--shalon-motion-fast) ease-out both;
+  }
+
+  .motion-popover-in {
+    animation: shalonPopoverIn var(--shalon-motion-base) var(--shalon-ease-standard) both;
+  }
+
+  .motion-modal-in {
+    animation: shalonModalIn var(--shalon-motion-base) var(--shalon-ease-standard) both;
+  }
+
+  .motion-tab-in {
+    animation: shalonTabIn var(--shalon-motion-fast) ease-out both;
+  }
+
+  .motion-drawer-right-in {
+    animation: shalonDrawerIn var(--shalon-motion-slow) var(--shalon-ease-standard) both;
+  }
+
+  .motion-drawer-left-in {
+    animation: shalonDrawerLeftIn var(--shalon-motion-slow) var(--shalon-ease-standard) both;
+  }
 }
 
 @keyframes shalonDrawerIn {
   from {
     transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes shalonDrawerLeftIn {
+  from {
+    transform: translateX(-100%);
   }
   to {
     transform: translateX(0);
@@ -73,5 +136,38 @@
   }
   to {
     opacity: 1;
+  }
+}
+
+@keyframes shalonPopoverIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shalonModalIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes shalonTabIn {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

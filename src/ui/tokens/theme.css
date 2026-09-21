@@ -134,7 +134,7 @@
   --shadow-card-sel: var(--shalon-shadow-card-sel);
 
   /* --- Animações do design ---------------------------------------------- */
-  --animate-shalon-up: shalonUp 0.28s ease both;
+  --animate-shalon-up: shalonUp var(--shalon-motion-base) var(--shalon-ease-standard) both;
   --animate-shalon-spin: shalonSpin 0.8s linear infinite;
   --animate-shalon-pulse: shalonPulse 1.4s infinite;
 }

@@ -196,7 +196,7 @@ export function NovoPedido({
 
   const indiceDaEtapa = ETAPAS.findIndex((item) => item.valor === etapa);
   const classeDaEtapa = (alvo: EtapaNovoPedido) =>
-    emModal && etapa !== alvo ? "hidden" : "";
+    emModal && etapa !== alvo ? "hidden" : emModal ? "motion-tab-in" : "";
 
   return (
     <div
@@ -243,13 +243,13 @@ export function NovoPedido({
                   disabled={!liberada}
                   aria-current={ativa ? "step" : undefined}
                   className={[
-                    "group flex min-w-[76px] cursor-pointer flex-col items-center border-0 bg-transparent px-1 text-center disabled:cursor-not-allowed",
+                    "motion-interactive group flex min-w-[76px] cursor-pointer flex-col items-center border-0 bg-transparent px-1 text-center transition-colors disabled:cursor-not-allowed",
                     ativa ? "text-ink" : concluida ? "text-tsf" : "text-muted",
                   ].join(" ")}
                 >
                   <span
                     className={[
-                      "flex h-[34px] w-[34px] items-center justify-center rounded-pill border-2 text-[11px] font-extrabold transition-colors",
+                      "motion-interactive flex h-[34px] w-[34px] items-center justify-center rounded-pill border-2 text-[11px] font-extrabold transition-colors",
                       ativa
                         ? "border-cta bg-cta text-cta-fg shadow-[0_4px_12px_rgb(30_24_20/0.12)]"
                         : concluida
@@ -303,7 +303,7 @@ export function NovoPedido({
                 }}
                 aria-pressed={modalidade === m}
                 className={[
-                  "min-h-touch-cta flex-1 cursor-pointer rounded-12 border-[1.5px] px-3 text-[15px] font-semibold",
+                  "motion-interactive min-h-touch-cta flex-1 cursor-pointer rounded-12 border-[1.5px] px-3 text-[15px] font-semibold transition-colors",
                   modalidade === m
                     ? "border-brand-red bg-cta text-cta-fg"
                     : "border-border-shalon bg-surface text-ink",
@@ -525,7 +525,7 @@ export function NovoPedido({
             type="button"
             disabled={!podeLancar}
             onClick={lancar}
-            className="mt-3 flex min-h-[52px] w-full cursor-pointer items-center justify-center rounded-13 border-0 bg-cta text-[16px] font-semibold text-cta-fg disabled:cursor-not-allowed disabled:bg-tn disabled:text-muted"
+            className="motion-interactive mt-3 flex min-h-[52px] w-full cursor-pointer items-center justify-center rounded-13 border-0 bg-cta text-[16px] font-semibold text-cta-fg transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:bg-tn disabled:text-muted disabled:opacity-100"
           >
             {enviando ? "Lançando…" : "Lançar pedido"}
           </button>
@@ -543,7 +543,7 @@ export function NovoPedido({
             <button
               type="button"
               onClick={() => mudarEtapa(ETAPAS[indiceDaEtapa - 1]!.valor)}
-              className="inline-flex min-h-touch cursor-pointer items-center rounded-11 border border-border-shalon bg-surface px-4 text-[13.5px] font-semibold text-ink hover:border-brand-orange"
+              className="motion-interactive inline-flex min-h-touch cursor-pointer items-center rounded-11 border border-border-shalon bg-surface px-4 text-[13.5px] font-semibold text-ink transition-colors hover:border-brand-orange"
             >
               ← Voltar
             </button>
@@ -555,7 +555,7 @@ export function NovoPedido({
               type="button"
               onClick={() => mudarEtapa(ETAPAS[indiceDaEtapa + 1]!.valor)}
               disabled={etapa === "cliente" ? !clienteCompleto : itens.length === 0}
-              className="inline-flex min-h-touch cursor-pointer items-center rounded-11 border-0 bg-cta px-4 text-[13.5px] font-bold text-cta-fg disabled:cursor-not-allowed disabled:bg-tn disabled:text-muted"
+              className="motion-interactive inline-flex min-h-touch cursor-pointer items-center rounded-11 border-0 bg-cta px-4 text-[13.5px] font-bold text-cta-fg transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:bg-tn disabled:text-muted disabled:opacity-100"
             >
               Continuar →
             </button>

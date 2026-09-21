@@ -37,13 +37,13 @@ export function DrawerAdmin() {
 
       {aberto ? (
         <div
-          className="fixed inset-0 z-80 flex bg-[var(--shalon-scrim-drawer)] lg:hidden"
+          className="motion-backdrop-in fixed inset-0 z-80 flex bg-[var(--shalon-scrim-drawer)] lg:hidden"
           onClick={() => setAberto(false)}
         >
           <nav
             aria-label="Navegação principal do administrativo"
             onClick={(e) => e.stopPropagation()}
-            className="flex w-[76%] max-w-drawer animate-shalon-up flex-col gap-1 overflow-y-auto bg-sidebar px-3 py-4"
+            className="motion-drawer-left-in flex w-[76%] max-w-drawer flex-col gap-1 overflow-y-auto bg-sidebar px-3 py-4"
           >
             <div className="flex items-center justify-between px-2 pb-[14px] pt-1">
               <Image

@@ -27,7 +27,7 @@ export function Textarea({ label, hint, id, className = "", ...props }: Props) {
         className={[
           "w-full resize-y rounded-11 border-[1.5px] border-border-shalon",
           "bg-surface px-[13px] py-[11px] text-[14.5px] text-ink",
-          "placeholder:text-muted focus:border-brand-orange focus:outline-none",
+          "motion-interactive transition-colors placeholder:text-muted focus:border-brand-orange focus:outline-none",
           className,
         ].join(" ")}
         {...props}

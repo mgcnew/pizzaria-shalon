@@ -42,7 +42,7 @@ export function Select({
         className={[
           "w-full min-h-[46px] rounded-11 border-[1.5px] border-border-shalon",
           "bg-surface px-3 py-[10px] text-[14px] font-medium text-ink",
-          "focus:border-brand-orange focus:outline-none",
+          "motion-interactive transition-colors focus:border-brand-orange focus:outline-none",
           className,
         ].join(" ")}
         {...props}

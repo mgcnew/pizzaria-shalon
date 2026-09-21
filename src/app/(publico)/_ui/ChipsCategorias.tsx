@@ -43,7 +43,7 @@ function CirculoCategoria({
   return (
     <span
       className={[
-        "relative flex h-[68px] w-[68px] items-center justify-center overflow-hidden rounded-full border-2 transition-[border-color,transform,box-shadow] sm:h-[74px] sm:w-[74px]",
+        "motion-interactive relative flex h-[68px] w-[68px] items-center justify-center overflow-hidden rounded-full border-2 transition-[border-color,transform] sm:h-[74px] sm:w-[74px]",
         ativa
           ? "border-brand-orange shadow-[0_0_0_3px_rgb(238_122_23/0.16)]"
           : "border-border-shalon group-hover:-translate-y-0.5 group-hover:border-brand-orange",

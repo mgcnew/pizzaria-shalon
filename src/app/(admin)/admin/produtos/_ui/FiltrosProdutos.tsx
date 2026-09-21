@@ -51,7 +51,7 @@ export function FiltrosProdutos({
     >
       <input type="hidden" name="aba" value="produtos" />
 
-      <div className="flex min-h-[48px] min-w-0 flex-1 items-center gap-[10px] rounded-12 border-[1.5px] border-border-shalon bg-surface px-[14px] transition-colors focus-within:border-brand-orange">
+      <div className="motion-interactive flex min-h-[48px] min-w-0 flex-1 items-center gap-[10px] rounded-12 border-[1.5px] border-border-shalon bg-surface px-[14px] transition-colors focus-within:border-brand-orange">
         <svg
           aria-hidden="true"
           viewBox="0 0 24 24"
@@ -85,7 +85,7 @@ export function FiltrosProdutos({
           aria-controls="painel-filtros-produtos"
           onClick={() => setAberto((valor) => !valor)}
           className={[
-            "inline-flex min-h-[48px] cursor-pointer items-center gap-2 rounded-12 border-[1.5px] px-[14px] text-[14px] font-semibold transition-colors",
+            "motion-interactive inline-flex min-h-[48px] cursor-pointer items-center gap-2 rounded-12 border-[1.5px] px-[14px] text-[14px] font-semibold transition-colors",
             aberto || quantidadeAtivos > 0
               ? "border-brand-orange bg-elev text-ink"
               : "border-border-shalon bg-surface text-ink hover:border-brand-orange",
@@ -107,7 +107,10 @@ export function FiltrosProdutos({
           role="dialog"
           aria-label="Filtros de produtos"
           hidden={!aberto}
-          className="absolute right-0 top-[calc(100%+8px)] w-[min(340px,calc(100vw-32px))] rounded-14 border border-border-shalon bg-surface p-4 shadow-[0_16px_42px_rgb(30_24_20/0.16)]"
+          className={[
+            "absolute right-0 top-[calc(100%+8px)] w-[min(340px,calc(100vw-32px))] rounded-14 border border-border-shalon bg-surface p-4 shadow-[0_16px_42px_rgb(30_24_20/0.16)]",
+            aberto ? "motion-popover-in" : "",
+          ].join(" ")}
         >
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
@@ -120,7 +123,7 @@ export function FiltrosProdutos({
                 <Link
                   href={hrefLimpar}
                   onClick={() => setAberto(false)}
-                  className="inline-flex min-h-[34px] items-center px-1 text-[12px] font-semibold text-brand-red hover:text-danger"
+                  className="motion-interactive inline-flex min-h-[34px] items-center px-1 text-[12px] font-semibold text-brand-red transition-colors hover:text-danger"
                 >
                   Limpar
                 </Link>
@@ -133,7 +136,7 @@ export function FiltrosProdutos({
                 <select
                   name="categoria"
                   defaultValue={categoria}
-                  className="min-h-touch rounded-10 border-[1.5px] border-border-shalon bg-surface px-3 text-[14px] font-medium text-ink outline-none focus:border-brand-orange"
+                  className="motion-interactive min-h-touch rounded-10 border-[1.5px] border-border-shalon bg-surface px-3 text-[14px] font-medium text-ink outline-none transition-colors focus:border-brand-orange"
                 >
                   <option value="">Todas as categorias</option>
                   {categorias.map((item) => (
@@ -149,7 +152,7 @@ export function FiltrosProdutos({
                 <select
                   name="situacao"
                   defaultValue={situacao}
-                  className="min-h-touch rounded-10 border-[1.5px] border-border-shalon bg-surface px-3 text-[14px] font-medium text-ink outline-none focus:border-brand-orange"
+                  className="motion-interactive min-h-touch rounded-10 border-[1.5px] border-border-shalon bg-surface px-3 text-[14px] font-medium text-ink outline-none transition-colors focus:border-brand-orange"
                 >
                   <option value="">Qualquer status</option>
                   <option value="disponivel">Disponíveis</option>
@@ -163,7 +166,7 @@ export function FiltrosProdutos({
 
             <button
               type="submit"
-              className="mt-4 inline-flex min-h-touch w-full cursor-pointer items-center justify-center rounded-11 bg-cta px-4 text-[14px] font-bold text-cta-fg"
+              className="motion-interactive mt-4 inline-flex min-h-touch w-full cursor-pointer items-center justify-center rounded-11 bg-cta px-4 text-[14px] font-bold text-cta-fg transition-opacity hover:opacity-90"
             >
               Aplicar filtros
             </button>

@@ -75,7 +75,7 @@ export function ModalNovoPedido({
         type="button"
         aria-label="Fechar novo pedido"
         onClick={() => router.push("/admin/pedidos")}
-        className="absolute inset-0 hidden cursor-default border-0 bg-[var(--shalon-scrim-sheet)] lg:block"
+        className="motion-backdrop-in absolute inset-0 hidden cursor-default border-0 bg-[var(--shalon-scrim-sheet)] lg:block"
         tabIndex={-1}
       />
 
@@ -84,7 +84,7 @@ export function ModalNovoPedido({
         role={desktop ? "dialog" : undefined}
         aria-modal={desktop ? true : undefined}
         aria-labelledby="modal-novo-pedido-titulo"
-        className="relative flex w-full flex-col bg-bg lg:max-h-[88vh] lg:max-w-[760px] lg:overflow-hidden lg:rounded-18 lg:border lg:border-border-shalon lg:bg-surface lg:shadow-[0_22px_70px_rgb(30_24_20/0.26)]"
+        className="motion-modal-in relative flex w-full flex-col bg-bg lg:max-h-[88vh] lg:max-w-[760px] lg:overflow-hidden lg:rounded-18 lg:border lg:border-border-shalon lg:bg-surface lg:shadow-[0_22px_70px_rgb(30_24_20/0.26)]"
       >
         <header className="flex shrink-0 items-center gap-3 border-b border-border-shalon bg-surface px-5 py-4">
           <div className="min-w-0 flex-1">
@@ -112,7 +112,7 @@ export function ModalNovoPedido({
           </button>
         </header>
 
-        <div className="overflow-y-auto bg-bg p-5">
+        <div className="scrollbar-subtle min-h-0 overflow-y-auto bg-bg p-5">
           <NovoPedido
             formasPorModalidade={formasPorModalidade}
             emModal
