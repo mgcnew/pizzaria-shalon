@@ -21,10 +21,12 @@ export function FormularioProduto({
   produto,
   categorias,
   integrado = false,
+  numerado = true,
 }: {
   produto?: ProdutoAdmin;
   categorias: Categoria[];
   integrado?: boolean;
+  numerado?: boolean;
 }) {
   const novo = !produto;
   const descricao = novo
@@ -127,7 +129,9 @@ export function FormularioProduto({
     return (
       <section className="rounded-16 border border-border-shalon bg-surface p-4 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0">
         <div className="mb-4">
-          <h3 className="m-0 text-[15.5px] font-bold text-ink">1 · Dados básicos</h3>
+          <h3 className="m-0 text-[15.5px] font-bold text-ink">
+            {numerado ? "1 · Dados básicos" : "Dados básicos"}
+          </h3>
           {descricao ? <p className="mt-1 text-[12.5px] text-muted">{descricao}</p> : null}
         </div>
         {formulario}
@@ -137,7 +141,7 @@ export function FormularioProduto({
 
   return (
     <Cartao
-      titulo="1 · Dados básicos"
+      titulo={numerado ? "1 · Dados básicos" : "Dados básicos"}
       {...(descricao ? { descricao } : {})}
     >
       {formulario}

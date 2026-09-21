@@ -77,7 +77,13 @@ export async function PainelCombos({ podeGerenciar }: { podeGerenciar: boolean }
                   </StatusBadge>
                   <Link
                     href={`/admin/produtos/${combo.id}`}
-                    className="text-[13px] font-semibold text-ink-2 hover:text-ink"
+                    className="text-[13px] font-semibold text-ink-2 hover:text-ink lg:hidden"
+                  >
+                    Editar dados
+                  </Link>
+                  <Link
+                    href={`/admin/produtos?editar=${combo.id}`}
+                    className="hidden text-[13px] font-semibold text-ink-2 hover:text-ink lg:inline"
                   >
                     Editar dados
                   </Link>

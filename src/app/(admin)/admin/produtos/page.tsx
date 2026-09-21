@@ -12,6 +12,7 @@ import { PainelBanners } from "./_ui/PainelBanners";
 import { MenuFerramentasCatalogo } from "./_ui/MenuFerramentasCatalogo";
 import { ModalFerramentaCatalogo } from "./_ui/ModalFerramentaCatalogo";
 import { FormularioProduto } from "./_ui/FormularioProduto";
+import { EdicaoProduto } from "./_ui/EdicaoProduto";
 
 export const metadata: Metadata = { title: "Produtos" };
 
@@ -73,6 +74,7 @@ export default async function Page({
   const sessao = await obterSessaoInterna();
   const podeGerenciar = podeNaUI(sessao, "catalog.manage");
   const novoProduto = um("novo") === "1" && aba === "produtos" && podeGerenciar;
+  const produtoEmEdicao = !novoProduto && aba === "produtos" ? um("editar") : "";
   const categoriasDoNovoProduto = novoProduto ? await listarCategorias() : [];
 
   return (
@@ -139,6 +141,8 @@ export default async function Page({
           <FormularioProduto categorias={categoriasDoNovoProduto} integrado />
         </ModalFerramentaCatalogo>
       ) : null}
+
+      {produtoEmEdicao ? <EdicaoProduto id={produtoEmEdicao} emModal /> : null}
     </div>
   );
 }
