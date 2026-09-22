@@ -74,7 +74,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
             descricao="Essa categoria está sem itens no momento."
           />
         ) : (
-          <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 md:grid-cols-4 lg:grid-cols-5">
             {itens.map((p) => (
               <CardProduto key={p.id} produto={p} />
             ))}

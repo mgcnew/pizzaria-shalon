@@ -14,7 +14,6 @@ import { Busca } from "./_ui/Busca";
 import { CardProduto } from "./_ui/CardProduto";
 import { ChipsCategorias } from "./_ui/ChipsCategorias";
 import { Secao } from "./_ui/Secao";
-import { CardDestaque } from "./_ui/CardDestaque";
 
 export const metadata: Metadata = {
   title: "Cardápio",
@@ -104,7 +103,7 @@ export default async function Home({
               }
             />
           ) : (
-            <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 md:grid-cols-4 lg:grid-cols-5">
               {resultados.map((p) => (
                 <CardProduto key={p.id} produto={p} />
               ))}
@@ -134,7 +133,7 @@ export default async function Home({
 
       <Banners
         nomeLoja={loja?.nome_exibicao ?? loja?.nome ?? "Pizzaria Shalon"}
-        temCombos={combos.length > 0}
+        combos={combos}
       />
 
       <div className="pt-4">
@@ -143,9 +142,9 @@ export default async function Home({
 
       {destaques.length > 0 ? (
         <Secao titulo="Recomendados pela Shalon" legenda="Escolha da casa">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 md:grid-cols-4 lg:grid-cols-5">
             {destaques.map((p) => (
-              <CardDestaque key={p.id} produto={p} />
+              <CardProduto key={p.id} produto={p} />
             ))}
           </div>
         </Secao>
@@ -153,9 +152,9 @@ export default async function Home({
 
       {maisPedidos.length > 0 ? (
         <Secao titulo="Mais pedidos" legenda="Últimos 30 dias">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 md:grid-cols-4 lg:grid-cols-5">
             {maisPedidos.map((p) => (
-              <CardDestaque key={p.id} produto={p} />
+              <CardProduto key={p.id} produto={p} />
             ))}
           </div>
         </Secao>
@@ -163,24 +162,12 @@ export default async function Home({
 
       {emPromocao.length > 0 ? (
         <Secao titulo="Promoções" legenda="Enquanto durar">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 md:grid-cols-4 lg:grid-cols-5">
             {emPromocao.map((p) => (
-              <CardDestaque key={p.id} produto={p} />
+              <CardProduto key={p.id} produto={p} />
             ))}
           </div>
         </Secao>
-      ) : null}
-
-      {combos.length > 0 ? (
-        <div id="combos">
-          <Secao titulo="Combos para compartilhar">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {combos.map((p) => (
-                <CardDestaque key={p.id} produto={p} />
-              ))}
-            </div>
-          </Secao>
-        </div>
       ) : null}
 
       <Secao titulo="Cardápio" legenda={`${cardapio.length} ${cardapio.length === 1 ? "item" : "itens"}`}>
@@ -190,7 +177,7 @@ export default async function Home({
               {categoria.nome}
               {categoria.pausada ? " · pausada hoje" : ""}
             </h3>
-            <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 md:grid-cols-4 lg:grid-cols-5">
               {itens.map((p) => (
                 <CardProduto key={p.id} produto={p} />
               ))}
