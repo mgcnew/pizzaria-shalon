@@ -313,6 +313,20 @@ O cliente pode ler somente entidades que sejam publicáveis segundo regras de ne
 
 Produtos temporariamente indisponíveis podem continuar visíveis como “Indisponível hoje”, conforme regra funcional.
 
+**As projeções públicas são `SECURITY INVOKER`.** `cardapio_publico`,
+`buscar_catalogo`, `banners_publicos` e as demais não filtram por `is_active`
+dentro do corpo: quem exclui o produto inativo é a RLS de `products`. Torná-las
+`SECURITY DEFINER` faria o catálogo público passar por cima dessa RLS. Não
+fazer.
+
+**Caminho de imagem pública (corrigido em D-2026-09-22-59).** Essas projeções
+não podem juntar `media_assets`, que é fechada ao `anon` — o efeito era
+cardápio sem foto e sem banner para o cliente. Use
+`public.caminho_publico_da_midia(uuid)`: `security definer`, devolve o
+`storage_path` **apenas quando o bucket do asset é público**, e nada mais.
+Nenhuma outra coluna de `media_assets` é exposta, e bucket privado nunca sai
+por ela.
+
 ## 8.2 Não confiar no catálogo lido pelo cliente
 
 Mesmo que o cliente tenha acabado de receber preço R$ X, o pedido deve recalcular no servidor:
@@ -980,6 +994,12 @@ Imagens comerciais que realmente precisam ser públicas podem usar bucket públi
 - identidade pública.
 
 Upload/replace/delete continua restrito a usuário autorizado.
+
+**Leitura do caminho pelo cliente anônimo.** O cliente não lê `media_assets`.
+O caminho do arquivo chega pelas projeções públicas, através de
+`public.caminho_publico_da_midia(uuid)`, que condiciona a resposta a
+`storage.buckets.public` — a mesma condição que já torna o arquivo acessível
+por URL pública. Bucket privado (§23.2) devolve `null` mesmo com o id em mãos.
 
 ## 23.2 Buckets privados
 

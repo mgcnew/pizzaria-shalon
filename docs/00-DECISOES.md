@@ -1547,6 +1547,64 @@ re-executadas: Fase 2 (48), Fase 7 (172) e Fase 8 (112), todas verdes.
 `src/application/entregas/` e `src/application/equipe/`;
 `GestaoDaEquipe.tsx`, `PainelDeEntregas.tsx` e `PainelDaEquipe.tsx`.
 
+### D-2026-09-22-59 — A foto e o banner nunca chegaram ao cliente anônimo
+
+**O defeito.** No site publicado, o cardápio aparecia sem **nenhuma foto de
+produto** e sem **nenhum banner**. Localmente estava tudo certo. Não era deploy,
+variável de ambiente nem `next.config.ts`: era permissão.
+
+`cardapio_publico`, `buscar_catalogo` e `banners_publicos` são
+`SECURITY INVOKER` de propósito — é a RLS de `products` que exclui produto
+inativo do cardápio, e não um `where` dentro da projeção. Mas as três faziam
+`join` em `media_assets` para obter o caminho da imagem, e `media_assets` só tem
+policy de leitura `to authenticated` com `catalog.view`. Para o `anon` o `join`
+não casava, e o produto vinha **sem** `imagem_path`. Medido como `anon`:
+`produtos=9, com_foto=0, banners=0`.
+
+**Por que durou tanto.** Toda validação visual foi feita no navegador de
+desenvolvimento, que carrega o cookie de sessão da Owner. Logado, o `join`
+casa e a foto aparece. O site nunca tinha sido visto como o cliente o vê.
+
+**A correção óbvia foi recusada.** Tornar as três projeções `SECURITY DEFINER`
+faria a foto aparecer — e faria o catálogo passar por cima da RLS de
+`products`, expondo produto inativo. Trocaria um defeito visual por um
+vazamento.
+
+**O que foi feito.** Migration `20260922120000_caminho_publico_da_midia.sql`
+cria `public.caminho_publico_da_midia(uuid)`, `stable security definer`, que
+devolve o `storage_path` de um asset **somente se o bucket dele for público**
+(`storage.buckets.public`). As três projeções passam a chamá-la em vez de
+juntar `media_assets`, e continuam `SECURITY INVOKER`: quem decide **quais
+produtos** aparecem continua sendo a RLS; a função decide apenas **qual caminho
+de arquivo já é público de qualquer forma**. `banners_publicos` mantém a
+semântica de "banner precisa de imagem" com
+`caminho_publico_da_midia(...) is not null`.
+
+O que a função não faz: não expõe `media_assets`, não lê bucket privado e não
+devolve nada de `comprovantes`. O anônimo continua lendo `0` de `media_assets`.
+
+**Onde foi formalizado.** `03-RLS-RBAC-SEGURANCA.md` §8.1 e §23.1.
+
+**Testes.** `supabase/tests/midia_publica_fase4b.sql`, 19 cenários, 19 verdes —
+todos os relevantes rodando como `anon`, incluindo os negativos: comprovante
+financeiro não devolve caminho, produto inativo com foto não aparece, e
+`media_assets` continua fechada. Regressão da Fase 4 re-executada:
+`publico_fase4.sql`, 96 cenários, 96 verdes.
+
+Nessa re-execução, nove cenários de busca passaram a contar apenas as próprias
+fixtures (`slug like '%-f4'`). O banco de desenvolvimento já tem produtos reais
+que casam com termos como "calabresa": era acoplamento de ambiente, não
+regressão — a mesma correção já aplicada em `rls_fase2.sql`.
+
+**Sem redeploy.** A correção é inteiramente de banco; nenhum arquivo do
+Next.js mudou.
+
+**Lição registrada.** Superfície pública se valida **sem sessão**. Guia
+anônima do navegador, ou teste rodando como `anon`. Foi o que este arquivo de
+teste passou a garantir.
+
+---
+
 ---
 
 # Decisões em aberto

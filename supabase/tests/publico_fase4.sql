@@ -348,17 +348,20 @@ set local request.jwt.claims = '{"role":"anon"}';
 
 -- =============================================================================
 -- 8. BUSCA (RN-BUSCA-001/002) — pendência A-17
+-- As contagens são restritas aos fixtures ('%-f4'): o banco de desenvolvimento
+-- já tem produtos reais que casam com termos como 'calabresa'. Acoplamento de
+-- ambiente, não regressão.
 -- =============================================================================
 select pg_temp.checar('8.1 busca por nome', '1',
-  (select count(*)::text from public.buscar_catalogo('calabresa')));
+  (select count(*)::text from public.buscar_catalogo('calabresa') where slug like '%-f4'));
 select pg_temp.checar('8.2 busca IGNORA acento do termo', '1',
-  (select count(*)::text from public.buscar_catalogo('CALÁBRESA')));
+  (select count(*)::text from public.buscar_catalogo('CALÁBRESA') where slug like '%-f4'));
 select pg_temp.checar('8.3 busca ignora acento do CADASTRO', 'Calabresa Ácida F4',
-  (select nome from public.buscar_catalogo('acida')));
+  (select nome from public.buscar_catalogo('acida') where slug like '%-f4'));
 select pg_temp.checar('8.4 busca ignora caixa', 'Portuguesa F4',
-  (select nome from public.buscar_catalogo('pOrTuGuEsA')));
+  (select nome from public.buscar_catalogo('pOrTuGuEsA') where slug like '%-f4'));
 select pg_temp.checar('8.5 busca por descricao', 'true',
-  (select (count(*) > 0)::text from public.buscar_catalogo('presunto')));
+  (select (count(*) > 0)::text from public.buscar_catalogo('presunto') where slug like '%-f4'));
 -- 3 e não 4: a "Inativa F4" está na categoria mas nunca é publicável.
 select pg_temp.checar('8.6 busca por categoria', '3',
   (select count(*)::text from public.buscar_catalogo('pizzas f4')));
@@ -367,9 +370,9 @@ select pg_temp.checar('8.7 busca por TAMANHO oferecido', 'true',
 select pg_temp.checar('8.8 busca vazia nao devolve nada', '0',
   (select count(*)::text from public.buscar_catalogo('   ')));
 select pg_temp.checar('8.9 termo sem correspondencia', '0',
-  (select count(*)::text from public.buscar_catalogo('zzzzz')));
+  (select count(*)::text from public.buscar_catalogo('zzzzz') where slug like '%-f4'));
 select pg_temp.checar('8.10 produto INATIVO nunca aparece na busca', '0',
-  (select count(*)::text from public.buscar_catalogo('inativa')));
+  (select count(*)::text from public.buscar_catalogo('inativa') where slug like '%-f4'));
 
 
 reset role;  -- mutação de estado: anon não tem policy de escrita
@@ -378,9 +381,9 @@ update public.products set is_temporarily_available = false
 set local role anon;
 set local request.jwt.claims = '{"role":"anon"}';
 select pg_temp.checar('8.11 indisponivel APARECE na busca (RN-BUSCA-002)', '1',
-  (select count(*)::text from public.buscar_catalogo('portuguesa')));
+  (select count(*)::text from public.buscar_catalogo('portuguesa') where slug like '%-f4'));
 select pg_temp.checar('8.12 ...marcado como indisponivel', 'false',
-  (select disponivel::text from public.buscar_catalogo('portuguesa')));
+  (select disponivel::text from public.buscar_catalogo('portuguesa') where slug like '%-f4'));
 
 reset role;  -- mutação de estado: anon não tem policy de escrita
 update public.products set is_temporarily_available = true
