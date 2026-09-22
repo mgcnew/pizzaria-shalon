@@ -1,8 +1,10 @@
+import Image from "next/image";
 import Link from "next/link";
 import { formatBRL } from "@/lib/format";
 import { Badge, StatusBadge } from "@/ui/components";
 import { EmptyState } from "@/ui/patterns";
 import { listarProdutos, listarCategorias } from "@/application/catalogo/consultas";
+import { urlDaImagem } from "@/application/publico/consultas";
 import { alternarDisponibilidadeProduto } from "@/application/catalogo/acoes";
 import { TIPOS_PRODUTO, type ProdutoAdmin } from "@/application/catalogo/tipos";
 import { BotaoAcao } from "./BotaoAcao";
@@ -24,6 +26,15 @@ import { FiltrosProdutos } from "./FiltrosProdutos";
  *    vários tamanhos mostra a faixa "de … a …", porque não existe um preço
  *    único para ela;
  *  · a edição abre uma rota própria em vez de modal (ver produtos/[id]).
+ *
+ * A MINIATURA é de 56px e não cresce. Aqui a pessoa está administrando, não
+ * escolhendo o jantar: o que ela precisa varrer é preço, disponibilidade e
+ * ação, e foto grande empurraria isso para fora da tela. O card vertical com
+ * foto grande existe no cardápio público, nas vitrines (D-2026-09-21-56).
+ *
+ * Quando não há foto, o cartão DIZ que não há. É no painel que essa falta é
+ * acionável — e produto sem foto aparece pior no cardápio do que qualquer
+ * outra coisa que se possa ajustar aqui.
  */
 
 function rotuloTipo(tipo: string): string {
@@ -76,6 +87,13 @@ export async function PainelProdutos({
     return true;
   });
 
+  // A URL do catálogo é pública e determinística; resolver antes do map evita
+  // um await por cartão dentro da renderização.
+  const caminhos = [...new Set(filtrados.map((p) => p.imagem_path).filter((c) => c !== null))];
+  const imagens = new Map(
+    await Promise.all(caminhos.map(async (c) => [c, await urlDaImagem(c)] as const)),
+  );
+
   return (
     <div>
       <FiltrosProdutos
@@ -94,27 +112,52 @@ export async function PainelProdutos({
         <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(320px,1fr))]">
           {filtrados.map((p) => {
             const motivo = p.disponivel ? null : motivoIndisponivel(p);
+            const imagem = p.imagem_path ? (imagens.get(p.imagem_path) ?? null) : null;
             return (
               <article
                 key={p.id}
                 className="rounded-14 border border-border-shalon bg-surface p-[13px]"
               >
-                <div className="flex flex-wrap items-center gap-[7px]">
-                  <h3 className="m-0 text-[15.5px] font-bold text-ink">{p.nome}</h3>
-                  {p.destaque ? <Badge tom="destaque">Destaque</Badge> : null}
-                  {p.em_promocao ? <Badge tom="promocao">Promoção</Badge> : null}
-                </div>
+                <div className="flex gap-3">
+                  <div className="relative h-[56px] w-[56px] shrink-0 overflow-hidden rounded-10 bg-elev">
+                    {imagem ? (
+                      <Image
+                        src={imagem}
+                        alt=""
+                        fill
+                        sizes="56px"
+                        className="object-cover"
+                      />
+                    ) : (
+                      <span
+                        aria-hidden="true"
+                        className="flex h-full w-full items-center justify-center bg-tn text-[20px] opacity-70"
+                      >
+                        🍕
+                      </span>
+                    )}
+                  </div>
 
-                <p className="mt-[3px] text-[13px] text-ink-2">
-                  {p.categoria_nome} · {rotuloTipo(p.tipo)} · {precoExibido(p)}
-                </p>
-                <p className="mt-[2px] text-[12.5px] text-muted">
-                  {p.tamanhos > 0
-                    ? `${p.tamanhos} ${p.tamanhos === 1 ? "tamanho" : "tamanhos"} cadastrado${p.tamanhos === 1 ? "" : "s"}`
-                    : p.preco_base !== null
-                      ? "Preço próprio, sem tamanhos"
-                      : "Ainda sem preço — habilite um tamanho ou defina o preço próprio"}
-                </p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-[7px]">
+                      <h3 className="m-0 text-[15.5px] font-bold text-ink">{p.nome}</h3>
+                      {p.destaque ? <Badge tom="destaque">Destaque</Badge> : null}
+                      {p.em_promocao ? <Badge tom="promocao">Promoção</Badge> : null}
+                    </div>
+
+                    <p className="mt-[3px] text-[13px] text-ink-2">
+                      {p.categoria_nome} · {rotuloTipo(p.tipo)} · {precoExibido(p)}
+                    </p>
+                    <p className="mt-[2px] text-[12.5px] text-muted">
+                      {p.tamanhos > 0
+                        ? `${p.tamanhos} ${p.tamanhos === 1 ? "tamanho" : "tamanhos"} cadastrado${p.tamanhos === 1 ? "" : "s"}`
+                        : p.preco_base !== null
+                          ? "Preço próprio, sem tamanhos"
+                          : "Ainda sem preço — habilite um tamanho ou defina o preço próprio"}
+                      {imagem === null ? " · sem foto" : ""}
+                    </p>
+                  </div>
+                </div>
 
                 <div className="mt-[10px] flex flex-wrap items-center gap-2">
                   {p.disponivel ? (
