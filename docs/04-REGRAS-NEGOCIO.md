@@ -909,6 +909,42 @@ Usuário financeiro autorizado decide separadamente se a ocorrência deve gerar 
 ### RN-RUN-007
 Entrega não realizada não é tratada como dinheiro recebido pelo motoboy.
 
+### RN-RUN-008 — Transferência excepcional de entrega já em rota
+Decisão de 22/09/2026, que resolve a lacuna registrada em `D-2026-09-22-57`
+(item A-18).
+
+Depois que o pedido sai (`out_for_delivery`), **não existe troca de motoboy**.
+Existe **transferência de responsabilidade**, que é outra coisa e é excepcional.
+
+O caso real é "a moto do João quebrou e o Pedro foi buscar uma das entregas".
+
+1. A transferência é **por pedido**, não pela corrida. Uma corrida com três
+   pedidos pode ter só um transferido; os outros continuam com quem saiu.
+2. **Motivo é obrigatório.**
+3. O registro preserva, e nunca reescreve: motoboy anterior, motoboy novo,
+   pedido, corrida de origem, corrida de destino, horário, usuário interno
+   responsável e motivo. O vínculo antigo permanece com situação
+   `transferred` — quem saiu com o pedido é um fato, não um campo editável.
+4. **O pedido continua em rota.** Nada aqui o devolve para "pronto": o que
+   mudou foi a responsabilidade operacional, não o estado da entrega.
+5. Entrega já **concluída ou não realizada** não se transfere por fluxo comum.
+   Pedido cujo dinheiro **já entrou no caixa** também não.
+6. Funcionário **inativo** não recebe transferência.
+7. Se a transferência esvaziar a corrida de origem, ela passa a "voltou — a
+   acertar": não há mais o que entregar, e quem saiu tem contas a prestar.
+
+A transferência **não move dinheiro**: não cria pagamento, não cria movimento
+de caixa e não altera recebimento nenhum.
+
+### RN-RUN-009 — Quem responde pelo dinheiro depois da transferência
+Dinheiro **já recebido** continua sob responsabilidade de **quem o recebeu**,
+mesmo que a entrega passe a outro. Dinheiro **ainda não recebido** passa com a
+entrega.
+
+Consequência obrigatória: o mesmo recebimento **nunca** pode aparecer em duas
+corridas. O acerto de cada entregador cobra o que lhe cabe, e o total de
+dinheiro na rua continua existindo uma vez só (RN-CAIXA-014).
+
 ---
 
 # PARTE X — FUNCIONÁRIOS E MOVIMENTOS INTERNOS
@@ -974,6 +1010,37 @@ O sistema pode manter salário de referência e lançamentos para conferência g
 
 ### RN-EMPFIN-003
 Não realizar automaticamente descontos trabalhistas/salariais a partir de divergências, consumos ou ocorrências.
+
+### RN-EMPFIN-004 — Adiantamento pago em dinheiro pela gaveta
+Decisão de 22/09/2026, que resolve a lacuna registrada em `D-2026-09-22-57`
+(item A-19).
+
+Quando o adiantamento é **efetivamente pago em dinheiro pelo caixa**, um único
+fato produz **dois registros vinculados**:
+
+1. o lançamento `advance` no histórico do funcionário;
+2. o movimento **físico** de saída do caixa.
+
+Regras:
+
+- os dois são criados **atomicamente**: se um falhar, nenhum permanece;
+- os **valores são idênticos**;
+- o vínculo permite reconstruir os dois lados, em qualquer direção;
+- exige **sessão de caixa aberta** e valor não maior que o dinheiro esperado
+  na gaveta;
+- o movimento tem **tipo próprio** (`employee_advance`). **Não é sangria**:
+  sangria é a Shalon levando o próprio dinheiro para outro lugar dela;
+  adiantamento é dinheiro que sai para a mão de uma pessoa. Também **não é
+  despesa, não é venda e não é diferença de caixa**;
+- a **reversão devolve os dois juntos**. É proibido reverter só o movimento de
+  caixa pelo extrato, ou só o lançamento: não existe meio estorno. Originais e
+  compensatórios seguem a arquitetura da Fase 7;
+- dupla reversão é recusada;
+- **nada disso altera `employee_financial_profiles` nem desconta salário**
+  (RN-EMPFIN-003).
+
+Adiantamento pago por outro meio (transferência, por exemplo) registra apenas
+o lançamento, com a forma de pagamento, e **não move o caixa**.
 
 ---
 
@@ -1063,6 +1130,26 @@ Ocultar botão não substitui autorização no backend/RLS.
 
 ### RN-RBAC-004
 Ações sensíveis dependem da permissão efetiva do usuário no momento da operação.
+
+### RN-RBAC-005 — Ninguém concede o que não tem
+Decisão de 22/09/2026.
+
+Quem atribui um papel a um usuário interno precisa possuir, ele próprio,
+**todas as permissões que aquele papel concede**. Sem isso, `roles.manage`
+seria a chave de todas as portas: bastaria atribuir a si mesmo um papel mais
+forte.
+
+A verificação acontece no servidor, e a escrita direta em `user_roles` deixa de
+existir para a aplicação — a checagem não pode morar só na tela
+(CLAUDE.md §12, RN-RBAC-003).
+
+Complementos:
+
+- papel **inativo** não é atribuível;
+- toda alteração de papel é **auditada**, com o antes e o depois;
+- ninguém desativa o **próprio** acesso;
+- desligar o funcionário **revoga o acesso** e **não apaga** usuário, papéis
+  nem histórico (RN-FUNC-002, 03 §18.4).
 
 ---
 

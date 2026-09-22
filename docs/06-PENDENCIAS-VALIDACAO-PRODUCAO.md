@@ -468,3 +468,29 @@ parte. A separação dos dois livros é deliberada; o vínculo entre os dois
 registros é que não está decidido.
 
 A operação de entrega **não está validada contra operação real**.
+
+### Complemento da Fase 8 — o que segue sem validação real
+
+Acrescentado em 22/09/2026, com `D-2026-09-22-58`. As lacunas normativas
+A-18 e A-19 **saíram daqui**: viraram regra em `04-REGRAS-NEGOCIO.md` e a
+decisão está em `00-DECISOES.md`. O que permanece nesta seção é só o que
+depende do mundo real.
+
+1. **Nenhuma transferência em rota foi feita com uma moto quebrada de
+   verdade.** O cenário é coberto por teste, inclusive o caso em que o
+   dinheiro fica com quem saiu; o que não foi exercitado é a conversa de
+   balcão que o acompanha — quem liga para quem, e em quanto tempo a tela
+   acompanha a rua.
+
+2. **Nenhum adiantamento foi pago com dinheiro de verdade.** Os dois
+   registros nascem juntos no teste; o que falta é a gaveta física conferindo
+   com o número da tela depois de um adiantamento no meio do turno.
+
+3. **A criação da conta de login continua fora do sistema** (**A-20**). Hoje
+   a conta nasce no painel do Supabase e só então é vinculada. Isso não é
+   dívida de validação, é decisão pendente — está registrada em
+   `00-DECISOES.md`, e consta aqui apenas porque afeta o roteiro de colocar
+   um funcionário novo para trabalhar.
+
+Nada disso bloqueia as próximas fases. Bloqueia a produção, junto com as
+pendências anteriores.

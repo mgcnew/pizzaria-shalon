@@ -1481,6 +1481,74 @@ nova (o arquivo aplicado nunca é editado):**
 
 ---
 
+### D-2026-09-22-58 — Complemento da Fase 8: A-18, A-19 e gestão de equipe
+
+**Decisão.** Resolver as duas lacunas normativas abertas em `D-2026-09-22-57` e
+completar o item de gestão de funcionários do plano (§12.3/§12.4).
+
+**A-18 — transferência excepcional em rota. Virou RN-RUN-008 e RN-RUN-009.**
+
+O que ficou decidido: depois que o pedido sai, **não existe troca de motoboy**;
+existe transferência de responsabilidade, que é outra coisa. Por pedido, não
+pela corrida. Motivo obrigatório. Quem saiu com o pedido **permanece** no
+histórico, com situação `transferred` — a diferença entre "ia levar"
+(`reassigned`) e "estava levando" é o que o acerto precisa saber. O pedido
+continua em rota: nada o devolve para "pronto".
+
+O ponto financeiro é o que exigiu modelagem a mais, como a autorização previa:
+**dinheiro já recebido fica com quem recebeu**, dinheiro ainda não recebido
+passa com a entrega. `payments.responsible_driver_run_id` carrega essa resposta,
+e `dinheiro_da_corrida` virou a fonte única — o painel e o acerto consultam a
+MESMA função, porque duas somas parecidas divergiriam na primeira
+transferência e o mesmo dinheiro apareceria em duas corridas.
+
+**A-19 — adiantamento pela gaveta. Virou RN-EMPFIN-004.**
+
+Um fato, dois livros: o lançamento `advance` e a saída física do caixa nascem
+na mesma transação, com o mesmo valor e vínculo em ambas as direções. Tipo
+próprio `employee_advance`, e não sangria — sangria é a Shalon levando o
+próprio dinheiro para outro lugar dela; adiantamento é dinheiro que sai para a
+mão de uma pessoa. A reversão devolve os dois; `reverter_movimento_caixa`
+**recusa** estornar essa metade pelo extrato. Nada altera salário.
+
+**§12.3/§12.4 — equipe, acesso e papéis.** Cadastro, edição, desligamento por
+data e reativação; vínculo de acesso; atribuição de papéis. Três conceitos que
+a interface não funde: funcionário ≠ `app_user` ≠ papel. O motoboy é a prova —
+trabalha, entrega, presta contas, e `acesso` é nulo.
+
+**RN-RBAC-005, nova.** Ninguém concede o que não tem. Foi preciso **remover as
+policies de INSERT e DELETE de `user_roles`**: a checagem não poderia morar só
+na RPC se `/rest/v1` aceitasse o INSERT direto — quem tivesse `roles.manage` se
+promoveria pela API.
+
+**Três defeitos encontrados pelos próprios testes**, todos corrigidos por
+migration nova (o arquivo aplicado nunca é editado):
+
+1. `lancar_no_funcionario` lia um `record` nunca atribuído quando não havia
+   forma de pagamento — **nenhum lançamento de consumo ou diferença gravava**.
+   É o mesmo tropeço que a Fase 7 teve em `registrar_lancamento`. Corrigido
+   pela 0084 com variável escalar;
+2. `salvar_funcionario` tinha o mesmo problema com o "antes" da auditoria —
+   **criar funcionário falhava sempre**. Corrigido pela 0086;
+3. transferir a **última** entrega pendente deixava a corrida de origem presa
+   em `out` para sempre, e o dinheiro que o motoboy tivesse na mão nunca
+   achava a porta do caixa. Corrigido pela 0085: a corrida esvaziada passa a
+   "voltou — a acertar".
+
+**Onde foi formalizado.** `04-REGRAS-NEGOCIO.md` RN-RUN-008, RN-RUN-009,
+RN-EMPFIN-004 e RN-RBAC-005; `02-MODELO-DADOS-SUPABASE.md` §11.2, §11.5,
+§11.3, §12.3 e §13.3; `03-RLS-RBAC-SEGURANCA.md` §19.6, §19.7 e §33.12;
+`05-PLANO-IMPLEMENTACAO.md` §12.3/§12.4.
+
+**Testes.** `supabase/tests/equipe_fase8b.sql`, 120 cenários. Regressões
+re-executadas: Fase 2 (48), Fase 7 (172) e Fase 8 (112), todas verdes.
+
+**Arquivos.** Migrations `20260922110000` a `20260922110600`;
+`src/application/entregas/` e `src/application/equipe/`;
+`GestaoDaEquipe.tsx`, `PainelDeEntregas.tsx` e `PainelDaEquipe.tsx`.
+
+---
+
 # Decisões em aberto
 
 Nenhuma implementação que dependa destes pontos deve começar antes da decisão.
@@ -1500,11 +1568,13 @@ Nenhuma implementação que dependa destes pontos deve começar antes da decisã
 | ~~A-09~~ | ~~Identidade Git~~ | — | ✅ Resolvida em D-2026-09-17-10: Marcelo <mgc.info.new@gmail.com>, apenas local |
 | ~~A-10~~ | ~~Criação do remoto e primeiro `push`~~ | — | ✅ Resolvida em D-2026-09-18-19: `github.com/mgcnew/pizzaria-shalon`, privado |
 | **A-11** | **Projeto Supabase de PRODUÇÃO** e separação dev/prod — o de desenvolvimento existe (D-2026-09-18-15); falta o de produção e a gestão de segredos dele | Fase 11 | `05-PLANO-IMPLEMENTACAO.md` §15 |
-| **A-14** | **Criação de usuários internos pela interface** — hoje depende de SQL. A tela de gestão de equipe é da Fase 8; até lá, novos acessos são criados manualmente | Fase 8 | `05-PLANO-IMPLEMENTACAO.md` §12.3 |
+| ~~A-14~~ | ~~Criação de usuários internos pela interface~~ | — | ✅ Em D-2026-09-22-58: `/admin/equipe` cadastra funcionário, **vincula** acesso e atribui papéis. O que resta — criar a conta em si — virou **A-20** |
 | ~~A-16~~ | ~~Ranking "Mais pedidos"~~ | — | ✅ Resolvida em D-2026-09-19-44: `mais_pedidos`, 30 dias móveis, concluídos, por quantidade, meio a meio por fração |
 | ~~A-17~~ | ~~Busca pública sem acento e sem caixa~~ | — | ✅ Resolvida em D-2026-09-19-28: `unaccent` + filtrar antes de precificar; sem índice, por medição |
-| **A-18** | **Troca de motoboy com o pedido já na rua** — moto quebrou, outro vai buscar. Hoje `atribuir_entrega` só aceita pedido em `ready_for_delivery`: depois de `out_for_delivery` a troca é recusada. Nenhum documento normativo define o caso, e inventar aqui mudaria o que "saiu para entrega" significa — e o que o acerto de cada motoboy deve cobrar | Operação real de entrega | `04-REGRAS-NEGOCIO.md` §32 |
-| **A-19** | **Adiantamento pago pela gaveta** — RN-EMPFIN-001 prevê registrar a forma de pagamento do adiantamento. Hoje o lançamento no livro do funcionário **não move o caixa**: quem paga em dinheiro precisa registrar a sangria à parte. Manter os dois livros separados é deliberado; o que não está decidido é se o sistema deve **vincular** os dois registros | Conferência de caixa com adiantamentos | `04-REGRAS-NEGOCIO.md` §36 |
+| ~~A-18~~ | ~~Troca de motoboy com o pedido já na rua~~ | — | ✅ Resolvida em D-2026-09-22-58: virou **RN-RUN-008** e **RN-RUN-009** |
+| ~~A-19~~ | ~~Adiantamento pago pela gaveta~~ | — | ✅ Resolvida em D-2026-09-22-58: virou **RN-EMPFIN-004** |
+| **A-20** | **Criação da conta de login do funcionário** — `/admin/equipe` vincula uma conta que **já existe** no Auth, e o sistema não a cria. Criar exigiria `service_role` (CLAUDE.md §13) e uma política de senha inicial/recuperação que não está normatizada. Falta decidir o mecanismo: convite por e-mail, criação pelo painel do Supabase, ou outro | Onboarding de novo funcionário com acesso | `03-RLS-RBAC-SEGURANCA.md` §19.7 e §25 |
+| **A-21** | **Conteúdo dos papéis (`role_permissions`)** — quem tem `roles.manage` pode alterar, pela API direta, **quais permissões um papel concede**, inclusive as do próprio papel. RN-RBAC-005 fechou a atribuição de papéis a usuários, não a edição do papel em si, que não estava no escopo autorizado. Hoje só a Owner tem `roles.manage` | Antes de existir papel customizado com `roles.manage` | `03-RLS-RBAC-SEGURANCA.md` §19.7 |
 | **A-15** | **Política de senha, MFA e bloqueio por tentativa** do Supabase Auth — não configurados; a V1 usa o padrão do projeto. A **recuperação de senha** saiu desta pendência: foi implementada em D-2026-09-19-51, com o mínimo de 8 caracteres. O que resta é política de complexidade, MFA, expiração e bloqueio | Fase 10 (hardening) | `03-RLS-RBAC-SEGURANCA.md` §25 |
 
 ---

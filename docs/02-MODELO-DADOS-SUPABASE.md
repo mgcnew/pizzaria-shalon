@@ -835,6 +835,31 @@ seria uma saída que não saiu.
 sair: o vínculo antigo **permanece**, com quem havia atribuído e quando
 (CLAUDE.md §22 — não sobrescrever silenciosamente).
 
+`transferred` é o estado do vínculo quando o pedido **já estava na rua** e
+mudou de responsável (RN-RUN-008). A diferença entre os dois não é cosmética:
+`reassigned` significa "ia levar", `transferred` significa "estava levando", e
+só o segundo tem consequência no acerto.
+
+## 11.5 `delivery_transfers`
+
+Acrescentada em 22/09/2026 (RN-RUN-008). Tabela própria porque a transferência
+é um **evento com dois lados**, e nenhum dos dois vínculos sozinho conta a
+história inteira.
+
+- `id uuid PK`
+- `order_id uuid FK`
+- `from_run_id`, `from_link_id`, `from_employee_id` — de onde saiu
+- `to_run_id`, `to_link_id`, `to_employee_id` — para onde foi
+- `reason text not null` — motivo obrigatório
+- `notes text nullable`
+- `transferred_by uuid FK -> app_users.id`
+- `transferred_at timestamptz`
+
+CHECKs impedem transferência para o mesmo motoboy e para a mesma corrida.
+
+Só há policy de SELECT (`deliveries.view`): a escrita é da RPC
+`transferir_entrega`.
+
 ## 11.3 `driver_run_settlements`
 
 - `id uuid PK`
@@ -859,6 +884,14 @@ sempre que ela for diferente de zero (RN-RUN-004). UNIQUE em
 já registrados nos pedidos **entregues** daquela corrida que ainda não
 entraram em gaveta nenhuma — recalculada dentro da transação do acerto, e
 não lida da tela (03 §16.4).
+
+Depois da Fase 8 complementar esse cálculo passou a ser uma função só,
+`dinheiro_da_corrida`, porque "de quem é este dinheiro" deixou de ser
+respondível pelo vínculo de entrega: com transferência em rota, um pode ter
+recebido e outro ter entregado (RN-RUN-009). `payments.responsible_driver_run_id`
+carrega a resposta explícita quando existe, e o vínculo responde quando não
+existe. O painel e o acerto consultam a MESMA função — duas somas parecidas
+divergiriam depois da primeira transferência.
 
 Valores de cartão/Pix máquina podem ser apresentados no resumo da saída, mas dinheiro físico esperado deve ser distinguido de pagamentos processados na maquininha.
 
@@ -920,6 +953,18 @@ anterior em `before_snapshot` — em vez de um terceiro status ambíguo.
 - pendências de motoboy não bloqueiam fechamento.
 
 ## 12.3 `cash_movements`
+
+> **Acrescentado em 22/09/2026 (RN-EMPFIN-004):** o tipo `employee_advance`,
+> sempre com `direction = 'out'` e motivo obrigatório, e a coluna
+> `employee_ledger_entry_id` que o liga ao lançamento do funcionário. O tipo é
+> próprio de propósito: **não é sangria**. Sangria é a Shalon levando o próprio
+> dinheiro para outro lugar dela; adiantamento é dinheiro que sai para a mão
+> de uma pessoa, e que ela vai conferir depois. Somá-los no mesmo tipo apagaria
+> a pergunta "quanto saiu para quem".
+>
+> `reverter_movimento_caixa` **recusa** estornar um movimento com
+> `employee_ledger_entry_id`: o caminho é estornar o adiantamento no histórico
+> do funcionário, e os dois voltam juntos.
 
 Movimentos físicos do caixa.
 
@@ -1038,8 +1083,16 @@ Registro confirmado não é apagado. Correção por estorno + novo lançamento.
 - `reversed_by uuid nullable`, `reversed_at timestamptz nullable`,
   `reversal_reason text nullable`
 - `idempotency_key uuid nullable` — UNIQUE parcial
+- `payment_method_id uuid nullable` + `payment_method_name_snapshot text
+  nullable` — RN-EMPFIN-001 prevê registrar como o adiantamento foi pago; o
+  snapshot existe para que renomear a forma depois não reescreva o lançamento
 
 Não é folha de pagamento. Não desconta automaticamente do salário.
+
+RN-EMPFIN-004: quando o adiantamento sai em dinheiro da gaveta, o outro lado
+do fato é um `cash_movements` do tipo `employee_advance`, apontando de volta
+por `cash_movements.employee_ledger_entry_id`. Os dois nascem na mesma
+transação e são revertidos juntos — não existe meio estorno.
 
 Implementado na Fase 8. Índices únicos parciais impedem **dois lançamentos
 confirmados para a mesma corrida** e **dois para o mesmo movimento interno**:

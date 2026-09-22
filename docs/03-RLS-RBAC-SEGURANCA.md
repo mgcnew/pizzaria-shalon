@@ -827,6 +827,50 @@ Consequência que a interface precisa respeitar: `dinheiro_na_rua` **nunca**
 aparece somado ao saldo do caixa. Mostrá-los juntos faria a Shalon acreditar
 que tem dinheiro que ainda está com o entregador (RN-CAIXA-014).
 
+## 19.6 Transferência em rota (RN-RUN-008)
+
+`transferir_entrega` exige `deliveries.manage` — é ato **operacional**: quem
+cuida da rua resolve moto quebrada. Ela não move dinheiro; o que decide é de
+quem o acerto vai cobrar o que ainda não foi recebido.
+
+`delivery_transfers` tem RLS com `enable` + `force`, policy só de SELECT
+(`deliveries.view`) e **nenhuma policy de escrita**: toda transferência passa
+pela RPC.
+
+`payments.responsible_driver_run_id` é a resposta explícita de RN-RUN-009 — a
+corrida que responde por aquele dinheiro no acerto. Preenchida pela
+transferência quando o recebimento já existia.
+
+## 19.7 Funcionários, acesso e papéis
+
+| Ato | Exige |
+|---|---|
+| Cadastrar / editar funcionário | `employees.manage` |
+| Desligar / reativar | `employees.manage` |
+| **Vincular acesso ao sistema** | `employees.manage` **e** `roles.manage` |
+| Ativar / desativar acesso | `employees.manage` **e** `roles.manage` |
+| Atribuir papéis | `roles.manage` **+ RN-RBAC-005** |
+
+Dar acesso exige as **duas** permissões porque é o ato que transforma uma
+pessoa em usuária do sistema: uma permissão não abre a outra (CLAUDE.md §14).
+
+**`user_roles` perdeu as policies de INSERT e DELETE.** A checagem de
+não-escalada de RN-RBAC-005 não poderia morar só na RPC se `/rest/v1` aceitasse
+o INSERT direto — quem tivesse `roles.manage` se promoveria pela API
+(CLAUDE.md §12). Toda atribuição passa agora por `definir_papeis`, que recusa
+conceder permissão que o próprio ator não possui e audita o antes e o depois.
+
+**O que NÃO foi feito, e por quê.** Criar a conta no Auth exigiria
+`service_role`, que este projeto não usa em lugar nenhum (CLAUDE.md §13), e
+definir senha inicial exigiria política de senha e de recuperação ainda não
+normatizadas (A-15, hardening da Fase 10). `vincular_acesso` liga um
+funcionário a uma conta **que já existe** e responde `conta_inexistente`
+quando não existe. Registrado como **A-20**.
+
+`role_permissions` — o que cada papel concede — continua com policy direta de
+escrita sob `roles.manage`, sem a restrição de não-escalada. Editar o conteúdo
+de um papel não fazia parte do escopo autorizado. Registrado como **A-21**.
+
 ---
 
 # 20. Cortesia, consumo e perda
@@ -1250,7 +1294,9 @@ quem não tem a permissão financeira esse campo responde `false`, porque a
 RLS do livro não devolve a linha.
 
 `employee_financial_profiles` (salário) continua fora de tudo isto: não é
-lido por nenhuma projeção da Fase 8 e não viaja para a interface.
+lido por nenhuma projeção da Fase 8 e não viaja para a interface — inclusive
+depois de `/admin/equipe` ganhar cadastro, acesso e papéis. A projeção
+`equipe()` não tem a coluna, não faz o join e não deriva o valor.
 
 ## 33.10 remarketing
 
