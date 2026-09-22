@@ -1322,7 +1322,7 @@ Migration `0071`.
 
 ---
 
-### D-2026-09-21-56 — Card vertical nas vitrines, horizontal no cardápio
+### D-2026-09-21-56 — Um card vertical em todo o cardápio, e combos no banner
 
 **Pedido da Shalon**, com referência visual de aplicativo de delivery: cards
 com foto grande, no lugar do que ela descreveu como "tabela com linha
@@ -1334,25 +1334,40 @@ selos, descrição, preço e CTA à direita. E o painel **já era** uma grade de
 cards. Então isto não é correção de desvio: é mudança do design aprovado, e
 por isso está registrada aqui (CLAUDE.md §7).
 
-**A decisão não foi trocar tudo.** A própria referência que a Shalon enviou
-mostra cards grandes sob um título "Popular Picks", com "View All" ao lado —
-ou seja, uma **vitrine**, não o cardápio inteiro. É o padrão que funciona, e
-o motivo é simples:
+**Houve duas rodadas, e a segunda é a que vale.**
 
-- **card grande vende**: na vitrine a pessoa está escolhendo, e foto de
-  comida é o maior multiplicador de conversão que existe num cardápio;
-- **linha compacta deixa achar**: no cardápio completo a pessoa está
-  procurando, e mussarela, calabresa e portuguesa são quase idênticas na
-  foto. O que diferencia é o texto. A lista mostra de 6 a 8 itens por tela no
-  celular; a grade mostra de 2 a 4.
+Na primeira eu propus um híbrido: card vertical só nas vitrines
+(Recomendados, Mais pedidos, Promoções, Combos) e card horizontal no cardápio
+completo. O argumento era que card grande vende e linha compacta deixa achar
+— na vitrine a pessoa escolhe, na lista ela procura.
 
-Então: **vertical** em Recomendados, Mais pedidos, Promoções e Combos;
-**horizontal** no cardápio completo e na busca. As quatro vitrines já
-existiam na home — a mudança foi de componente, não de estrutura.
+A Shalon viu os dois lado a lado e decidiu **card vertical em tudo**, com
+**três por linha no celular**, como na referência. Vale a decisão dela: o
+argumento da densidade perde força a três colunas, que é quase a mesma
+quantidade de itens por tela que a lista horizontal entregava.
+
+**Restou um card só.** Manter dois componentes com o mesmo papel produziria
+duas formas de mostrar a mesma pizza, e a primeira diferença entre elas
+viraria bug de design. `CardProduto` é vertical e serve vitrines, cardápio,
+categoria e busca.
+
+**Três por linha tem consequência, e ela está no código.** O cartão fica com
+cerca de 105px no celular. Por isso o texto encolhe em telas estreitas, o
+preço se quebra em prefixo ("a partir de") e valor, e o selo "Indisponível
+hoje" saiu do topo da foto — não cabia. A informação não se perdeu: o cartão
+inteiro perde opacidade e o botão troca de texto, que são dois sinais e
+nenhum deles é só cor (§38). **O alvo de toque do CTA não encolheu**, e
+continua em 44px.
 
 **O CTA continua "Escolher"**, e não o "+" da referência. Ali o botão não
 adiciona ao carrinho: abre a configuração, porque pizza tem tamanho, sabores
 e borda. Um "+" prometeria uma adição direta que não acontece.
+
+**Combos saíram da home e foram para o banner.** A Shalon não gostou da seção
+"Combos para compartilhar" em cards, e pediu para anexá-la ao banner
+principal. Virou uma faixa colada ao banner, com a quantidade, o menor preço
+e atalho para a categoria. Os combos continuam no cardápio, dentro da
+categoria deles — a faixa é atalho, não é o único caminho.
 
 **No painel, miniatura de 56px — e não foto grande.** Administrar é varrer
 preço, disponibilidade e ação; foto grande empurraria isso para fora da tela.
@@ -1367,9 +1382,10 @@ decisão e não como imagem quebrada, mas isso é paliativo. **Sem fotografia, a
 vitrine entrega menos do que promete.** Subir as fotos é o passo que falta, e
 nenhum ajuste de layout substitui.
 
-**Arquivos.** `CardDestaque.tsx` (novo), `page.tsx` do público,
-`PainelProdutos.tsx` do painel. `01-DOCUMENTO-MESTRE.md` §62 registra as duas
-formas.
+**Arquivos.** `CardProduto.tsx` (reescrito como vertical), `Banners.tsx`
+(faixa de combos), `page.tsx` e `categoria/[slug]/page.tsx` do público,
+`PainelProdutos.tsx` do painel. `01-DOCUMENTO-MESTRE.md` §62 registra o card,
+a grade e o lugar dos combos.
 
 ---
 

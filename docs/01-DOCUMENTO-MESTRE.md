@@ -1197,24 +1197,28 @@ Mais pedidos / Populares
 
 Baseado em vendas quando houver dados suficientes.
 
-Combos
-
-Área de destaque.
-
 Produtos
 
-Cards responsivos, em duas formas — decisão de 21/09/2026 (D-2026-09-21-56):
+Card **vertical**, com foto grande no topo, nome, descrição curta, preço e CTA
+"Escolher" — decisão de 21/09/2026 (D-2026-09-21-56).
 
-- **vitrines** (Recomendados pela Shalon, Mais pedidos, Promoções e Combos):
-  card **vertical**, com foto grande no topo. Ali a pessoa está escolhendo, e
-  a imagem trabalha a favor;
-- **cardápio completo e busca**: card **horizontal**, com miniatura de 84px.
-  Ali a pessoa está procurando, e o que diferencia um sabor do outro é o
-  texto. A lista mostra de 6 a 8 itens por tela no celular; a grade de cards
-  grandes mostra de 2 a 4.
+É o mesmo card em todo o cardápio público: vitrines, listagem completa,
+página de categoria e busca. Duas versões do mesmo cartão produziriam duas
+formas de mostrar a mesma pizza.
 
-O CTA continua sendo "Escolher" nos dois: o botão abre a configuração do
-produto, não adiciona ao carrinho.
+Grade de **três por linha no celular**, quatro em tela média e cinco em tela
+grande. Em telas estreitas o texto e o preço encolhem; o alvo de toque do CTA
+não encolhe, e permanece em 44px.
+
+O CTA é "Escolher", e não um "+": ele abre a configuração do produto, porque
+pizza tem tamanho, sabores e borda. Não adiciona ao carrinho.
+
+Combos
+
+Não têm seção própria na home. Uma faixa colada ao banner principal anuncia
+"Combos para compartilhar", com a quantidade, o menor preço e atalho para a
+categoria. Eles continuam no cardápio, dentro da categoria deles — a faixa é
+atalho, não é o único caminho.
 
 Carrinho
 
