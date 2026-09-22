@@ -111,11 +111,14 @@ Exemplos:
 - `orders.cancel`
 - `orders.override_delivery_fee`
 - `orders.reprint`
+- `payments.register` — registrar o pagamento efetivamente recebido
 - `cash.view`
 - `cash.open`
 - `cash.close`
 - `cash.adjust`
 - `cash.reopen`
+- `cash.bypass_session` — a exceção de RN-CAIXA-003: registrar recebimento
+  sem sessão de caixa aberta
 - `catalog.view`
 - `catalog.manage`
 - `customers.view`
@@ -673,6 +676,21 @@ Atendente pode receber permissões para:
 
 Reabrir/corrigir caixa fechado exige `cash.reopen` ou equivalente, normalmente Dono/Admin.
 
+**Registrar o pagamento recebido** é movimento operacional e usa
+`payments.register` — concedida ao Atendente por padrão, porque é ele quem
+confirma o recebimento na retirada e no retorno do motoboy (01 §79.18).
+
+**Estornar pagamento** NÃO tem permissão própria: usa `finance.reverse`,
+porque estornar pagamento é estornar movimentação financeira (§17.2). Uma
+permissão a mais para o mesmo ato só criaria a chance de alguém ter uma e
+não a outra.
+
+**Operar sem caixa aberto** é a exceção de RN-CAIXA-003 e exige
+`cash.bypass_session`, deliberadamente fora do Atendente padrão: se ele a
+tivesse, a exigência de caixa aberto deixaria de existir na prática. A
+exceção é registrada em auditoria com ação própria
+(`caixa_excecao_sem_sessao`), nunca como fallback silencioso.
+
 ## 16.3 Movimentos
 
 Sangria, suprimento, despesa e demais movimentos devem ser append-oriented. Evitar editar valores históricos silenciosamente.
@@ -1067,9 +1085,11 @@ A matriz abaixo é referência inicial; será congelada antes da implementação
 | Rejeitar/cancelar | ✓ | conforme permissão |
 | Override taxa entrega | ✓ | não por padrão |
 | Reimprimir comanda | ✓ | ✓ |
+| Registrar pagamento recebido | ✓ | ✓ |
 | Abrir caixa | ✓ | ✓ |
 | Fechar caixa | ✓ | ✓ |
 | Reabrir caixa fechado | ✓ | ✗ |
+| Registrar recebimento sem caixa aberto | ✓ | ✗ |
 | Sangria/suprimento | ✓ | conforme permissão |
 | Registrar despesa | ✓ | conforme permissão |
 | Estornar financeiro | ✓ | ✗ por padrão |

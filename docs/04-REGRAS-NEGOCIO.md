@@ -448,6 +448,40 @@ Selecionar Pix antecipado não significa pagamento confirmado. O pedido permanec
 ### RN-PGTO-011
 Confirmação manual do Pix registra responsável e horário.
 
+### RN-PGTO-012 — Registrar o recebimento é um ato próprio
+O pagamento efetivamente recebido é registrado por um ato explícito de
+usuário autorizado (`payments.register`), com responsável e horário. Nenhum
+estado do pedido cria recebimento sozinho, e confirmar Pix antecipado
+(RN-PGTO-010) **não** é registrar recebimento: são etapas distintas.
+
+Na retirada, a conclusão do pedido exige o recebimento já registrado — é o
+que o invariante 13 de §44 manda impedir ("conclusão de retirada apenas por
+ter ficado pronta") e o que `01 §79.18` pede ("na retirada, confirmar
+pagamento efetivo quando pendente"). A direção é essa e não a inversa:
+concluir não cria receita; ela precisa já existir para concluir.
+
+Na entrega, `01 §79.18` põe essa confirmação no **retorno do entregador**, que
+é prestação de contas da Fase 8. Até lá a entrega conclui sem o recebimento
+registrado, e o caixa continua honesto porque dinheiro que não entrou na
+gaveta não é contado como caixa físico (RN-CAIXA-014) e aparece destacado no
+fechamento (RN-CAIXA-013).
+
+Decisão de 21/09/2026 (D-2026-09-21-54).
+
+### RN-PGTO-013 — Um ato de registro por pedido, com quantas formas precisar
+O pagamento dividido de RN-PGTO-004 é **um** ato com várias linhas — R$ 30 em
+dinheiro e R$ 25 no débito são duas linhas do mesmo registro, não dois
+pagamentos pela metade. A soma das linhas tem de fechar exatamente com o
+total do pedido, sem tolerância de arredondamento, e a conferência acontece
+no servidor.
+
+Cada linha usa forma ativa e, quando a forma exige, bandeira ativa daquela
+forma. Duas linhas da mesma forma e bandeira são recusadas: é uma linha só,
+com o valor somado.
+
+Corrigir um recebimento é estorná-lo e registrar outro — não editar o
+existente (RN-FIN-003).
+
 ---
 
 ## 18. Revisão e envio
@@ -742,6 +776,22 @@ Reforço/suprimento representa dinheiro físico adicionado e aumenta o caixa fí
 
 ### RN-CAIXA-010 — Despesa
 Despesa representa gasto do negócio. Se paga com o caixa da sessão, reduz o físico esperado. Não deve ser confundida com sangria.
+
+Na implementação isso são **dois registros com significados diferentes**: o
+lançamento (`financial_entries`) diz que houve um gasto, com categoria e
+motivo; o movimento (`cash_movements`) diz que saiu dinheiro da gaveta. Uma
+conta paga por transferência gera o primeiro e não o segundo. Uma sangria
+gera o segundo e não o primeiro.
+
+### RN-CAIXA-017 — Dinheiro que não entrou na gaveta
+Recebimento em dinheiro pode ser registrado sem ter entrado na gaveta — é o
+caso do valor que ainda está com quem entregou. Esse dinheiro **não** entra no
+esperado em caixa (RN-CAIXA-014), é contabilizado à parte e aparece
+destacado no fechamento (RN-CAIXA-013). Pedido cancelado ou rejeitado sai
+dessa conta, mas o pagamento registrado permanece no histórico.
+
+Cartão, Pix e voucher nunca entram no esperado em caixa: eles são
+recebimento, e aparecem no fechamento em bloco separado do dinheiro físico.
 
 ---
 

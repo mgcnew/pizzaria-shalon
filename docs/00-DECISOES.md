@@ -1199,6 +1199,73 @@ estado inicial e duas colunas preenchidas no INSERT.
 
 ---
 
+### D-2026-09-21-54 — As decisões da Fase 7
+
+**Contexto.** A Fase 7 precisou responder onde cada real entra, sai e fica.
+As decisões abaixo são as que os documentos não respondiam palavra por
+palavra e que tiveram de ser tomadas para o caixa fechar com a verdade.
+
+**1. Registrar o recebimento é um ato próprio — e a retirada depende dele.**
+Virou **RN-PGTO-012**. O invariante 13 de `04 §44` manda impedir "conclusão de
+retirada apenas por ter ficado pronta", e `01 §79.18` completa: "na retirada,
+confirmar pagamento efetivo quando pendente". Então `concluir` passou a exigir
+o recebimento registrado — **na retirada**.
+
+**A entrega NÃO foi barrada**, e isso é deliberado. `01 §79.18` põe a
+confirmação do pagamento da entrega no retorno do motoboy, que é a prestação
+de contas da Fase 8. Barrar aqui inventaria regra. O fechamento continua
+honesto por outro caminho: dinheiro que não entrou na gaveta não conta como
+caixa físico e aparece destacado. **Se a Shalon quiser a entrega barrada
+também, isso é mudança de regra, não ajuste de código.**
+
+**2. Um ato de registro por pedido, com quantas formas precisar.** Virou
+**RN-PGTO-013**. "R$ 30 dinheiro + R$ 25 débito" é um registro de duas
+linhas, não dois meios-pagamentos. Isso evita a pergunta que nenhum documento
+responde — "o que é um pedido parcialmente pago?" — sem tirar nada de quem
+opera. A soma fecha com o total, exata, sem tolerância.
+
+**3. Dinheiro fora da gaveta em vez de um booleano de motoboy.** `02 §12.2`
+previa `has_pending_driver_runs boolean`. Ele foi trocado por
+`pending_external_cash_amount numeric(12,2)`, que diz **quanto** e não apenas
+que existe — e não depende de `driver_runs`, que é da Fase 8. Virou
+**RN-CAIXA-017**.
+
+**4. Duas permissões novas, nenhuma por comodidade.** `payments.register`
+(os dois papéis, porque registrar recebimento é movimento operacional, 03
+§16.2) e `cash.bypass_session` (só o Dono, porque RN-CAIXA-003 exige
+"permissão específica" e ela não existia). **Não** criei `payments.reverse`:
+estornar pagamento é estornar movimentação financeira, que é o que
+`finance.reverse` já descreve.
+
+**5. Sessão com dois status, não três.** `02 §12.2` deixava em aberto
+(`reopened/corrected` "conforme estratégia final"). Ficou `open` e `closed`:
+a sessão reaberta volta a `open`, e o fechamento anterior é fotografado em
+`cash_session_corrections.before_snapshot`. Um terceiro status diria menos e
+custaria mais.
+
+**6. O fundo inicial não vira movimento.** Ele já está em
+`cash_sessions.opening_amount`, com autor e horário. Duplicá-lo como
+movimento `opening` daria duas fontes para o mesmo dinheiro — e um fundo de
+R$ 0,00 nem poderia existir como linha, já que o valor de um movimento tem
+de ser positivo.
+
+**7. Nenhuma categoria financeira veio pronta.** RN-FIN-001 diz que o plano
+de contas é configurável pelo usuário autorizado. "Fornecedores" ou "Contas"
+seriam nomes inventados por mim. A tela leva a pizzaria a criar a primeira
+antes de lançar.
+
+**Dois defeitos encontrados pelos próprios testes**, ambos corrigidos por
+migration própria: o índice de idempotência impedia qualquer pagamento
+dividido (0069), e a resposta da RPC devolvia "50" onde a coluna gravava
+"50.00" (0070).
+
+**Onde foi formalizada.** `04-REGRAS-NEGOCIO.md` (RN-PGTO-012, RN-PGTO-013,
+RN-CAIXA-017 e a nota de RN-CAIXA-010); `03-RLS-RBAC-SEGURANCA.md` §16.2 e
+§32; `02-MODELO-DADOS-SUPABASE.md` §10.5, §12.2, §12.3 e §13.2. Migrations
+`0061` a `0070`.
+
+---
+
 # Decisões em aberto
 
 Nenhuma implementação que dependa destes pontos deve começar antes da decisão.

@@ -754,12 +754,27 @@ O que realmente foi recebido.
 - `order_id uuid FK`
 - `payment_method_id uuid FK`
 - `payment_brand_id uuid nullable FK`
-- `amount numeric(12,2)`
+- `payment_method_name_snapshot text` · `payment_method_family_snapshot text` ·
+  `payment_brand_name_snapshot text nullable` — snapshot do meio de pagamento
+  (CLAUDE.md §16): renomear ou desativar a forma no cadastro não reescreve o
+  que foi recebido ontem
+- `amount numeric(12,2)` — **a venda**, não o que o cliente entregou na mão
+- `tendered_amount numeric(12,2) nullable` · `change_amount numeric(12,2) nullable` —
+  dinheiro entregue e troco devolvido. Venda de R$ 45 com nota de R$ 50 grava
+  `amount = 45`, `tendered = 50`, `change = 5`, e o caixa recebe 45 líquidos
 - `status text` — `pending`, `confirmed`, `reversed`
 - `received_at timestamptz nullable`
 - `confirmed_by uuid nullable`
-- `driver_run_id uuid nullable`
-- `cash_session_id uuid nullable`
+- `driver_run_id uuid nullable` — **não criada na Fase 7**: depende de
+  `driver_runs`, que é da Fase 8
+- `cash_session_id uuid nullable` — nulo significa "não entrou em gaveta
+  nenhuma": exceção autorizada (RN-CAIXA-003) ou valor ainda fora
+  (RN-CAIXA-014)
+- `idempotency_key uuid nullable` — a chave é do ATO de registro, não da
+  linha. Um pagamento dividido grava várias linhas com a mesma chave, e o
+  índice único é `(chave, forma, bandeira)` com `nulls not distinct`
+- `reverses_payment_id uuid nullable` · `reversed_at` · `reversed_by` ·
+  `reversal_reason` — reversão vinculada; o original permanece (RN-FIN-003)
 - `notes text nullable`
 - `created_at`
 
@@ -852,8 +867,16 @@ Pode existir inicialmente apenas “Caixa Principal”.
 - `counted_cash_amount numeric(12,2) nullable`
 - `difference_amount numeric(12,2) nullable`
 - `difference_reason text nullable`
-- `has_pending_driver_runs boolean default false`
+- `pending_external_cash_amount numeric(12,2) nullable` — **substitui o
+  `has_pending_driver_runs boolean` previsto originalmente.** Guarda QUANTO
+  em dinheiro ainda estava fora da gaveta no momento do fechamento, e não
+  apenas que havia algo. Não depende de `driver_runs` (Fase 8); na Fase 7 é
+  o recebimento em dinheiro sem sessão vinculada (RN-CAIXA-014)
 - `created_at`, `updated_at`
+
+**Status adotado:** `open` e `closed` apenas. Uma sessão reaberta volta a
+`open`, e a correção fica em `cash_session_corrections` com o fechamento
+anterior em `before_snapshot` — em vez de um terceiro status ambíguo.
 
 **Regras:**
 
@@ -879,11 +902,24 @@ Movimentos físicos do caixa.
 - `reason text nullable`
 - `created_by uuid`
 - `created_at`
+- `payment_id uuid nullable` — o recebimento que originou o movimento
+- `reverses_movement_id uuid nullable` — o movimento compensatório aponta
+  para o original; único, para impedir duplo estorno
 - `reversed_at timestamptz nullable`
 - `reversed_by uuid nullable`
 - `reversal_reason text nullable`
+- `idempotency_key uuid nullable` — protege contra dupla sangria e reenvio
 
 Sangria (`withdrawal`) e suprimento (`supply`) são operações distintas. Despesa paga pelo caixa gera registro financeiro e movimento físico relacionado.
+
+**`amount` é sempre positivo.** Quem decide o sinal é `direction` — guardar
+valor negativo permitiria uma sangria "de valor negativo" que soma no caixa.
+
+**O fundo inicial NÃO vira movimento.** Ele mora em
+`cash_sessions.opening_amount`, com autor e horário. Criá-lo também como
+movimento `opening` daria duas fontes para o mesmo dinheiro, e um fundo de
+R$ 0,00 nem poderia existir como linha (o valor tem de ser positivo). O tipo
+`opening` segue no CHECK para uso futuro.
 
 ## 12.4 Correção de caixa fechado
 
@@ -927,11 +963,24 @@ Entradas/despesas operacionais que não devem ser confundidas com o ledger de pa
 - `cash_session_id uuid nullable`
 - `attachment_asset_id uuid nullable`
 - `status text` — `confirmed`, `reversed`
+- `payment_method_name_snapshot text nullable`
+- `reverses_entry_id uuid nullable` — o lançamento CORRETO aponta para o que
+  ele corrige. O sistema não o cria sozinho: quem sabe o valor certo é a
+  pessoa (RN-FIN-004)
 - `created_by uuid`
 - `created_at`
 - `reversed_by uuid nullable`
 - `reversed_at timestamptz nullable`
 - `reversal_reason text nullable`
+
+**`cash_session_id` só é preenchido quando o dinheiro passou pela gaveta.**
+Uma conta paga por transferência é despesa e **não** é saída de caixa
+(RN-CAIXA-010).
+
+**Esta tabela não é o ledger de vendas** e não tem como apontar para um
+pedido: venda vive em `payments`. A separação é estrutural, e é ela que fará
+cortesia e consumo interno (Fase 8) não entrarem no faturamento por terem
+produtos (03 §17.1).
 
 Registro confirmado não é apagado. Correção por estorno + novo lançamento.
 
