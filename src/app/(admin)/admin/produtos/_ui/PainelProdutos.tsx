@@ -180,14 +180,8 @@ export async function PainelProdutos({
                   ) : null}
 
                   <Link
-                    href={`/admin/produtos/${p.id}`}
-                    className="inline-flex min-h-[42px] items-center px-[13px] text-[13px] font-semibold text-ink-2 hover:text-ink lg:hidden"
-                  >
-                    {podeGerenciar ? "Editar" : "Ver detalhes"}
-                  </Link>
-                  <Link
-                    href={`/admin/produtos?editar=${p.id}`}
-                    className="hidden min-h-[42px] items-center px-[13px] text-[13px] font-semibold text-ink-2 hover:text-ink lg:inline-flex"
+                    href={`/admin/produtos/editar/${p.id}`}
+                    className="inline-flex min-h-[42px] items-center px-[13px] text-[13px] font-semibold text-ink-2 hover:text-ink"
                   >
                     {podeGerenciar ? "Editar" : "Ver detalhes"}
                   </Link>

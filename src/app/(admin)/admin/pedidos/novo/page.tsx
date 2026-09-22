@@ -15,13 +15,12 @@ export const metadata: Metadata = { title: "Novo pedido" };
  * esconder o botão nunca foi segurança (CLAUDE.md §12).
  */
 export default async function Page() {
-  const sessao = await obterSessaoInterna();
-  const autorizado = podeNaUI(sessao, "orders.create_manual");
-
-  const [entrega, retirada] = await Promise.all([
+  const [sessao, entrega, retirada] = await Promise.all([
+    obterSessaoInterna(),
     formasDePagamento("delivery"),
     formasDePagamento("pickup"),
   ]);
+  const autorizado = podeNaUI(sessao, "orders.create_manual");
 
   return (
     <div className="flex flex-col gap-4">

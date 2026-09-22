@@ -2,15 +2,14 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
-import { MENU_ADMIN } from "@/ui/navegacao";
+import { MenuLateralAdmin } from "./MenuLateralAdmin";
 
 /**
  * DrawerAdmin — menu lateral mobile do administrativo, conforme o design.
  *
  * Preserva do protótipo: botão ☰ no cabeçalho, véu escuro cobrindo a tela,
- * painel de 76% da largura limitado a 280px, fundo --sidebar, logo e botão de
- * fechar no topo, itens de 46px e a animação shalonUp.
+ * painel de 76% da largura limitado a 280px, cabeçalho e navegação na mesma
+ * superfície leve, itens com alvo mínimo de 44px e animação de entrada.
  *
  * DIFERENÇA DELIBERADA: o protótipo controlava a visibilidade do botão ☰
  * medindo `window.innerWidth` em JavaScript. Aqui quem decide é o CSS
@@ -43,9 +42,9 @@ export function DrawerAdmin() {
           <nav
             aria-label="Navegação principal do administrativo"
             onClick={(e) => e.stopPropagation()}
-            className="motion-drawer-left-in flex w-[76%] max-w-drawer flex-col gap-1 overflow-y-auto bg-sidebar px-3 py-4"
+            className="motion-drawer-left-in flex w-[76%] max-w-drawer flex-col overflow-hidden border-r border-admin-nav-border bg-admin-nav-bg"
           >
-            <div className="flex items-center justify-between px-2 pb-[14px] pt-1">
+            <div className="flex items-center justify-between border-b border-admin-nav-border bg-admin-nav-bg px-4 py-4">
               <Image
                 src="/marca/logo-shalon.webp"
                 alt="Pizzaria Shalon"
@@ -57,23 +56,13 @@ export function DrawerAdmin() {
                 type="button"
                 aria-label="Fechar menu"
                 onClick={() => setAberto(false)}
-                className="min-h-[40px] min-w-[40px] cursor-pointer rounded-pill border-0 bg-white/10 text-[17px] text-white"
+                className="min-h-[40px] min-w-[40px] cursor-pointer rounded-pill border border-admin-nav-border bg-admin-nav-icon text-[17px] text-admin-nav-text"
               >
                 ×
               </button>
             </div>
 
-            {MENU_ADMIN.filter((item) => item.href !== "/admin/configuracoes").map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setAberto(false)}
-                className="flex min-h-[46px] items-center gap-[10px] rounded-10 px-3 text-[15px] font-semibold text-sidebar-ink hover:bg-white/10"
-              >
-                <span className="flex-1">{item.nome}</span>
-              </Link>
-            ))}
-
+            <MenuLateralAdmin aoNavegar={() => setAberto(false)} />
           </nav>
         </div>
       ) : null}

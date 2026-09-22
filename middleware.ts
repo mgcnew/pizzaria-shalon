@@ -52,15 +52,17 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims valida a assinatura do JWT e, em projetos com chave
+  // assimétrica, usa a JWKS em cache sem uma viagem ao Auth a cada rota.
+  // Nunca usamos getSession aqui: o conteúdo do cookie não seria verificado.
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const autenticado = typeof claimsData?.claims.sub === "string";
 
   const ehRotaAdmin =
     request.nextUrl.pathname.startsWith("/admin") &&
     !ROTAS_ADMIN_PUBLICAS.has(request.nextUrl.pathname);
 
-  if (ehRotaAdmin && !user) {
+  if (ehRotaAdmin && !autenticado) {
     const destino = request.nextUrl.clone();
     destino.pathname = "/admin/login";
     destino.searchParams.set("proximo", request.nextUrl.pathname);
@@ -68,7 +70,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Já autenticado não precisa ver a tela de login.
-  if (request.nextUrl.pathname === "/admin/login" && user) {
+  if (request.nextUrl.pathname === "/admin/login" && autenticado) {
     const destino = request.nextUrl.clone();
     destino.pathname = "/admin";
     destino.search = "";

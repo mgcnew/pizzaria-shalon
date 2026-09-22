@@ -2,18 +2,20 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 export function ModalFerramentaCatalogo({
   titulo,
   children,
   variante = "ferramenta",
   tamanho = "amplo",
+  fecharComVoltar = false,
 }: {
   titulo: string;
   children: ReactNode;
   variante?: "ferramenta" | "formulario";
   tamanho?: "compacto" | "regular" | "medio" | "amplo";
+  fecharComVoltar?: boolean;
 }) {
   const router = useRouter();
   const painelRef = useRef<HTMLElement>(null);
@@ -25,6 +27,10 @@ export function ModalFerramentaCatalogo({
     medio: "lg:max-w-[840px]",
     amplo: "lg:max-w-[1040px]",
   }[tamanho];
+  const fechar = useCallback(() => {
+    if (fecharComVoltar) router.back();
+    else router.push("/admin/produtos");
+  }, [fecharComVoltar, router]);
 
   useEffect(() => {
     const consulta = window.matchMedia("(min-width: 1024px)");
@@ -43,7 +49,7 @@ export function ModalFerramentaCatalogo({
 
     function aoPressionarTecla(evento: KeyboardEvent) {
       if (evento.key === "Escape") {
-        router.push("/admin/produtos");
+        fechar();
         return;
       }
 
@@ -70,14 +76,14 @@ export function ModalFerramentaCatalogo({
       document.body.style.overflow = overflowAnterior;
       document.removeEventListener("keydown", aoPressionarTecla);
     };
-  }, [desktop, router]);
+  }, [desktop, fechar]);
 
   return (
-    <div className="lg:fixed lg:inset-0 lg:z-70 lg:flex lg:items-center lg:justify-center lg:p-6">
+    <div className="fixed inset-0 z-70 flex overflow-y-auto bg-bg lg:items-center lg:justify-center lg:bg-transparent lg:p-6">
       <button
         type="button"
         aria-label="Fechar janela"
-        onClick={() => router.push("/admin/produtos")}
+        onClick={fechar}
         className="motion-backdrop-in absolute inset-0 hidden cursor-default border-0 bg-[var(--shalon-scrim-sheet)] lg:block"
         tabIndex={-1}
       />
@@ -112,7 +118,7 @@ export function ModalFerramentaCatalogo({
             ref={fecharRef}
             type="button"
             aria-label="Fechar"
-            onClick={() => router.push("/admin/produtos")}
+            onClick={fechar}
             className="hidden min-h-touch min-w-touch cursor-pointer items-center justify-center rounded-11 border border-border-shalon bg-surface text-[22px] leading-none text-ink-2 hover:border-brand-orange hover:text-ink lg:flex"
           >
             ×

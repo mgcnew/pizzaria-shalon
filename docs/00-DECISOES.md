@@ -1359,9 +1359,9 @@ inteiro perde opacidade e o botão troca de texto, que são dois sinais e
 nenhum deles é só cor (§38). **O alvo de toque do CTA não encolheu**, e
 continua em 44px.
 
-**O CTA continua "Escolher"**, e não o "+" da referência. Ali o botão não
-adiciona ao carrinho: abre a configuração, porque pizza tem tamanho, sabores
-e borda. Um "+" prometeria uma adição direta que não acontece.
+> **SUPERADO por D-2026-09-22-60.** O CTA textual "Escolher" foi substituído
+> pelo "+" compacto por decisão posterior da Shalon. O destino continua sendo
+> a configuração do produto, não uma adição direta ao carrinho.
 
 **Combos saíram da home e foram para o banner.** A Shalon não gostou da seção
 "Combos para compartilhar" em cards, e pediu para anexá-la ao banner
@@ -1602,6 +1602,113 @@ Next.js mudou.
 **Lição registrada.** Superfície pública se valida **sem sessão**. Guia
 anônima do navegador, ou teste rodando como `anon`. Foi o que este arquivo de
 teste passou a garantir.
+
+---
+
+### D-2026-09-22-60 — CTA compacto "+" nos cards do cardápio
+
+**Pedido da Shalon.** O botão textual "Escolher" dos cards do cardápio público
+foi substituído por um botão compacto com "+".
+
+**Comportamento preservado.** O controle continua sendo um link para a rota do
+produto e abre sua configuração; não adiciona o item diretamente ao carrinho.
+Para não depender apenas do símbolo, o link mantém alvo de toque de 44 × 44px
+e recebe o rótulo acessível "Escolher [produto]".
+
+**Escopo.** A mudança foi feita no `CardProduto`, portanto vale para vitrines,
+cardápio completo, categorias e busca. O estado indisponível continua textual,
+pois não oferece ação. A lista de favoritos não usa esse card e conserva sua
+ação textual.
+
+**Onde foi formalizada.** `01-DOCUMENTO-MESTRE.md` §62 e
+`src/app/(publico)/_ui/CardProduto.tsx`.
+
+---
+
+### D-2026-09-22-61 — Navegação administrativa clara e hierárquica
+
+> **PARCIALMENTE SUPERADO por D-2026-09-22-62.** A direção clara permanece,
+> mas o cabeçalho escuro da marca também foi removido após a avaliação visual.
+
+**Pedido da Shalon.** Depois de avaliar o menu implementado conforme o design
+original, a Shalon considerou que a grande superfície marrom deixava o sistema
+pesado e autorizou a direção visual proposta: menu claro e quente, com a cor da
+marca usada como destaque em vez de preencher toda a navegação.
+
+**Direção aprovada.** O cabeçalho compacto continua escuro para sustentar logo
+e identidade. A área de navegação usa fundo `#FCFAF7`, borda `#E7E2DC`, texto
+`#292524` e ícones neutros. Apenas o item ativo recebe fundo amarelo suave,
+barra laranja e ícone de destaque. Itens inativos usam peso médio, reservando o
+peso semibold ao ativo. No tema escuro, a navegação usa grafite neutro em vez
+de retornar ao marrom dominante.
+
+**Consistência responsiva.** Desktop e drawer móvel usam o mesmo componente de
+navegação, incluindo grupos, ícones, estado ativo e fechamento após navegar.
+
+**O que não mudou.** Permanecem a paleta institucional, logo, tipografia,
+largura do menu, rotas, agrupamentos, alvos mínimos de toque e tema de acento
+vermelho do administrativo. É uma revisão aprovada do shell, não uma troca do
+design system inteiro.
+
+**Onde foi formalizada.** `01-DOCUMENTO-MESTRE.md` §61;
+`05-PLANO-IMPLEMENTACAO.md` §5; `src/ui/tokens/tokens.css`;
+`MenuLateralAdmin.tsx`, `DrawerAdmin.tsx` e o layout administrativo.
+
+---
+
+### D-2026-09-22-62 — Cabeçalho do menu também usa superfície clara
+
+**Avaliação da Shalon.** A navegação clara melhorou o painel, mas o bloco
+marrom remanescente no topo ainda manteve parte do peso visual anterior.
+
+**Revisão aprovada.** Logo e identificação do painel passam a usar a mesma
+superfície clara e quente do restante do menu, com apenas uma borda sutil para
+separar marca e navegação. O texto "Painel administrativo" usa o laranja de
+destaque. No drawer móvel, o botão de fechar também passa a ser neutro. No tema
+escuro, cabeçalho e navegação acompanham juntos o grafite definido para o menu.
+
+**Onde foi formalizada.** `01-DOCUMENTO-MESTRE.md` §61; layout administrativo
+e `DrawerAdmin.tsx`.
+
+---
+
+### D-2026-09-22-63 — Navegação e modais sem cascatas desnecessárias
+
+**Percepção da Shalon.** A troca entre páginas e a abertura de modais tinham
+atraso perceptível. A animação oficial (120–220ms) não era a causa: o conteúdo
+esperava autenticação e leituras remotas, por vezes em várias ondas, antes de
+começar a transição.
+
+**Autenticação.** Proxy e sessão interna passam a validar identidade com
+`getClaims()`, recomendação oficial do Supabase para SSR. Em projetos com chave
+assimétrica, a assinatura é verificada com JWKS em cache em vez de consultar o
+Auth a cada rota. A sessão interna continua verificando no banco usuário ativo,
+papéis e permissões; RLS permanece como autoridade.
+
+**Deduplicação segura.** `obterSessaoInterna` e leituras repetidas do catálogo
+usam `React.cache`, cujo ciclo é apenas a renderização corrente. Não existe
+cache compartilhado entre requisições, usuários ou navegações. Pedidos, caixa,
+disponibilidade e permissões não ganharam cache persistente.
+
+**Paralelização.** Leituras independentes começam juntas. Foram removidas
+cascatas em Pedidos, criação e edição de produto e painéis de catálogo. Não se
+instalou biblioteca nem se moveu a autoridade dos dados para o navegador.
+
+**Modais como rotas.** Novo pedido (`/admin/pedidos/novo`), novo produto
+(`/admin/produtos/novo`) e edição (`/admin/produtos/editar/[id]`) são rotas
+canônicas. Em navegação SPA, rotas paralelas/interceptadas preservam a tela ao
+fundo e carregam somente o slot modal, com skeleton próprio. Em acesso direto,
+continuam páginas completas. Voltar/avançar controla abertura e fechamento.
+O endereço antigo `/admin/produtos/[id]` permanece funcional para acesso direto.
+
+**Técnicas recusadas.** Sem `staleTimes` experimental; sem cache global de dado
+operacional; sem prefetch de todos os produtos; sem temporizador ou spinner
+artificial; sem remover as animações curtas que explicam mudança de estado.
+
+**Onde foi formalizada.** `01-DOCUMENTO-MESTRE.md` §61;
+`05-PLANO-IMPLEMENTACAO.md` §5; `07-MOVIMENTO-E-DESEMPENHO.md` §§5, 7 e 8;
+`middleware.ts`, `application/auth/sessao.ts`, consultas do catálogo e slot
+`admin/@modal`.
 
 ---
 

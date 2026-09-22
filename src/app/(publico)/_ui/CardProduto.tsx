@@ -25,10 +25,9 @@ import { BotaoFavorito } from "./BotaoFavorito";
  * caberiam saem. O que NÃO encolhe é o alvo de toque do CTA, que continua em
  * 44px (CLAUDE.md §38).
  *
- * O CTA CONTINUA SENDO "Escolher", e não um "+" como em aplicativos de
- * marketplace. Aqui o botão não adiciona ao carrinho: ele abre a
- * configuração, porque pizza tem tamanho, sabores e borda. Um "+" prometeria
- * uma adição direta que não acontece.
+ * MUDOU EM 22/09/2026 (D-2026-09-22-60). O CTA textual "Escolher" virou um
+ * "+" compacto. O link continua abrindo a configuração — pizza tem tamanho,
+ * sabores e borda — e o nome completo da ação permanece no rótulo acessível.
  *
  * DIFERENÇAS QUE VÊM DO PROTÓTIPO e continuam valendo:
  *  · o selo "Popular" virou "Destaque". São conceitos diferentes: RN-DEST-001
@@ -133,9 +132,11 @@ export async function CardProduto({ produto }: { produto: Item }) {
         {produto.disponivel ? (
           <Link
             href={`/produto/${produto.slug}`}
-            className="mt-2 inline-flex min-h-touch items-center justify-center rounded-11 bg-cta px-2 text-[13px] font-semibold text-cta-fg no-underline sm:px-[14px] sm:text-[14px]"
+            aria-label={`Escolher ${produto.nome}`}
+            title={`Escolher ${produto.nome}`}
+            className="mt-2 inline-flex min-h-touch min-w-touch self-end items-center justify-center rounded-pill bg-cta text-[26px] font-semibold leading-none text-cta-fg no-underline"
           >
-            Escolher
+            <span aria-hidden="true">+</span>
           </Link>
         ) : (
           // RN-BUSCA-002: continua visível, sem possibilidade de adição.

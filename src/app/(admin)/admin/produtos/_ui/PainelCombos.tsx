@@ -27,8 +27,7 @@ import { BotaoAcao } from "./BotaoAcao";
  * componentes, e volta sozinha quando todos voltarem.
  */
 export async function PainelCombos({ podeGerenciar }: { podeGerenciar: boolean }) {
-  const combos = await listarCombos();
-  const produtos = await listarProdutos();
+  const [combos, produtos] = await Promise.all([listarCombos(), listarProdutos()]);
 
   const candidatos = produtos.filter((p) => p.tipo !== "combo" && p.ativo);
 

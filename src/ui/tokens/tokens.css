@@ -1,7 +1,8 @@
 /* =========================================================================
  * TOKENS DA PIZZARIA SHALON
  *
- * Extraídos literalmente do design aprovado do Claude Design:
+ * Originados no design aprovado do Claude Design e acrescidos apenas das
+ * revisões visuais explicitamente documentadas em `docs/00-DECISOES.md`:
  *   pizzaria-shalon-design-system/project/Pizzaria Shalon.dc.html
  *   pizzaria-shalon-design-system/project/Shalon Admin.dc.html
  *
@@ -67,6 +68,16 @@
   /* --- Shell administrativo --------------------------------------------- */
   --shalon-sidebar: #2a201a;
   --shalon-sidebar-ink: #e3d3bd;
+
+  /* Navegação administrativa clara. O marrom permanece no cabeçalho da
+   * marca; estes tokens mantêm a área de trabalho leve e hierárquica. */
+  --shalon-admin-nav-bg: #fcfaf7;
+  --shalon-admin-nav-border: #e7e2dc;
+  --shalon-admin-nav-text: #292524;
+  --shalon-admin-nav-muted: #6f6963;
+  --shalon-admin-nav-icon: #f3f0ec;
+  --shalon-admin-nav-active: #fff3d6;
+  --shalon-admin-nav-active-fg: #c95b12;
 
   /* --- Superfícies escuras usadas no público (hero, toast, drawer) ------- */
   --shalon-dark-surface: #2a201a;
@@ -178,4 +189,13 @@
 
   --shalon-sidebar: #100c0a;
   --shalon-sidebar-ink: #e3d3bd;
+
+  /* No tema escuro a navegação troca o marrom por grafite neutro. */
+  --shalon-admin-nav-bg: #181716;
+  --shalon-admin-nav-border: #302d2a;
+  --shalon-admin-nav-text: #f5f3f0;
+  --shalon-admin-nav-muted: #aaa39d;
+  --shalon-admin-nav-icon: #252321;
+  --shalon-admin-nav-active: rgb(255 182 30 / 0.14);
+  --shalon-admin-nav-active-fg: #ffb61e;
 }

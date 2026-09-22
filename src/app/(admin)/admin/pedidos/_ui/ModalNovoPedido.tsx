@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormaDePagamento } from "@/application/checkout/tipos";
 import type { Modalidade } from "@/application/pedidos/tipos";
 import { NovoPedido, type EtapaNovoPedido } from "./NovoPedido";
@@ -14,14 +14,20 @@ const NUMERO_DA_ETAPA: Record<EtapaNovoPedido, number> = {
 
 export function ModalNovoPedido({
   formasPorModalidade,
+  fecharComVoltar = false,
 }: {
   formasPorModalidade: Record<Modalidade, FormaDePagamento[]>;
+  fecharComVoltar?: boolean;
 }) {
   const router = useRouter();
   const painelRef = useRef<HTMLElement>(null);
   const fecharRef = useRef<HTMLButtonElement>(null);
   const [desktop, setDesktop] = useState(false);
   const [etapa, setEtapa] = useState<EtapaNovoPedido>("cliente");
+  const fechar = useCallback(() => {
+    if (fecharComVoltar) router.back();
+    else router.push("/admin/pedidos");
+  }, [fecharComVoltar, router]);
 
   useEffect(() => {
     const consulta = window.matchMedia("(min-width: 1024px)");
@@ -40,7 +46,7 @@ export function ModalNovoPedido({
 
     function aoPressionarTecla(evento: KeyboardEvent) {
       if (evento.key === "Escape") {
-        router.push("/admin/pedidos");
+        fechar();
         return;
       }
 
@@ -67,14 +73,14 @@ export function ModalNovoPedido({
       document.body.style.overflow = overflowAnterior;
       document.removeEventListener("keydown", aoPressionarTecla);
     };
-  }, [desktop, router]);
+  }, [desktop, fechar]);
 
   return (
-    <div className="lg:fixed lg:inset-0 lg:z-70 lg:flex lg:items-center lg:justify-center lg:p-6">
+    <div className="fixed inset-0 z-70 flex overflow-y-auto bg-bg lg:items-center lg:justify-center lg:bg-transparent lg:p-6">
       <button
         type="button"
         aria-label="Fechar novo pedido"
-        onClick={() => router.push("/admin/pedidos")}
+        onClick={fechar}
         className="motion-backdrop-in absolute inset-0 hidden cursor-default border-0 bg-[var(--shalon-scrim-sheet)] lg:block"
         tabIndex={-1}
       />
@@ -105,7 +111,7 @@ export function ModalNovoPedido({
             ref={fecharRef}
             type="button"
             aria-label="Fechar"
-            onClick={() => router.push("/admin/pedidos")}
+            onClick={fechar}
             className="flex min-h-touch min-w-touch cursor-pointer items-center justify-center rounded-11 border border-border-shalon bg-surface text-[22px] leading-none text-ink-2 hover:border-brand-orange hover:text-ink"
           >
             ×

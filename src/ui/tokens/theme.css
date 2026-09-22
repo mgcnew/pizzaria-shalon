@@ -53,6 +53,14 @@
   --color-sidebar: var(--shalon-sidebar);
   --color-sidebar-ink: var(--shalon-sidebar-ink);
 
+  --color-admin-nav-bg: var(--shalon-admin-nav-bg);
+  --color-admin-nav-border: var(--shalon-admin-nav-border);
+  --color-admin-nav-text: var(--shalon-admin-nav-text);
+  --color-admin-nav-muted: var(--shalon-admin-nav-muted);
+  --color-admin-nav-icon: var(--shalon-admin-nav-icon);
+  --color-admin-nav-active: var(--shalon-admin-nav-active);
+  --color-admin-nav-active-fg: var(--shalon-admin-nav-active-fg);
+
   --color-dark-surface: var(--shalon-dark-surface);
   --color-dark-ink: var(--shalon-dark-ink);
   --color-dark-ink-2: var(--shalon-dark-ink-2);

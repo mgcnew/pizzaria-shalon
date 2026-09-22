@@ -125,9 +125,12 @@ Criar a infraestrutura básica sobre a qual os módulos serão implementados.
 Preparar:
 - roteamento público;
 - roteamento administrativo;
-- layouts;
+- layouts, incluindo a navegação administrativa clara aprovada em
+  D-2026-09-22-61 e sua equivalência no tema escuro;
 - providers estritamente necessários;
 - camada de acesso a dados;
+- deduplicação limitada à requisição e paralelização de leituras independentes,
+  sem cache persistente de operação ou autorização (D-2026-09-22-63);
 - camada de domínio/serviços;
 - validação de schemas;
 - tratamento de erros;
@@ -172,7 +175,10 @@ Os caminhos técnicos exatos podem ser definidos na implementação, desde que a
 - rotas-base funcionam;
 - nenhum segredo exposto;
 - lint/typecheck/testes-base funcionam;
-- design continua visualmente íntegro.
+- design continua visualmente íntegro, consideradas as revisões explicitamente
+  aprovadas e registradas em `00-DECISOES.md`.
+- navegações e modais são validados em build de produção, onde o prefetch do
+  App Router efetivamente opera.
 
 ---
 

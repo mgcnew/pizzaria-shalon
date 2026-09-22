@@ -1168,6 +1168,26 @@ Configurações
 
 Subpáginas e modais serão derivados dessas áreas durante o UX.
 
+Navegação administrativa
+
+O menu lateral usa uma superfície **clara e quente em toda a sua extensão**,
+incluindo o cabeçalho da marca, separado da navegação apenas por uma borda
+sutil. Itens inativos são neutros; amarelo e laranja ficam reservados ao item
+ativo e às interações. O ativo é identificado por fundo amarelo suave e barra
+lateral laranja, sem contorno completo. A mesma hierarquia vale no drawer móvel
+e possui equivalência em grafite neutro no tema escuro. Decisão revisada em
+22/09/2026 (D-2026-09-22-62).
+
+Desempenho da navegação interna
+
+Trocas de página devem preservar o shell administrativo e iniciar consultas
+independentes em paralelo. Sessão e leituras repetidas podem ser deduplicadas
+somente dentro da requisição corrente; pedidos, caixa e permissões não recebem
+cache persistente. Novo pedido, novo produto e edição de produto usam rotas
+canônicas interceptadas: na navegação interna abrem em slot modal independente,
+sem recarregar a página ao fundo; no acesso direto continuam páginas completas.
+Decisão de 22/09/2026 (D-2026-09-22-63).
+
 62. Link público — estrutura inicial
 
 Possível composição:
@@ -1200,7 +1220,7 @@ Baseado em vendas quando houver dados suficientes.
 Produtos
 
 Card **vertical**, com foto grande no topo, nome, descrição curta, preço e CTA
-"Escolher" — decisão de 21/09/2026 (D-2026-09-21-56).
+compacto "+" — decisão revisada em 22/09/2026 (D-2026-09-22-60).
 
 É o mesmo card em todo o cardápio público: vitrines, listagem completa,
 página de categoria e busca. Duas versões do mesmo cartão produziriam duas
@@ -1210,8 +1230,10 @@ Grade de **três por linha no celular**, quatro em tela média e cinco em tela
 grande. Em telas estreitas o texto e o preço encolhem; o alvo de toque do CTA
 não encolhe, e permanece em 44px.
 
-O CTA é "Escolher", e não um "+": ele abre a configuração do produto, porque
-pizza tem tamanho, sabores e borda. Não adiciona ao carrinho.
+O CTA é um "+" compacto, alinhado à direita e com alvo de toque de 44px. Ele
+abre a configuração do produto, porque pizza tem tamanho, sabores e borda;
+não adiciona o item diretamente ao carrinho. O rótulo acessível conserva a
+ação "Escolher [produto]" para leitores de tela.
 
 Combos
 

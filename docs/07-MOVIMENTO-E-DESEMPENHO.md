@@ -102,6 +102,12 @@ formulário não podem perder estado ao trocar de aba.
 Não aplicar fade global. Rotas dinâmicas usam `loading.tsx` e skeletons leves,
 pois feedback de carregamento é mais honesto que esconder latência.
 
+O shell administrativo permanece montado entre páginas. Fluxos de novo pedido,
+novo produto e edição de produto usam rotas canônicas com interceptação e slot
+paralelo: em navegação SPA, somente o modal é carregado; em acesso direto, a
+rota continua sendo uma página completa. Cada slot modal possui `loading.tsx`
+próprio e não substitui a página que está ao fundo.
+
 ## 6. Acessibilidade
 
 O bloco global `prefers-reduced-motion: reduce` deve continuar ativo. Nenhum
@@ -118,6 +124,13 @@ indicador semântico.
 - Carrosséis podem usar temporizador, devem pausar durante interação e respeitar
   movimento reduzido.
 - Imagens visíveis usam `next/image`, dimensões ou `fill` e `sizes` adequado.
+- Leituras independentes devem começar juntas com `Promise.all`; não criar
+  cascatas apenas por conveniência de escrita.
+- `React.cache` pode deduplicar sessão e consultas idênticas somente dentro da
+  renderização corrente. Não usar cache persistente para pedidos, caixa,
+  disponibilidade ou permissões.
+- Links para rotas modais apontam para a rota canônica. Não duplicar caminhos
+  de desktop/mobile nem abrir modal por estado local desconectado da URL.
 - Imagens-fonte grandes que não são referenciadas não afetam a rota, mas aumentam
   deploy e armazenamento; removê-las somente após confirmar que não são arquivo
   mestre necessário.
@@ -131,5 +144,8 @@ indicador semântico.
 5. Continua utilizável com `prefers-reduced-motion`?
 6. Não desmonta formulário nem perde dados ao trocar de aba?
 7. `npm run check` e `npm run build` continuam aprovados?
+8. Consultas independentes estão paralelas e consultas idênticas da mesma
+   renderização estão deduplicadas?
+9. A rota modal funciona por acesso direto, voltar/avançar e navegação mobile?
 
 Se alguma resposta for “não”, a alteração precisa ser revista antes do commit.

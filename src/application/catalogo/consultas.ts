@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
 import type {
   Adicional,
@@ -31,27 +32,28 @@ async function rpc<T>(nome: string, args?: Record<string, unknown>): Promise<T[]
   return (data ?? []) as T[];
 }
 
-export function listarProdutos(): Promise<ProdutoAdmin[]> {
-  return rpc<ProdutoAdmin>("catalogo_produtos_admin");
-}
+export const listarProdutos = cache(
+  (): Promise<ProdutoAdmin[]> => rpc<ProdutoAdmin>("catalogo_produtos_admin"),
+);
 
-export function listarVariacoes(produtoId: string): Promise<VariacaoAdmin[]> {
-  return rpc<VariacaoAdmin>("catalogo_variacoes_admin", { p_product_id: produtoId });
-}
+export const listarVariacoes = cache(
+  (produtoId: string): Promise<VariacaoAdmin[]> =>
+    rpc<VariacaoAdmin>("catalogo_variacoes_admin", { p_product_id: produtoId }),
+);
 
-export function listarPromocoes(): Promise<PromocaoAdmin[]> {
-  return rpc<PromocaoAdmin>("catalogo_promocoes_admin");
-}
+export const listarPromocoes = cache(
+  (): Promise<PromocaoAdmin[]> => rpc<PromocaoAdmin>("catalogo_promocoes_admin"),
+);
 
-export function listarCombos(): Promise<ComboAdmin[]> {
-  return rpc<ComboAdmin>("catalogo_combos_admin");
-}
+export const listarCombos = cache(
+  (): Promise<ComboAdmin[]> => rpc<ComboAdmin>("catalogo_combos_admin"),
+);
 
-export function listarBanners(): Promise<BannerAdmin[]> {
-  return rpc<BannerAdmin>("catalogo_banners_admin");
-}
+export const listarBanners = cache(
+  (): Promise<BannerAdmin[]> => rpc<BannerAdmin>("catalogo_banners_admin"),
+);
 
-export async function listarCategorias(): Promise<Categoria[]> {
+export const listarCategorias = cache(async (): Promise<Categoria[]> => {
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase
     .from("categories")
@@ -62,9 +64,9 @@ export async function listarCategorias(): Promise<Categoria[]> {
     .order("name");
   if (error) throw error;
   return (data ?? []) as Categoria[];
-}
+});
 
-export async function listarTamanhos(): Promise<Tamanho[]> {
+export const listarTamanhos = cache(async (): Promise<Tamanho[]> => {
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase
     .from("pizza_sizes")
@@ -73,9 +75,9 @@ export async function listarTamanhos(): Promise<Tamanho[]> {
     .order("name");
   if (error) throw error;
   return (data ?? []) as Tamanho[];
-}
+});
 
-export async function listarBordas(): Promise<Borda[]> {
+export const listarBordas = cache(async (): Promise<Borda[]> => {
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase
     .from("crusts")
@@ -84,9 +86,9 @@ export async function listarBordas(): Promise<Borda[]> {
     .order("name");
   if (error) throw error;
   return (data ?? []) as Borda[];
-}
+});
 
-export async function listarAdicionais(): Promise<Adicional[]> {
+export const listarAdicionais = cache(async (): Promise<Adicional[]> => {
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase
     .from("addons")
@@ -95,7 +97,7 @@ export async function listarAdicionais(): Promise<Adicional[]> {
     .order("name");
   if (error) throw error;
   return (data ?? []) as Adicional[];
-}
+});
 
 /** Todos os preços de borda por tamanho, de uma vez (evita N+1 na tela). */
 export async function listarPrecosDeBordas(): Promise<(PrecoPorTamanho & { crust_id: string })[]> {

@@ -34,10 +34,13 @@ export default async function Page({
   const { aba, novo } = await searchParams;
   const encerrados = aba === "encerrados";
 
-  const sessao = await obterSessaoInterna();
+  const [sessao, pedidos, loja] = await Promise.all([
+    obterSessaoInterna(),
+    listarFila(encerrados),
+    obterLojaPublica(),
+  ]);
   const podeCriarPedido = podeNaUI(sessao, "orders.create_manual");
   const abrirNovoPedido = novo === "1" && podeCriarPedido;
-  const [pedidos, loja] = await Promise.all([listarFila(encerrados), obterLojaPublica()]);
   const [formasEntrega, formasRetirada] = abrirNovoPedido
     ? await Promise.all([formasDePagamento("delivery"), formasDePagamento("pickup")])
     : [[], []];
@@ -71,20 +74,12 @@ export default async function Page({
               balcão, iFood ou outro canal. A permissão real é conferida no
               servidor; aqui o botão só não aparece para quem não a tem. */}
           {podeCriarPedido ? (
-            <>
-              <Link
-                href="/admin/pedidos/novo"
-                className="min-h-touch inline-flex items-center rounded-11 border-0 bg-cta px-[14px] text-[13.5px] font-semibold text-cta-fg no-underline lg:hidden"
-              >
-                Novo pedido
-              </Link>
-              <Link
-                href="/admin/pedidos?novo=1"
-                className="min-h-touch hidden items-center rounded-11 border-0 bg-cta px-[14px] text-[13.5px] font-semibold text-cta-fg no-underline lg:inline-flex"
-              >
-                Novo pedido
-              </Link>
-            </>
+            <Link
+              href="/admin/pedidos/novo"
+              className="min-h-touch inline-flex items-center rounded-11 border-0 bg-cta px-[14px] text-[13.5px] font-semibold text-cta-fg no-underline"
+            >
+              Novo pedido
+            </Link>
           ) : null}
           <Link
             href="/admin/pedidos?aba=abertos"

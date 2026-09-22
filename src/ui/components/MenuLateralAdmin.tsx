@@ -97,14 +97,14 @@ function IconeMenu({ href }: { href: string }) {
   );
 }
 
-export function MenuLateralAdmin() {
+export function MenuLateralAdmin({ aoNavegar }: { aoNavegar?: () => void }) {
   const pathname = usePathname();
 
   return (
-    <div className="flex flex-col gap-3 py-3">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3 py-4">
       {GRUPOS.map((grupo) => (
         <div key={grupo.titulo}>
-          <p className="mb-1.5 mt-0 px-3 text-[10px] font-bold uppercase tracking-[0.12em] text-white/40">
+          <p className="mb-1.5 mt-0 px-3 text-[10px] font-bold uppercase tracking-[0.12em] text-admin-nav-muted">
             {grupo.titulo}
           </p>
           <div className="flex flex-col gap-1">
@@ -118,20 +118,21 @@ export function MenuLateralAdmin() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  {...(aoNavegar ? { onClick: aoNavegar } : {})}
                   aria-current={ativo ? "page" : undefined}
                   className={[
-                    "motion-interactive group flex min-h-touch items-center gap-2.5 rounded-12 border px-2.5 py-2 text-[13.5px] font-semibold transition-colors",
+                    "motion-interactive group flex min-h-touch items-center gap-2.5 rounded-10 border-l-[3px] px-2.5 py-2 text-[13.5px] transition-colors",
                     ativo
-                      ? "border-brand-yellow/45 bg-brand-yellow/[0.13] text-dark-ink"
-                      : "border-transparent text-sidebar-ink hover:border-white/10 hover:bg-white/[0.07] hover:text-dark-ink",
+                      ? "border-brand-orange bg-admin-nav-active font-semibold text-admin-nav-text"
+                      : "border-transparent font-medium text-admin-nav-text hover:bg-admin-nav-icon",
                   ].join(" ")}
                 >
                   <span
                     className={[
                       "motion-interactive flex h-8 w-8 shrink-0 items-center justify-center rounded-10 transition-colors",
                       ativo
-                        ? "bg-brand-yellow text-ink"
-                        : "bg-white/[0.07] text-brand-yellow group-hover:bg-white/[0.11]",
+                        ? "bg-surface text-admin-nav-active-fg shadow-sm"
+                        : "bg-admin-nav-icon text-admin-nav-muted group-hover:text-admin-nav-active-fg",
                     ].join(" ")}
                   >
                     <IconeMenu href={item.href} />

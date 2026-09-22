@@ -9,9 +9,10 @@ import { sair } from "@/app/(auth)/admin/login/actions";
 /**
  * Shell administrativo — sidebar + cabeçalho do design aprovado.
  *
- * Preserva do protótipo: sidebar escura de 232px fixa no desktop, cabeçalho
- * sticky, identidade do usuário na topbar e o tema de acento vermelho
- * (`data-acento="vermelho"`), padrão do administrativo.
+ * Preserva do protótipo: sidebar de 232px fixa no desktop, cabeçalho sticky,
+ * identidade do usuário na topbar e o tema de acento vermelho
+ * (`data-acento="vermelho"`), padrão do administrativo. A navegação inteiramente
+ * clara, incluindo o cabeçalho da marca, é a revisão D-2026-09-22-62.
  *
  * DIFERENÇA DELIBERADA: o design decidia sidebar × drawer medindo
  * `window.innerWidth` em JavaScript. Aqui a decisão é CSS puro
@@ -36,9 +37,9 @@ export default async function LayoutAdmin({
     <div data-acento="vermelho" className="flex min-h-screen bg-bg">
       <aside
         aria-label="Navegação principal do administrativo"
-        className="sticky top-0 hidden h-screen w-sidebar shrink-0 flex-col overflow-hidden border-r border-white/10 bg-[linear-gradient(165deg,#30241d_0%,#211813_100%)] px-3 pt-4 shadow-[8px_0_28px_rgb(0_0_0/0.12)] lg:flex"
+        className="sticky top-0 hidden h-screen w-sidebar shrink-0 flex-col overflow-hidden border-r border-admin-nav-border bg-admin-nav-bg shadow-[4px_0_18px_rgb(41_37_36/0.06)] lg:flex"
       >
-        <div className="border-b border-white/10 px-2 pb-4 pt-1">
+        <div className="border-b border-admin-nav-border bg-admin-nav-bg px-5 pb-5 pt-5">
           <Image
             src="/marca/logo-shalon.webp"
             alt="Pizzaria Shalon"
@@ -46,7 +47,7 @@ export default async function LayoutAdmin({
             height={256}
             className="h-[42px] w-auto"
           />
-          <p className="mb-0 mt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-brand-yellow">
+          <p className="mb-0 mt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-admin-nav-active-fg">
             Painel administrativo
           </p>
         </div>

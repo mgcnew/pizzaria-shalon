@@ -71,11 +71,15 @@ export default async function Page({
   // A interface esconde o que não se aplica. Quem autoriza de verdade é o
   // RLS: mesmo que alguém chame a Server Action direto, a escrita é recusada
   // (CLAUDE.md §12).
-  const sessao = await obterSessaoInterna();
+  const solicitouNovoProduto = um("novo") === "1" && aba === "produtos";
+  const [sessao, categoriasSolicitadas] = await Promise.all([
+    obterSessaoInterna(),
+    solicitouNovoProduto ? listarCategorias() : Promise.resolve([]),
+  ]);
   const podeGerenciar = podeNaUI(sessao, "catalog.manage");
-  const novoProduto = um("novo") === "1" && aba === "produtos" && podeGerenciar;
+  const novoProduto = solicitouNovoProduto && podeGerenciar;
   const produtoEmEdicao = !novoProduto && aba === "produtos" ? um("editar") : "";
-  const categoriasDoNovoProduto = novoProduto ? await listarCategorias() : [];
+  const categoriasDoNovoProduto = novoProduto ? categoriasSolicitadas : [];
 
   return (
     <div className="flex flex-col gap-4">
@@ -89,7 +93,7 @@ export default async function Page({
         <div className="flex flex-wrap justify-end gap-2">
           {podeGerenciar ? (
             <Link
-              href="/admin/produtos?novo=1"
+              href="/admin/produtos/novo"
               className="inline-flex min-h-touch items-center rounded-11 bg-cta px-4 text-[14px] font-bold text-cta-fg shadow-[0_5px_16px_rgb(30_24_20/0.08)]"
             >
               + Novo produto

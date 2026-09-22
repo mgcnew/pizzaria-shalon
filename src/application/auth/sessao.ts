@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
 import type { SessaoInterna } from "./permissoes";
 
@@ -11,20 +12,25 @@ import type { SessaoInterna } from "./permissoes";
  * alguém contorne a interface (CLAUDE.md §12, RN-RBAC-003).
  */
 
-/** Retorna a sessão interna, ou null quando não há usuário interno ativo. */
-export async function obterSessaoInterna(): Promise<SessaoInterna | null> {
+/**
+ * Retorna a sessão interna, ou null quando não há usuário interno ativo.
+ *
+ * `cache` é somente da renderização corrente do React: layout, página e modal
+ * compartilham a mesma promessa, mas uma nova requisição consulta tudo de
+ * novo. Não há cache de permissão entre usuários ou entre navegações.
+ */
+export const obterSessaoInterna = cache(async (): Promise<SessaoInterna | null> => {
   const supabase = await getSupabaseServerClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const authUserId = claimsData?.claims.sub;
+  if (typeof authUserId !== "string") return null;
 
   // O RLS já limita o que volta: sem usuário interno ativo, não vem nada.
   const { data: appUser } = await supabase
     .from("app_users")
     .select("id, employee_id, employees(full_name)")
-    .eq("auth_user_id", user.id)
+    .eq("auth_user_id", authUserId)
     .maybeSingle();
 
   if (!appUser) return null;
@@ -62,7 +68,7 @@ export async function obterSessaoInterna(): Promise<SessaoInterna | null> {
     papeis,
     permissoes: [...permissoes].sort(),
   };
-}
+});
 
 export type { SessaoInterna };
 export { podeNaUI } from "./permissoes";

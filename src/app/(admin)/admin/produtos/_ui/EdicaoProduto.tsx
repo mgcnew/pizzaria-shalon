@@ -25,12 +25,21 @@ import { FormularioAcao } from "./FormularioAcao";
 import { FormularioProduto } from "./FormularioProduto";
 import { ModalFerramentaCatalogo } from "./ModalFerramentaCatalogo";
 
-export async function EdicaoProduto({ id, emModal = false }: { id: string; emModal?: boolean }) {
-  const [produto, categorias, tamanhos, sessao] = await Promise.all([
+export async function EdicaoProduto({
+  id,
+  emModal = false,
+  fecharComVoltar = false,
+}: {
+  id: string;
+  emModal?: boolean;
+  fecharComVoltar?: boolean;
+}) {
+  const [produto, categorias, tamanhos, sessao, variacoes] = await Promise.all([
     obterProduto(id),
     listarCategorias(),
     listarTamanhos(),
     obterSessaoInterna(),
+    listarVariacoes(id),
   ]);
 
   if (!produto) {
@@ -39,7 +48,6 @@ export async function EdicaoProduto({ id, emModal = false }: { id: string; emMod
   }
 
   const podeGerenciar = podeNaUI(sessao, "catalog.manage");
-  const variacoes = await listarVariacoes(produto.id);
   const usaTamanho = produto.tipo !== "combo";
   const tamanhosDisponiveis = tamanhos.filter(
     (t) => t.is_active && !variacoes.some((v) => v.tamanho_id === t.id),
@@ -233,7 +241,11 @@ export async function EdicaoProduto({ id, emModal = false }: { id: string; emMod
 
   if (emModal) {
     return (
-      <ModalFerramentaCatalogo titulo={`Editar · ${produto.nome}`} tamanho="compacto">
+      <ModalFerramentaCatalogo
+        titulo={`Editar · ${produto.nome}`}
+        tamanho="compacto"
+        fecharComVoltar={fecharComVoltar}
+      >
         {abas}
       </ModalFerramentaCatalogo>
     );
