@@ -461,10 +461,8 @@ pagamento efetivo quando pendente"). A direção é essa e não a inversa:
 concluir não cria receita; ela precisa já existir para concluir.
 
 Na entrega, `01 §79.18` põe essa confirmação no **retorno do entregador**, que
-é prestação de contas da Fase 8. Até lá a entrega conclui sem o recebimento
-registrado, e o caixa continua honesto porque dinheiro que não entrou na
-gaveta não é contado como caixa físico (RN-CAIXA-014) e aparece destacado no
-fechamento (RN-CAIXA-013).
+é prestação de contas da Fase 8. A regra que sustenta essa separação é
+**RN-PGTO-014**: pedido entregue não é valor recebido.
 
 Decisão de 21/09/2026 (D-2026-09-21-54).
 
@@ -481,6 +479,26 @@ com o valor somado.
 
 Corrigir um recebimento é estorná-lo e registrar outro — não editar o
 existente (RN-FIN-003).
+
+### RN-PGTO-014 — Pedido entregue não é valor recebido
+Concluir uma entrega registra que o pedido **chegou ao cliente**. Não registra
+recebimento, não reconhece receita e não coloca dinheiro em caixa nenhum.
+
+```text
+pedido entregue  ≠  valor conciliado/recebido pela Shalon
+```
+
+Enquanto o valor de uma entrega não for conciliado, ele não é dinheiro físico
+no caixa (RN-CAIXA-014), é contabilizado à parte (RN-CAIXA-017) e aparece
+destacado no fechamento (RN-CAIXA-013). A conclusão da entrega **não** exige o
+recebimento registrado — diferente da retirada (RN-PGTO-012) — porque a
+confirmação do valor que estava com o entregador acontece no retorno dele.
+
+**A Fase 8 usa esta regra** ao implementar retorno e prestação de contas: o
+que ela conciliará é justamente o que esta regra mantém separado. Nada aqui
+autoriza tratar um pedido concluído como pago.
+
+Decisão aprovada em 21/09/2026 (D-2026-09-21-54, confirmada no complemento).
 
 ---
 
@@ -825,6 +843,18 @@ Categorias de entradas e despesas são configuráveis por usuário autorizado.
 ### RN-FIN-002
 Movimento financeiro registra categoria, valor, data, descrição/observação, responsável e comprovante opcional quando aplicável.
 
+O comprovante é **evidência, não confirmação**: anexá-lo não muda estado, não
+reconhece receita e não dispensa confirmação manual de pagamento
+(RN-PGTO-010). O sistema guarda o arquivo e **não o interpreta** — não há
+leitura automática de valor, data ou beneficiário.
+
+Comprovante é dado financeiro privado: fica em armazenamento privado, o acesso
+depende de `finance.view` e é feito por URL assinada curta (03 §23.2).
+Enquanto o lançamento puder ser alterado, o comprovante pode ser substituído
+ou removido, sempre com registro de quem e por quê. **Depois do estorno a
+evidência congela**: é ela que explica o que foi registrado, e a reversão não
+a apaga (RN-FIN-003).
+
 ### RN-FIN-003
 Movimento confirmado não é apagado ou sobrescrito para correção.
 
@@ -848,6 +878,11 @@ A V1 não exige aplicativo/login do motoboy.
 
 ### RN-MOTO-003
 Atendente autorizado controla associação, estados e prestação de contas.
+
+### RN-MOTO-004 — O que a prestação de contas concilia
+O valor de uma entrega concluída permanece **não conciliado** até a prestação
+de contas do entregador (RN-PGTO-014). É esse valor que o acerto confronta —
+não o estado do pedido, que já está concluído desde a entrega.
 
 ---
 

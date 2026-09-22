@@ -1266,6 +1266,62 @@ RN-CAIXA-017 e a nota de RN-CAIXA-010); `03-RLS-RBAC-SEGURANCA.md` §16.2 e
 
 ---
 
+### D-2026-09-21-55 — Complemento da Fase 7: entrega, comprovante e bandeiras
+
+**1. "Pedido entregue ≠ valor recebido" virou regra.** Era interpretação
+declarada em D-2026-09-21-54 e passou a **RN-PGTO-014**, com ponteiro em
+**RN-MOTO-004**. A Shalon aprovou a interpretação e pediu a promoção — o
+código não mudou, a autoridade dele sim.
+
+O que a regra garante: concluir uma entrega registra que o pedido chegou ao
+cliente, e só isso. Não cria recebimento, não reconhece receita, não põe
+dinheiro em caixa. É essa separação que a Fase 8 vai conciliar no retorno do
+entregador, e é por isso que ela precisa existir escrita antes.
+
+**2. Comprovante financeiro.** `05 §11.3` continuava no escopo, e a Fase 3 já
+tinha preparado o terreno: `media_assets.asset_type` aceita
+`financial_receipt` desde a 0013, e a 0023 dizia que o bucket privado viria
+"nas fases 7+". Então não houve infraestrutura nova de mídia — houve o bucket
+que faltava.
+
+**Uma correção de segurança apareceu no caminho.** As policies de
+`media_assets` da Fase 3 falavam só de catálogo: como estavam, quem tem
+`catalog.view` — o Atendente padrão — enxergaria a linha de um comprovante
+financeiro em `/rest/v1`, com nome de arquivo, caminho e autor. O binário
+seguia protegido pelo bucket, mas metadado de comprovante também é dado
+financeiro (03 §17.3). As policies passaram a depender do `asset_type`.
+
+**PDF não é reprocessado**, de propósito: alterar o binário de um comprovante
+seria alterar a evidência. Ele é validado pela assinatura `%PDF-` e guardado
+como está. Imagem passa pelo pipeline, que além de provar o formato real
+**descarta os metadados** — foto de comprovante costuma trazer GPS junto.
+
+**A evidência congela no estorno.** Enquanto o lançamento pode ser alterado, o
+comprovante pode ser trocado ou removido, com autor e motivo. Depois do
+estorno, não: é justamente a evidência do que foi registrado, e a reversão
+não a apaga.
+
+**Não há OCR e não há leitura automática.** O sistema guarda; quem interpreta
+é uma pessoa. Anexar arquivo não confirma pagamento.
+
+**3. Bandeiras não foram semeadas.** Visa, Mastercard e afins são cadastro, e
+não regra de domínio (RN-PGTO-006). Semeá-las por suposição seria inventar
+quais a Shalon aceita. Débito, crédito e voucher dependem de bandeira ativa, e
+isso ficou registrado como **configuração necessária antes do uso real**
+dentro da nova dívida do `06` — não como defeito nem como dívida técnica.
+
+**4. Validação E2E de pagamento.** O ciclo completo nunca rodou com
+configuração real, porque o ambiente ainda não tem `store_settings` da
+Shalon. Virou dívida no `06`, obrigatória antes da produção e sem bloquear a
+Fase 8, para ser executada junto do E2E já pendente da Fase 5.
+
+**Onde foi formalizada.** `04-REGRAS-NEGOCIO.md` (RN-PGTO-014, RN-MOTO-004 e
+a nota de RN-FIN-002); `03-RLS-RBAC-SEGURANCA.md` §23.2;
+`02-MODELO-DADOS-SUPABASE.md` §13.2; `06-PENDENCIAS-VALIDACAO-PRODUCAO.md`.
+Migration `0071`.
+
+---
+
 # Decisões em aberto
 
 Nenhuma implementação que dependa destes pontos deve começar antes da decisão.

@@ -961,7 +961,10 @@ Entradas/despesas operacionais que não devem ser confundidas com o ledger de pa
 - `description text`
 - `payment_method_id uuid nullable`
 - `cash_session_id uuid nullable`
-- `attachment_asset_id uuid nullable`
+- `attachment_asset_id uuid nullable` — comprovante em `media_assets`, com
+  `asset_type = 'financial_receipt'` e bucket privado `comprovantes`. Enquanto
+  o lançamento é alterável, pode ser trocado ou removido; depois do estorno a
+  evidência congela (RN-FIN-002/003)
 - `status text` — `confirmed`, `reversed`
 - `payment_method_name_snapshot text nullable`
 - `reverses_entry_id uuid nullable` — o lançamento CORRETO aponta para o que

@@ -1,7 +1,7 @@
 # 06 — PENDÊNCIAS DE VALIDAÇÃO PARA PRODUÇÃO
 ## Sistema de Gestão e Pedidos — Pizzaria Shalon
 
-**Versão:** 1.1 — aberto em 19/09/2026, Fase 6 encerrada em 21/09/2026
+**Versão:** 1.2 — aberto em 19/09/2026, Fases 6 e 7 encerradas em 21/09/2026
 **Status:** documento vivo
 **Função:** concentrar, em um lugar só, o que **não impede** o desenvolvimento
 das próximas fases mas **precisa ser resolvido e testado antes da produção**.
@@ -308,6 +308,69 @@ não validada**.
 
 ---
 
+## Validação E2E real de pedido → pagamento → caixa
+
+> **OBRIGATÓRIA ANTES DE PRODUÇÃO — NÃO BLOQUEIA O DESENVOLVIMENTO DA
+> FASE 8.**
+
+### Situação atual
+
+- O caixa, o pagamento realizado e o financeiro estão implementados e
+  cobertos por **172 cenários** contra o banco, que exercitam divisão,
+  troco, estorno, fechamento com diferença, reabertura, permissões e RLS.
+- O que **não** foi exercitado é o ciclo inteiro com configuração real: o
+  banco de desenvolvimento ainda não tem `store_settings` da Shalon, e sem
+  ele não se cria pedido. Os cenários de pagamento rodam sobre pedidos
+  criados em transação de teste, não sobre um pedido que nasceu do cardápio.
+- **Nada disso é defeito da Fase 7.** É ambiente incompleto.
+
+### Configuração necessária antes de exercitar
+
+- **dados da pizzaria** em `store_settings` — endereço, WhatsApp, fuso,
+  janelas de horário e faixas de entrega;
+- **bandeiras aceitas**, cadastradas pela Shalon em Configurações. Débito,
+  crédito e voucher exigem bandeira ativa (RN-PGTO-006), e **nenhuma vem
+  semeada**: Visa, Mastercard e afins são cadastro, não regra de domínio, e
+  semeá-las por suposição seria inventar quais a Shalon aceita.
+
+### O ciclo a exercitar
+
+```text
+pedido → pagamento esperado → pagamento realizado → eventual divisão
+      → movimento físico quando for dinheiro → conclusão adequada
+      → resumo e fechamento de caixa
+```
+
+### O que precisa ser validado com dado real
+
+| Caso | O que observar |
+|---|---|
+| Dinheiro | entra na gaveta e sobe o esperado |
+| Troco | a venda é o valor do pedido, não o que veio na mão |
+| Pix | recebimento sem virar dinheiro físico |
+| Débito | bandeira real cadastrada, sem movimento de caixa |
+| Crédito | idem |
+| Voucher | **se a Shalon usar**; caso não use, registrar que não se aplica |
+| Esperado ≠ realizado | a intenção do checkout permanece, e a divergência é auditada |
+| Divisão interna | soma fecha com o total, e só a parte em dinheiro entra na gaveta |
+| Estorno | o original permanece e o compensatório sai do caixa |
+| Reflexo no fechamento | esperado, contado, diferença e o que ficou fora da gaveta |
+
+### Quando executar
+
+Junto da configuração real da Shalon, **na mesma sessão** da validação
+Google Maps e do E2E já pendentes da Fase 5 — os dois precisam do mesmo
+ambiente configurado.
+
+### O que NÃO deve ser feito para "adiantar"
+
+- preencher `store_settings` com dados inventados só para o fluxo rodar;
+- semear bandeiras por suposição;
+- considerar o pagamento validado porque os cenários de banco passam. Eles
+  provam a regra, não a operação.
+
+---
+
 ## Estado da Fase 5
 
 **Implementada e aprovada para continuidade do desenvolvimento**, com
@@ -337,3 +400,22 @@ emissão e reimpressão existe; o **transporte físico não foi exercitado**.
 Isso não bloqueia a Fase 7 — bloqueia a produção.
 
 A impressão **não está validada**.
+
+---
+
+## Estado da Fase 7
+
+**Encerrada e aprovada em 21/09/2026.** Sessão de caixa, movimentos físicos,
+fechamento com diferença justificada, reabertura excepcional, pagamento
+realizado com divisão e troco, estorno vinculado, entradas, despesas,
+categorias e comprovante financeiro estão implementados e testados.
+
+**Nenhuma decisão normativa da Fase 7 continua em aberto.** A separação entre
+pedido entregue e valor recebido virou RN-PGTO-014, e é a regra que a Fase 8
+usará na prestação de contas do entregador.
+
+**A pendência da fase é a seção acima**: o ciclo completo nunca foi
+exercitado com configuração real da Shalon. Isso não bloqueia a Fase 8 —
+bloqueia a produção.
+
+O fluxo de pagamento **não está validado contra operação real**.

@@ -915,6 +915,22 @@ Devem ser privados:
 
 Acesso via URL assinada curta ou endpoint autorizado.
 
+**Implementado na Fase 7 — bucket `comprovantes`.** Privado, sem policy para
+`anon` em nenhum comando. Leitura exige `finance.view`; escrita e remoção
+exigem `finance.create`. Tipos aceitos: JPEG, PNG, WebP e PDF; limite de
+5 MB. Imagem passa pelo pipeline que descarta metadados — foto de comprovante
+costuma trazer localização junto. PDF **não** é reprocessado: alterar o
+binário seria alterar a evidência; ele é validado pela assinatura `%PDF-`.
+
+A URL assinada dura dois minutos: o suficiente para abrir o arquivo, e pouco
+para sobreviver a um link copiado para fora.
+
+**Metadado de comprovante também é dado financeiro.** As policies de
+`media_assets` passaram a depender do `asset_type`: `financial_receipt`
+responde a `finance.view`/`finance.create`; os demais continuam em
+`catalog.view`/`catalog.manage`. Sem isso, quem tem acesso ao catálogo
+enxergaria nome de arquivo, caminho e autor de um comprovante financeiro.
+
 ## 23.3 Path
 
 Não usar nome de arquivo fornecido pelo usuário como autoridade. Gerar caminhos controlados e validar tipo/tamanho.
