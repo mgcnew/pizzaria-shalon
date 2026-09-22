@@ -54,6 +54,14 @@ select 'b6b6b6b6-0000-0000-0000-000000000001', id from public.roles where name =
 insert into public.user_roles (app_user_id, role_id)
 select 'b6b6b6b6-0000-0000-0000-000000000002', id from public.roles where name = 'Atendente';
 
+-- O banco de desenvolvimento pode ter uma sessão de caixa aberta de verdade
+-- (alguém operando o painel). Dentro desta transação ela sai do caminho, e o
+-- ROLLBACK a devolve intacta: sem isso, `abrir_caixa` encontraria a sessão
+-- da pessoa e o teste mediria o estado do ambiente, não a regra.
+delete from public.cash_movements;
+delete from public.cash_session_corrections;
+delete from public.cash_sessions;
+
 delete from public.store_settings;
 insert into public.store_settings (
   id, store_name, whatsapp, address_street, address_number, address_neighborhood,
@@ -227,6 +235,21 @@ select pg_temp.checar('pronto de retirada respeita a modalidade', 'ready_for_pic
 
 select pg_temp.checar('retirada nao despacha', 'false',
   (pg_temp.comando(current_setting('teste.p_retirada', true)::uuid, 'despachar') ->> 'ok'));
+
+-- RN-PGTO-012 (Fase 7): a retirada deixou de concluir só por estar pronta.
+-- O invariante 13 de 04 §44 manda impedir isso, e 01 §79.18 diz o que falta:
+-- na retirada, o pagamento efetivo é confirmado quando pendente.
+select pg_temp.checar('retirada NAO conclui sem o recebimento registrado', 'pagamento',
+  (pg_temp.comando(current_setting('teste.p_retirada', true)::uuid, 'concluir') ->> 'bloqueio'));
+
+-- RN-CAIXA-001: venda normal exige caixa aberto. O Atendente tem cash.open.
+select pg_temp.checar('atendente abre o caixa para receber', 'true',
+  (public.abrir_caixa('{"fundo":0}'::jsonb) ->> 'ok'));
+
+select pg_temp.checar('recebimento da retirada e registrado', 'true',
+  (public.registrar_pagamento(current_setting('teste.p_retirada', true)::uuid,
+     jsonb_build_object('linhas', jsonb_build_array(jsonb_build_object(
+       'forma_id', current_setting('teste.dinheiro', true), 'valor', 100)))) ->> 'ok'));
 
 select pg_temp.checar('retirada conclui no balcao', 'completed',
   (pg_temp.comando(current_setting('teste.p_retirada', true)::uuid, 'concluir') ->> 'status'));
