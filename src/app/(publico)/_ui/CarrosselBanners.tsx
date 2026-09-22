@@ -19,8 +19,9 @@ function ChamadaBanner({ banner }: { banner: BannerDoCarrossel }) {
       </svg>
     </>
   );
+  // Fica no canto: a arte do banner é a mensagem, e o botão não pode cobri-la.
   const classe =
-    "motion-interactive mt-4 inline-flex min-h-touch items-center gap-2 rounded-12 bg-cta px-4 text-[14px] font-bold text-cta-fg shadow-[0_8px_24px_rgb(0_0_0/0.18)] transition-transform hover:-translate-y-0.5";
+    "motion-interactive absolute bottom-3 right-3 z-10 inline-flex min-h-touch items-center gap-1.5 rounded-12 bg-cta px-3 text-[13px] font-bold text-cta-fg shadow-[0_8px_24px_rgb(0_0_0/0.28)] transition-transform hover:-translate-y-0.5 sm:bottom-4 sm:right-4 sm:px-4 sm:text-[14px]";
 
   if (!banner.href) return null;
 
@@ -53,6 +54,8 @@ export function CarrosselBanners({ banners }: { banners: BannerDoCarrossel[] }) 
   const banner = banners[atual] ?? banners[0];
   if (!banner) return null;
 
+  // A arte é enviada em 2:1. A moldura acompanha essa proporção para que nada
+  // seja cortado — nem no celular, nem no desktop.
   return (
     <section
       aria-label="Destaques e promoções da Shalon"
@@ -63,7 +66,7 @@ export function CarrosselBanners({ banners }: { banners: BannerDoCarrossel[] }) 
       onBlurCapture={(evento) => {
         if (!evento.currentTarget.contains(evento.relatedTarget)) setPausado(false);
       }}
-      className="relative mx-4 mt-4 h-[clamp(240px,45vw,360px)] overflow-hidden rounded-20 bg-sidebar shadow-[0_12px_30px_rgb(30_24_20/0.14)]"
+      className="relative mx-4 mt-4 aspect-[2/1] overflow-hidden rounded-20 bg-sidebar shadow-[0_12px_30px_rgb(30_24_20/0.14)]"
     >
       <div key={banner.id} className="motion-tab-in absolute inset-0">
         <Image
@@ -74,25 +77,26 @@ export function CarrosselBanners({ banners }: { banners: BannerDoCarrossel[] }) 
           priority={atual === 0}
           className="object-cover"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgb(24_15_11/0.92)_0%,rgb(24_15_11/0.7)_48%,rgb(24_15_11/0.12)_100%)]" />
-        <div className="absolute inset-0 flex items-end p-5 pb-11 sm:items-center sm:p-8 sm:pb-12">
-          <div className="max-w-[min(78%,560px)]">
-            <span className="inline-flex rounded-pill border border-brand-yellow/30 bg-black/25 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-brand-yellow backdrop-blur-sm">
-              {banner.destino_tipo === "promotion" ? "Oferta por tempo limitado" : "Destaque Shalon"}
-            </span>
-            {banner.titulo ? (
-              <h1 className="mb-0 mt-2.5 text-balance font-display text-[clamp(25px,5vw,42px)] font-extrabold leading-[1.02] text-dark-ink">
-                {banner.titulo}
-              </h1>
-            ) : null}
-            {banner.corpo ? (
-              <p className="mb-0 mt-2 max-w-[42ch] text-[clamp(13px,2.2vw,16px)] leading-[1.45] text-dark-ink-2">
-                {banner.corpo}
-              </p>
-            ) : null}
-            <ChamadaBanner banner={banner} />
+        {/* Sem véu escuro sobre a imagem: o banner existe para chamar atenção.
+            Texto só aparece quando foi cadastrado, e então ganha sombra
+            própria em vez de escurecer a arte inteira. */}
+        {banner.titulo || banner.corpo ? (
+          <div className="absolute inset-x-0 top-0 p-5 sm:p-8">
+            <div className="max-w-[min(78%,560px)] [text-shadow:0_2px_10px_rgb(0_0_0/0.65)]">
+              {banner.titulo ? (
+                <h1 className="mb-0 text-balance font-display text-[clamp(25px,5vw,42px)] font-extrabold leading-[1.02] text-dark-ink">
+                  {banner.titulo}
+                </h1>
+              ) : null}
+              {banner.corpo ? (
+                <p className="mb-0 mt-2 max-w-[42ch] text-[clamp(13px,2.2vw,16px)] leading-[1.45] text-dark-ink-2">
+                  {banner.corpo}
+                </p>
+              ) : null}
+            </div>
           </div>
-        </div>
+        ) : null}
+        <ChamadaBanner banner={banner} />
       </div>
 
       {banners.length > 1 ? (
