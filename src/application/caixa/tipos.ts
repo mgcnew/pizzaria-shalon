@@ -116,6 +116,13 @@ export type LancamentoFinanceiro = {
   motivo_estorno: string | null;
   corrige: string | null;
   por: string | null;
+  /** Evidência anexada. O caminho só chega a quem tem `finance.view`. */
+  comprovante: {
+    asset_id: string;
+    caminho: string;
+    mime: string;
+    nome: string | null;
+  } | null;
 };
 
 /** O esperado do checkout ao lado do que realmente entrou (RN-PGTO-002). */

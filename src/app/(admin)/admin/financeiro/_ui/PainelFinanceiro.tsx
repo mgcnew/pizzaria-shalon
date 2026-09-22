@@ -9,6 +9,11 @@ import {
   registrarLancamento,
   salvarCategoria,
 } from "@/application/caixa/acoes";
+import {
+  anexarComprovante,
+  removerComprovante,
+  urlDoComprovante,
+} from "@/application/caixa/comprovante";
 import type {
   CategoriaFinanceira,
   LancamentoFinanceiro,
@@ -28,6 +33,9 @@ import type {
  *
  * E nada desta tela é receita de venda. Venda vive em `payments`, ligada a
  * um pedido. Aqui é o outro livro (03 §17.1).
+ *
+ * O COMPROVANTE é evidência, não confirmação. Anexar um arquivo não muda
+ * status nem reconhece pagamento — e o sistema não lê o que está nele.
  */
 
 type Aba = "lancamentos" | "categorias";
@@ -354,6 +362,123 @@ function LinhaDeLancamento({
           </Button>
         </form>
       ) : null}
+
+      <Comprovante lancamento={lancamento} congelado={estornado} />
     </li>
+  );
+}
+
+/**
+ * Comprovante do lançamento.
+ *
+ * O arquivo mora em bucket privado: o que a tela guarda é o caminho, e abrir
+ * exige uma URL assinada pedida na hora. Um link copiado daqui morre em dois
+ * minutos.
+ *
+ * Depois do estorno o bloco vira somente leitura — a evidência do movimento
+ * original fica, e é isso que a reversão preserva.
+ */
+function Comprovante({
+  lancamento,
+  congelado,
+}: {
+  lancamento: LancamentoFinanceiro;
+  congelado: boolean;
+}) {
+  const [erro, setErro] = useState<string | null>(null);
+  const [removendo, setRemovendo] = useState(false);
+  const [enviando, iniciar] = useTransition();
+  const anexo = lancamento.comprovante;
+
+  async function abrir() {
+    if (!anexo) return;
+    const url = await urlDoComprovante(anexo.caminho);
+    if (url === null) {
+      setErro("Não foi possível abrir o comprovante agora.");
+      return;
+    }
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  return (
+    <div className="flex flex-col gap-2 rounded-10 bg-elev px-3 py-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-[12.5px] text-muted">
+          {anexo
+            ? `Comprovante: ${anexo.nome ?? "arquivo"}`
+            : "Sem comprovante anexado"}
+        </span>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {anexo ? (
+            <Button variante="secundario" tamanho="sm" onClick={() => void abrir()}>
+              Ver
+            </Button>
+          ) : null}
+          {anexo && !congelado ? (
+            <Button
+              variante="fantasma"
+              tamanho="sm"
+              onClick={() => setRemovendo(!removendo)}
+            >
+              Remover
+            </Button>
+          ) : null}
+        </div>
+      </div>
+
+      {erro ? <Aviso erro={erro} /> : null}
+
+      {congelado ? (
+        <p className="m-0 text-[12px] text-muted">
+          Lançamento estornado: o comprovante fica como evidência do que foi registrado.
+        </p>
+      ) : (
+        <form
+          className="flex flex-wrap items-end gap-2"
+          action={async (dados) => {
+            setErro(null);
+            dados.set("lancamento_id", lancamento.id);
+            const r = await anexarComprovante(null, dados);
+            if (!r.ok) setErro(r.erro);
+          }}
+        >
+          <input
+            type="file"
+            name="arquivo"
+            accept="image/jpeg,image/png,image/webp,image/avif,application/pdf"
+            required
+            className="max-w-full text-[12.5px] text-ink-2 file:mr-2 file:min-h-[36px] file:cursor-pointer file:rounded-10 file:border-0 file:bg-tn file:px-3 file:text-[12.5px] file:font-semibold file:text-ink"
+          />
+          <Button type="submit" variante="secundario" tamanho="sm">
+            {anexo ? "Substituir" : "Anexar"}
+          </Button>
+        </form>
+      )}
+
+      {removendo && anexo && !congelado ? (
+        <form
+          className="flex flex-wrap items-end gap-2"
+          action={(dados) => {
+            const motivo = String(dados.get("motivo") ?? "").trim();
+            if (motivo.length < 3) return;
+            setErro(null);
+            iniciar(async () => {
+              const r = await removerComprovante({
+                lancamento_id: lancamento.id,
+                motivo,
+              });
+              if (!r.ok) setErro(r.erro);
+              setRemovendo(false);
+            });
+          }}
+        >
+          <Input name="motivo" label="Motivo da remoção" required />
+          <Button type="submit" variante="perigo" tamanho="sm" disabled={enviando}>
+            Remover comprovante
+          </Button>
+        </form>
+      ) : null}
+    </div>
   );
 }
