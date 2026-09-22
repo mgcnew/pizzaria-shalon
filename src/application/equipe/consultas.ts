@@ -1,0 +1,97 @@
+import "server-only";
+
+import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
+import { logger } from "@/lib/logger";
+import type { HistoricoDoFuncionario, MovimentoInterno, TipoDeMovimento } from "./tipos";
+
+/**
+ * Leitura das movimentações internas e do livro do funcionário.
+ *
+ * As duas projeções são SECURITY INVOKER, e é por isso que o Atendente vê a
+ * lista de movimentos e NÃO vê o livro: não há `if` aqui decidindo isso — a
+ * policy de cada tabela decide, e uma só (03 §17, CLAUDE.md §15).
+ */
+
+export type FiltroDeMovimentos = {
+  tipo?: TipoDeMovimento;
+  funcionario_id?: string;
+  de?: string;
+  ate?: string;
+  limite?: number;
+};
+
+export async function listarMovimentos(
+  filtros: FiltroDeMovimentos = {},
+): Promise<MovimentoInterno[]> {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("movimentos_internos", {
+    p_filtros: {
+      tipo: filtros.tipo ?? null,
+      funcionario_id: filtros.funcionario_id ?? null,
+      de: filtros.de ?? null,
+      ate: filtros.ate ?? null,
+      limite: filtros.limite ?? 100,
+    },
+  });
+
+  if (error) {
+    logger.error("equipe:listarMovimentos", { code: (error as { code?: string }).code });
+    return [];
+  }
+  return (data as MovimentoInterno[]) ?? [];
+}
+
+/**
+ * O livro de um funcionário. Sem `employees.finance.view` volta vazio — e
+ * vazio é a resposta correta, não um erro que revelaria que há algo ali.
+ */
+export async function obterHistorico(
+  funcionarioId: string,
+  limite = 100,
+): Promise<HistoricoDoFuncionario> {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("historico_do_funcionario", {
+    p_funcionario: funcionarioId,
+    p_limite: limite,
+  });
+
+  if (error) {
+    logger.error("equipe:obterHistorico", { code: (error as { code?: string }).code });
+    return { funcionario_id: funcionarioId, lancamentos: [], total_confirmado: 0 };
+  }
+  return data as HistoricoDoFuncionario;
+}
+
+export type FuncionarioBasico = {
+  id: string;
+  nome: string;
+  e_entregador: boolean;
+  ativo: boolean;
+};
+
+/**
+ * Quem é quem, para atribuir um movimento a alguém.
+ *
+ * Lê `employees` direto: a policy exige `employees.view`, que o Atendente
+ * tem — ele precisa saber a quem lançar o consumo. O que ele NÃO tem é
+ * `employees.finance.view`, e por isso nada de dinheiro vem junto: esta
+ * função não seleciona salário nem se relaciona com quem o guarda (§15).
+ */
+export async function listarFuncionarios(): Promise<FuncionarioBasico[]> {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("employees")
+    .select("id, full_name, is_driver, employment_status")
+    .order("full_name");
+
+  if (error) {
+    logger.error("equipe:listarFuncionarios", { code: (error as { code?: string }).code });
+    return [];
+  }
+  return (data ?? []).map((e) => ({
+    id: e.id as string,
+    nome: e.full_name as string,
+    e_entregador: Boolean(e.is_driver),
+    ativo: e.employment_status === "active",
+  }));
+}
