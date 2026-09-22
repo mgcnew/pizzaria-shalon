@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { randomUUID } from "node:crypto";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { StatusBadge } from "@/ui/components";
@@ -7,9 +8,12 @@ import { formatBRL } from "@/lib/format";
 import { rotuloInterno } from "@/domain/pedidos/estados";
 import { obterPedido } from "@/application/pedidos/consultas";
 import { obterLojaPublica } from "@/application/publico/consultas";
+import { obterCaixa, obterPagamentoDoPedido } from "@/application/caixa/consultas";
+import { listarBandeiras, listarFormasPagamento } from "@/application/configuracoes/consultas";
 import { AcoesDoPedido } from "../_ui/AcoesDoPedido";
 import { Comanda } from "../_ui/Comanda";
 import { PainelAlteracao } from "../_ui/PainelAlteracao";
+import { Recebimento } from "../_ui/Recebimento";
 
 export const metadata: Metadata = { title: "Pedido" };
 
@@ -26,9 +30,31 @@ export const metadata: Metadata = { title: "Pedido" };
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [pedido, loja] = await Promise.all([obterPedido(id), obterLojaPublica()]);
+  const [pedido, loja, pagamento, formas, bandeiras, caixa] = await Promise.all([
+    obterPedido(id),
+    obterLojaPublica(),
+    obterPagamentoDoPedido(id),
+    listarFormasPagamento(),
+    listarBandeiras(),
+    obterCaixa(),
+  ]);
 
   if (pedido === null) notFound();
+
+  // Só formas ATIVAS entram na lista. A disponibilidade por modalidade é
+  // regra do checkout público; no balcão o que vale é o que a pizzaria
+  // aceita hoje (RN-PGTO-001/006).
+  const formasParaRecebimento = formas
+    .filter((f) => f.is_active)
+    .map((f) => ({
+      id: f.id,
+      nome: f.name,
+      familia: f.payment_family,
+      exige_bandeira: f.requires_brand,
+      bandeiras: bandeiras
+        .filter((b) => b.payment_method_id === f.id && b.is_active)
+        .map((b) => ({ id: b.id, nome: b.name })),
+    }));
 
   const estado = rotuloInterno(pedido.status);
   const fuso = loja?.fuso ?? "America/Sao_Paulo";
@@ -203,29 +229,26 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           </Cartao>
 
           <Cartao titulo="Pagamento" largura="cheio">
-            <p className="m-0 text-[14.5px] text-ink">
-              {pedido.pagamento?.forma ?? "—"}
-              {pedido.pagamento?.bandeira ? ` · ${pedido.pagamento.bandeira}` : ""}
-            </p>
-            {pedido.pagamento?.troco_esperado != null ? (
-              <p className="m-0 mt-1 text-[14px] font-semibold text-twf">
-                Troco para {formatBRL(pedido.pagamento.troco_para ?? 0)} — levar{" "}
-                {formatBRL(pedido.pagamento.troco_esperado)}
-              </p>
-            ) : null}
             {pedido.pagamento?.pix_status === "pending" ? (
-              <p className="m-0 mt-2 rounded-10 bg-tw px-3 py-2 text-[13px] font-semibold text-twf">
-                Pix ainda não confirmado. Nada vai à produção antes disso.
+              <p className="m-0 mb-3 rounded-10 bg-tw px-3 py-2 text-[13px] font-semibold text-twf">
+                Pix ainda não confirmado. Nada vai à produção antes disso — e confirmar o Pix
+                não é o mesmo que registrar o recebimento.
               </p>
             ) : null}
             {pedido.pagamento?.pix_status === "confirmed" ? (
-              <p className="m-0 mt-2 text-[13px] text-tgf">
+              <p className="m-0 mb-3 text-[13px] text-tgf">
                 Pix confirmado em {quando(pedido.pagamento.pix_confirmado_em as string)}.
               </p>
             ) : null}
-            <p className="m-0 mt-2 text-[12px] text-muted">
-              Este é o pagamento ESPERADO. O recebido de fato é registrado no caixa.
-            </p>
+
+            <Recebimento
+              pedidoId={pedido.id}
+              total={pedido.total}
+              pagamento={pagamento}
+              formas={formasParaRecebimento}
+              caixaAberto={caixa.aberto}
+              tentativa={randomUUID()}
+            />
           </Cartao>
 
           <Cartao titulo="Comanda 58 mm" largura="cheio">
