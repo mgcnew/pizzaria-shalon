@@ -13,7 +13,17 @@
  * abaixo existem para que ninguém escreva `total` onde deveria ler `recebido`.
  */
 
-export type SituacaoDaEntrega = "pending" | "delivered" | "failed" | "reassigned";
+/**
+ * `reassigned` é troca ANTES de sair — o pedido nunca esteve na rua com aquele
+ * motoboy. `transferred` é transferência DEPOIS: ele estava levando. A
+ * diferença entre "ia levar" e "estava levando" importa no acerto.
+ */
+export type SituacaoDaEntrega =
+  | "pending"
+  | "delivered"
+  | "failed"
+  | "reassigned"
+  | "transferred";
 export type StatusDaCorrida = "open" | "out" | "settling" | "settled";
 
 /** Pedido pronto para sair, ainda sem motoboy. */
@@ -42,7 +52,9 @@ export type CorridaResumo = {
   voltou_em: string | null;
   pedidos: number;
   pendentes: number;
-  /** RN-CAIXA-014: dinheiro COM O MOTOBOY. Não é caixa. */
+  /** Entregas que saíram com este motoboy e passaram a outro (RN-RUN-008). */
+  transferidos: number;
+  /** RN-CAIXA-014: dinheiro COM O MOTOBOY. Não é caixa, e pertence a uma corrida só. */
   dinheiro_na_rua: number;
 };
 
@@ -74,6 +86,16 @@ export type PedidoDaCorrida = {
   recebido: number;
   recebido_em_dinheiro: number;
   ja_entrou_na_gaveta: boolean;
+  /** Para quem esta entrega foi, se saiu daqui. */
+  transferida_para: string | null;
+  motivo_da_transferencia: string | null;
+  /** De quem esta entrega veio, se chegou aqui transferida. */
+  recebida_de: string | null;
+  /**
+   * RN-RUN-009: o dinheiro deste pedido ficou com quem saiu, não com quem
+   * entregou. O acerto desta corrida NÃO vai cobrá-lo.
+   */
+  dinheiro_com_o_anterior: boolean;
 };
 
 export type AcertoDaCorrida = {
@@ -129,4 +151,10 @@ export type Resultado =
       semCaixa?: boolean;
       /** Quanto o servidor calculou que deveria voltar. */
       esperado?: number;
+      /** A entrega já foi conferida: não se transfere por fluxo comum. */
+      jaConferida?: boolean;
+      /** A corrida ainda não saiu — o caminho é a atribuição, não a transferência. */
+      naoEstaEmRota?: boolean;
+      /** O dinheiro deste pedido já entrou no caixa. */
+      jaConciliado?: boolean;
     };

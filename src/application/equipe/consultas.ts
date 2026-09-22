@@ -2,7 +2,13 @@ import "server-only";
 
 import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
 import { logger } from "@/lib/logger";
-import type { HistoricoDoFuncionario, MovimentoInterno, TipoDeMovimento } from "./tipos";
+import type {
+  HistoricoDoFuncionario,
+  MembroDaEquipe,
+  MovimentoInterno,
+  PapelAtribuivel,
+  TipoDeMovimento,
+} from "./tipos";
 
 /**
  * Leitura das movimentações internas e do livro do funcionário.
@@ -94,4 +100,35 @@ export async function listarFuncionarios(): Promise<FuncionarioBasico[]> {
     e_entregador: Boolean(e.is_driver),
     ativo: e.employment_status === "active",
   }));
+}
+
+
+/**
+ * A equipe inteira, com acesso e papéis quando existirem.
+ *
+ * SEM SALÁRIO. Nem a coluna, nem um join, nem um campo derivado — a projeção
+ * do banco também não o traz. Quem tem `employees.view` (o Atendente tem) lê
+ * esta lista; salário exige `employees.finance.view`, que ele não tem (§15).
+ */
+export async function listarEquipe(): Promise<MembroDaEquipe[]> {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("equipe");
+
+  if (error) {
+    logger.error("equipe:listarEquipe", { code: (error as { code?: string }).code });
+    return [];
+  }
+  return (data as MembroDaEquipe[]) ?? [];
+}
+
+/** Papéis ativos, já marcando quais este usuário pode conceder (RN-RBAC-005). */
+export async function listarPapeis(): Promise<PapelAtribuivel[]> {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("papeis_atribuiveis");
+
+  if (error) {
+    logger.error("equipe:listarPapeis", { code: (error as { code?: string }).code });
+    return [];
+  }
+  return (data as PapelAtribuivel[]) ?? [];
 }

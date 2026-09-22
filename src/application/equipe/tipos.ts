@@ -61,6 +61,43 @@ export type MovimentoInterno = {
   tem_lancamento: boolean;
 };
 
+/**
+ * Funcionário, acesso e papel são TRÊS COISAS. O motoboy é a prova: ele
+ * trabalha, recebe entrega, presta contas — e `acesso` é `null`, porque ele
+ * não entra no sistema (CLAUDE.md §10.1, RN-MOTO-001).
+ */
+export type AcessoDoFuncionario = {
+  app_user_id: string;
+  ativo: boolean;
+  ultimo_acesso: string | null;
+  papeis: { id: string; nome: string }[];
+};
+
+export type MembroDaEquipe = {
+  funcionario_id: string;
+  nome: string;
+  telefone: string | null;
+  tipo: "owner" | "counter" | "driver" | "other";
+  entregador: boolean;
+  ativo: boolean;
+  admitido_em: string | null;
+  /** RN-FUNC-001: desligamento é data, nunca exclusão. */
+  desligado_em: string | null;
+  observacao: string | null;
+  acesso: AcessoDoFuncionario | null;
+};
+
+export type PapelAtribuivel = {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  /**
+   * RN-RBAC-005: falso quando este papel concede alguma permissão que quem
+   * está olhando não possui. A interface não oferece o que a RPC recusaria.
+   */
+  pode_conceder: boolean;
+};
+
 export type LancamentoDoFuncionario = {
   lancamento_id: string;
   tipo: TipoDeLancamento;
@@ -69,6 +106,11 @@ export type LancamentoDoFuncionario = {
   motivo: string;
   observacao: string | null;
   status: "confirmed" | "reversed";
+  /** RN-EMPFIN-001: como o adiantamento foi pago, quando se sabe. */
+  forma_pagamento: string | null;
+  /** RN-EMPFIN-004: o outro lado do mesmo fato, quando saiu da gaveta. */
+  movimento_caixa_id: string | null;
+  pago_pela_gaveta: boolean;
   corrida_id: string | null;
   movimento_id: string | null;
   anexo_id: string | null;
@@ -95,4 +137,16 @@ export type Resultado =
       temLancamento?: boolean;
       /** Corrida ou movimento já lançado uma vez. */
       jaLancado?: boolean;
+      /** Adiantamento pela gaveta sem caixa aberto. */
+      semCaixa?: boolean;
+      /** RN-RBAC-005: o papel concede permissão que o ator não possui. */
+      escalada?: boolean;
+      /** Quais permissões faltam a quem tentou conceder. */
+      faltam?: string;
+      /** O funcionário já tem acesso ao sistema. */
+      jaTemAcesso?: boolean;
+      /** Não existe conta no Auth com esse e-mail. */
+      contaInexistente?: boolean;
+      /** Entregador com corrida por acertar. */
+      temCorridaAberta?: boolean;
     };

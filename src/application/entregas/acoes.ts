@@ -42,6 +42,9 @@ function resposta(data: unknown): Resultado {
     ...(r["exige_motivo"] ? { exigeMotivo: true } : {}),
     ...(r["sem_caixa"] ? { semCaixa: true } : {}),
     ...(typeof r["esperado"] === "number" ? { esperado: r["esperado"] as number } : {}),
+    ...(r["ja_conferida"] ? { jaConferida: true } : {}),
+    ...(r["nao_esta_em_rota"] ? { naoEstaEmRota: true } : {}),
+    ...(r["ja_conciliado"] ? { jaConciliado: true } : {}),
   };
 }
 
@@ -140,5 +143,44 @@ export async function conciliarCorrida(entrada: unknown): Promise<Resultado> {
 
   revalidatePath(ROTA_ENTREGAS);
   revalidatePath(ROTA_CAIXA);
+  return resposta(data);
+}
+
+const transferenciaSchema = z.object({
+  vinculo_id: z.string().uuid(),
+  motoboy_id: z.string().uuid(),
+  motivo: z.string().min(3).max(400),
+  observacao: z.string().max(400).optional(),
+});
+
+/**
+ * RN-RUN-008: a moto quebrou e outro vai buscar.
+ *
+ * NÃO é a mesma coisa que trocar o motoboy antes de sair. Ali o vínculo é
+ * reescrito porque o pedido nunca esteve na rua; aqui ele PERMANECE, porque
+ * quem saiu com o pedido é um fato (CLAUDE.md §22).
+ *
+ * E não move dinheiro: o que já foi recebido continua sob responsabilidade de
+ * quem o recebeu, e o acerto de cada um cobra o que lhe cabe (RN-RUN-009).
+ */
+export async function transferirEntrega(entrada: unknown): Promise<Resultado> {
+  const v = transferenciaSchema.safeParse(entrada);
+  if (!v.success) {
+    return { ok: false, erro: "Escolha o motoboy e escreva o motivo da transferência." };
+  }
+
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("transferir_entrega", {
+    p_vinculo_id: v.data.vinculo_id,
+    p_dados: {
+      motoboy_id: v.data.motoboy_id,
+      motivo: v.data.motivo,
+      observacao: v.data.observacao ?? null,
+    },
+  });
+  if (error) return falha("transferirEntrega", error);
+
+  revalidatePath(ROTA_ENTREGAS);
+  revalidatePath(ROTA_PEDIDOS);
   return resposta(data);
 }
