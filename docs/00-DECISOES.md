@@ -1389,6 +1389,98 @@ a grade e o lugar dos combos.
 
 ---
 
+### D-2026-09-22-57 — As decisões da Fase 8: entrega, acerto e movimento interno
+
+**Decisão.** Implementar entregas, prestação de contas do motoboy e
+movimentações internas mantendo **quatro coisas separadas** que a operação
+diária confunde: pedido entregue, pagamento recebido, dinheiro sob
+responsabilidade do entregador e dinheiro na gaveta.
+
+**O que ficou decidido, ponto a ponto.**
+
+1. **Uma corrida ativa por entregador.** Índice único parcial sobre
+   `driver_runs` em `open`/`out`. Atribuir um segundo pedido ao mesmo motoboy
+   entra na corrida existente, não abre outra.
+
+2. **Retirada nunca entra em corrida.** `atribuir_entrega` recusa pedido de
+   retirada. Não é restrição de tela: é o que separa os dois caminhos de
+   conclusão.
+
+3. **Ou todos saem, ou nenhum sai.** `despachar_corrida` confere o estado de
+   todos os pedidos antes de mover qualquer um. Meia corrida na rua e meia na
+   loja seria pior que não ter saído (CLAUDE.md §34).
+
+4. **A máquina de estados continua sendo uma só.** Despacho e retorno chamam
+   `comando_pedido`; nenhuma rotina da Fase 8 grava `orders.status`
+   diretamente (CLAUDE.md §21).
+
+5. **Conferir o retorno não move dinheiro.** Marcar "entregue" conclui o
+   pedido e mais nada. O dinheiro continua na rua até o acerto — que é a
+   aplicação direta de RN-PGTO-014.
+
+6. **O esperado do acerto é derivado, nunca digitado.** É a soma dos
+   recebimentos em dinheiro dos pedidos entregues daquela corrida que ainda
+   não entraram em gaveta nenhuma, recalculada dentro da transação. Cartão e
+   Pix ficam de fora: não há papel para conferir.
+
+7. **`conciliar_corrida` é a única porta.** É a única rotina do sistema que
+   transforma recebimento da rua em `cash_movements`. Sem caixa aberto, o
+   acerto é recusado — o valor sairia da rua e não chegaria a lugar nenhum.
+
+8. **A gaveta recebe o que foi RECEBIDO, não o que o motoboy trouxe.** Num
+   acerto com falta, o movimento de caixa é o valor dos recebimentos; a
+   diferença fica registrada à parte. Inventar um recebimento menor para
+   "fechar" falsearia a venda.
+
+9. **Diferença não é desconto.** RN-RUN-005 vira código: nada acontece com o
+   salário, nem com o perfil salarial. Transformar a diferença em lançamento
+   do funcionário é **outro ato**, de quem tem `employees.finance.manage`, e
+   cria vínculo rastreável com a corrida (RN-RUN-006).
+
+10. **O preço do movimento interno vem de `montar_item`.** O mesmo
+    configurador do cardápio, do balcão e da alteração. Não existe terceiro
+    cálculo (CLAUDE.md §17). O valor é **de referência**: dimensiona, não
+    cobra e não fatura.
+
+11. **A parede do salário é de permissão, não de tela.** Movimentações
+    internas exigem `internal.view`/`internal.register`, que o Atendente tem;
+    o livro do funcionário exige `employees.finance.view`, que ele não tem.
+    Registrar o consumo de alguém não abre o livro dessa pessoa.
+
+12. **Estorno preserva a evidência.** Movimento interno e lançamento do
+    funcionário viram `reversed` com quem, quando e por quê; os itens
+    permanecem. E o movimento que já virou lançamento não pode ser estornado
+    antes do lançamento — senão a dívida ficaria de pé sem o fato que a
+    originou.
+
+**Motivo.** Cada um dos doze pontos é um jeito diferente de o caixa fechar com
+um número falso, ou de uma diferença virar desconto sem ninguém decidir.
+
+**Onde foi formalizado.** `02-MODELO-DADOS-SUPABASE.md` §11.1–11.4, §13.3 e
+§14.1–14.2; `03-RLS-RBAC-SEGURANCA.md` §19.4, §19.5, §33.9 e §33.12. As
+regras de negócio **já existiam** em `04-REGRAS-NEGOCIO.md` — RN-MOTO-001..004,
+RN-RUN-001..007, RN-FUNC-003, RN-CONS-001..005, RN-CORT-001/002,
+RN-PERDA-001/002, RN-CLASS-001 e RN-EMPFIN-001..003. Nenhuma regra nova foi
+criada nesta fase.
+
+**Dois defeitos encontrados pelos próprios testes, e corrigidos por migration
+nova (o arquivo aplicado nunca é editado):**
+
+- a 0076 gravava o **tamanho** no lugar da **variação** no item do movimento
+  interno; a chave estrangeira recusava, e nenhum consumo de pizza podia ser
+  registrado. Corrigido pela 0078;
+- `dinheiro_na_rua` só contava pedido já conferido como entregue, então
+  mostrava R$ 0,00 **justamente enquanto o motoboy estava na rua**. Corrigido
+  pela 0079, junto com a escala de `dinheiro_fora_da_gaveta()`, que devolvia
+  `0` sem valor e `40.00` com valor.
+
+**Arquivos.** Migrations `20260922100000` a `20260922100700`;
+`supabase/tests/entregas_fase8.sql` (112 cenários);
+`src/application/entregas/` e `src/application/equipe/`;
+`/admin/entregas` e `/admin/equipe` com seus painéis.
+
+---
+
 # Decisões em aberto
 
 Nenhuma implementação que dependa destes pontos deve começar antes da decisão.
@@ -1411,6 +1503,8 @@ Nenhuma implementação que dependa destes pontos deve começar antes da decisã
 | **A-14** | **Criação de usuários internos pela interface** — hoje depende de SQL. A tela de gestão de equipe é da Fase 8; até lá, novos acessos são criados manualmente | Fase 8 | `05-PLANO-IMPLEMENTACAO.md` §12.3 |
 | ~~A-16~~ | ~~Ranking "Mais pedidos"~~ | — | ✅ Resolvida em D-2026-09-19-44: `mais_pedidos`, 30 dias móveis, concluídos, por quantidade, meio a meio por fração |
 | ~~A-17~~ | ~~Busca pública sem acento e sem caixa~~ | — | ✅ Resolvida em D-2026-09-19-28: `unaccent` + filtrar antes de precificar; sem índice, por medição |
+| **A-18** | **Troca de motoboy com o pedido já na rua** — moto quebrou, outro vai buscar. Hoje `atribuir_entrega` só aceita pedido em `ready_for_delivery`: depois de `out_for_delivery` a troca é recusada. Nenhum documento normativo define o caso, e inventar aqui mudaria o que "saiu para entrega" significa — e o que o acerto de cada motoboy deve cobrar | Operação real de entrega | `04-REGRAS-NEGOCIO.md` §32 |
+| **A-19** | **Adiantamento pago pela gaveta** — RN-EMPFIN-001 prevê registrar a forma de pagamento do adiantamento. Hoje o lançamento no livro do funcionário **não move o caixa**: quem paga em dinheiro precisa registrar a sangria à parte. Manter os dois livros separados é deliberado; o que não está decidido é se o sistema deve **vincular** os dois registros | Conferência de caixa com adiantamentos | `04-REGRAS-NEGOCIO.md` §36 |
 | **A-15** | **Política de senha, MFA e bloqueio por tentativa** do Supabase Auth — não configurados; a V1 usa o padrão do projeto. A **recuperação de senha** saiu desta pendência: foi implementada em D-2026-09-19-51, com o mínimo de 8 caracteres. O que resta é política de complexidade, MFA, expiração e bloqueio | Fase 10 (hardening) | `03-RLS-RBAC-SEGURANCA.md` §25 |
 
 ---

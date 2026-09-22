@@ -419,3 +419,52 @@ exercitado com configuração real da Shalon. Isso não bloqueia a Fase 8 —
 bloqueia a produção.
 
 O fluxo de pagamento **não está validado contra operação real**.
+
+---
+
+## Estado da Fase 8
+
+**Implementada em 22/09/2026.** Atribuição, saída, retorno, acerto do
+motoboy, movimentações internas (cortesia, consumo de funcionário, consumo do
+proprietário, perda) e livro financeiro do funcionário estão implementados e
+testados: 112 cenários em `supabase/tests/entregas_fase8.sql`, e a Fase 7
+re-executada sem regressão (172 de 172).
+
+### O que continua sem validação real
+
+1. **O ciclo de entrega nunca foi exercitado com operação real.** A mesma
+   dívida da Fase 7 se estende aqui: `store_settings` está vazio no ambiente
+   de desenvolvimento, e a identidade da Shalon não foi inventada. Sem ela
+   não há pedido público, e portanto não há entrega real do começo ao fim —
+   apenas o caminho coberto por teste dentro de transação. **Bloqueia a
+   produção.**
+
+2. **Nenhum acerto foi feito com dinheiro de verdade na mão.** O cenário que
+   mais importa é humano: o motoboy volta, a pessoa conta o dinheiro, e o
+   número da tela precisa bater com o da mão. Isso só se valida operando.
+
+3. **Anexo de comprovante do acerto não foi exercitado pelo navegador.** A
+   coluna `attachment_asset_id` existe em `driver_run_settlements` e o bucket
+   privado aceita o arquivo, mas a interface da Fase 8 ainda não oferece o
+   envio — e o navegador interno usado na validação visual não anexa
+   arquivos. Igual à dívida equivalente da Fase 7.
+
+4. **Cadastro de funcionários continua fora.** Criar, editar e desligar
+   funcionário — e criar usuário interno — não fazia parte do escopo
+   autorizado desta fase. `/admin/equipe` **lê** a lista de funcionários para
+   atribuir movimentos, e não a mantém. A pendência **A-14** de
+   `00-DECISOES.md` continua aberta.
+
+### Duas lacunas normativas registradas, não inventadas
+
+**A-18 — troca de motoboy com o pedido já na rua.** Caso real (a moto
+quebrou, outro vai buscar) que nenhum documento define. A implementação
+recusa a troca depois de `out_for_delivery` e a registra como lacuna, em vez
+de decidir o que "saiu para entrega" passa a significar.
+
+**A-19 — adiantamento pago pela gaveta.** O lançamento no livro do
+funcionário não move o caixa; quem paga em dinheiro registra a sangria à
+parte. A separação dos dois livros é deliberada; o vínculo entre os dois
+registros é que não está decidido.
+
+A operação de entrega **não está validada contra operação real**.

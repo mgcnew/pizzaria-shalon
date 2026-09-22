@@ -652,6 +652,19 @@ Implementar:
 - cargo/papel;
 - dados sensíveis separados.
 
+> **Estado em 22/09/2026 — parcialmente coberto.** A autorização da Fase 8
+> tratou de entregas, motoboys e movimentações internas. Dela saiu a
+> **separação de dados sensíveis**, que é a parte crítica deste item:
+> `employee_ledger_entries` exige `employees.finance.view` e
+> `employee_financial_profiles` (salário) não é lido por projeção nenhuma da
+> fase (03 §33.12). `/admin/equipe` **lê** a lista de funcionários para
+> atribuir movimentos.
+>
+> **Continuam fora:** criar, editar e desligar funcionário pela interface, e
+> criar usuário interno com vínculo ao Auth — hoje ainda por SQL. É a
+> pendência **A-14** de `00-DECISOES.md`, e mexe em permissão e acesso, o
+> que exige autorização própria (CLAUDE.md §49).
+
 ## 12.4 Movimentos internos
 
 Implementar:
@@ -667,6 +680,13 @@ Não transformar esses movimentos em vendas.
 ## 12.5 Critério de saída
 
 Pedido de entrega pode ser rastreado do aceite até motoboy, recebimento e acerto, sem dinheiro “sumir” entre entrega e caixa.
+
+> **Atendido em 22/09/2026.** A cadeia inteira é rastreável por pedido dentro
+> da corrida, e o dinheiro tem um único caminho da rua para a gaveta:
+> `conciliar_corrida` (03 §19.5). Enquanto ele está fora, aparece como
+> `dinheiro_na_rua` — **separado** do saldo do caixa, nunca somado a ele.
+> Coberto por `supabase/tests/entregas_fase8.sql`, e a Fase 7 foi
+> re-executada sem regressão.
 
 ---
 

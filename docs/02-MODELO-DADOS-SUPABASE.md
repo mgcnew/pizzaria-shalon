@@ -806,16 +806,34 @@ Representa uma saída de um motoboy com um ou mais pedidos.
 - `notes text nullable`
 - `created_by uuid`
 - `created_at`
+- `updated_at`
+
+Implementado na Fase 8. Cada estado carrega o carimbo que o comprova, por
+CHECK: `out` exige `departed_at`, `settling` exige `returned_at`, `settled`
+exige `settled_at` e `settled_by`. Uma corrida `out` sem horário de saída
+seria uma saída que não saiu.
+
+Índice único parcial garante **uma corrida ativa por entregador** — status
+`open` ou `out`. Não há limite de corridas encerradas.
 
 ## 11.2 `driver_run_orders`
 
+- `id uuid PK`
 - `driver_run_id uuid FK`
 - `order_id uuid FK`
-- `delivery_status text`
+- `delivery_status text` — `pending`, `delivered`, `failed`, `reassigned`
 - `failure_reason text nullable`
 - `delivered_at timestamptz nullable`
+- `assigned_by uuid FK -> app_users.id`
+- `assigned_at timestamptz`
 - `created_at`
-- UNIQUE (`order_id`) para impedir pedido simultaneamente em duas saídas ativas, conforme regra final.
+- UNIQUE parcial (`order_id`) `where delivery_status = 'pending'`, conforme a
+  recomendação de §11.4: impede o pedido em duas saídas **ativas** ao mesmo
+  tempo, e preserva as tentativas anteriores.
+
+`reassigned` é o estado do vínculo quando o pedido troca de motoboy antes de
+sair: o vínculo antigo **permanece**, com quem havia atribuído e quando
+(CLAUDE.md §22 — não sobrescrever silenciosamente).
 
 ## 11.3 `driver_run_settlements`
 
@@ -826,8 +844,21 @@ Representa uma saída de um motoboy com um ou mais pedidos.
 - `difference numeric(12,2)`
 - `difference_reason text nullable`
 - `attachment_asset_id uuid nullable`
+- `notes text nullable`
 - `settled_by uuid`
 - `settled_at timestamptz`
+- `cash_session_id uuid nullable FK -> cash_sessions.id` — **onde o dinheiro
+  entrou**. Nulo quando a corrida não trouxe dinheiro físico a recolher.
+
+`difference` é **derivada**, nunca digitada: CHECK garante
+`difference = returned_cash - expected_cash`, e outro CHECK exige motivo
+sempre que ela for diferente de zero (RN-RUN-004). UNIQUE em
+`driver_run_id`: uma corrida se acerta uma vez (CLAUDE.md §34).
+
+`expected_cash` também não é digitado. É a soma dos recebimentos em dinheiro
+já registrados nos pedidos **entregues** daquela corrida que ainda não
+entraram em gaveta nenhuma — recalculada dentro da transação do acerto, e
+não lida da tela (03 §16.4).
 
 Valores de cartão/Pix máquina podem ser apresentados no resumo da saída, mas dinheiro físico esperado deve ser distinguido de pagamentos processados na maquininha.
 
@@ -1003,8 +1034,21 @@ Registro confirmado não é apagado. Correção por estorno + novo lançamento.
 - `created_by uuid`
 - `authorized_by uuid nullable`
 - `created_at`
+- `reverses_entry_id uuid nullable`
+- `reversed_by uuid nullable`, `reversed_at timestamptz nullable`,
+  `reversal_reason text nullable`
+- `idempotency_key uuid nullable` — UNIQUE parcial
 
 Não é folha de pagamento. Não desconta automaticamente do salário.
+
+Implementado na Fase 8. Índices únicos parciais impedem **dois lançamentos
+confirmados para a mesma corrida** e **dois para o mesmo movimento interno**:
+a diferença de um acerto vira lançamento uma vez só (CLAUDE.md §34).
+
+Esta tabela é o ponto exato da separação de §15: a policy de leitura exige
+`employees.finance.view`, que o Atendente **não** possui — enquanto as
+movimentações internas de §14 exigem apenas `internal.view`, que ele possui.
+Registrar o consumo de alguém não abre o livro dessa pessoa.
 
 ---
 
@@ -1025,6 +1069,19 @@ Tabela para distinguir saída não comercial de produto.
 - `attachment_asset_id uuid nullable`
 - `notes text nullable`
 - `created_at`
+- `reversed_by uuid nullable`, `reversed_at timestamptz nullable`,
+  `reversal_reason text nullable`
+- `idempotency_key uuid nullable` — UNIQUE parcial
+
+Implementado na Fase 8. CHECK de coerência: `employee_consumption` **exige**
+funcionário; `courtesy` e `loss` **não podem** ter um — com funcionário,
+pareceriam consumo, que é a confusão que RN-CLASS-001 manda evitar.
+`owner_consumption` aceita os dois casos, porque o proprietário pode ou não
+estar cadastrado como funcionário. Outro CHECK exige `authorized_by` para
+cortesia (RN-CORT-002).
+
+Estorno não apaga: `status = 'reversed'` com quem, quando e por quê, e os
+itens permanecem (CLAUDE.md §28).
 
 ## 14.2 `internal_product_movement_items`
 
@@ -1037,6 +1094,15 @@ Tabela para distinguir saída não comercial de produto.
 - `quantity numeric(10,2)`
 - `reference_unit_price numeric(12,2) nullable`
 - `observation text nullable`
+
+`product_name_snapshot` guarda o **rótulo completo** que o configurador
+montou — para meio a meio, "Sabor A / Sabor B". `variant_id` é a variação
+escolhida e fica **nulo em meio a meio**, onde há mais de uma: quem carrega a
+identidade do que saiu é o snapshot, não a chave estrangeira.
+
+`reference_unit_price` vem de `montar_item`, a mesma autoridade de preço do
+cardápio, do balcão e da alteração (CLAUDE.md §16/§17). É valor **de
+referência**: dimensiona o movimento no relatório e não cobra de ninguém.
 
 Essas movimentações **não entram em faturamento, ticket médio ou venda ao cliente**. Podem alimentar relatórios de saída interna. Sem estoque quantitativo, não dão baixa automática em ingredientes.
 

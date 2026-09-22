@@ -793,6 +793,40 @@ Acerto registra:
 
 Diferença não gera desconto salarial automático.
 
+## 19.4 Permissões da Fase 8
+
+Implementadas em 22/09/2026. A autorização é **sempre** por permissão
+semântica, nunca por nome de cargo (RN-RBAC-004).
+
+| Permissão | Owner/Admin | Atendente | O que abre |
+|---|---|---|---|
+| `deliveries.view` | ✓ | ✓ | Ver corridas, atribuições e acertos |
+| `deliveries.manage` | ✓ | ✓ | Atribuir, despachar e conferir o retorno |
+| `deliveries.settle` | ✓ | ✗ | **Fazer o acerto** — é o ato que move dinheiro |
+| `internal.view` | ✓ | ✓ | Ver cortesia, consumo e perda |
+| `internal.register` | ✓ | ✓ | Registrar e estornar movimento interno |
+| `employees.finance.view` | ✓ | ✗ | Ler o livro do funcionário |
+| `employees.finance.manage` | ✓ | ✗ | Lançar e estornar no livro |
+
+O balcão **opera a entrega inteira** e **não fecha o acerto**: conferir que o
+pedido chegou e recolher o dinheiro do motoboy são atos diferentes, e só o
+segundo mexe na gaveta.
+
+`deliveries.settle` é checada em `conciliar_corrida` **antes** de qualquer
+leitura da corrida, para que a recusa seja por permissão e não por acaso de
+estado.
+
+## 19.5 O único caminho do dinheiro da rua para a gaveta
+
+`conciliar_corrida` é a **única** rotina que cria `cash_movements` a partir de
+um recebimento feito na rua. Ela percorre os recebimentos em dinheiro dos
+pedidos entregues daquela corrida que ainda não têm `cash_session_id`,
+carimba a sessão e cria o movimento físico.
+
+Consequência que a interface precisa respeitar: `dinheiro_na_rua` **nunca**
+aparece somado ao saldo do caixa. Mostrá-los juntos faria a Shalon acreditar
+que tem dinheiro que ainda está com o entregador (RN-CAIXA-014).
+
 ---
 
 # 20. Cortesia, consumo e perda
@@ -1195,7 +1229,28 @@ A matriz abaixo é referência inicial; será congelada antes da implementação
 
 - público: somente estado apropriado via tracking do próprio pedido;
 - interno: `deliveries.view/manage`;
-- acerto: operação transacional.
+- acerto: operação transacional, e exige `deliveries.settle`.
+
+`driver_runs`, `driver_run_orders` e `driver_run_settlements` têm RLS com
+`enable` + `force` e **nenhuma policy alcança `anon`**. Não há policy de
+INSERT, UPDATE ou DELETE em nenhuma delas: toda escrita passa por RPC
+`SECURITY DEFINER`, que é onde a regra mora.
+
+## 33.12 movimentos internos e livro do funcionário
+
+- público: negar, sem exceção;
+- `internal_product_movements` e seus itens: SELECT com `internal.view`;
+- `employee_ledger_entries`: SELECT com `employees.finance.view`.
+
+A diferença entre as duas linhas acima **é** a separação de §15 e de
+RN-FUNC-003. O Atendente registra consumo e não alcança o livro por nenhum
+caminho — nem por tabela, nem por RPC, nem por projeção, nem por relação
+indireta: a projeção `movimentos_internos` expõe `tem_lancamento`, e para
+quem não tem a permissão financeira esse campo responde `false`, porque a
+RLS do livro não devolve a linha.
+
+`employee_financial_profiles` (salário) continua fora de tudo isto: não é
+lido por nenhuma projeção da Fase 8 e não viaja para a interface.
 
 ## 33.10 remarketing
 
