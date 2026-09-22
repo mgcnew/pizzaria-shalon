@@ -121,8 +121,12 @@ select pg_temp.checar('2.3 dona TEM roles.manage', 'true',
   public.has_permission('roles.manage')::text);
 select pg_temp.checar('2.4 dona TEM audit.view', 'true',
   public.has_permission('audit.view')::text);
-select pg_temp.checar('2.5 dona LE os 4 funcionarios', '4',
-  (select count(*)::text from public.employees));
+-- Conta as FIXTURES deste arquivo, não a tabela inteira: o banco de
+-- desenvolvimento tem funcionários reais, e um count global mediria o
+-- ambiente em vez da policy.
+select pg_temp.checar('2.5 dona LE os 4 funcionarios do teste', '4',
+  (select count(*)::text from public.employees
+    where id::text like 'aaaaaaaa-0000-0000-0000-%'));
 select pg_temp.checar('2.6 dona LE salario da atendente', '2100.00',
   (select salary_reference::text from public.employee_financial_profiles
    where employee_id = 'aaaaaaaa-0000-0000-0000-000000000002'));
@@ -143,7 +147,8 @@ select pg_temp.checar('3.1 atendente TEM orders.view', 'true',
 select pg_temp.checar('3.2 atendente TEM employees.view', 'true',
   public.has_permission('employees.view')::text);
 select pg_temp.checar('3.3 atendente LE dados operacionais dos funcionarios', '4',
-  (select count(*)::text from public.employees));
+  (select count(*)::text from public.employees
+    where id::text like 'aaaaaaaa-0000-0000-0000-%'));
 
 -- 3b. O que ela NAO PODE — §18.2: registrar ocorrencia nao concede ver salario
 select pg_temp.checar('3.4 atendente NAO tem employees.finance.view', 'false',
