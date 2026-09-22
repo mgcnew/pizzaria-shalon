@@ -1322,6 +1322,57 @@ Migration `0071`.
 
 ---
 
+### D-2026-09-21-56 — Card vertical nas vitrines, horizontal no cardápio
+
+**Pedido da Shalon**, com referência visual de aplicativo de delivery: cards
+com foto grande, no lugar do que ela descreveu como "tabela com linha
+horizontal".
+
+**O diagnóstico não era bem esse.** O que existia no público não é tabela: é
+o **card horizontal do design aprovado** — foto de 84px à esquerda, nome,
+selos, descrição, preço e CTA à direita. E o painel **já era** uma grade de
+cards. Então isto não é correção de desvio: é mudança do design aprovado, e
+por isso está registrada aqui (CLAUDE.md §7).
+
+**A decisão não foi trocar tudo.** A própria referência que a Shalon enviou
+mostra cards grandes sob um título "Popular Picks", com "View All" ao lado —
+ou seja, uma **vitrine**, não o cardápio inteiro. É o padrão que funciona, e
+o motivo é simples:
+
+- **card grande vende**: na vitrine a pessoa está escolhendo, e foto de
+  comida é o maior multiplicador de conversão que existe num cardápio;
+- **linha compacta deixa achar**: no cardápio completo a pessoa está
+  procurando, e mussarela, calabresa e portuguesa são quase idênticas na
+  foto. O que diferencia é o texto. A lista mostra de 6 a 8 itens por tela no
+  celular; a grade mostra de 2 a 4.
+
+Então: **vertical** em Recomendados, Mais pedidos, Promoções e Combos;
+**horizontal** no cardápio completo e na busca. As quatro vitrines já
+existiam na home — a mudança foi de componente, não de estrutura.
+
+**O CTA continua "Escolher"**, e não o "+" da referência. Ali o botão não
+adiciona ao carrinho: abre a configuração, porque pizza tem tamanho, sabores
+e borda. Um "+" prometeria uma adição direta que não acontece.
+
+**No painel, miniatura de 56px — e não foto grande.** Administrar é varrer
+preço, disponibilidade e ação; foto grande empurraria isso para fora da tela.
+O cartão passou a dizer "sem foto" quando é o caso, porque é no painel que
+essa falta é acionável.
+
+**O que este ajuste NÃO resolve, e precisa ser dito.** Hoje **1 de 5 produtos
+tem foto**. O card horizontal era tolerante à ausência — o buraco tinha 84px.
+O vertical é implacável: o vazio passa a ter o tamanho da imagem. O
+placeholder ganhou a tinta da marca e o símbolo em escala para ler como
+decisão e não como imagem quebrada, mas isso é paliativo. **Sem fotografia, a
+vitrine entrega menos do que promete.** Subir as fotos é o passo que falta, e
+nenhum ajuste de layout substitui.
+
+**Arquivos.** `CardDestaque.tsx` (novo), `page.tsx` do público,
+`PainelProdutos.tsx` do painel. `01-DOCUMENTO-MESTRE.md` §62 registra as duas
+formas.
+
+---
+
 # Decisões em aberto
 
 Nenhuma implementação que dependa destes pontos deve começar antes da decisão.

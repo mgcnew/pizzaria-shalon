@@ -1203,7 +1203,18 @@ Combos
 
 Produtos
 
-Cards responsivos.
+Cards responsivos, em duas formas — decisão de 21/09/2026 (D-2026-09-21-56):
+
+- **vitrines** (Recomendados pela Shalon, Mais pedidos, Promoções e Combos):
+  card **vertical**, com foto grande no topo. Ali a pessoa está escolhendo, e
+  a imagem trabalha a favor;
+- **cardápio completo e busca**: card **horizontal**, com miniatura de 84px.
+  Ali a pessoa está procurando, e o que diferencia um sabor do outro é o
+  texto. A lista mostra de 6 a 8 itens por tela no celular; a grade de cards
+  grandes mostra de 2 a 4.
+
+O CTA continua sendo "Escolher" nos dois: o botão abre a configuração do
+produto, não adiciona ao carrinho.
 
 Carrinho
 
