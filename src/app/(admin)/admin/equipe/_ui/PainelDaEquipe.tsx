@@ -8,6 +8,7 @@ import { formatBRL } from "@/lib/format";
 import { EscolherProduto } from "../../pedidos/_ui/EscolherProduto";
 import type { ItemDoRascunho } from "@/application/pedidos/tipos";
 import type { FuncionarioBasico } from "@/application/equipe/consultas";
+import { GestaoDaEquipe } from "./GestaoDaEquipe";
 import {
   lancarNoFuncionario,
   registrarMovimentoInterno,
@@ -16,7 +17,9 @@ import {
 } from "@/application/equipe/acoes";
 import type {
   HistoricoDoFuncionario,
+  MembroDaEquipe,
   MovimentoInterno,
+  PapelAtribuivel,
   TipoDeMovimento,
 } from "@/application/equipe/tipos";
 
@@ -73,22 +76,35 @@ function paraNumero(texto: string): number | null {
 export function PainelDaEquipe({
   aba,
   funcionarios,
+  equipe,
+  papeis,
   movimentos,
   historico,
   funcionarioSelecionado,
   meuAppUserId,
   podeVerFinanceiro,
   podeLancar,
+  podeGerirEquipe,
+  podeGerirAcesso,
+  caixaAberto,
 }: {
   /** Aba corrente, vinda da URL: o estado de navegação mora lá, não aqui. */
   aba: string;
   funcionarios: FuncionarioBasico[];
+  equipe: MembroDaEquipe[];
+  papeis: PapelAtribuivel[];
   movimentos: MovimentoInterno[];
   historico: HistoricoDoFuncionario | null;
   funcionarioSelecionado: string | null;
   meuAppUserId: string | null;
   podeVerFinanceiro: boolean;
   podeLancar: boolean;
+  /** `employees.manage`. */
+  podeGerirEquipe: boolean;
+  /** `employees.manage` E `roles.manage`. */
+  podeGerirAcesso: boolean;
+  /** RN-EMPFIN-004: sem gaveta aberta, adiantamento em dinheiro não sai. */
+  caixaAberto: boolean;
 }) {
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, iniciar] = useTransition();
@@ -104,6 +120,11 @@ export function PainelDaEquipe({
   const [lancando, setLancando] = useState<MovimentoInterno | null>(null);
   const [valorLancamento, setValorLancamento] = useState("");
   const [motivoLancamento, setMotivoLancamento] = useState("");
+
+  const [adiantando, setAdiantando] = useState(false);
+  const [valorAdiantamento, setValorAdiantamento] = useState("");
+  const [motivoAdiantamento, setMotivoAdiantamento] = useState("");
+  const [pelaGaveta, setPelaGaveta] = useState(true);
 
   const chave = useRef(crypto.randomUUID());
   const router = useRouter();
@@ -124,6 +145,9 @@ export function PainelDaEquipe({
       setLancando(null);
       setValorLancamento("");
       setMotivoLancamento("");
+      setAdiantando(false);
+      setValorAdiantamento("");
+      setMotivoAdiantamento("");
     });
   }
 
@@ -393,6 +417,78 @@ export function PainelDaEquipe({
         ))}
       </Select>
 
+      {/* RN-EMPFIN-004: um fato, dois livros. A tela diz isso antes de gravar. */}
+      {podeLancar && funcionarioSelecionado ? (
+        <div className="mt-3 border-t border-border-shalon pt-3">
+          {adiantando ? (
+            <div className="flex flex-col gap-2">
+              <Input
+                label="Valor do adiantamento"
+                inputMode="decimal"
+                value={valorAdiantamento}
+                onChange={(e) => setValorAdiantamento(e.target.value)}
+              />
+              <Textarea
+                label="Motivo"
+                value={motivoAdiantamento}
+                onChange={(e) => setMotivoAdiantamento(e.target.value)}
+                rows={2}
+              />
+              <label className="flex items-center gap-2 text-[13.5px] text-ink">
+                <input
+                  type="checkbox"
+                  checked={pelaGaveta}
+                  onChange={(e) => setPelaGaveta(e.target.checked)}
+                />
+                Pago em dinheiro, saindo da gaveta agora
+              </label>
+              <p className="m-0 text-[12.5px] text-muted">
+                {pelaGaveta
+                  ? "Isto cria os dois registros juntos: o lançamento aqui e a saída física do caixa. Um não existe sem o outro."
+                  : "Sem saída de caixa: o lançamento fica só no histórico do funcionário."}
+              </p>
+              {pelaGaveta && !caixaAberto ? (
+                <p className="m-0 text-[13px] font-semibold text-tdf">
+                  Não há caixa aberto. Abra o caixa para pagar em dinheiro.
+                </p>
+              ) : null}
+              <div className="flex gap-2">
+                <Button
+                  variante="primario"
+                  disabled={
+                    enviando ||
+                    motivoAdiantamento.trim().length < 3 ||
+                    (paraNumero(valorAdiantamento) ?? 0) <= 0 ||
+                    (pelaGaveta && !caixaAberto)
+                  }
+                  onClick={() =>
+                    executar(() =>
+                      lancarNoFuncionario({
+                        funcionario_id: funcionarioSelecionado,
+                        tipo: "advance",
+                        valor: paraNumero(valorAdiantamento) ?? 0,
+                        motivo: motivoAdiantamento.trim(),
+                        pelo_caixa: pelaGaveta,
+                        tentativa: chave.current,
+                      }),
+                    )
+                  }
+                >
+                  Registrar adiantamento
+                </Button>
+                <Button variante="secundario" onClick={() => setAdiantando(false)}>
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button variante="secundario" onClick={() => setAdiantando(true)}>
+              Registrar adiantamento
+            </Button>
+          )}
+        </div>
+      ) : null}
+
       {historico === null ? null : historico.lancamentos.length === 0 ? (
         <div className="mt-3">
           <EmptyState titulo="Sem lançamentos" descricao="Nada registrado para esta pessoa." />
@@ -408,6 +504,11 @@ export function PainelDaEquipe({
                 <p className="m-0 text-[12.5px] text-muted">
                   {new Date(l.quando).toLocaleString("pt-BR")} · {l.motivo}
                 </p>
+                {l.pago_pela_gaveta ? (
+                  <p className="m-0 text-[12.5px] text-muted">
+                    Pago pela gaveta — há um movimento de caixa vinculado a este lançamento.
+                  </p>
+                ) : null}
               </div>
               <span className="text-[13.5px] font-semibold text-ink">{formatBRL(l.valor)}</span>
               {l.status === "reversed" ? (
@@ -474,19 +575,29 @@ export function PainelDaEquipe({
 
       {/* Sem permissão financeira a aba sequer existe — e a RLS recusaria
           igual se alguém chamasse a projeção direto (CLAUDE.md §12). */}
-      {podeVerFinanceiro ? (
-        <>
-          <Abas
-            abas={[
-              { nome: "Movimentações", valor: "movimentos" },
-              { nome: "Histórico financeiro", valor: "livro" },
-            ]}
-            atual={aba}
-            parametro="aba"
-            base="/admin/equipe"
-          />
-          {aba === "livro" ? livro : registro}
-        </>
+      <Abas
+        abas={[
+          { nome: "Movimentações", valor: "movimentos" },
+          { nome: "Equipe", valor: "equipe" },
+          // A aba do dinheiro só existe para quem tem a permissão dele.
+          ...(podeVerFinanceiro
+            ? [{ nome: "Histórico financeiro", valor: "livro" }]
+            : []),
+        ]}
+        atual={aba}
+        parametro="aba"
+        base="/admin/equipe"
+      />
+
+      {aba === "equipe" ? (
+        <GestaoDaEquipe
+          equipe={equipe}
+          papeis={papeis}
+          podeGerir={podeGerirEquipe}
+          podeGerirAcesso={podeGerirAcesso}
+        />
+      ) : aba === "livro" && podeVerFinanceiro ? (
+        livro
       ) : (
         registro
       )}

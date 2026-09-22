@@ -9,6 +9,7 @@ import {
   conciliarCorrida,
   despacharCorrida,
   registrarRetorno,
+  transferirEntrega,
 } from "@/application/entregas/acoes";
 import type {
   CentralDeEntregas,
@@ -46,7 +47,9 @@ const SITUACAO: Record<PedidoDaCorrida["situacao"], string> = {
   pending: "A conferir",
   delivered: "Entregue",
   failed: "Não entregue",
-  reassigned: "Passou para outro motoboy",
+  // Antes de sair × depois de sair. A diferença importa no acerto.
+  reassigned: "Trocado antes da saída",
+  transferred: "Transferido em rota",
 };
 
 function paraNumero(texto: string): number | null {
@@ -79,6 +82,9 @@ export function PainelDeEntregas({
   const [motoboyEscolhido, setMotoboyEscolhido] = useState<Record<string, string>>({});
   const [falhando, setFalhando] = useState<string | null>(null);
   const [motivoFalha, setMotivoFalha] = useState("");
+  const [transferindo, setTransferindo] = useState<string | null>(null);
+  const [motivoTransferencia, setMotivoTransferencia] = useState("");
+  const [destino, setDestino] = useState("");
   const [acertando, setAcertando] = useState(false);
   const [devolvido, setDevolvido] = useState("");
   const [motivoAcerto, setMotivoAcerto] = useState("");
@@ -98,6 +104,9 @@ export function PainelDeEntregas({
       chave.current = crypto.randomUUID();
       setFalhando(null);
       setMotivoFalha("");
+      setTransferindo(null);
+      setMotivoTransferencia("");
+      setDestino("");
       setExigeMotivo(false);
       setAcertando(false);
       setDevolvido("");
@@ -203,6 +212,9 @@ export function PainelDeEntregas({
                 <p className="m-0 text-[12.5px] text-muted">
                   {c.pedidos} {c.pedidos === 1 ? "pedido" : "pedidos"}
                   {c.pendentes > 0 ? ` · ${c.pendentes} a conferir` : ""}
+                  {c.transferidos > 0
+                    ? ` · ${c.transferidos} passou para outro motoboy`
+                    : ""}
                 </p>
               </div>
 
@@ -252,7 +264,12 @@ export function PainelDeEntregas({
                 <p className="m-0 text-[12.5px] text-muted">
                   {SITUACAO[p.situacao]}
                   {p.motivo_da_falha ? ` · ${p.motivo_da_falha}` : ""}
+                  {p.transferida_para ? ` para ${p.transferida_para}` : ""}
+                  {p.recebida_de ? ` · recebida de ${p.recebida_de}` : ""}
                 </p>
+                {p.motivo_da_transferencia ? (
+                  <p className="m-0 text-[12.5px] text-muted">{p.motivo_da_transferencia}</p>
+                ) : null}
               </div>
 
               {/* Esperado e recebido lado a lado: são coisas diferentes. */}
@@ -266,6 +283,12 @@ export function PainelDeEntregas({
                     ? ` · em dinheiro, com o motoboy`
                     : ""}
                 </p>
+                {/* RN-RUN-009: dito na linha, porque é o que o acerto NÃO vai cobrar. */}
+                {p.dinheiro_com_o_anterior ? (
+                  <p className="m-0 text-[12.5px] text-tdf">
+                    O dinheiro ficou com quem saiu — não entra neste acerto.
+                  </p>
+                ) : null}
               </div>
 
               {p.situacao === "pending" && corrida.status === "out" ? (
@@ -287,6 +310,14 @@ export function PainelDeEntregas({
                     onClick={() => setFalhando(p.vinculo_id)}
                   >
                     Não entregou
+                  </Button>
+                  {/* RN-RUN-008: a moto quebrou e outro vai buscar. */}
+                  <Button
+                    variante="secundario"
+                    disabled={enviando}
+                    onClick={() => setTransferindo(p.vinculo_id)}
+                  >
+                    Transferir
                   </Button>
                 </div>
               ) : null}
@@ -319,6 +350,60 @@ export function PainelDeEntregas({
                   Registrar a falha
                 </Button>
                 <Button variante="secundario" onClick={() => setFalhando(null)}>
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          {/* RN-RUN-008: quem saiu com o pedido não é apagado; a transferência
+              é um fato novo, com motivo obrigatório. */}
+          {transferindo ? (
+            <div className="mt-3 flex flex-col gap-2 border-t border-border-shalon pt-3">
+              <p className="m-0 text-[13px] text-muted">
+                O pedido continua em rota — o que muda é quem responde por ele. Quem saiu
+                permanece no histórico, e o dinheiro que já recebeu continua sendo dele para
+                prestar contas.
+              </p>
+              <Select
+                label="Quem vai assumir"
+                value={destino}
+                onChange={(e) => setDestino(e.target.value)}
+              >
+                <option value="">Escolha o motoboy</option>
+                {central.motoboys
+                  .filter((m) => m.funcionario_id !== corrida.motoboy_id)
+                  .map((m) => (
+                    <option key={m.funcionario_id} value={m.funcionario_id}>
+                      {m.nome}
+                      {m.ocupado ? " (já em rota)" : ""}
+                    </option>
+                  ))}
+              </Select>
+              <Textarea
+                label="Por que a entrega está mudando de mão?"
+                hint="Fica no histórico das duas corridas."
+                value={motivoTransferencia}
+                onChange={(e) => setMotivoTransferencia(e.target.value)}
+                rows={2}
+              />
+              <div className="flex gap-2">
+                <Button
+                  variante="primario"
+                  disabled={enviando || !destino || motivoTransferencia.trim().length < 3}
+                  onClick={() =>
+                    executar(() =>
+                      transferirEntrega({
+                        vinculo_id: transferindo,
+                        motoboy_id: destino,
+                        motivo: motivoTransferencia.trim(),
+                      }),
+                    )
+                  }
+                >
+                  Transferir a entrega
+                </Button>
+                <Button variante="secundario" onClick={() => setTransferindo(null)}>
                   Cancelar
                 </Button>
               </div>
