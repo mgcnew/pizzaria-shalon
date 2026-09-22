@@ -68,6 +68,26 @@ select 'c8c8c8c8-0000-0000-0000-00000000000f', id from public.permissions
 insert into public.user_roles (app_user_id, role_id)
 values ('b8b8b8b8-0000-0000-0000-000000000003','c8c8c8c8-0000-0000-0000-00000000000f');
 
+-- Um papel que enxerga CATÁLOGO e não enxerga financeiro. Serve para provar
+-- que metadado de comprovante não vaza pela policy antiga de `media_assets`,
+-- que falava só de catálogo.
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password,
+                        email_confirmed_at, created_at, updated_at)
+values ('88888888-4444-4444-4444-444444444444','00000000-0000-0000-0000-000000000000',
+        'authenticated','authenticated','catalogo8@teste.local','x',now(),now(),now());
+insert into public.employees (id, full_name, employee_type, is_driver, employment_status)
+values ('a8a8a8a8-0000-0000-0000-000000000004','Catalogo F7','counter',false,'active');
+insert into public.app_users (id, auth_user_id, employee_id, is_active)
+values ('b8b8b8b8-0000-0000-0000-000000000004','88888888-4444-4444-4444-444444444444',
+        'a8a8a8a8-0000-0000-0000-000000000004',true);
+insert into public.roles (id, name, description, is_system, is_active)
+values ('c8c8c8c8-0000-0000-0000-00000000000c','Catalogo F7','So catalogo', false, true);
+insert into public.role_permissions (role_id, permission_id)
+select 'c8c8c8c8-0000-0000-0000-00000000000c', id from public.permissions
+ where code in ('catalog.view','catalog.manage');
+insert into public.user_roles (app_user_id, role_id)
+values ('b8b8b8b8-0000-0000-0000-000000000004','c8c8c8c8-0000-0000-0000-00000000000c');
+
 -- O banco de desenvolvimento pode ter uma sessão de caixa aberta de verdade
 -- (alguém operando o painel). Dentro desta transação ela sai do caminho, e o
 -- ROLLBACK a devolve intacta: sem isso, `abrir_caixa` encontraria a sessão
@@ -934,6 +954,160 @@ select pg_temp.checar('mas o pagamento do cancelado continua no historico', '1',
 reset role;
 
 -- =============================================================================
+-- I-b. COMPROVANTE FINANCEIRO — 05 §11.3 · 03 §23.2/§23.4/§24
+-- =============================================================================
+-- A PERGUNTA: a evidência fica onde tem de ficar, chega a quem tem de ver, e
+-- sobrevive ao estorno?
+--
+-- A configuração do bucket é lida ANTES de trocar de papel: `storage.buckets`
+-- tem RLS própria e não responde ao papel `authenticated`. Ler ali dentro
+-- devolveria nulo e o teste mediria o RLS do Storage, não a configuração.
+select pg_temp.checar('bucket de comprovantes e privado', 'false',
+  (select public::text from storage.buckets where id = 'comprovantes'));
+
+select pg_temp.checar('bucket de comprovantes tem limite de tamanho', '5242880',
+  (select file_size_limit::text from storage.buckets where id = 'comprovantes'));
+
+select pg_temp.checar('bucket de comprovantes aceita imagem e PDF', 'true',
+  (select ('application/pdf' = any(allowed_mime_types)
+           and 'image/webp' = any(allowed_mime_types))::text
+     from storage.buckets where id = 'comprovantes'));
+
+select pg_temp.checar('nenhuma policy de comprovante alcanca anon', '0',
+  (select count(*)::text from pg_policies
+    where schemaname = 'storage' and tablename = 'objects'
+      and policyname like 'comprovantes%' and 'anon' = any(roles)));
+
+-- Um ativo de CATÁLOGO conhecido, para provar que a policy nova não mexeu no
+-- comportamento antigo.
+insert into public.media_assets (id, bucket, storage_path, mime_type, asset_type)
+values ('88880000-0000-0000-0000-0000000000da','catalogo','teste/banner-f7.webp','image/webp','banner');
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"88888888-1111-1111-1111-111111111111","role":"authenticated"}';
+
+select set_config('teste.lanc_comp',
+  (public.registrar_lancamento(jsonb_build_object(
+     'tipo','expense','categoria_id', current_setting('teste.cat_desp', true),
+     'valor', 18, 'descricao','Despesa com comprovante')) ->> 'lancamento_id'), true);
+
+select pg_temp.checar('anexar sem caminho e recusado', 'Arquivo não identificado.',
+  (public.anexar_comprovante(current_setting('teste.lanc_comp', true)::uuid,
+     '{"mime":"application/pdf"}'::jsonb) ->> 'erro'));
+
+select pg_temp.checar('anexa comprovante ao lancamento', 'true',
+  (public.anexar_comprovante(current_setting('teste.lanc_comp', true)::uuid,
+     jsonb_build_object('caminho','lancamentos/teste/primeiro.pdf',
+                        'mime','application/pdf','bytes', 1024,
+                        'nome','recibo.pdf')) ->> 'ok'));
+
+select pg_temp.checar('o vinculo aponta para o ativo criado', 'true',
+  (select (e.attachment_asset_id = m.id)::text
+     from public.financial_entries e
+     join public.media_assets m on m.storage_path = 'lancamentos/teste/primeiro.pdf'
+    where e.id = current_setting('teste.lanc_comp', true)::uuid));
+
+select pg_temp.checar('o ativo nasce como comprovante financeiro', 'financial_receipt',
+  (select asset_type from public.media_assets
+    where storage_path = 'lancamentos/teste/primeiro.pdf'));
+
+select pg_temp.checar('o ativo aponta para o bucket privado', 'comprovantes',
+  (select bucket from public.media_assets
+    where storage_path = 'lancamentos/teste/primeiro.pdf'));
+
+select pg_temp.checar('a listagem traz o comprovante', 'recibo.pdf',
+  (select l -> 'comprovante' ->> 'nome'
+     from jsonb_array_elements(public.lancamentos_financeiros('{}'::jsonb)) l
+    where l ->> 'id' = current_setting('teste.lanc_comp', true)));
+
+select pg_temp.checar('substituir devolve o caminho anterior', 'lancamentos/teste/primeiro.pdf',
+  (public.anexar_comprovante(current_setting('teste.lanc_comp', true)::uuid,
+     jsonb_build_object('caminho','lancamentos/teste/segundo.webp',
+                        'mime','image/webp','bytes', 2048,
+                        'nome','foto.webp')) ->> 'anterior_path'));
+
+select pg_temp.checar('a referencia antiga nao fica pendurada', '0',
+  (select count(*)::text from public.media_assets
+    where storage_path = 'lancamentos/teste/primeiro.pdf'));
+
+select pg_temp.checar('o lancamento aponta para o comprovante novo', 'lancamentos/teste/segundo.webp',
+  (select m.storage_path from public.media_assets m
+     join public.financial_entries e on e.attachment_asset_id = m.id
+    where e.id = current_setting('teste.lanc_comp', true)::uuid));
+
+reset role;
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"88888888-2222-2222-2222-222222222222","role":"authenticated"}';
+
+select pg_temp.checar('atendente NAO anexa comprovante',
+  'Você não tem permissão para anexar comprovante.',
+  (public.anexar_comprovante(current_setting('teste.lanc_comp', true)::uuid,
+     jsonb_build_object('caminho','lancamentos/teste/invasor.pdf',
+                        'mime','application/pdf')) ->> 'erro'));
+
+select pg_temp.checar('atendente NAO remove comprovante',
+  'Você não tem permissão para remover comprovante.',
+  (public.remover_comprovante(current_setting('teste.lanc_comp', true)::uuid,
+     'tentativa') ->> 'erro'));
+
+reset role;
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"88888888-4444-4444-4444-444444444444","role":"authenticated"}';
+
+select pg_temp.checar('quem so ve catalogo NAO le o comprovante', '0',
+  (select count(*)::text from public.media_assets
+    where asset_type = 'financial_receipt'));
+
+select pg_temp.checar('quem ve catalogo CONTINUA lendo midia de catalogo', '1',
+  (select count(*)::text from public.media_assets
+    where id = '88880000-0000-0000-0000-0000000000da'));
+
+reset role;
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"88888888-1111-1111-1111-111111111111","role":"authenticated"}';
+
+select pg_temp.checar('remocao sem motivo e recusada', 'Informe o motivo da remoção.',
+  (public.remover_comprovante(current_setting('teste.lanc_comp', true)::uuid, '') ->> 'erro'));
+
+select pg_temp.checar('remocao devolve o caminho do objeto', 'lancamentos/teste/segundo.webp',
+  (public.remover_comprovante(current_setting('teste.lanc_comp', true)::uuid,
+     'Anexei o arquivo errado') ->> 'caminho'));
+
+select pg_temp.checar('o lancamento fica sem comprovante', 'true',
+  (select (attachment_asset_id is null)::text from public.financial_entries
+    where id = current_setting('teste.lanc_comp', true)::uuid));
+
+select public.anexar_comprovante(current_setting('teste.lanc_comp', true)::uuid,
+  jsonb_build_object('caminho','lancamentos/teste/final.pdf',
+                     'mime','application/pdf','bytes', 900, 'nome','final.pdf'));
+
+select public.reverter_lancamento(current_setting('teste.lanc_comp', true)::uuid,
+  'Lancamento indevido');
+
+select pg_temp.checar('o estorno NAO apaga a evidencia', 'lancamentos/teste/final.pdf',
+  (select m.storage_path from public.media_assets m
+     join public.financial_entries e on e.attachment_asset_id = m.id
+    where e.id = current_setting('teste.lanc_comp', true)::uuid));
+
+select pg_temp.checar('lancamento estornado NAO troca de comprovante', 'true',
+  (public.anexar_comprovante(current_setting('teste.lanc_comp', true)::uuid,
+     jsonb_build_object('caminho','lancamentos/teste/depois.pdf',
+                        'mime','application/pdf')) ->> 'congelado'));
+
+select pg_temp.checar('lancamento estornado NAO perde o comprovante', 'true',
+  (public.remover_comprovante(current_setting('teste.lanc_comp', true)::uuid,
+     'tentativa') ->> 'congelado'));
+
+select pg_temp.checar('anexar e remover ficam auditados', 'true',
+  (select (count(*) >= 2)::text from public.audit_logs
+    where action in ('financeiro_comprovante_anexar','financeiro_comprovante_remover')));
+
+reset role;
+
+-- =============================================================================
 -- J. SEGURANÇA PÚBLICA — 03 §33.6/§33.7
 -- =============================================================================
 set local request.jwt.claims = '{"role":"anon"}';
@@ -980,6 +1154,15 @@ select pg_temp.checar('anon nao executa reabrir_caixa', 'false',
 
 select pg_temp.checar('anon nao ve o caixa pela projecao', 'false',
   has_function_privilege('anon', 'public.caixa_atual()', 'execute')::text);
+
+select pg_temp.checar('anon nao le comprovantes', '0',
+  (select count(*)::text from public.media_assets where asset_type = 'financial_receipt'));
+
+select pg_temp.checar('anon nao executa anexar_comprovante', 'false',
+  has_function_privilege('anon', 'public.anexar_comprovante(uuid, jsonb)', 'execute')::text);
+
+select pg_temp.checar('anon nao executa remover_comprovante', 'false',
+  has_function_privilege('anon', 'public.remover_comprovante(uuid, text)', 'execute')::text);
 
 reset role;
 
