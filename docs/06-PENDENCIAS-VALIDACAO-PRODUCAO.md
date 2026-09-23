@@ -585,6 +585,37 @@ final, e o ambiente voltou ao estado anterior.
 
 ---
 
+## PI-F10-01 — remoção no Storage com identidade real dos papéis
+
+**Aberta.** Status: implementado e testado por SQL; **não** exercitado pela
+API de Storage com sessão autenticada.
+
+**O que é.** A correção do bucket `comprovantes` (D-2026-09-23-68) concede
+`DELETE` apenas no namespace `financeiro/`, e apenas a quem tem
+`finance.create`. A policy foi verificada por leitura e o comportamento foi
+testado por SQL com papéis customizados, em transação com `rollback`.
+
+**O que não foi exercitado, e por quê.** A remoção ponta a ponta pela API de
+Storage. Dois impedimentos somados, nenhum deles do projeto:
+
+1. a Supabase mantém o trigger `protect_objects_delete` em `storage.objects`,
+   que bloqueia `DELETE` direto por SQL — remoção real passa obrigatoriamente
+   pela API;
+2. não existe sessão autenticada dos papéis customizados de teste no
+   ambiente de desenvolvimento: as contas do Auth do projeto são as duas
+   Owner/Admin, e criar conta de funcionário é a pendência **A-20**.
+
+**Como validar quando houver ambiente para isso.** Com um funcionário real
+vinculado a um papel que tenha `internal.view`/`internal.register` e **não**
+tenha `finance.*`, autenticar de verdade e tentar, pela API de Storage:
+listar `financeiro/`, baixar um comprovante conhecendo o caminho, e removê-lo.
+Os três devem falhar. Repetir o simétrico com um papel financeiro contra
+`interno/`.
+
+**Não é leitura de policy transformada em teste executado.** Enquanto esta
+pendência estiver aberta, o que está comprovado é o comportamento no banco,
+não o da API.
+
 ## A-22 — limitação observada na validação do ranking
 
 **A decisão normativa não está aqui.** Ela é `D-2026-09-23-67` em

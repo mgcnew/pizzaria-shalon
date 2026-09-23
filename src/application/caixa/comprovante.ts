@@ -130,7 +130,12 @@ export async function anexarComprovante(
   if (!preparado.ok) return { ok: false, erro: preparado.erro };
 
   const supabase = await getSupabaseServerClient();
-  const caminho = `lancamentos/${v.data.lancamento_id}/${randomUUID()}.${preparado.arquivo.extensao}`;
+  // `financeiro/` é NAMESPACE, não pasta decorativa: a policy do Storage e a
+  // RPC exigem exatamente esta forma — namespace, id do lançamento, uuid do
+  // arquivo (migrations 0103 e 0104). Quem tem permissão interna não alcança
+  // este prefixo, e o id no meio do caminho é conferido contra o lançamento
+  // que está sendo anexado.
+  const caminho = `financeiro/${v.data.lancamento_id}/${randomUUID()}.${preparado.arquivo.extensao}`;
 
   const { error: erroUpload } = await supabase.storage
     .from(BUCKET)

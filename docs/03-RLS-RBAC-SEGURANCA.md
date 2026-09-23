@@ -1023,6 +1023,36 @@ binário seria alterar a evidência; ele é validado pela assinatura `%PDF-`.
 A URL assinada dura dois minutos: o suficiente para abrir o arquivo, e pouco
 para sobreviver a um link copiado para fora.
 
+**Namespace por domínio — corrigido na Fase 10 (D-2026-09-23-68).** O bucket
+`comprovantes` serve mais de um domínio, e até a Fase 10 as policies decidiam
+por `bucket_id` mais uma permissão ampla. Isso foi provado vulnerável: papel
+customizado com `internal.view` e **sem** `finance.view` lia comprovante
+financeiro com metadados, e o simétrico também valia. O bucket continua único;
+o que passa a separar os domínios é o **caminho**:
+
+```text
+financeiro/<entidade_id>/<uuid>.<ext>   →  finance.view / finance.create
+interno/<entidade_id>/<uuid>.<ext>      →  internal.view / internal.register
+```
+
+**Regra normativa: permissão de um domínio nunca alcança o namespace de
+outro.** As policies exigem a forma inteira do caminho por expressão regular,
+não por prefixo — `like 'financeiro/%'` aceitaria `financeiro/../interno/x`,
+`financeiro2/…` e nível extra; o regex exige namespace, UUID da entidade,
+UUID do arquivo e extensão curta, e nada mais.
+
+`DELETE` existe **somente** no namespace financeiro, porque só lá existe fluxo
+que remove (§23.4 e `remover_comprovante`). Poder inserir não concede poder
+apagar. Não há policy de `UPDATE` em namespace algum: substituir comprovante é
+enviar objeto novo e apagar o antigo, nunca sobrescrever o binário de uma
+evidência.
+
+O namespace `interno/` está declarado, mas **nenhum fluxo o alimenta**: as
+colunas `attachment_asset_id` de `internal_product_movements`,
+`employee_ledger_entries` e `driver_run_settlements` existem e estão vazias.
+Se algum desses domínios vier a ter anexo próprio, a permissão que o autoriza
+é decisão a tomar antes — não se herda `internal.*` por ter a coluna.
+
 **Metadado de comprovante também é dado financeiro.** As policies de
 `media_assets` passaram a depender do `asset_type`: `financial_receipt`
 responde a `finance.view`/`finance.create`; os demais continuam em
@@ -1032,6 +1062,23 @@ enxergaria nome de arquivo, caminho e autor de um comprovante financeiro.
 ## 23.3 Path
 
 Não usar nome de arquivo fornecido pelo usuário como autoridade. Gerar caminhos controlados e validar tipo/tamanho.
+
+**O caminho também não é autoridade sobre o domínio (Fase 10,
+D-2026-09-23-68).** `anexar_comprovante` recebia o caminho pronto e o gravava
+sem olhar. Como a RPC é executável por qualquer autenticado e a Server Action
+**não é fronteira de segurança**, quem chamasse a RPC direto escolhia o
+domínio do arquivo escrevendo o texto que quisesse. A função passa a conferir,
+antes de gravar:
+
+1. o ator tem `finance.create`;
+2. o caminho tem a forma exata do namespace financeiro;
+3. o UUID da entidade **dentro** do caminho é o lançamento que está sendo
+   anexado — é o que impede um asset de mudar de dono;
+4. o objeto existe mesmo em `storage.objects`, no bucket `comprovantes`;
+5. o caminho ainda não está registrado em `media_assets`;
+6. `bucket` e `asset_type` são escritos pela função, nunca recebidos.
+
+O `mime` deixou de ser livre e é conferido contra a mesma lista do bucket.
 
 ## 23.4 Substituição de imagem
 

@@ -1964,6 +1964,67 @@ Nenhuma implementação que dependa destes pontos deve começar antes da decisã
 | ~~A-22~~ | ~~Histórico de disponibilidade de produto~~ | — | ✅ Resolvida em D-2026-09-23-67: **não** na V1. O comportamento conservador fica: sem passado fabricado, sem presumir que o estado de hoje valeu o período, sem rótulo de baixa venda sem base, e a limitação dita em texto no ranking. Postergada para evolução futura |
 | **A-15** | **Política de senha, MFA e bloqueio por tentativa** do Supabase Auth — não configurados; a V1 usa o padrão do projeto. A **recuperação de senha** saiu desta pendência: foi implementada em D-2026-09-19-51, com o mínimo de 8 caracteres. O que resta é política de complexidade, MFA, expiração e bloqueio | Fase 10 (hardening) | `03-RLS-RBAC-SEGURANCA.md` §25 |
 
+
+### D-2026-09-23-68 — Isolamento do bucket `comprovantes` por namespace de domínio
+
+**Contexto: vulnerabilidade confirmada na Fase 10.** O bucket privado
+`comprovantes` é compartilhado por mais de um domínio, e as policies decidiam
+por `bucket_id` mais uma permissão ampla — nunca pela entidade dona do
+arquivo. Teste adversarial com papéis customizados provou o vazamento nos dois
+sentidos: papel com `internal.view` e **sem** `finance.view` listava e lia o
+comprovante financeiro, com metadados, e inseria objeto no domínio financeiro;
+o simétrico valia para `finance.*` contra o anexo interno. Não era explorável
+no seed atual — o Atendente tem as duas permissões e só o financeiro grava no
+bucket — mas o sistema suporta papel customizado, e CLAUDE.md §15 exige que
+registrar consumo não conceda acesso a histórico financeiro sensível.
+
+**Decisão.** Manter **um único** bucket privado e estabelecer **namespaces de
+domínio obrigatórios e não sobrepostos**, verificáveis pelo próprio caminho.
+Não criar buckets separados na V1. Não usar consulta genérica a
+`media_assets` como mecanismo principal de autorização do Storage.
+
+```text
+financeiro/<entidade_id>/<uuid>.<ext>   →  finance.view / finance.create
+interno/<entidade_id>/<uuid>.<ext>      →  internal.view / internal.register
+```
+
+**Regra fundamental: permissão de um domínio jamais concede acesso ao
+namespace de outro.** Escrita não concede leitura. `DELETE` só existe onde há
+fluxo que remove — hoje, apenas o financeiro. `UPDATE` não existe em namespace
+algum.
+
+**Segunda metade da correção: o caminho do cliente não é autoridade.**
+`anexar_comprovante` passa a conferir namespace, forma do caminho,
+correspondência entre o UUID da entidade **dentro** do caminho e o lançamento
+que está sendo anexado, existência do objeto no bucket, caminho ainda não
+registrado, e grava `bucket` e `asset_type` por conta própria. A Server Action
+não é fronteira de segurança: a RPC é chamável diretamente por qualquer
+autenticado.
+
+**Escopo deliberadamente limitado.** O namespace `interno/` é declarado, mas
+nenhum fluxo o alimenta — as colunas `attachment_asset_id` de
+`internal_product_movements`, `employee_ledger_entries` e
+`driver_run_settlements` existem e estão vazias. Nenhuma funcionalidade nova
+foi criada para preenchê-las. Se algum desses domínios vier a ter anexo
+próprio, **qual permissão o autoriza é decisão a tomar antes** — não se herda
+`internal.*` por ter a coluna.
+
+**Onde foi formalizada.** `03-RLS-RBAC-SEGURANCA.md` §23.2 e §23.3.
+Migrations `0103` (policies por namespace) e `0104` (validação do vínculo).
+
+**Sem migração de arquivo.** Comprovado antes da correção: zero objetos no
+bucket, zero `media_assets` nele e zero `attachment_asset_id` não nulo nas
+quatro tabelas.
+
+**Validação pendente.** A remoção pela **API de Storage** com identidade real
+dos papéis não pôde ser exercitada: a Supabase mantém o trigger
+`protect_objects_delete`, que bloqueia `DELETE` direto por SQL, e não há
+sessão autenticada desses papéis customizados no ambiente de
+desenvolvimento. A policy de remoção foi verificada por leitura e por teste
+via SQL; o exercício ponta a ponta fica em
+`06-PENDENCIAS-VALIDACAO-PRODUCAO.md`.
+
+---
 ---
 
 # Como registrar uma nova decisão
