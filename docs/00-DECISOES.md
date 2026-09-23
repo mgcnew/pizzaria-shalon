@@ -1712,7 +1712,7 @@ artificial; sem remover as animações curtas que explicam mudança de estado.
 
 ---
 
-### D-2026-09-22-60 — Anomalia histórica de migration e prova de replay
+### D-2026-09-22-64 — Anomalia histórica de migration e prova de replay
 
 **O que foi encontrado, no checkpoint anterior à Fase 9.** A migration
 aplicada no banco de desenvolvimento com o nome
@@ -1780,6 +1780,159 @@ Supabase quando a Shalon quiser.
 
 ---
 
+### D-2026-09-23-65 — A verdade analítica da Fase 9 e a régua de cadência
+
+**Decisão.** A inteligência da Fase 9 é construída sobre distinções que o
+sistema **não pode dissolver em um número só**, e sobre uma régua de
+comportamento que se recusa a classificar quem não tem histórico suficiente.
+
+**As distinções, ditas nos nomes e mantidas nas telas.**
+
+| Conceito | O que é | Onde vive |
+|---|---|---|
+| Venda registrada | pedido `completed`, datado por `completed_at` | `vendas_no_periodo` |
+| Faturamento recebido | pagamento `confirmed`, datado por `received_at` | `recebido_no_periodo` |
+| Ainda fora da gaveta | recebido em dinheiro sem sessão de caixa | `recebido_no_periodo` |
+| Não recebido do período | venda registrada − faturamento recebido | `resumo_analitico` |
+| Cortesia, consumo, perda | saiu da cozinha e **não é receita** | `internos_no_periodo` |
+| Cancelado / rejeitado | não virou venda, datado pelo histórico de status | `nao_vendas_no_periodo` |
+
+Nenhuma delas é somada às outras em lugar nenhum, e o painel mostra a
+diferença entre vender e receber **em voz alta**, em vez de escondê-la
+(`CLAUDE.md` §24, §27, §28). Não existe, e não deve existir, campo de lucro,
+margem ou CMV: sem custo no sistema, esses números não existem.
+
+**Competência no fuso da loja.** Todo recorte de período é construído por
+`periodo_analitico`, que devolve o intervalo meio-aberto `[inicio, fim)` a
+partir da data local da loja, e o período anterior de **mesma duração**,
+imediatamente antes. Comparação de 30 dias é sempre contra 30 dias.
+
+**Variação sem base não vira percentual.** `variacao_percentual` devolve
+`comparavel: false` e percentual nulo quando a base é zero. Sair de R$ 0,00
+não é "subir 100%".
+
+**A régua de cadência (RN-CRM-004 e RN-CRM-005).** A cadência de cada cliente
+é a **mediana** dos intervalos entre compras concluídas — individual, nunca
+uma média da base. Sobre ela:
+
+- **1 compra → `dados_insuficientes`.** Não há intervalo para comparar.
+- **2 compras → `base_fraca`.** Há um intervalo, e um intervalo não é um
+  hábito. A tela mostra os fatos — intervalo observado, dias desde a última
+  compra, última compra, ticket médio — e **não** emite veredicto.
+- **3 ou mais compras → classificação comportamental:** `recorrente` até 1×
+  a cadência, `atencao` acima de 1× e até 2×, `afastado` acima de 2×.
+
+Os cortes `1×` e `2×` são decisão normativa explícita desta data, porque os
+documentos anteriores falavam em "atenção" e "afastado" sem fixar a régua.
+
+**Os filtros objetivos de ausência (15/30/60/90 dias) são independentes** da
+cadência e **incluem** clientes de 1 e 2 compras quando atendem ao critério.
+Quem nunca comprou não entra: não está ausente, está sem histórico.
+
+**Motivo.** A régua antiga classificava pela razão matemática mesmo com dois
+pontos: alguém que pediu duas vezes com quatro dias de intervalo e ficou doze
+sem pedir seria declarado "afastado". A conta estava certa e a afirmação
+estava errada — havia matemática, não havia comportamento.
+
+**Remarketing é assistido, e continua assistido.** O sistema escolhe com quem
+falar, prepara o texto e abre o WhatsApp; quem fala é a pessoa. O contato
+nasce com desfecho **nulo**, que significa "preparado", nunca "enviado" nem
+"sem resposta" — abrir o link não é falar com ninguém. "Pediu para não
+receber" retira o consentimento na mesma transação. Compra posterior é fato
+**temporal** e nenhuma coluna, rótulo ou frase afirma causalidade
+(`CLAUDE.md` §31, RN-RMKT-005).
+
+**Relatórios têm duas permissões.** `reports.view` para ver, `reports.export`
+para levar embora, **mais** a permissão do domínio de cada relatório —
+`reports.view` não é porta lateral para o caixa de quem não pode ver caixa. A
+exportação carrega as mesmas ressalvas da tela para dentro do CSV, do Excel e
+do PDF, porque número exportado sem ressalva vira soma errada meses depois.
+Nenhum relatório contém salário, adiantamento ou saldo de funcionário
+(`CLAUDE.md` §15).
+
+**Alertas não são inventados.** O carimbo de "atrasado" só existe quando há
+limite configurado em `alert_thresholds`, que nasceu vazia de propósito. Sem
+limite, a espera aparece com o tempo e sem veredicto (RN-DASH-003).
+
+**Onde foi formalizada.** `04-REGRAS-NEGOCIO.md` RN-CRM-004 e RN-CRM-005;
+migrations `20260922130000` a `20260922200000` e `20260923040000` a
+`20260923060000`; `supabase/tests/inteligencia_fase9.sql` (98 cenários);
+`src/application/{analitico,clientes,remarketing,relatorios}`; telas `/admin`,
+`/admin/clientes`, `/admin/remarketing` e `/admin/relatorios`.
+
+---
+
+### D-2026-09-23-66 — Três defeitos encontrados pelos próprios testes da Fase 9
+
+Registrados porque foram corrigidos por **migration nova**, e não por edição
+de migration aplicada — a regra de imutabilidade de D-2026-09-22-64 valendo
+na prática, inclusive para arquivos criados horas antes.
+
+1. **A central de atenção estourava inteira** (`20260923050000`). O bloco de
+   clientes fazia `jsonb_agg(...) ... order by ... limit 5` **depois** de
+   agregar; Postgres recusa com 42803. Quem tinha `customers.view` não via
+   central nenhuma. Ordenar e cortar passou para dentro da subconsulta.
+
+2. **A página de clientes era cortada antes de ser ordenada**
+   (`20260923040000`). O `limit` caía sobre o conjunto filtrado sem ordem, e a
+   ordenação escolhida era aplicada só na montagem do JSON: pedir "os 50 mais
+   ausentes" devolvia 50 clientes quaisquer, ordenados entre si. O total no
+   topo ficava certo e a lista ficava errada.
+
+3. **A busca por nome virava busca por telefone** (`20260923060000`). A busca
+   reduzia o texto a dígitos e casava contra o WhatsApp; "Duas F9" virava o
+   fragmento `9` e retornava quase toda a base com cara de resultado. Agora o
+   ramo de telefone só entra com **4 ou mais dígitos**.
+
+Os três eram silenciosos: devolviam algo plausível em vez de erro. Os dois
+últimos só apareceram porque o teste conferiu **quem** estava na lista, e não
+apenas quantos.
+
+---
+
+### D-2026-09-23-67 — A-22: sem histórico de disponibilidade na V1
+
+**Decisão.** A V1 **não** passa a registrar histórico temporal de
+disponibilidade de produto. Nenhuma tabela e nenhum gatilho de histórico
+serão criados agora com o objetivo de melhorar o indicador de baixa venda.
+A-22 sai das decisões em aberto e fica **postergada para evolução futura**.
+
+**O comportamento conservador que fica valendo, e que é a razão de a
+decisão não bloquear nada:**
+
+- não reconstruir passado que não existe — nenhum histórico retroativo é
+  fabricado, nem por estimativa, nem por interpolação;
+- não assumir que o estado de hoje valeu o período inteiro;
+- não rotular um produto como de baixa venda sem base confiável: só entra no
+  recorte quem esteve no catálogo o período **inteiro** e continua disponível
+  agora, e quem não entra aparece com o **motivo**;
+- informar a limitação onde ela importa — o ranking carrega, em texto, a
+  frase "a disponibilidade é a de agora: o sistema não guarda histórico de
+  quando um produto foi pausado".
+
+**Motivo.** Responder "ficou indisponível metade do mês?" exigiria registrar
+os três níveis que compõem a disponibilidade efetiva — produto, categoria e
+variação (RN-DISP-004) — e recompor o intervalo efetivo na leitura. É
+modelagem nova, gatilho em três tabelas quentes do catálogo, RLS nova e uma
+regra nova de recomposição no tempo: um subsistema pequeno, não uma coluna.
+E ele só passaria a valer para o futuro, sem melhorar nada do que já
+aconteceu.
+
+Enquanto não houver evidência de que a disponibilidade muda a ponto de
+distorcer o ranking, a recusa explícita custa nada e não engana ninguém — que
+é exatamente o critério da Fase 9: quando falta base, o sistema diz que falta
+base.
+
+**Reabre quando.** A Shalon relatar que pausa produtos com frequência e que
+o ranking está distorcido por isso. Aí a decisão volta como regra e modelagem
+próprias — nunca como estimativa silenciosa dentro do indicador.
+
+**Onde foi formalizada.** Aqui, e nesta decisão apenas. A avaliação técnica
+que levou a ela está em `06-PENDENCIAS-VALIDACAO-PRODUCAO.md`, que é
+documento de validação e **não** é fonte normativa.
+
+---
+
 ---
 
 # Decisões em aberto
@@ -1808,6 +1961,7 @@ Nenhuma implementação que dependa destes pontos deve começar antes da decisã
 | ~~A-19~~ | ~~Adiantamento pago pela gaveta~~ | — | ✅ Resolvida em D-2026-09-22-58: virou **RN-EMPFIN-004** |
 | **A-20** | **Criação da conta de login do funcionário** — `/admin/equipe` vincula uma conta que **já existe** no Auth, e o sistema não a cria. Criar exigiria `service_role` (CLAUDE.md §13) e uma política de senha inicial/recuperação que não está normatizada. Falta decidir o mecanismo: convite por e-mail, criação pelo painel do Supabase, ou outro | Onboarding de novo funcionário com acesso | `03-RLS-RBAC-SEGURANCA.md` §19.7 e §25 |
 | **A-21** | **Conteúdo dos papéis (`role_permissions`)** — quem tem `roles.manage` pode alterar, pela API direta, **quais permissões um papel concede**, inclusive as do próprio papel. RN-RBAC-005 fechou a atribuição de papéis a usuários, não a edição do papel em si, que não estava no escopo autorizado. Hoje só a Owner tem `roles.manage` | Antes de existir papel customizado com `roles.manage` | `03-RLS-RBAC-SEGURANCA.md` §19.7 |
+| ~~A-22~~ | ~~Histórico de disponibilidade de produto~~ | — | ✅ Resolvida em D-2026-09-23-67: **não** na V1. O comportamento conservador fica: sem passado fabricado, sem presumir que o estado de hoje valeu o período, sem rótulo de baixa venda sem base, e a limitação dita em texto no ranking. Postergada para evolução futura |
 | **A-15** | **Política de senha, MFA e bloqueio por tentativa** do Supabase Auth — não configurados; a V1 usa o padrão do projeto. A **recuperação de senha** saiu desta pendência: foi implementada em D-2026-09-19-51, com o mínimo de 8 caracteres. O que resta é política de complexidade, MFA, expiração e bloqueio | Fase 10 (hardening) | `03-RLS-RBAC-SEGURANCA.md` §25 |
 
 ---

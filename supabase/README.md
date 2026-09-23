@@ -66,7 +66,7 @@ byte fora de comentário (md5 `bb1e312a57f0b664ef59f0517d618abf`).
 Regressões que dependem de `montar_item` no banco reconstruído:
 `publico_fase4.sql` 96/96, `pedido_manual_fase6.sql` 60/60,
 `midia_publica_fase4b.sql` 19/19. Detalhes e divergências cosméticas em
-`docs/00-DECISOES.md`, `D-2026-09-22-60`.
+`docs/00-DECISOES.md`, `D-2026-09-22-64`.
 
 **Nada foi editado retroativamente:** a migration histórica aplicada não foi
 alterada, `supabase_migrations.schema_migrations` não foi tocada e nenhuma

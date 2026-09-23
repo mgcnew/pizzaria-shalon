@@ -1057,6 +1057,36 @@ Filtros manuais de 15/30/60/90 dias continuam disponíveis.
 ### RN-CRM-003
 Cliente com pouco histórico não deve receber inferência artificial de frequência habitual.
 
+### RN-CRM-004
+A classificação comportamental de cadência exige **três ou mais** compras concluídas.
+
+- **1 compra** → `dados_insuficientes`. Não existe intervalo.
+- **2 compras** → `base_fraca`. Existe um intervalo observado, e um intervalo
+  não é hábito. Os fatos objetivos aparecem — intervalo observado, dias desde
+  a última compra, última compra, ticket médio —, mas o cliente **não** é
+  classificado automaticamente como `atencao` nem `afastado`.
+- **3 ou mais** → cadência individual pela mediana dos intervalos.
+
+Os filtros objetivos de ausência (RN-CRM-002) são independentes desta regra e
+**incluem** clientes de 1 ou 2 compras quando atenderem ao filtro.
+
+### RN-CRM-005
+Para três ou mais compras, a classificação compara os dias desde a última
+compra com o intervalo típico **do próprio cliente**:
+
+| razão | estado |
+|---|---|
+| ≤ 1× | `recorrente` |
+| > 1× e ≤ 2× | `atencao` |
+| > 2× | `afastado` |
+
+O intervalo típico é a **mediana** dos intervalos entre compras concluídas
+consecutivas — não a média, que uma ausência excepcional distorceria.
+
+A interface deve exibir os números que produziram o estado (intervalo típico
+e dias sem comprar), de modo que a sinalização seja sempre explicável. Não
+usar score opaco.
+
 ---
 
 ## 38. Remarketing

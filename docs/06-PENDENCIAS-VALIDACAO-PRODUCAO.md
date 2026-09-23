@@ -528,3 +528,86 @@ Os testes que já garantem isso, e que devem continuar existindo:
 
 As fronteiras continuam sendo normativas em `03-RLS-RBAC-SEGURANCA.md`
 §8.1 e §23.1.
+
+---
+
+## Estado da Fase 9
+
+Acrescentado em 23/09/2026, ao fim da implementação da inteligência, CRM,
+remarketing, dashboard e relatórios.
+
+**Coberto por teste automatizado.** A verdade analítica (venda registrada ×
+faturamento recebido × movimento interno), a régua de cadência RN-CRM-004/005,
+a central de atenção, o ranking com elegibilidade, o remarketing assistido e
+os dez relatórios com exportação. `supabase/tests/inteligencia_fase9.sql`
+monta massa controlada e confere 98 cenários, incluindo os negativos de
+permissão para `anon`, para atendente e para um papel que vê relatório e
+**não** exporta.
+
+**Coberto por validação visual com massa povoada.** As quatro telas foram
+exercitadas no desktop e em 375 px com dados reais de operação, criados pelas
+mesmas RPCs que a interface usa (`supabase/seeds/massa_fase9.sql`): cadências
+das cinco classificações, filtros objetivos de ausência, busca, consentimento
+e opt-out, candidato e contato de remarketing com compra posterior,
+cancelamento, rejeição, entrega com acerto de motoboy e entrega com falha,
+duas formas de pagamento e três origens de pedido. A massa foi removida ao
+final, e o ambiente voltou ao estado anterior.
+
+**O que continua sem validação, e por quê.**
+
+1. **Os arquivos exportados não foram abertos em aplicativo real.** CSV,
+   Excel e PDF baixam com 200, tipo de conteúdo correto e `attachment`, e a
+   rota recusa com 403 sem sessão — isso foi conferido pelo navegador, com
+   massa. O que **não** foi feito é abrir os três no Excel, no LibreOffice e
+   num leitor de PDF, em máquina da Shalon. O escritor de `.xlsx` e o de PDF
+   são próprios, sem biblioteca, e é isso que precisa de conferência humana
+   antes da produção.
+
+2. **Desempenho medido em volume pequeno.** Com a massa carregada — 26
+   pedidos, 22 concluídos, 21 pagamentos, 13 clientes, 20 produtos — as doze
+   consultas analíticas principais responderam com pior tempo de **36 ms**
+   (`central_de_atencao`, primeira execução) e todas as demais abaixo de
+   21 ms. Isso mostra que não há N+1 nem varredura acidental. **Não** mostra
+   comportamento sob volume de produção: a medição precisa ser repetida com
+   meses de operação real antes de se declarar desempenho validado.
+
+3. **A hora do dia da massa é artificial.** Os pedidos tiveram a DATA
+   reescrita para o passado, mas todos guardam a mesma hora de criação — por
+   isso "horários de pico" mostrou um único horário. O recorte por hora está
+   correto no SQL e foi conferido lá; no navegador ele não pôde ser lido como
+   informação de negócio.
+
+4. **O ambiente de desenvolvimento continua sem configuração de loja.** Ele
+   não tem `store_settings`, horário nem faixa de entrega próprios — a massa
+   criou os três temporariamente e os removeu. Enquanto for assim, qualquer
+   validação futura precisará repetir esse passo, e o checkout público do
+   ambiente permanece indisponível.
+
+---
+
+## A-22 — limitação observada na validação do ranking
+
+**A decisão normativa não está aqui.** Ela é `D-2026-09-23-67` em
+`00-DECISOES.md`: a V1 **não** registra histórico de disponibilidade, e o
+comportamento conservador do indicador é o que fica valendo. Este documento
+guarda apenas o que foi **observado ao validar**.
+
+**O que a validação mostrou.** Com a massa povoada, o ranking separou
+corretamente três situações no mesmo período:
+
+- **comparável e vendendo** — produto no catálogo desde antes do período e
+  disponível agora;
+- **comparável e sem venda** — mesmo critério, zero unidades: é o único tipo
+  de produto que a tela chama de baixa venda;
+- **não comparável** — os produtos que entraram no catálogo durante o
+  período apareceram com o motivo escrito ("entrou no catálogo durante o
+  período") e ficaram fora do recorte de baixa venda.
+
+A ressalva de disponibilidade apareceu na tela em todos os períodos
+exercitados.
+
+**O que continua sem resposta, e por decisão.** "Este produto ficou
+indisponível metade do mês?" não tem resposta no sistema, porque o histórico
+não existe. Isso **não** é dívida de validação: é escopo recusado em
+`D-2026-09-23-67`. Está registrado aqui só para que quem ler um ranking saiba
+o que ele não mede.
