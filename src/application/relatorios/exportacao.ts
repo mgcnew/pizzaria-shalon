@@ -1,7 +1,7 @@
 import { gerarXlsx } from "./planilha";
 import { gerarPdf } from "./documento";
 import { formatarCelula, nomeDoArquivo } from "./formato";
-import type { Arquivo, Formato, Relatorio } from "./tipos";
+import type { Arquivo, Formato, Relatorio, TipoDeColuna } from "./tipos";
 
 /**
  * Exportação dos relatórios em CSV, Excel e PDF.
@@ -28,6 +28,32 @@ import type { Arquivo, Formato, Relatorio } from "./tipos";
  */
 
 /**
+ * Caracteres com que a planilha começa a interpretar a célula como FÓRMULA:
+ * `=`, `+`, `-`, `@` e os controles que o Excel trata como início de
+ * expressão. Aspas não protegem — o Excel as consome ao importar e avalia o
+ * que sobra.
+ */
+const ABRE_FORMULA = /^[=+\-@\t\r]/;
+
+/**
+ * Neutraliza conteúdo controlado pelo usuário antes de virar célula.
+ *
+ * O nome que o cliente digita no checkout chega aqui inteiro, e `=HYPERLINK(…)`
+ * é um nome válido para o `zod` e para o banco. Sem isto, abrir o CSV de
+ * pedidos no Excel executaria o que um anônimo escreveu (CLAUDE.md §36, §37).
+ *
+ * A aspa simples à frente é a marcação que Excel, LibreOffice e Sheets
+ * entendem como "isto é texto literal". Ela só é aplicada a coluna de TEXTO:
+ * dinheiro, número, percentual e data são produzidos pelo nosso próprio
+ * formatador, nunca contêm entrada de usuário, e um `-1.234,50` prefixado
+ * deixaria de ser somável — que é justamente o ponto da exportação.
+ */
+function neutralizarFormula(valor: string, tipo: TipoDeColuna): string {
+  if (tipo !== "texto") return valor;
+  return ABRE_FORMULA.test(valor) ? `'${valor}` : valor;
+}
+
+/**
  * CSV para o Excel brasileiro: BOM UTF-8, separador `;` e decimal com
  * vírgula. Sem o BOM, acento vira caractere quebrado; com vírgula decimal e
  * separador `;`, a planilha abre com as colunas no lugar.
@@ -48,7 +74,7 @@ export function gerarCsv(relatorio: Relatorio): Arquivo {
   for (const linha of relatorio.linhas) {
     linhas.push(
       relatorio.colunas
-        .map((c) => escapar(formatarCelula(linha[c.chave], c.tipo)))
+        .map((c) => escapar(neutralizarFormula(formatarCelula(linha[c.chave], c.tipo), c.tipo)))
         .join(";"),
     );
   }
