@@ -34,6 +34,39 @@ Isto não é burocracia nova: é o que CLAUDE.md §11 exige ("toda alteração
 estrutural reproduzível por migration versionada") aplicado ao tempo — uma
 migration editada depois de aplicada deixa de reproduzir o que foi aplicado.
 
+### Convenção de versão: arquivo × aplicado (observada na Fase 10)
+
+**A versão do arquivo e a versão registrada no banco não coincidem, e isso
+não é corrupção.** São duas numerações com origens diferentes:
+
+- **o arquivo** usa a numeração do repositório, redonda e sequencial, que
+  acompanha o cabeçalho `-- 0101`, `-- 0102`…;
+- **o banco** recebe de `apply_migration` a versão como **carimbo UTC do
+  instante da aplicação**.
+
+Só as **três primeiras** migrations do projeto coincidem. De
+`indices_chaves_estrangeiras` em diante, nenhuma bate — `criar_pedido` é
+arquivo `20260919140400` contra aplicado `20260919055142`; `caixa_estrutura`
+é `20260921180000` contra `20260921210017`. É sistêmico desde o começo.
+
+**O que garante a reprodutibilidade não é a versão, é a ordem — e ela foi
+conferida posição a posição na Fase 10: 101 das 102 coincidem.** A única
+divergência é uma transposição nas posições 43/44:
+
+| | posição 43 | posição 44 |
+|---|---|---|
+| arquivo | `montar_item_sem_window_em_agregado` | `rls_e_tracking_publico` |
+| banco | `rls_e_tracking_publico` | `montar_item_sem_window_em_agregado` |
+
+**Comprovadamente inócua:** a primeira só executa
+`create or replace function public.montar_item`; a segunda só habilita RLS em
+tabelas de pedido e cria `pedido_por_token`. Zero referências cruzadas entre
+elas, nos dois sentidos. A ordem relativa não altera o resultado do replay.
+
+A conferência que **importa** continua sendo a de conteúdo, e ela fecha: o md5
+do arquivo (sem a quebra de linha final) é igual ao md5 de
+`array_to_string(statements, E'\n')` da linha aplicada.
+
 ### Anomalia histórica registrada (22/09/2026)
 
 **Migration afetada:** aplicada no banco de desenvolvimento como
