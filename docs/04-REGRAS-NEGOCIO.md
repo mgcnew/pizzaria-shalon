@@ -1143,6 +1143,39 @@ Métricas incluem receita registrada, quantidade de pedidos, ticket médio, canc
 ### RN-REL-004
 Exportações CSV/Excel/PDF obedecem às permissões do usuário e à sensibilidade dos dados.
 
+### RN-REL-005 — Produtos de menor movimentação
+O bloco de produtos de menor movimentação representa **produtos elegíveis com
+a menor quantidade vendida no período analisado**. Ele **não** é conclusão de
+que o produto tem baixa demanda: é ordem relativa entre o que pôde ser
+comparado.
+
+1. Considerar somente produtos **elegíveis** segundo as regras analíticas já
+   definidas — esteve no catálogo o período inteiro e continua disponível.
+2. Ordenar pela quantidade vendida no período, da **menor para a maior**.
+3. Desempatar por critério **determinístico** (nome do produto), para que a
+   mesma consulta produza sempre a mesma lista.
+4. **Excluir** do recorte os produtos que também estejam no grupo apresentado
+   como "mais vendidos" na mesma visão. Com poucos elegíveis, o fundo da
+   lista traria o campeão de vendas junto, e a tela afirmaria duas coisas
+   contraditórias ao mesmo tempo.
+5. Limitar a apresentação padrão aos **5 primeiros**.
+6. O limite de 5 é **decisão de apresentação da V1**, não limiar estatístico.
+   Não deriva de amostra, significância nem qualquer cálculo.
+7. Estar neste bloco **não** gera alerta automaticamente (RN-DASH-001: só
+   vira pendência o que tem ação possível).
+8. Não usar "encalhado", "baixa demanda", "parado" ou equivalentes sem
+   evidência adicional. O rótulo da interface é **"Menor movimentação"**, com
+   texto auxiliar "Produtos elegíveis com menor quantidade vendida no
+   período."
+9. Enquanto a disponibilidade histórica não puder ser determinada
+   (`D-2026-09-23-67`, A-22), a ressalva correspondente acompanha o bloco.
+10. Produto **novo** ou **sem base suficiente** não recebe conclusão
+    negativa: ele fica fora do recorte e aparece com o motivo da
+    inelegibilidade.
+
+A elegibilidade e a ordenação já são produzidas pelo banco; os itens 4, 5 e 8
+são de apresentação.
+
 ---
 
 # PARTE XII — SEGURANÇA, PERMISSÕES E AUDITORIA

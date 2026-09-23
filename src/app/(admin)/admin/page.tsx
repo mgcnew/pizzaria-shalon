@@ -10,6 +10,7 @@ import type { ChaveDePeriodo } from "@/application/analitico/tipos";
 import { Badge } from "@/ui/components";
 import { Cartao, EmptyState } from "@/ui/patterns";
 import { formatBRL } from "@/lib/format";
+import { recorteDeMenorMovimentacao } from "@/domain/analitico/ranking";
 import { CentralDeAtencao } from "./_ui/CentralDeAtencao";
 import { Indicador } from "./_ui/Indicador";
 import { SeletorDePeriodo } from "./_ui/SeletorDePeriodo";
@@ -65,16 +66,13 @@ export default async function Page({
   ]);
 
   const maisVendidos = ranking?.produtos.slice(0, 5) ?? [];
-  const noTopo = new Set(maisVendidos.map((p) => p.produto_id));
-  // "Vendendo pouco" é afirmação sobre o produto, então não pode cair em cima
-  // de quem está no topo da outra lista. Com poucos produtos comparáveis, pegar
-  // "o fundo da lista" traria o campeão de vendas junto — e a tela diria que o
-  // mais vendido está vendendo pouco.
-  const menosVendidos =
-    ranking?.produtos
-      .filter((p) => p.elegivel_para_baixa_venda && !noTopo.has(p.produto_id))
-      .sort((a, b) => a.quantidade - b.quantidade)
-      .slice(0, 5) ?? [];
+  // RN-REL-005: a regra do recorte vive no domínio, com teste próprio. Aqui
+  // fica só a decisão de QUAIS listas entram — o ranking do período e o grupo
+  // de mais vendidos exibido logo ao lado.
+  const menorMovimentacao = recorteDeMenorMovimentacao(
+    ranking?.produtos ?? [],
+    maisVendidos,
+  );
   const semanaOrdenada = [...(movimento?.por_dia_da_semana ?? [])].sort(
     (a, b) => b.valor - a.valor,
   );
@@ -238,20 +236,21 @@ export default async function Page({
             )}
           </Cartao>
 
-          {/* §8: "vende pouco" só para quem teve chance de vender. */}
+          {/* RN-REL-005: ordem relativa entre comparáveis, não diagnóstico
+              de demanda. O rótulo diz exatamente isso. */}
           <Cartao
-            titulo="Vendendo pouco"
-            descricao="Só produtos que estiveram no catálogo o período inteiro e continuam disponíveis."
+            titulo="Menor movimentação"
+            descricao="Produtos elegíveis com menor quantidade vendida no período."
             largura="cheio"
           >
-            {menosVendidos.length === 0 ? (
+            {menorMovimentacao.length === 0 ? (
               <EmptyState
-                titulo="Nada a destacar"
-                descricao="Nenhum produto comparável ficou para trás no período."
+                titulo="Nada a comparar no período"
+                descricao="Nenhum produto esteve no catálogo o período inteiro e continua disponível."
               />
             ) : (
               <ul className="m-0 flex list-none flex-col gap-2 p-0">
-                {menosVendidos.map((p) => (
+                {menorMovimentacao.map((p) => (
                   <li key={p.produto_id} className="flex items-center justify-between gap-3">
                     <span className="flex flex-col">
                       <span className="text-[13.5px] font-semibold text-ink">{p.nome}</span>
