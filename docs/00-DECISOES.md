@@ -1712,6 +1712,74 @@ artificial; sem remover as animações curtas que explicam mudança de estado.
 
 ---
 
+### D-2026-09-22-60 — Anomalia histórica de migration e prova de replay
+
+**O que foi encontrado, no checkpoint anterior à Fase 9.** A migration
+aplicada no banco de desenvolvimento com o nome
+`montar_item_sem_record_indefinido` (versão `20260919012630`, 7.804
+caracteres) **não tem o corpo no Git**. O arquivo correspondente,
+`supabase/migrations/20260919100200_montar_item_escalares.sql`, tem 16 linhas
+e é só uma nota sobre o defeito — e afirma, incorretamente, que "o corpo
+completo foi aplicado nesta migration". O mesmo vale, em menor escala, para
+`20260919100100_mensagens_ao_cliente.sql`, que descreve em comentário a
+alteração de `montar_item` sem trazer o corpo.
+
+Isso **viola a reprodutibilidade histórica** exigida por `CLAUDE.md` §11: o
+replay do repositório não reconstrói aquele estado intermediário, porque ele
+existe apenas no banco.
+
+**O que NÃO foi feito.** A migration histórica aplicada não foi editada.
+`supabase_migrations.schema_migrations` não foi tocada. Nenhuma migration
+vazia foi criada para disfarçar a diferença. O arquivo antigo também não foi
+reescrito para "parecer" igual ao banco depois do fato.
+
+**Por que o estado atual continua reproduzível.** `montar_item` foi recriada
+integralmente depois, por
+`20260919140450_montar_item_sem_window_em_agregado.sql`, que está versionada
+e completa. Perdeu-se o passo do meio, não o resultado.
+
+**A prova: replay limpo (22/09/2026).** Banco vazio, apenas os 88 arquivos
+versionados, aplicados em ordem em projeto Supabase descartável — o projeto
+`pizzariashalon` (`embpaodotujsxuaeptft`), que estava comprovadamente vazio
+(0 tabelas, 0 rotinas, 0 usuários, 0 buckets) e foi autorizado para isso. O
+banco de desenvolvimento **não foi tocado**.
+
+Resultado: os 88 arquivos executaram sem erro. Comparado ao banco de
+desenvolvimento, o schema reconstruído tem md5 idêntico em **colunas**,
+**constraints** e **índices**; 58 tabelas, 119 rotinas, 150 policies, 229
+índices e 383 constraints dos dois lados. As 119 rotinas coincidem,
+`montar_item` inclusive — idêntica byte a byte fora de comentário
+(md5 `bb1e312a57f0b664ef59f0517d618abf`).
+
+**Regressões no banco reconstruído:** `publico_fase4.sql` 96/96,
+`pedido_manual_fase6.sql` 60/60, `midia_publica_fase4b.sql` 19/19.
+
+**Duas divergências COSMÉTICAS encontradas, e nenhuma semântica.** As duas
+estão do lado do banco de desenvolvimento, não dos arquivos:
+
+1. `loja_aberta` no banco de desenvolvimento não tem os comentários que o
+   arquivo da 0021 tem. Removidos os comentários e normalizado o espaço, as
+   duas definições são idênticas;
+2. quatro policies de `storage.objects` chamam-se, no banco de
+   desenvolvimento, `catalogo ... com catalog manage` — com espaço no lugar do
+   ponto de `catalog.manage`. Mesmos comandos, mesmos papéis, mesmos
+   predicados; muda só o nome, que não é referenciado em lugar nenhum.
+
+Ambas são da mesma família do achado principal: o texto aplicado ao banco de
+desenvolvimento divergiu cosmeticamente do arquivo. Ficam registradas, e não
+justificam editar migration aplicada.
+
+**Regra daqui para frente.** Registrada em `supabase/README.md`: antes de
+aplicar, `arquivo no Git → aplicar → conferir` por md5; depois de aplicada a
+um banco compartilhado, **o arquivo é imutável**, e correção é migration
+nova. É `CLAUDE.md` §11 aplicado ao tempo — não há regra de produto nova.
+
+**Sobra do replay.** O projeto descartável continua existindo com o schema
+reconstruído. Ele não tem dado de ninguém e pode ser apagado pelo painel do
+Supabase quando a Shalon quiser.
+
+---
+
 ---
 
 # Decisões em aberto

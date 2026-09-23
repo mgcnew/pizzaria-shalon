@@ -449,11 +449,17 @@ re-executada sem regressão (172 de 172).
    envio — e o navegador interno usado na validação visual não anexa
    arquivos. Igual à dívida equivalente da Fase 7.
 
-4. **Cadastro de funcionários continua fora.** Criar, editar e desligar
-   funcionário — e criar usuário interno — não fazia parte do escopo
-   autorizado desta fase. `/admin/equipe` **lê** a lista de funcionários para
-   atribuir movimentos, e não a mantém. A pendência **A-14** de
-   `00-DECISOES.md` continua aberta.
+4. **Cadastro de funcionários foi entregue no complemento da fase.**
+   Atualizado em 22/09/2026. `/admin/equipe` **cadastra, edita, desliga e
+   reativa** funcionário, vincula acesso a uma conta que já exista no Auth e
+   atribui papéis. Funcionário continua separado de usuário do Auth, e o
+   motoboy segue existindo sem login (`01`/`04` e `03` §19.7). A pendência
+   **A-14** foi resolvida por `D-2026-09-22-58`.
+
+   O que continua em aberto, e é decisão e não dívida de validação:
+   **A-20** — provisionamento da conta de login (o sistema vincula, não cria)
+   — e **A-21** — hardening da edição de `role_permissions`. As duas vivem em
+   `00-DECISOES.md`.
 
 ### Duas lacunas normativas registradas, não inventadas
 
@@ -494,3 +500,31 @@ depende do mundo real.
 
 Nada disso bloqueia as próximas fases. Bloqueia a produção, junto com as
 pendências anteriores.
+
+---
+
+## Disciplina de validação: superfície pública se exercita sem sessão
+
+Acrescentado em 22/09/2026, depois do defeito corrigido em
+`D-2026-09-22-59`: o cardápio publicado ficou sem foto e sem banner para o
+cliente, e ninguém viu, porque toda validação visual foi feita no navegador
+de quem desenvolve — que carrega o cookie da sessão administrativa.
+
+Isto não é regra nova de produto nem arquitetura nova. É como validar:
+
+- funcionalidade **pública** se confere em contexto realmente anônimo — aba
+  anônima do navegador, ou teste rodando como `anon`;
+- conferir logado continua valendo para o **administrativo**, que é o que ele
+  mede;
+- quando o resultado depende de quem olha, os dois casos são exercitados,
+  porque a diferença entre eles é exatamente o que a RLS decide.
+
+Os testes que já garantem isso, e que devem continuar existindo:
+
+- `supabase/tests/midia_publica_fase4b.sql` — 19 cenários, os relevantes como
+  `anon`, incluindo os negativos (comprovante financeiro, produto inativo,
+  `media_assets` fechada);
+- `supabase/tests/publico_fase4.sql` — 96 cenários, todos como `anon`.
+
+As fronteiras continuam sendo normativas em `03-RLS-RBAC-SEGURANCA.md`
+§8.1 e §23.1.
