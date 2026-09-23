@@ -99,8 +99,16 @@ export function CarrosselBanners({ banners }: { banners: BannerDoCarrossel[] }) 
         <ChamadaBanner banner={banner} />
       </div>
 
+      {/*
+       * No celular os pontos ficam à ESQUERDA, não centralizados.
+       *
+       * Centralizados eles colidem com a chamada do banner, que é
+       * `bottom-3 right-3`: em 375px a barra passa por baixo do botão e come a
+       * palavra "Ver". Da largura `sm` em diante sobra espaço entre os dois, e
+       * aí a posição central do design aprovado volta a valer.
+       */}
       {banners.length > 1 ? (
-        <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-pill bg-black/35 px-3 py-2 backdrop-blur-sm">
+        <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2 rounded-pill bg-black/35 px-3 py-2 backdrop-blur-sm sm:left-1/2 sm:-translate-x-1/2">
           {banners.map((item, indice) => (
             <button
               key={item.id}
@@ -108,7 +116,18 @@ export function CarrosselBanners({ banners }: { banners: BannerDoCarrossel[] }) 
               onClick={() => setAtual(indice)}
               aria-label={`Mostrar destaque ${indice + 1} de ${banners.length}`}
               aria-current={indice === atual ? "true" : undefined}
-              className="flex h-2.5 w-6 cursor-pointer items-center justify-center border-0 bg-transparent p-0"
+              /*
+               * O alvo de toque é maior que o ponto (CLAUDE.md §38): o ponto
+               * desenhado tem 24×10, o que é confortável de ver e péssimo de
+               * acertar com o polegar. O `after` estende a área clicável para
+               * 44px de altura SEM mexer no layout — o ponto continua
+               * exatamente do mesmo tamanho na tela, e a barra não engorda.
+               *
+               * A largura para em 32px (24 do ponto + os 8 do `gap-2`) porque
+               * passar disso faria a área de um ponto invadir a do vizinho, e
+               * alvo ambíguo é pior que alvo pequeno.
+               */
+              className="relative flex h-2.5 w-6 cursor-pointer items-center justify-center border-0 bg-transparent p-0 after:absolute after:left-1/2 after:top-1/2 after:h-11 after:w-8 after:-translate-x-1/2 after:-translate-y-1/2 after:content-['']"
             >
               <span
                 className={[
