@@ -2137,6 +2137,43 @@ aprovada; as únicas mudanças visuais foram correções de acessibilidade sem
 efeito na aparência.
 
 ---
+
+### D-2026-09-24-71 — Estado final do projeto descartável de replay, antes de removê-lo
+
+**Por que isto está registrado.** O projeto descartável `pizzariashalon`
+(`embpaodotujsxuaeptft`) vai sair. Ele não guarda dado, mas **guarda um fato**:
+o replay que se supunha feito ali nunca foi concluído. Esse fato desaparece
+junto com o projeto, e ele é a razão de existir o ensaio do Gate 11.3A.
+
+**Estado medido em 24/09/2026, por leitura, sem alterar nada:**
+
+| Item | Valor |
+|---|---|
+| Migrations aplicadas | **51** — o repositório tem **109** |
+| Última migration aplicada | `20260922202055` |
+| Tabelas em `public` | **58** — produção terá **61** |
+| Pedidos, clientes, pagamentos | **0** em todos |
+| Funcionários, usuários de aplicação | **0** em ambos |
+| `audit_logs` | **15**, todos de ator `system` |
+| Região | `sa-east-1` |
+
+**O que isso significa.** Ele **não comprova** que o esquema atual aplica limpo
+em banco vazio: parou a 58 migrations do fim. Tratá-lo como evidência de
+replay teria sido erro — e teria levado a primeira execução real das 109 a
+acontecer **direto em produção**.
+
+**O que se perde ao removê-lo.** Nada além do próprio registro acima, que é a
+razão desta entrada. Sem dado operacional, sem configuração da Shalon, sem
+conta de Auth.
+
+**O que fica no lugar.** Um projeto temporário novo, criado exclusivamente
+para o ensaio: replay das 109 em banco virgem, validação estrutural completa e
+as suítes versionadas. Ele também é temporário — não vira infraestrutura
+permanente.
+
+**Onde foi formalizada.** `08-BOOTSTRAP-PRODUCAO.md` §9.
+
+---
 ---
 
 # Como registrar uma nova decisão
