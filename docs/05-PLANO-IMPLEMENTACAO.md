@@ -912,6 +912,12 @@ dois em documento, script, variável de ambiente ou procedimento.
 
 # FASE 11 — IMPLANTAÇÃO E ESTABILIZAÇÃO
 
+> **Runbook operacional:** a sequência exata de implantação, os checklists, o
+> mapa de variáveis e o plano de rollback estão em
+> `08-BOOTSTRAP-PRODUCAO.md`, aberto no Gate 11.1 em 24/09/2026. Aquele
+> documento **não é normativo**: ele descreve como executar o que esta fase
+> define, e a execução acontece por gates autorizados um a um.
+
 ## 15. Preparação
 
 - projeto Supabase de produção;
