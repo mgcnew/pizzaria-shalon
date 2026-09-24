@@ -299,20 +299,95 @@ A ordem abaixo ajusta a sugerida no plano por três dependências reais:
 - **Evidência:** as três variáveis presentes, nenhum `service_role` cadastrado.
 - **Rollback:** remover as variáveis; nada foi publicado ainda.
 
-### B5 — Primeiro acesso (Owner)
+### B5 — Primeiro acesso (Owner), por operação administrativa deliberada
 
-- **Entrada:** B4.
-- **Ação:** criar no painel do Auth a conta da proprietária (opção A de A-20)
-  e, por SQL no projeto de produção, criar o `employee` correspondente, o
-  `app_user` vinculado e o `user_roles` apontando para Owner/Admin.
-  **Não** implementar `service_role`, **não** desenvolver provisionamento
-  automático.
-- **Resultado:** existe alguém capaz de operar o `/admin`.
-- **Evidência:** 1 employee, 1 app_user ativo, 1 papel Owner/Admin; login
-  bem-sucedido depois de B6.
-- **Rollback:** remover as três linhas e a conta do Auth.
-- **Nota:** este é o único momento em que se escreve nessas tabelas por SQL.
-  Todo acesso seguinte passa por `/admin/equipe`. **A-20 permanece aberta.**
+Nenhuma migration cria funcionário, usuário ou vínculo: os `insert` dessas
+tabelas vivem dentro das funções de domínio. O primeiro Owner é, portanto, um
+**ato administrativo único**, executado uma vez, à mão, com a conta do Auth já
+existente.
+
+#### Regras que valem para este passo
+
+1. **Usuário real não entra em migration.** Nunca.
+2. **Não se versiona UUID, e-mail, senha nem qualquer identificador pessoal.**
+   O que este documento contém é o **procedimento parametrizado**; os valores
+   vivem só no momento da execução.
+3. Depois deste passo, **SQL direto deixa de ser mecanismo normal de gestão de
+   acesso**. Todo acesso seguinte passa por `/admin/equipe`
+   (`vincular_acesso`, `definir_papeis`, `definir_acesso`).
+4. **Não** implementar `service_role`. **Não** desenvolver provisionamento
+   automático sem nova autorização. **A-20 permanece aberta.**
+
+#### Pré-condição
+
+- **Entrada:** B4 concluído; conta de Auth da proprietária **já criada
+  manualmente** no painel do projeto de produção (opção A de A-20).
+
+#### Procedimento, na ordem
+
+1. **Conta Auth real criada manualmente** no painel — não por código.
+2. **Obter o UUID dessa conta** pelo painel/administração autorizada. Ele é
+   parâmetro de execução; não é anotado neste documento nem em nenhum arquivo
+   do repositório.
+3. **Criar o `employee` e vincular o `app_user`** respeitando as invariantes
+   já existentes das tabelas (funcionário ativo, usuário ativo, vínculo único).
+4. **Atribuir exclusivamente o papel Owner/Admin de sistema** — nenhum outro
+   papel, nenhum papel customizado.
+5. **Confirmar 39/39 permissões efetivas** para esse usuário.
+6. **Confirmar login** pela aplicação, depois de B6.
+7. **Confirmar acesso administrativo** — o `/admin` abre e responde.
+8. **Confirmar que nenhuma outra conta recebeu papel**: exatamente 1 linha em
+   `user_roles` no banco inteiro.
+9. **Registrar operacionalmente que foi bootstrap inicial** — ver abaixo.
+
+#### Forma parametrizada
+
+Executada no SQL Editor do projeto de produção, com os valores fornecidos no
+momento. Os nomes entre `:` são **parâmetros**, não conteúdo:
+
+```
+:auth_uuid        -- UUID da conta criada no passo 1
+:nome_completo    -- nome da proprietária, como ela quer ser identificada
+```
+
+O ato consiste em: inserir o `employee` correspondente a `:nome_completo` como
+`owner` ativo; inserir o `app_user` ligando `:auth_uuid` a esse employee, ativo;
+e inserir uma única linha em `user_roles` apontando para o papel de sistema
+`Owner/Admin` — tudo na mesma transação, de modo que ou os três existem ou
+nenhum existe.
+
+#### Auditoria: registrada de verdade, sem ator inventado
+
+`public.log_audit` já cobre este caso. Quando `current_app_user_id()` é nulo —
+que é exatamente a situação do SQL Editor, onde não há sessão de usuário da
+aplicação — ela grava `actor_type = 'system'` com `actor_user_id` e
+`actor_employee_id` **nulos**. O esquema aceita isso: o `check` de `actor_type`
+admite `user`, `system` e `customer`, e as colunas de ator são nuláveis.
+
+Portanto o bootstrap **é auditável honestamente**, e deve ser auditado: uma
+chamada a `log_audit` na mesma transação, com ação própria de bootstrap,
+entidade `app_users`, o id criado, e no motivo a frase que identifica o ato
+como provisionamento inicial do primeiro Owner.
+
+**Não há exceção de bootstrap a documentar, e nenhum ator é falsificado:** o
+ator é o sistema, porque foi mesmo o sistema — não havia usuário da aplicação
+para ser ator, e é essa a verdade registrada.
+
+#### Evidência de sucesso
+
+- 1 `employee` ativo, 1 `app_user` ativo, **exatamente 1** linha em
+  `user_roles`, apontando para Owner/Admin;
+- 39 de 39 permissões efetivas para esse usuário;
+- nenhuma outra conta com papel;
+- login e `/admin` funcionando (conferido depois de B6);
+- 1 registro em `audit_logs` com `actor_type = 'system'` marcando o bootstrap.
+
+#### Rollback
+
+Remover, na ordem inversa e em transação, a linha de `user_roles`, o
+`app_user` e o `employee`; e apagar a conta no painel do Auth. O registro de
+auditoria do bootstrap **permanece** — auditoria não se apaga (CLAUDE.md §33),
+e um bootstrap desfeito é fato tão relevante quanto um bem-sucedido.
 
 ### B6 — Deploy na Vercel
 
