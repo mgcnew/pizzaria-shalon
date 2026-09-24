@@ -2174,6 +2174,86 @@ permanente.
 **Onde foi formalizada.** `08-BOOTSTRAP-PRODUCAO.md` §9.
 
 ---
+
+### D-2026-09-24-72 — O replay das 109 migrations está provado em banco virgem
+
+**O que foi provado.** As 109 migrations do repositório aplicam limpo em um
+banco Supabase recém-criado, e o esquema resultante é funcionalmente
+equivalente ao de desenvolvimento. Esta é a **primeira vez** que o replay
+completo foi verificado ponta a ponta — o projeto descartável anterior parou
+em 51 de 109 (`D-2026-09-24-71`).
+
+**Onde.** Projeto temporário `shalon-replay-ensaio`, Free, `sa-east-1`, criado
+vazio e confirmado vazio antes do replay: 0 tabelas, 0 funções, 0 buckets,
+0 contas de Auth, schema `supabase_migrations` inexistente.
+
+**Como.** `supabase db push` pela CLI, conforme a decisão D-A do Gate 11.3A.
+A escolha da CLI se pagou: **as 109 versões gravadas correspondem exatamente
+aos nomes dos arquivos**, zero divergência nos dois sentidos. A anomalia que
+existe em desenvolvimento — versões com timestamp próprio nas migrations
+aplicadas pelo conector — **não se reproduziu**.
+
+**Validação estrutural, item a item contra a linha de base:**
+
+| Item | Esperado | Obtido |
+|---|---|---|
+| Migrations | 109 | **109** |
+| Tabelas em `public` | 61 | **61** |
+| Com RLS ativo | 61 | **61** |
+| Com `force row level security` | 60 | **60** |
+| Única sem `force` | `server_secrets` | **`server_secrets`** |
+| Policies em `public` | 141 | **141** |
+| Policies em `storage.objects` | 9 | **9** |
+| Funções em `public` | 151 | **151** |
+| Permissões | 39 | **39** |
+| Papéis de sistema | 2 | **2** |
+| Permissões do Owner/Admin | 39 | **39** |
+| Permissões do Atendente | 18 | **18** |
+| Formas de pagamento | 6 | **6** |
+| Transições de estado | 30 | **30** |
+| Buckets | `catalogo` público, `comprovantes` privado | **idêntico** |
+| `server_secrets` | 1 linha | **1** |
+
+**Superfície de segurança, medida pelo mesmo método nos dois bancos:**
+90 `SECURITY DEFINER` · 61 `SECURITY INVOKER` · 14 definer alcançáveis por
+`anon` · 72 por `authenticated` · **0 com `EXECUTE` para `public`** · **0
+definer sem `search_path`**. Números **idênticos** em desenvolvimento e no
+ensaio.
+
+**Regressão funcional: 11 de 11 suítes versionadas, 1.032 de 1.032 cenários,
+zero falhas.**
+
+| Suíte | Cenários |
+|---|---:|
+| `rls_fase2` | 48 |
+| `rls_fase3` | 155 |
+| `publico_fase4` | 96 |
+| `midia_publica_fase4b` | 19 |
+| `pedidos_fase5` | 66 |
+| `operacao_fase6` | 80 |
+| `pedido_manual_fase6` | 60 |
+| `caixa_fase7` | 174 |
+| `entregas_fase8` | 112 |
+| `equipe_fase8b` | 120 |
+| `inteligencia_fase9` | 102 |
+| **total** | **1.032** |
+
+**Divergências encontradas: nenhuma.** Nem estrutural, nem funcional.
+
+**O que o banco contém, e por quê.** Depois das onze suítes — todas em
+transação com `rollback` — o estado é o mesmo do pós-replay: zero pedidos,
+clientes, pagamentos, funcionários, usuários, sessões de caixa, produtos,
+configuração de loja, contas de Auth e objetos de Storage. As duas contagens
+não-zero nasceram das próprias migrations: **5 categorias** (o esqueleto do
+catálogo) e **15 registros de auditoria**, todos de ator `system`, gerados
+pelos seeds de `role_permissions` e `payment_methods`. Nenhum rollback vazou.
+
+**Nenhuma migration histórica foi alterada** para o replay passar, e nenhuma
+foi criada, modificada ou removida durante o ensaio.
+
+**Onde foi formalizada.** `08-BOOTSTRAP-PRODUCAO.md` §9.
+
+---
 ---
 
 # Como registrar uma nova decisão

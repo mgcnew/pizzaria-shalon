@@ -690,6 +690,24 @@ Em nenhum momento há três projetos ativos.
 **Estado estável final: DEV + PROD.** É o regime permanente, e ele consome os
 dois slots.
 
+### Resultado do ensaio — 24/09/2026
+
+**Executado e aprovado.** Os passos 1 a 7 da tabela acima foram feitos:
+evidência do descartável antigo preservada (`D-2026-09-24-71`), slot liberado,
+`shalon-replay-ensaio` criado vazio, replay das 109 por `supabase db push`,
+B3 completo e as onze suítes versionadas.
+
+**109 de 109 migrations**, com `schema_migrations.version` **idêntico aos
+nomes dos arquivos** — a CLI eliminou a divergência que existe em
+desenvolvimento. **B3 bateu item a item.** **1.032 de 1.032 cenários passaram,
+em 11 de 11 suítes.** **Zero divergências.**
+
+O registro completo, com todas as contagens, está em `D-2026-09-24-72`.
+
+O projeto de ensaio **permanece intacto** por decisão do Gate 11.3A: ele é a
+referência temporária contra a qual `pizzaria-shalon-prod` será comparado.
+Os passos 8 a 11 da tabela dependem da autorização do Gate 11.3B.
+
 ### Consequência a aceitar desde já
 
 Depois do go-live **não sobra slot para ensaio**. Todo ensaio futuro de
