@@ -991,46 +991,85 @@ select set_config('teste.lanc_comp',
      'tipo','expense','categoria_id', current_setting('teste.cat_desp', true),
      'valor', 18, 'descricao','Despesa com comprovante')) ->> 'lancamento_id'), true);
 
+-- O caminho do comprovante deixou de ser texto livre (migration 0104,
+-- D-2026-09-23-68). Ele tem forma normativa — `financeiro/<lancamento>/<uuid>.<ext>`
+-- — e o objeto precisa EXISTIR no bucket: a RPC confere as duas coisas, em vez
+-- de confiar no que o cliente mandou. Por isso os caminhos deste bloco passam
+-- a ser derivados do lancamento, e o upload e simulado inserindo a linha em
+-- `storage.objects` que o upload real criaria. A insercao roda como a Dona,
+-- pelo papel `authenticated`, entao ela passa pela policy de INSERT do
+-- Storage de verdade: se o namespace estivesse errado, ela seria recusada
+-- aqui, antes de chegar a RPC.
+select set_config('teste.c1', 'financeiro/' || current_setting('teste.lanc_comp', true)
+  || '/aaaaaaaa-0000-0000-0000-0000000000a1.pdf', true);
+select set_config('teste.c2', 'financeiro/' || current_setting('teste.lanc_comp', true)
+  || '/aaaaaaaa-0000-0000-0000-0000000000a2.webp', true);
+select set_config('teste.c3', 'financeiro/' || current_setting('teste.lanc_comp', true)
+  || '/aaaaaaaa-0000-0000-0000-0000000000a3.pdf', true);
+select set_config('teste.c4', 'financeiro/' || current_setting('teste.lanc_comp', true)
+  || '/aaaaaaaa-0000-0000-0000-0000000000a4.pdf', true);
+
+insert into storage.objects (bucket_id, name)
+values ('comprovantes', current_setting('teste.c1', true)),
+       ('comprovantes', current_setting('teste.c2', true)),
+       ('comprovantes', current_setting('teste.c3', true)),
+       ('comprovantes', current_setting('teste.c4', true));
+
+-- A regra 3 da 0104: caminho bem formado NAO basta, ele tem de ser o caminho
+-- DAQUELE lancamento. Um comprovante nao migra de dono.
+select pg_temp.checar('caminho de OUTRO lancamento e recusado', 'Arquivo não identificado.',
+  (public.anexar_comprovante(current_setting('teste.lanc_comp', true)::uuid,
+     jsonb_build_object('caminho','financeiro/' || current_setting('teste.lanc', true)
+                        || '/aaaaaaaa-0000-0000-0000-0000000000a1.pdf',
+                        'mime','application/pdf')) ->> 'erro'));
+
+-- A regra 4: caminho perfeito cujo objeto nao existe tambem e recusado.
+select pg_temp.checar('caminho sem objeto no bucket e recusado', 'Arquivo não identificado.',
+  (public.anexar_comprovante(current_setting('teste.lanc_comp', true)::uuid,
+     jsonb_build_object('caminho','financeiro/' || current_setting('teste.lanc_comp', true)
+                        || '/aaaaaaaa-0000-0000-0000-0000000000ff.pdf',
+                        'mime','application/pdf')) ->> 'erro'));
+
 select pg_temp.checar('anexar sem caminho e recusado', 'Arquivo não identificado.',
   (public.anexar_comprovante(current_setting('teste.lanc_comp', true)::uuid,
      '{"mime":"application/pdf"}'::jsonb) ->> 'erro'));
 
 select pg_temp.checar('anexa comprovante ao lancamento', 'true',
   (public.anexar_comprovante(current_setting('teste.lanc_comp', true)::uuid,
-     jsonb_build_object('caminho','lancamentos/teste/primeiro.pdf',
+     jsonb_build_object('caminho',current_setting('teste.c1', true),
                         'mime','application/pdf','bytes', 1024,
                         'nome','recibo.pdf')) ->> 'ok'));
 
 select pg_temp.checar('o vinculo aponta para o ativo criado', 'true',
   (select (e.attachment_asset_id = m.id)::text
      from public.financial_entries e
-     join public.media_assets m on m.storage_path = 'lancamentos/teste/primeiro.pdf'
+     join public.media_assets m on m.storage_path = current_setting('teste.c1', true)
     where e.id = current_setting('teste.lanc_comp', true)::uuid));
 
 select pg_temp.checar('o ativo nasce como comprovante financeiro', 'financial_receipt',
   (select asset_type from public.media_assets
-    where storage_path = 'lancamentos/teste/primeiro.pdf'));
+    where storage_path = current_setting('teste.c1', true)));
 
 select pg_temp.checar('o ativo aponta para o bucket privado', 'comprovantes',
   (select bucket from public.media_assets
-    where storage_path = 'lancamentos/teste/primeiro.pdf'));
+    where storage_path = current_setting('teste.c1', true)));
 
 select pg_temp.checar('a listagem traz o comprovante', 'recibo.pdf',
   (select l -> 'comprovante' ->> 'nome'
      from jsonb_array_elements(public.lancamentos_financeiros('{}'::jsonb)) l
     where l ->> 'id' = current_setting('teste.lanc_comp', true)));
 
-select pg_temp.checar('substituir devolve o caminho anterior', 'lancamentos/teste/primeiro.pdf',
+select pg_temp.checar('substituir devolve o caminho anterior', current_setting('teste.c1', true),
   (public.anexar_comprovante(current_setting('teste.lanc_comp', true)::uuid,
-     jsonb_build_object('caminho','lancamentos/teste/segundo.webp',
+     jsonb_build_object('caminho',current_setting('teste.c2', true),
                         'mime','image/webp','bytes', 2048,
                         'nome','foto.webp')) ->> 'anterior_path'));
 
 select pg_temp.checar('a referencia antiga nao fica pendurada', '0',
   (select count(*)::text from public.media_assets
-    where storage_path = 'lancamentos/teste/primeiro.pdf'));
+    where storage_path = current_setting('teste.c1', true)));
 
-select pg_temp.checar('o lancamento aponta para o comprovante novo', 'lancamentos/teste/segundo.webp',
+select pg_temp.checar('o lancamento aponta para o comprovante novo', current_setting('teste.c2', true),
   (select m.storage_path from public.media_assets m
      join public.financial_entries e on e.attachment_asset_id = m.id
     where e.id = current_setting('teste.lanc_comp', true)::uuid));
@@ -1043,7 +1082,7 @@ set local request.jwt.claims = '{"sub":"88888888-2222-2222-2222-222222222222","r
 select pg_temp.checar('atendente NAO anexa comprovante',
   'Você não tem permissão para anexar comprovante.',
   (public.anexar_comprovante(current_setting('teste.lanc_comp', true)::uuid,
-     jsonb_build_object('caminho','lancamentos/teste/invasor.pdf',
+     jsonb_build_object('caminho',current_setting('teste.c4', true),
                         'mime','application/pdf')) ->> 'erro'));
 
 select pg_temp.checar('atendente NAO remove comprovante',
@@ -1072,7 +1111,7 @@ set local request.jwt.claims = '{"sub":"88888888-1111-1111-1111-111111111111","r
 select pg_temp.checar('remocao sem motivo e recusada', 'Informe o motivo da remoção.',
   (public.remover_comprovante(current_setting('teste.lanc_comp', true)::uuid, '') ->> 'erro'));
 
-select pg_temp.checar('remocao devolve o caminho do objeto', 'lancamentos/teste/segundo.webp',
+select pg_temp.checar('remocao devolve o caminho do objeto', current_setting('teste.c2', true),
   (public.remover_comprovante(current_setting('teste.lanc_comp', true)::uuid,
      'Anexei o arquivo errado') ->> 'caminho'));
 
@@ -1081,20 +1120,20 @@ select pg_temp.checar('o lancamento fica sem comprovante', 'true',
     where id = current_setting('teste.lanc_comp', true)::uuid));
 
 select public.anexar_comprovante(current_setting('teste.lanc_comp', true)::uuid,
-  jsonb_build_object('caminho','lancamentos/teste/final.pdf',
+  jsonb_build_object('caminho',current_setting('teste.c3', true),
                      'mime','application/pdf','bytes', 900, 'nome','final.pdf'));
 
 select public.reverter_lancamento(current_setting('teste.lanc_comp', true)::uuid,
   'Lancamento indevido');
 
-select pg_temp.checar('o estorno NAO apaga a evidencia', 'lancamentos/teste/final.pdf',
+select pg_temp.checar('o estorno NAO apaga a evidencia', current_setting('teste.c3', true),
   (select m.storage_path from public.media_assets m
      join public.financial_entries e on e.attachment_asset_id = m.id
     where e.id = current_setting('teste.lanc_comp', true)::uuid));
 
 select pg_temp.checar('lancamento estornado NAO troca de comprovante', 'true',
   (public.anexar_comprovante(current_setting('teste.lanc_comp', true)::uuid,
-     jsonb_build_object('caminho','lancamentos/teste/depois.pdf',
+     jsonb_build_object('caminho',current_setting('teste.c4', true),
                         'mime','application/pdf')) ->> 'congelado'));
 
 select pg_temp.checar('lancamento estornado NAO perde o comprovante', 'true',

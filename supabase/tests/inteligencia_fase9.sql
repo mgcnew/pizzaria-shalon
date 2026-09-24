@@ -213,6 +213,33 @@ begin
 end;
 $$;
 
+-- Criada AQUI, e nao mais adiante: ela e usada pela massa controlada
+-- logo abaixo. Definida depois do uso, a suite abortava antes do
+-- primeiro cenario (corrigido na Fase 10).
+-- Pedido público, que PARA em `waiting_store_confirmation` (RN-STATE-001):
+-- pedido recebido não é pedido aceito.
+create or replace function pg_temp.pedido_do_site(p_nome text, p_whats text)
+returns uuid language plpgsql security definer as $$
+declare v_idem text := gen_random_uuid()::text; v_r jsonb;
+begin
+  v_r := public.criar_pedido(jsonb_build_object(
+    'idempotency_key', v_idem,
+    'tracking_token', md5(v_idem) || md5(v_idem || ':4'),
+    'origem','shalon_link','modalidade','pickup',
+    'cliente', jsonb_build_object('nome', p_nome, 'whatsapp', p_whats,
+                                  'consentimento_marketing', true),
+    'itens', jsonb_build_array(jsonb_build_object(
+      'produto_id','f9990003-0000-0000-0000-000000000003',
+      'variacao_id','f9990013-0000-0000-0000-000000000013','quantidade',1)),
+    'pagamento', jsonb_build_object('forma_id', current_setting('teste.dinheiro', true))
+  ), current_setting('teste.segredo', true));
+  if not coalesce((v_r ->> 'ok')::boolean, false) then
+    raise exception 'fixture: pedido do site recusado: %', v_r;
+  end if;
+  return (v_r ->> 'pedido_id')::uuid;
+end;
+$$;
+
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"a9990001-0000-0000-0000-000000000001","role":"authenticated"}';
 
@@ -338,30 +365,6 @@ select pg_temp.checar('base zero devolve percentual nulo', '(null)',
 -- Criada FORA do papel `authenticated` de propósito: uma função SECURITY
 -- DEFINER roda como o dono, e o dono é quem a criou.
 reset role;
--- Pedido público, que PARA em `waiting_store_confirmation` (RN-STATE-001):
--- pedido recebido não é pedido aceito.
-create or replace function pg_temp.pedido_do_site(p_nome text, p_whats text)
-returns uuid language plpgsql security definer as $$
-declare v_idem text := gen_random_uuid()::text; v_r jsonb;
-begin
-  v_r := public.criar_pedido(jsonb_build_object(
-    'idempotency_key', v_idem,
-    'tracking_token', md5(v_idem) || md5(v_idem || ':4'),
-    'origem','shalon_link','modalidade','pickup',
-    'cliente', jsonb_build_object('nome', p_nome, 'whatsapp', p_whats,
-                                  'consentimento_marketing', true),
-    'itens', jsonb_build_array(jsonb_build_object(
-      'produto_id','f9990003-0000-0000-0000-000000000003',
-      'variacao_id','f9990013-0000-0000-0000-000000000013','quantidade',1)),
-    'pagamento', jsonb_build_object('forma_id', current_setting('teste.dinheiro', true))
-  ), current_setting('teste.segredo', true));
-  if not coalesce((v_r ->> 'ok')::boolean, false) then
-    raise exception 'fixture: pedido do site recusado: %', v_r;
-  end if;
-  return (v_r ->> 'pedido_id')::uuid;
-end;
-$$;
-
 create or replace function pg_temp.cadencia(p_whats text)
 returns text language sql security definer as $$
   select public.classificar_cliente(p.pedidos, p.intervalo_tipico, p.dias_sem_comprar)

@@ -107,7 +107,11 @@ insert into public.pizza_sizes (id, name, slice_count, max_flavors, sort_order) 
 
 -- Produtos: cada SABOR é um produto (RN-PIZZA-001).
 insert into public.products (id, category_id, product_type, name, slug, base_price, sort_order)
-select 'eeeeeeee-0000-0000-0000-00000000000' || n, c.id, t, nome, slug, preco, n::integer
+-- `v.slug`, qualificado: `categories` tambem tem uma coluna `slug`, e sem o
+-- prefixo o PostgreSQL recusa a referencia como ambigua, abortando a suite
+-- inteira na massa. O `::uuid` tem a mesma origem: a concatenacao produz
+-- `text`, e `products.id` e `uuid` (ambos corrigidos na Fase 10).
+select ('eeeeeeee-0000-0000-0000-00000000000' || n)::uuid, c.id, t, nome, v.slug, preco, n::integer
 from public.categories c,
      (values
        ('1','pizza',  'Calabresa Teste',  'calabresa-teste',  null::numeric),
