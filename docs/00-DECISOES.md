@@ -2340,6 +2340,54 @@ segredo entrou em arquivo versionado.
 **Onde foi formalizada.** `08-BOOTSTRAP-PRODUCAO.md` §9 e §7 (passos B1 a B3).
 
 ---
+
+### D-2026-09-24-74 — Como se lê o segredo de origem em ambiente novo
+
+**O problema, encontrado ao preparar B4.** O `.env.example` mandava obter o
+segredo de origem assim:
+
+```sql
+select public.ler_segredo_do_servidor('checkout_origem');
+```
+
+Essa função termina com `and public.has_permission('settings.manage')`, o que
+exige um usuário interno autenticado. **Em ambiente recém-criado não existe
+nenhum** — o primeiro Owner só nasce em B5. Verificado em
+`pizzaria-shalon-prod` em 24/09/2026: `has_permission('settings.manage')`
+devolveu `false` e a função devolveu `NULL`.
+
+Seguir a instrução ao pé da letra produziria uma **dependência circular**: B4
+precisaria de B5, que só se verifica depois de B6, que precisa de B4.
+
+**A decisão.** O procedimento passa a ter dois momentos declarados:
+
+1. **Bootstrap, antes do primeiro Owner** — leitura administrativa direta no
+   SQL Editor, onde a sessão roda como `postgres`, dono da tabela:
+
+   ```sql
+   select valor from public.server_secrets where chave = 'checkout_origem';
+   ```
+
+2. **Depois do Owner** — a via normal e **preferida**, com `settings.manage`:
+   `select public.ler_segredo_do_servidor('checkout_origem')`.
+
+**Por que a leitura direta funciona, e por que isso não é brecha.**
+`server_secrets` tem RLS ligada e **sem `force`**, deliberadamente desde a
+migration 0040, porque as funções `SECURITY DEFINER` precisam conseguir ler a
+tabela. A consequência é que o dono do banco também lê — e quem abre o SQL
+Editor do projeto já é o dono. Não há privilégio novo sendo concedido: é o
+mesmo acesso administrativo que criou o projeto.
+
+**Nenhuma migration histórica foi alterada.** A 0040 está correta; o que
+faltava era a documentação descrever os dois momentos. Corrigir o passado para
+acomodar uma instrução incompleta seria o caminho errado.
+
+**Onde foi formalizada.** `.env.example` e `08-BOOTSTRAP-PRODUCAO.md` §6 e B4.
+
+**Impacto no design.** Nenhum. Nada no produto muda; muda o texto que descreve
+como configurar um ambiente novo.
+
+---
 ---
 
 # Como registrar uma nova decisão

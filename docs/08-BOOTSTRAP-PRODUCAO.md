@@ -270,9 +270,10 @@ neste gate.**
 ### Três avisos que não são formalidade
 
 1. **O segredo de origem de produção será diferente do de DEV.** Ele é gerado
-   aleatoriamente pela própria migration, nunca esteve no Git, e é lido com
-   `select public.ler_segredo_do_servidor('checkout_origem')` por quem estiver
-   autenticado no SQL Editor. Copiar o de DEV seria erro.
+   aleatoriamente pela própria migration, dentro de cada projeto, e nunca
+   esteve no Git. **Copiar o de DEV seria erro.** Como lê-lo depende de já
+   existir Owner no ambiente — leitura direta em bootstrap, função depois de
+   B5; os dois casos estão detalhados em **B4**.
 2. **`SUPABASE_SERVICE_ROLE_KEY` não entra em lugar nenhum** — nem na Vercel,
    nem em `.env`, nem no código (CLAUDE.md §13).
 3. **Nada de segredo em variável `NEXT_PUBLIC_*`.** As duas públicas acima são
@@ -370,13 +371,57 @@ passo, a sequência da seção 9 precisa ter liberado um slot.
 ### B4 — Segredo de origem e variáveis
 
 - **Entrada:** B3 aprovado.
-- **Ação:** ler o segredo gerado pelo replay e cadastrar as variáveis na
-  Vercel (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+- **Ação:** obter os três valores e cadastrá-los na Vercel
+  (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
   `SHALON_CHECKOUT_ORIGIN_SECRET`). `GOOGLE_MAPS_SERVER_KEY` fica pendente
   até B8.
 - **Resultado:** ambiente de produção configurável.
 - **Evidência:** as três variáveis presentes, nenhum `service_role` cadastrado.
 - **Rollback:** remover as variáveis; nada foi publicado ainda.
+
+> **Cadastrar variável não muda o site no ar.** O efeito só aparece no
+> redeploy, que é B6. Por isso B4 é reversível e de baixo risco — mas ainda é
+> alteração na Vercel, e depende de autorização.
+
+#### Como ler o segredo de origem, e por que a ordem importa
+
+O valor nasce aleatório **dentro de cada projeto**, pela migration 0040. O de
+produção é diferente do de desenvolvimento; copiar um para o outro é erro.
+
+**A via documentada no `.env.example` não funciona em ambiente novo.**
+`ler_segredo_do_servidor` termina com:
+
+```sql
+where s.chave = p_chave and public.has_permission('settings.manage')
+```
+
+Isso exige um usuário interno autenticado com `settings.manage` — e em
+ambiente recém-criado não existe nenhum, porque o primeiro Owner só nasce em
+**B5**. Verificado em produção em 24/09/2026: `has_permission('settings.manage')`
+devolveu `false` e a função devolveu `NULL`.
+
+Seguir a via documentada ao pé da letra criaria uma **dependência circular**:
+B4 dependeria de B5, que só se verifica depois de B6, que depende de B4.
+
+**A saída, que não é atalho.** No SQL Editor a sessão roda como `postgres`,
+dono da tabela. `server_secrets` tem RLS ligada e **sem `force`**, e isso é
+deliberado desde a 0040 — as funções `SECURITY DEFINER` precisam conseguir
+ler. Então, em bootstrap:
+
+```sql
+select valor from public.server_secrets where chave = 'checkout_origem';
+```
+
+**Depois que o Owner existir (B5), a via normal passa a valer e é a
+preferida:** `select public.ler_segredo_do_servidor('checkout_origem')`, com
+`settings.manage`. A leitura direta é procedimento de bootstrap, não rotina.
+
+**Nada disso justifica alterar migration histórica.** A 0040 está correta como
+está; o que faltava era a documentação descrever os dois momentos.
+
+**Em qualquer das duas vias:** o valor vai do SQL Editor direto para o
+gerenciador de senhas e para a variável de ambiente. Nunca para arquivo
+versionado, chat ou ticket.
 
 ### B5 — Primeiro acesso (Owner), por operação administrativa deliberada
 
