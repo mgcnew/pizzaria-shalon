@@ -704,9 +704,29 @@ em 11 de 11 suítes.** **Zero divergências.**
 
 O registro completo, com todas as contagens, está em `D-2026-09-24-72`.
 
-O projeto de ensaio **permanece intacto** por decisão do Gate 11.3A: ele é a
-referência temporária contra a qual `pizzaria-shalon-prod` será comparado.
-Os passos 8 a 11 da tabela dependem da autorização do Gate 11.3B.
+### Resultado de produção — 24/09/2026
+
+**Passos 8 a 11 executados.** `pizzaria-shalon-prod` (`ucekrrjkkyiqmowpodpr`)
+existe em `sa-east-1`, Free, com as **109 migrations aplicadas por
+`supabase db push`** e **correspondência exata de versões**. O **B3 bateu item
+a item contra o ensaio**, incluindo a superfície de `SECURITY DEFINER` e os
+advisors. **Zero divergências. Zero dado comercial. Zero Owner.**
+
+Registro completo em `D-2026-09-24-73`.
+
+**Uma correção à tabela acima, para quem a reler.** O passo 8 previa *remover*
+o ensaio; ele foi **pausado**, não removido — pausar libera o slot do mesmo
+jeito e é reversível. Duas descobertas da execução merecem registro:
+
+1. **O limite de 2 projetos ativos segue a conta de usuário, não a
+   organização.** Criar uma segunda organização Free **não** contorna. A
+   mensagem do Supabase é explícita quanto a isso.
+2. **Remover um projeto já pausado não libera nada**, porque pausado nunca
+   ocupou slot. O espaço só aparece ao pausar, remover ou fazer upgrade de um
+   projeto **ativo**.
+
+**Estado estável agora: `pizzaria-shalon-dev` + `pizzaria-shalon-prod`, 2/2.**
+O ensaio fica pausado e preservado; reativá-lo exigirá pausar um dos dois.
 
 ### Consequência a aceitar desde já
 

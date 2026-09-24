@@ -2254,6 +2254,92 @@ foi criada, modificada ou removida durante o ensaio.
 **Onde foi formalizada.** `08-BOOTSTRAP-PRODUCAO.md` §9.
 
 ---
+
+### D-2026-09-24-73 — `pizzaria-shalon-prod` criado e com o esquema aplicado
+
+**O que existe agora.** O projeto Supabase de **produção**, `pizzaria-shalon-prod`
+(`ucekrrjkkyiqmowpodpr`), em `sa-east-1`, no plano **Free**, com as 109
+migrations aplicadas e o esquema conferido. Ele está **vazio de dado
+comercial** e ainda **não tem Owner**.
+
+**Como o slot foi obtido.** O plano Free admite **2 projetos ativos**, e o
+limite segue a conta de usuário, não a organização — criar outra organização
+Free **não** contorna. A criação foi recusada duas vezes, com a mensagem
+explícita do Supabase, antes e depois de Marcelo remover o descartável antigo
+(que já estava pausado e, por isso, nunca ocupava slot). O espaço veio de
+**pausar o `shalon-replay-ensaio`**, com autorização.
+
+O ensaio fica **pausado e preservado**, reativável. A comparação não depende
+dele estar no ar: os números validados estão em `D-2026-09-24-72`.
+
+**Como as migrations foram aplicadas.** `supabase db push`, o mesmo mecanismo
+validado no ensaio, executado por Marcelo na máquina dele — as credenciais do
+banco nunca passaram pelo repositório nem por esta conversa.
+
+**Correspondência de versões: exata.** 109 locais × 109 remotas, primeira
+`20260918192103`, última `20260923170000`, **zero faltando e zero sobrando**.
+A anomalia de versão que existe em desenvolvimento não se reproduziu, como já
+não se reproduzira no ensaio.
+
+**B3 estrutural — produção × ensaio, item a item:**
+
+| Item | Ensaio | **Produção** |
+|---|---|---|
+| Migrations | 109 | **109** |
+| Tabelas em `public` | 61 | **61** |
+| Com RLS | 61 | **61** |
+| Com `force row level security` | 60 | **60** |
+| Única sem `force` | `server_secrets` | **`server_secrets`** |
+| Policies em `public` | 141 | **141** |
+| Policies em `storage.objects` | 9 | **9** |
+| Funções em `public` | 151 | **151** |
+| Permissões | 39 | **39** |
+| Papéis de sistema | 2 | **2** |
+| Permissões do Owner/Admin | 39 | **39** |
+| Permissões do Atendente | 18 | **18** |
+| Formas de pagamento | 6 | **6** |
+| Transições de estado | 30 | **30** |
+| Buckets | `catalogo` público, `comprovantes` privado | **idêntico** |
+| `server_secrets` | 1 | **1** |
+| `SECURITY DEFINER` / `INVOKER` | 90 / 61 | **90 / 61** |
+| Definer alcançável por `anon` / `authenticated` | 14 / 72 | **14 / 72** |
+| Com `EXECUTE` para `public` | 0 | **0** |
+| Definer sem `search_path` | 0 | **0** |
+
+**Advisors de segurança:** mesmo perfil — 1 INFO (`server_secrets` com RLS e
+sem policy, que é o deny-by-default deliberado) e os WARN esperados de funções
+definer expostas, nos mesmos 14 e 72. **Nenhum alerta de nível ERROR.**
+
+**Divergências: nenhuma.**
+
+**Conteúdo do banco.** Zero em pedidos, itens, clientes, pagamentos, intenções
+de pagamento, caixas, movimentos, lançamentos, categorias financeiras,
+funcionários, usuários, papéis atribuídos, perfis salariais, livro do
+funcionário, corridas, movimentos internos, contatos, produtos, variações,
+tamanhos, bordas, adicionais, promoções, banners, mídias, configuração de
+loja, horários, faixas de entrega, Pix, alertas, contas de Auth e objetos de
+Storage. **Zero papéis customizados. Zero resíduo de fixture.**
+
+As duas contagens não-zero nasceram das migrations, e são as mesmas do ensaio:
+**5 categorias** (Pizzas Salgadas, Pizzas Doces, Bebidas, Fogazza, Combos) e
+**15 auditorias** de ator `system` — 9 `insert_role_permissions` e
+6 `insert_payment_methods`.
+
+**Suítes funcionais: não repetidas aqui, por decisão.** O runbook prevê B3 em
+produção, não a regressão completa — ela já foi provada no ensaio, sobre o
+mesmo esquema e pelo mesmo mecanismo, com 1.032 de 1.032 cenários. Repetir
+ampliaria escopo sem acrescentar evidência.
+
+**`pizzaria-shalon-dev` permaneceu intocado:** 109 migrations, 278 auditorias,
+última de 23/09 09:16, 2 funcionários, 2 usuários, 18 produtos, 61 tabelas.
+
+**O que NÃO foi feito, e segue pendente de gate:** primeiro Owner, dados reais
+da pizzaria, Google Maps, alteração na Vercel, seeds e `db reset`. Nenhum
+segredo entrou em arquivo versionado.
+
+**Onde foi formalizada.** `08-BOOTSTRAP-PRODUCAO.md` §9 e §7 (passos B1 a B3).
+
+---
 ---
 
 # Como registrar uma nova decisão
