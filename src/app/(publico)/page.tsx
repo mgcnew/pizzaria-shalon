@@ -128,6 +128,21 @@ export default async function Home({
 
   return (
     <>
+      {/*
+        O h1 da página não pode morar no carrossel.
+
+        Antes da Fase 10 o único h1 do cardápio era o título do banner, que é
+        opcional e gira com o slide: em 320, 768 e desktop a página abria com
+        ZERO h1 e a hierarquia começava em h2. Quem navega por cabeçalhos
+        perdia a âncora principal, e ela mudava sozinha a cada rotação.
+
+        Visualmente oculto porque a identidade já está no logo do cabeçalho —
+        acrescentar um título visível seria redesenhar, não corrigir.
+      */}
+      <h1 className="sr-only">
+        Cardápio da {loja?.nome_exibicao ?? loja?.nome ?? "Pizzaria Shalon"}
+      </h1>
+
       <AvisoLojaFechada loja={loja} />
       <Busca termo="" />
 

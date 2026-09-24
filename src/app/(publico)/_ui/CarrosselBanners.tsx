@@ -83,10 +83,16 @@ export function CarrosselBanners({ banners }: { banners: BannerDoCarrossel[] }) 
         {banner.titulo || banner.corpo ? (
           <div className="absolute inset-x-0 top-0 p-5 sm:p-8">
             <div className="max-w-[min(78%,560px)] [text-shadow:0_2px_10px_rgb(0_0_0/0.65)]">
+              {/*
+                `h2`, não `h1`: o título do banner é opcional e gira com o
+                slide — não serve de cabeçalho principal do documento. O h1
+                da página é fixo e vive em `page.tsx`. As classes são as
+                mesmas, então a aparência não muda em nada.
+              */}
               {banner.titulo ? (
-                <h1 className="mb-0 text-balance font-display text-[clamp(25px,5vw,42px)] font-extrabold leading-[1.02] text-dark-ink">
+                <h2 className="mb-0 text-balance font-display text-[clamp(25px,5vw,42px)] font-extrabold leading-[1.02] text-dark-ink">
                   {banner.titulo}
-                </h1>
+                </h2>
               ) : null}
               {banner.corpo ? (
                 <p className="mb-0 mt-2 max-w-[42ch] text-[clamp(13px,2.2vw,16px)] leading-[1.45] text-dark-ink-2">
