@@ -586,6 +586,36 @@ final, e o ambiente voltou ao estado anterior.
 
 ---
 
+## Hospedagem e licenciamento — uso comercial no plano Hobby da Vercel
+
+**Aberta.** Não bloqueia desenvolvimento nem go-live. É pendência de
+**licenciamento**, não técnica.
+
+**O fato, da documentação oficial.** A página do plano Hobby afirma, citando
+as diretrizes de uso justo, que o Hobby **restringe os usuários a uso
+não-comercial e pessoal**. A Pizzaria Shalon é operação comercial.
+
+**Situação atual.** A aplicação **já está publicada** e o plano atual é o que
+está em uso. Marcelo decidiu, em 24/09/2026, **não contratar o Pro agora**.
+Essa decisão é dele e está registrada; este documento não a reabre e não
+transforma a pendência em bloqueio artificial.
+
+**O que falta decidir**, quando Marcelo quiser tratar:
+
+1. permanecer como está, ciente do termo;
+2. migrar para um plano que permita uso comercial;
+3. hospedar em outro provedor.
+
+**O que NÃO deve ser feito.** Não travar o go-live por causa disto, e não
+reapresentar a contratação como requisito técnico — ela não é. O risco aqui é
+contratual, não de funcionamento: a aplicação roda igual.
+
+**Nota de custo relacionada.** O plano pago da Vercel oferece o primeiro ano
+de domínio próprio grátis em TLD elegível. Isso é **informação**, não motivo:
+a decisão de domínio ficou explicitamente desvinculada de contratação.
+
+---
+
 ## Estado da Fase 10
 
 **Fase 10 concluída em 24/09/2026.** O hardening executou 11 de 11 suítes SQL
