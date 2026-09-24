@@ -1,7 +1,8 @@
 # 06 — PENDÊNCIAS DE VALIDAÇÃO PARA PRODUÇÃO
 ## Sistema de Gestão e Pedidos — Pizzaria Shalon
 
-**Versão:** 1.2 — aberto em 19/09/2026, Fases 6 e 7 encerradas em 21/09/2026
+**Versão:** 1.3 — aberto em 19/09/2026, Fases 6 e 7 encerradas em 21/09/2026,
+Fase 10 encerrada em 24/09/2026
 **Status:** documento vivo
 **Função:** concentrar, em um lugar só, o que **não impede** o desenvolvimento
 das próximas fases mas **precisa ser resolvido e testado antes da produção**.
@@ -582,6 +583,93 @@ final, e o ambiente voltou ao estado anterior.
    criou os três temporariamente e os removeu. Enquanto for assim, qualquer
    validação futura precisará repetir esse passo, e o checkout público do
    ambiente permanece indisponível.
+
+---
+
+## Estado da Fase 10
+
+**Fase 10 concluída em 24/09/2026.** O hardening executou 11 de 11 suítes SQL
+versionadas, 1.032 de 1.032 cenários, 139 de 139 testes Vitest, typecheck e
+lint limpos, com 109 migrations reconciliadas, zero fixture residual, 278
+`audit_logs` preservados e árvore Git limpa. O registro completo do gate está
+em `05-PLANO-IMPLEMENTACAO.md` §14.8.
+
+Esta seção guarda apenas o que **continua sem validação real** depois dela.
+Nada abaixo foi convertido em "testado".
+
+### O que segue sem validação real
+
+1. **A-05 — Google Maps real.** Seção "Google Maps e validação E2E da Fase 5"
+   neste documento. O provedor de rota tem abstração interna e teste com
+   provedor falso; a API verdadeira nunca respondeu a este código.
+
+2. **A-20 — criação de conta Auth de funcionário.** O sistema **vincula** uma
+   conta que já existe no Auth; não a cria. Criar exigiria `service_role`
+   (CLAUDE.md §13) e uma política de senha inicial/recuperação que não está
+   normatizada. A decisão do mecanismo continua em aberto em `00-DECISOES.md`.
+
+3. **PI-F10-01 — `DELETE` pela API de Storage com identidade real.** Seção
+   própria, logo abaixo. O comportamento está comprovado no banco, não na API.
+
+4. **POC física da impressora térmica 58 mm.** Seção "POC da impressora
+   térmica 58 mm" neste documento. Nenhum papel saiu de nenhuma impressora.
+
+5. **Concorrência multi-sessão real.** O que a Fase 10 exercitou foi
+   idempotência por chave, constraints únicas, comportamento dos locks e
+   atomicidade transacional — tudo em **sessão única**, porque o conector
+   disponível oferece uma sessão por vez. Os cenários de §14.4 do plano que
+   exigem dois atores simultâneos (dois atendentes aceitando o mesmo pedido,
+   dois fechamentos do mesmo caixa, dois acertos da mesma saída, dupla
+   confirmação/reversão) **não** foram exercitados por corrida real.
+
+   **Como validar.** Duas sessões autenticadas de verdade, disparando a mesma
+   operação com sobreposição temporal deliberada, observando qual ganha e o
+   que a perdedora recebe. Duas chamadas sequenciais não são teste de
+   concorrência.
+
+6. **TOCTOU de A-21 não exercitado por corrida real.** A correção de
+   D-2026-09-23-69 faz `definir_permissoes_do_papel` travar a linha do papel
+   com `for update` e `definir_papeis` travar as mesmas linhas com
+   `for share`. A leitura do código e o comportamento dos comandos foram
+   verificados; **a janela entre validar e atribuir não foi atacada por duas
+   transações concorrentes de verdade**. Leitura de lock não é corrida.
+
+   **Como validar.** Transação A abre, valida o conjunto e segura; transação B
+   tenta engordar o mesmo papel; observar que B espera A e que o resultado
+   final não concede permissão que o ator não possuía.
+
+7. **Ausência de prova com volume real de produção.** A medição de desempenho
+   da Fase 10 usou massa descartável de 8.000 pedidos, criada e removida no
+   próprio exercício. Ela demonstrou o gargalo e a correção
+   (`fila_de_pedidos(true)`: 38.689 ms → 592 ms), mas **não** é o dado da
+   Shalon. Repetir as medições com o volume verdadeiro depois do go-live,
+   incluindo as telas analíticas da Fase 9.
+
+8. **Proteção contra senha vazada do Supabase.** O Auth do projeto pode
+   recusar senhas conhecidamente vazadas (verificação contra HaveIBeenPwned),
+   e a opção **não está habilitada**. Não é defeito do código: é configuração
+   de plataforma.
+
+   **O que falta configurar.** Habilitar a proteção contra senha vazada no
+   Auth do projeto de **produção**, e conferir que o fluxo de definição de
+   senha da equipe interna a respeita.
+
+   **Validação obrigatória futura.** Tentar definir uma senha sabidamente
+   vazada e observar a recusa, com mensagem que não vaza detalhe interno
+   (CLAUDE.md §37).
+
+### Duas notas que não são dívida de validação
+
+**Paginação da fila.** Não entrou na Fase 10 por decisão: o gargalo
+demonstrado foi resolvido sem ela, e quantos pedidos encerrados a tela deve
+mostrar é decisão de produto. Não está aqui porque não é algo a "validar" —
+é algo a **decidir**, e por isso pertence a `00-DECISOES.md` quando for a
+hora.
+
+**O projeto Supabase descartável de replay não é DEV nem produção.** Ele
+existe para exercitar o replay das migrations em banco vazio e nada mais.
+Não deve ser confundido com nenhum dos dois em documento, script, variável de
+ambiente ou procedimento, e não deve receber dado real da Shalon.
 
 ---
 

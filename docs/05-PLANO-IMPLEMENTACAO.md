@@ -1,8 +1,8 @@
 # 05 — PLANO DE IMPLEMENTAÇÃO
 ## Sistema de Gestão e Pedidos — Pizzaria Shalon
 
-**Versão:** 1.0  
-**Status:** Plano executivo da V1 — implementação ainda não iniciada  
+**Versão:** 1.1 — Fase 10 concluída em 24/09/2026  
+**Status:** Plano executivo da V1 — Fases 0 a 10 concluídas; Fase 11 (implantação) não iniciada  
 **Documentos normativos anteriores:**
 - `01-DOCUMENTO-MESTRE.md`
 - `02-MODELO-DADOS-SUPABASE.md`
@@ -845,6 +845,68 @@ Validar:
 ## 14.7 Critério de saída
 
 Nenhuma vulnerabilidade crítica conhecida, nenhum cenário central quebrado e performance adequada ao uso mobile real.
+
+## 14.8 Encerramento — 24/09/2026
+
+**Fase 10 concluída em 24/09/2026.** O critério de saída de §14.7 foi
+considerado atendido pelo responsável pelo produto.
+
+### Gate final, medido
+
+| Item | Resultado |
+|---|---|
+| Suítes SQL versionadas | 11 de 11 executadas |
+| Cenários SQL | 1.032 de 1.032 passando |
+| Vitest | 139 de 139 passando, 15 arquivos |
+| `tsc --noEmit` | sem erro |
+| `eslint .` | sem erro |
+| Build e smokes anônimos | validados no checkpoint da fase |
+| Migrations | 109 no Git × 109 aplicadas, reconciliadas |
+| Fixtures residuais no banco | zero |
+| `audit_logs` | 278 registros, preservados |
+| Árvore Git | limpa |
+| Migrations históricas reescritas | nenhuma |
+
+### O que foi corrigido, não contornado
+
+O hardening encontrou e corrigiu defeitos reais em segurança, autorização,
+integridade, privacidade, regras financeiras, checkout, máquina de estados,
+Storage, exportações, entradas hostis, performance, frontend e
+acessibilidade. As correções estão em migrations novas e em commits próprios;
+nenhuma migration aplicada foi editada.
+
+### O que NÃO foi testado, e continua declarado assim
+
+Estes itens **não** foram convertidos em "testado" por nenhuma inferência. A
+lista normativa deles vive em `06-PENDENCIAS-VALIDACAO-PRODUCAO.md`:
+
+1. **A-05** — Google Maps real;
+2. **A-20** — criação de conta Auth de funcionário;
+3. **PI-F10-01** — `DELETE` pela API de Storage com identidade real;
+4. **POC física da impressora térmica 58 mm**;
+5. **concorrência multi-sessão real** — o que foi exercitado foi
+   idempotência, constraints únicas, locks e atomicidade transacional, tudo
+   em sessão única;
+6. **TOCTOU de A-21** — a trava existe e está descrita, mas não foi
+   exercitada por corrida real;
+7. **prova com volume real de produção** — a medição de desempenho usou massa
+   descartável, não dado da Shalon;
+8. **proteção contra senha vazada do Supabase** — permanece para configurar e
+   validar em produção.
+
+Duas análises estáticas não viram teste: leitura de policy não é chamada
+executada, e leitura de lock não é corrida concorrente.
+
+### Duas notas que não são pendência
+
+**Paginação da fila.** A otimização da Fase 10 resolveu o gargalo demonstrado
+— `fila_de_pedidos(true)` de 38.689 ms para 592 ms — sem introduzir paginação.
+Quantos pedidos encerrados a tela deve mostrar, e com que navegação, é decisão
+futura de produto, não de hardening.
+
+**Projeto Supabase descartável de replay.** O projeto usado para replay de
+migrations não é DEV nem produção, e não deve ser confundido com nenhum dos
+dois em documento, script, variável de ambiente ou procedimento.
 
 ---
 

@@ -2084,6 +2084,59 @@ continua administrando e papel de sistema continua protegido.
 e `0107`.
 
 ---
+
+### D-2026-09-24-70 — Fase 10 concluída e aprovada
+
+**A decisão.** O hardening da Fase 10 está suficientemente validado para
+avançar. Fase 10 **concluída em 24/09/2026**.
+
+**Gate final, medido, não inferido.**
+
+| Item | Resultado |
+|---|---|
+| Suítes SQL versionadas | 11 de 11 executadas |
+| Cenários SQL | 1.032 de 1.032 passando |
+| Vitest | 139 de 139 |
+| `tsc --noEmit` / `eslint .` | sem erro |
+| Build e smokes anônimos | validados no checkpoint da fase |
+| Migrations | 109 no Git × 109 aplicadas |
+| Fixtures residuais | zero |
+| `audit_logs` | 278, preservados |
+| Árvore Git | limpa |
+| Migrations históricas reescritas | nenhuma |
+
+**Motivo.** A fase não era de funcionalidade: era de quebrar o que as Fases 1
+a 9 construíram e consertar defeito real. Ela encontrou e corrigiu defeitos em
+segurança, autorização, integridade, privacidade, regras financeiras,
+checkout, máquina de estados, Storage, exportações, entradas hostis,
+performance, frontend e acessibilidade — entre eles quatro funções
+`SECURITY DEFINER` que furavam o RLS do chamador, a escalada de privilégio de
+A-21, o vazamento cruzado do bucket `comprovantes` e um gargalo de 38.689 ms
+na fila de encerrados. Todas as correções vieram por migration nova; nenhuma
+migration aplicada foi editada.
+
+**O que esta decisão NÃO afirma.** Oito itens continuam sem validação real e
+**não** foram convertidos em "testado": A-05 (Google Maps real), A-20 (criação
+de conta Auth de funcionário), PI-F10-01 (`DELETE` pela API de Storage com
+identidade real), POC física da impressora 58 mm, concorrência multi-sessão
+real, TOCTOU de A-21 por corrida real, prova com volume real de produção e a
+proteção contra senha vazada do Supabase. A lista vive em
+`06-PENDENCIAS-VALIDACAO-PRODUCAO.md`, seção "Estado da Fase 10".
+
+**Duas notas registradas para não virarem mal-entendido.** A paginação da fila
+permanece decisão futura de produto — a otimização resolveu o gargalo
+demonstrado sem introduzir paginação arbitrária. E o projeto Supabase
+descartável de replay não é DEV nem produção, e não deve ser confundido com
+nenhum dos dois.
+
+**Onde foi formalizada.** `05-PLANO-IMPLEMENTACAO.md` §14.8 e
+`06-PENDENCIAS-VALIDACAO-PRODUCAO.md` "Estado da Fase 10".
+
+**Impacto no design.** Nenhum. A fase não alterou escopo nem experiência
+aprovada; as únicas mudanças visuais foram correções de acessibilidade sem
+efeito na aparência.
+
+---
 ---
 
 # Como registrar uma nova decisão
