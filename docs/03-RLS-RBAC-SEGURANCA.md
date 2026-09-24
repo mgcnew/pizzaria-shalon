@@ -881,9 +881,48 @@ normatizadas (A-15, hardening da Fase 10). `vincular_acesso` liga um
 funcionário a uma conta **que já existe** e responde `conta_inexistente`
 quando não existe. Registrado como **A-20**.
 
-`role_permissions` — o que cada papel concede — continua com policy direta de
-escrita sob `roles.manage`, sem a restrição de não-escalada. Editar o conteúdo
-de um papel não fazia parte do escopo autorizado. Registrado como **A-21**.
+`role_permissions` — o que cada papel concede — **continuava** com policy
+direta de escrita sob `roles.manage`, sem a restrição de não-escalada. Editar
+o conteúdo de um papel não fazia parte do escopo autorizado na época.
+Registrado como **A-21** e **resolvido na Fase 10** (D-2026-09-23-69).
+
+## 19.8 A-21 resolvida — escalada pelo conteúdo do papel
+
+**A lacuna era explorável, e foi reproduzida.** Ator com `roles.manage` e sem
+`finance.view`/`finance.reverse` conseguiu, por escrita direta em
+`role_permissions`, conceder as duas a outro usuário — inclusive acrescentando
+permissão a um papel **já atribuído**, caminho que `definir_papeis` nunca vê.
+A verificação decisiva não foi a linha gravada, foi o poder efetivo: a vítima
+terminou com `finance.view = true` e `finance.reverse = true`.
+
+**Regra normativa vigente:** *um ator jamais concede — direta ou
+indiretamente — permissão que ele próprio não possui.* Vale para criar papel,
+editar papel, acrescentar permissão, remover e recolocar permissão, atribuir
+papel, atribuir papel a si próprio e escrita direta nas tabelas estruturais.
+
+**Como passou a ser garantido:**
+
+- `role_permissions` não tem mais policy de `INSERT` nem de `DELETE`. Só
+  `SELECT`, que a sessão precisa para montar as permissões efetivas;
+- a única porta de escrita é `definir_permissoes_do_papel`, que valida o
+  **conjunto final** do papel contra as permissões do ator — não o delta.
+  Papel que terminaria com `{A,B,X}` é recusado por `X` mesmo que a operação
+  esteja apenas acrescentando `B`. É o que impede escalada por construção
+  incremental;
+- a mesma função exige que o ator possua o que está **removendo**. Leitura
+  conservadora, registrada como tal em D-2026-09-23-69;
+- papel de sistema não tem as permissões alteradas por essa porta;
+- `user_roles` segue sem policy de escrita: atribuição só por
+  `definir_papeis`, que mantém RN-RBAC-005;
+- **TOCTOU:** `definir_permissoes_do_papel` trava a linha de `roles` com
+  `for update` e `definir_papeis` com `for share`. Validar o conjunto numa
+  transação enquanto outra engorda o papel deixou de ser possível;
+- tudo auditado: `papel_definir_permissoes` grava antes e depois.
+
+**Owner não ganhou bypass.** Ela administra qualquer papel porque possui
+todas as permissões cadastradas — fato do seed, verificável em
+`role_permissions` — e passa pela mesma validação que qualquer outro ator.
+Não existe `if owner then` em lugar nenhum desta regra.
 
 ---
 
