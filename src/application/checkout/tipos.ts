@@ -46,7 +46,12 @@ export type CotacaoEntrega =
       endereco_formatado: string;
       latitude: number;
       longitude: number;
-      confianca: "exata" | "aproximada";
+      /**
+       * `ajustada_no_mapa` só aparece em reuso de coordenada corrigida à mão
+       * (RN-ENT-005): nenhum provedor a produz. A constraint de
+       * `customer_addresses.geocode_confidence` já a aceita desde a Fase 5.
+       */
+      confianca: "exata" | "aproximada" | "ajustada_no_mapa";
       provedor: string;
     }
   | {

@@ -3,9 +3,15 @@
 import { z } from "zod";
 import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
 import {
+  consultaDeEndereco,
   selecionarProvedorDeRotas,
+  type Coordenada,
   type EnderecoParaGeocodificar,
 } from "@/infrastructure/rotas";
+import {
+  consultarEnderecoConhecido,
+  type ConfiancaReutilizavel,
+} from "./cacheDeEndereco";
 import { logger } from "@/lib/logger";
 import { lerSegredoDeOrigem, tokenDeAcompanhamento, SegredoAusente } from "./segredo";
 import type {
@@ -122,24 +128,64 @@ async function localizarEMedir(endereco: EnderecoInformado): Promise<CotacaoEntr
     };
   }
 
-  const geo = await provedor.geocodificar(paraGeocodificar(endereco));
-  if (!geo.ok) {
-    // RN-ENT-003: sem localização confiável, não se inventa coordenada.
-    return {
-      ok: false,
-      motivo:
-        geo.motivo === "nao_encontrado"
-          ? "endereco_nao_encontrado"
-          : geo.motivo === "ambiguo"
-            ? "endereco_ambiguo"
-            : "nao_configurado",
-      erro: geo.mensagem,
-    };
+  const paraBuscar = paraGeocodificar(endereco);
+
+  // CACHE DE COORDENADA (Fase A, D-2026-09-25). Endereço já validado dispensa
+  // a geocodificação — não a rota, que continua sendo medida de verdade.
+  //
+  // Miss é o caminho normal, não exceção: se o cache não responder, não
+  // souber ou desconfiar da própria resposta, o provedor é chamado como
+  // sempre. A otimização não tem como tornar o cálculo menos seguro.
+  const conhecido = await consultarEnderecoConhecido(
+    supabase,
+    paraBuscar,
+    provedor.nome,
+    segredo,
+  );
+
+  let coordenada: Coordenada;
+  let confianca: ConfiancaReutilizavel;
+  let enderecoFormatado: string;
+
+  if (conhecido.encontrado) {
+    // 03 §31: nem endereço, nem CEP, nem coordenada, nem a chave normalizada
+    // (que É o endereço em outra forma). Só o que serve para diagnosticar.
+    logger.info("checkout:geocode", {
+      cache: "hit",
+      confianca: conhecido.confianca,
+      provedor_original: conhecido.provedor,
+      ajustado_no_mapa: conhecido.ajustadoNoMapa,
+      dias: conhecido.dias,
+    });
+    coordenada = { latitude: conhecido.latitude, longitude: conhecido.longitude };
+    confianca = conhecido.confianca;
+    // Não há resposta de provedor para formatar. O endereço digitado, montado
+    // pela mesma função que monta a consulta, é o mais honesto disponível.
+    enderecoFormatado = consultaDeEndereco(paraBuscar);
+  } else {
+    logger.info("checkout:geocode", { cache: "miss" });
+    const geo = await provedor.geocodificar(paraBuscar);
+    if (!geo.ok) {
+      // RN-ENT-003: sem localização confiável, não se inventa coordenada.
+      return {
+        ok: false,
+        motivo:
+          geo.motivo === "nao_encontrado"
+            ? "endereco_nao_encontrado"
+            : geo.motivo === "ambiguo"
+              ? "endereco_ambiguo"
+              : "nao_configurado",
+        erro: geo.mensagem,
+      };
+    }
+    coordenada = geo.coordenada;
+    confianca = geo.confianca;
+    enderecoFormatado = geo.enderecoFormatado;
   }
 
   const rota = await provedor.rota(
     { latitude: origem.latitude, longitude: origem.longitude },
-    geo.coordenada,
+    coordenada,
   );
   if (!rota.ok) {
     return {
@@ -193,10 +239,10 @@ async function localizarEMedir(endereco: EnderecoInformado): Promise<CotacaoEntr
     exige_aprovacao: cotacao.exige_aprovacao,
     pedido_minimo_ativo: cotacao.pedido_minimo_ativo,
     pedido_minimo_valor: cotacao.pedido_minimo_valor,
-    endereco_formatado: geo.enderecoFormatado,
-    latitude: geo.coordenada.latitude,
-    longitude: geo.coordenada.longitude,
-    confianca: geo.confianca,
+    endereco_formatado: enderecoFormatado,
+    latitude: coordenada.latitude,
+    longitude: coordenada.longitude,
+    confianca,
     provedor: rota.provedor,
   };
 }
