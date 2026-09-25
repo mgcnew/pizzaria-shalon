@@ -38,8 +38,20 @@ let respostas: Respostas;
 let chamadasRpc: string[];
 let chamadasGeocodificar: number;
 let chamadasRota: number;
-/** Como o provedor deve responder: "ok" ou indisponível por cota/erro. */
-let provedorResponde: "ok" | "indisponivel";
+/**
+ * Como o provedor deve responder.
+ *
+ * `indisponivel` e `configuracao` são problema NOSSO; os demais são sobre o
+ * endereço que o cliente digitou. A distinção existe porque a mensagem ao
+ * cliente é diferente nos dois casos, e há teste para as duas pontas.
+ */
+let provedorResponde:
+  | "ok"
+  | "indisponivel"
+  | "configuracao"
+  | "nao_encontrado"
+  | "ambiguo"
+  | "sem_rota";
 
 function reiniciar() {
   chamadasRpc = [];
@@ -84,11 +96,27 @@ vi.mock("@/infrastructure/rotas", async (importarOriginal) => {
       nome: "here",
       async geocodificar() {
         chamadasGeocodificar++;
-        if (provedorResponde === "indisponivel") {
+        if (provedorResponde === "indisponivel" || provedorResponde === "configuracao") {
           return {
             ok: false as const,
-            motivo: "indisponivel" as const,
-            mensagem: "O serviço de mapas não respondeu.",
+            motivo: provedorResponde,
+            mensagem: "O serviço de mapas não está configurado corretamente.",
+            provedor: "here",
+          };
+        }
+        if (provedorResponde === "nao_encontrado") {
+          return {
+            ok: false as const,
+            motivo: "nao_encontrado" as const,
+            mensagem: "Não encontramos esse endereço.",
+            provedor: "here",
+          };
+        }
+        if (provedorResponde === "ambiguo") {
+          return {
+            ok: false as const,
+            motivo: "ambiguo" as const,
+            mensagem: "Esse endereço ficou ambíguo. Confira os dados ou ajuste no mapa.",
             provedor: "here",
           };
         }
@@ -102,11 +130,19 @@ vi.mock("@/infrastructure/rotas", async (importarOriginal) => {
       },
       async rota() {
         chamadasRota++;
-        if (provedorResponde === "indisponivel") {
+        if (provedorResponde === "indisponivel" || provedorResponde === "configuracao") {
           return {
             ok: false as const,
-            motivo: "indisponivel" as const,
-            mensagem: "Não conseguimos calcular a rota agora.",
+            motivo: provedorResponde,
+            mensagem: "O serviço de rotas não está configurado corretamente.",
+            provedor: "here",
+          };
+        }
+        if (provedorResponde === "sem_rota") {
+          return {
+            ok: false as const,
+            motivo: "sem_rota" as const,
+            mensagem: "Não há rota de carro até esse endereço.",
             provedor: "here",
           };
         }
@@ -258,14 +294,10 @@ describe("HERE indisponível", () => {
     if (!r.ok) {
       // `indisponivel` na geocodificação vira `nao_configurado` desde a
       // Fase 5. O cache não mudou esse mapeamento.
-      //
-      // OBSERVAÇÃO, não alterada aqui: nesta falha o cliente recebe a
-      // mensagem do PROVEDOR ("não conseguimos falar com o serviço de
-      // mapas"), que não sugere a retirada — ao contrário das falhas de
-      // origem e de cotação, que sugerem. É lacuna de microcopy anterior a
-      // este gate, e mexer nela aqui seria mudar UX aprovada sem decisão.
       expect(r.motivo).toBe("nao_configurado");
-      expect(r.erro.length).toBeGreaterThan(0);
+      // A mensagem oferece as duas saídas que existem: insistir, ou buscar.
+      expect(r.erro).toContain("de novo");
+      expect(r.erro).toContain("retirada");
       expect(JSON.stringify(r)).not.toContain('"taxa"');
       expect(JSON.stringify(r)).not.toContain('"distancia_km"');
     }
@@ -280,7 +312,128 @@ describe("HERE indisponível", () => {
     const r = await cotarEntrega(ENDERECO);
     expect(r.ok).toBe(false);
     // Coordenada do cache não salva a rota: sem distância não há entrega.
-    if (!r.ok) expect(r.motivo).toBe("rota_indisponivel");
+    if (!r.ok) {
+      expect(r.motivo).toBe("rota_indisponivel");
+      expect(r.erro).toContain("de novo");
+      expect(r.erro).toContain("retirada");
+    }
+    expect(chamadasRpc).not.toContain("cotar_entrega");
+  });
+});
+
+/**
+ * A MENSAGEM que o cliente lê quando o serviço de mapas não responde.
+ *
+ * Antes, ele recebia o texto do provedor — que chegava a dizer "o serviço de
+ * mapas não está configurado corretamente". Não ajuda quem quer jantar, e
+ * expõe estado interno do sistema (CLAUDE.md §37).
+ *
+ * Nada de regra mudou aqui: os testes acima seguem provando que a entrega
+ * fecha e que taxa nenhuma é produzida.
+ */
+describe("microcopy da indisponibilidade", () => {
+  /** Termos que não podem chegar ao cliente. */
+  const TERMOS_TECNICOS = [
+    "HERE",
+    "API",
+    "provider",
+    "provedor",
+    "429",
+    "503",
+    "configurad",
+    "configuração",
+    "credencial",
+    "chave",
+    "cota",
+    "geocod",
+  ];
+
+  function conferirMensagem(mensagem: string, rotulo: string) {
+    expect(mensagem, rotulo).toContain("de novo");
+    expect(mensagem, rotulo).toContain("retirada no local");
+    for (const termo of TERMOS_TECNICOS) {
+      expect(mensagem.toLowerCase(), `${rotulo} · ${termo}`).not.toContain(termo.toLowerCase());
+    }
+  }
+
+  it("geocodificação fora do ar: mensagem simples, sem termo técnico", async () => {
+    provedorResponde = "indisponivel";
+    const r = await cotarEntrega(ENDERECO);
+    expect(r.ok).toBe(false);
+    if (!r.ok) conferirMensagem(r.erro, "geocodificacao");
+  });
+
+  it("rota fora do ar: mesma mensagem", async () => {
+    provedorResponde = "indisponivel";
+    respostas.enderecoConhecido = CACHE_SO_COORDENADA;
+    const r = await cotarEntrega(ENDERECO);
+    expect(r.ok).toBe(false);
+    if (!r.ok) conferirMensagem(r.erro, "rota");
+  });
+
+  it("a mensagem do provedor NÃO atravessa mais", async () => {
+    provedorResponde = "indisponivel";
+    const r = await cotarEntrega(ENDERECO);
+    expect(r.ok).toBe(false);
+    // Texto real do `here.ts`, reproduzido pelo dublê. Era o que o cliente
+    // lia antes desta correção.
+    if (!r.ok) expect(r.erro).not.toContain("não está configurado corretamente");
+  });
+
+  it("credencial ausente tambem recebe a mensagem operacional", async () => {
+    provedorResponde = "configuracao";
+    const r = await cotarEntrega(ENDERECO);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.motivo).toBe("nao_configurado");
+      conferirMensagem(r.erro, "configuracao");
+    }
+  });
+
+  // --------------------------------- a contraprova: o que NÃO foi trocado
+  //
+  // Erro sobre o endereço continua com a mensagem específica. Se esta parte
+  // regredisse, o cliente perderia a única informação acionável que tem — e a
+  // correção de microcopy teria piorado a UX em vez de melhorar.
+
+  it("endereco nao encontrado MANTEM a mensagem especifica", async () => {
+    provedorResponde = "nao_encontrado";
+    const r = await cotarEntrega(ENDERECO);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.motivo).toBe("endereco_nao_encontrado");
+      expect(r.erro).toContain("Não encontramos esse endereço");
+      expect(r.erro).not.toContain("retirada no local");
+    }
+  });
+
+  it("endereco ambiguo MANTEM a orientacao de conferir os dados", async () => {
+    provedorResponde = "ambiguo";
+    const r = await cotarEntrega(ENDERECO);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.motivo).toBe("endereco_ambiguo");
+      expect(r.erro).toContain("Confira os dados");
+    }
+  });
+
+  it("sem rota de carro MANTEM a mensagem, que e sobre o destino", async () => {
+    provedorResponde = "sem_rota";
+    const r = await cotarEntrega(ENDERECO);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.motivo).toBe("rota_indisponivel");
+      expect(r.erro).toContain("Não há rota de carro");
+    }
+  });
+
+  it("indisponibilidade NÃO produz taxa nem distância", async () => {
+    provedorResponde = "indisponivel";
+    const r = await cotarEntrega(ENDERECO);
+    expect(r.ok).toBe(false);
+    const texto = JSON.stringify(r);
+    expect(texto).not.toContain('"taxa"');
+    expect(texto).not.toContain('"distancia_km"');
     expect(chamadasRpc).not.toContain("cotar_entrega");
   });
 });

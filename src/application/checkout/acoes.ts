@@ -114,6 +114,30 @@ type Medicao = {
   provedorDaRota: string | null;
 };
 
+/**
+ * Mensagem única para quando o cálculo da entrega não está disponível por
+ * causa NOSSA — serviço de mapas fora do ar, cota esgotada, credencial
+ * ausente ou mal configurada.
+ *
+ * Antes desta mensagem, o cliente recebia o texto do provedor, que chegava a
+ * dizer "o serviço de mapas não está configurado corretamente" — informação
+ * que não ajuda quem só quer jantar, e que expõe o estado interno do sistema
+ * (CLAUDE.md §37: erro útil, sem vazar detalhe interno desnecessário).
+ *
+ * Ela oferece as DUAS saídas que existem de fato: insistir daqui a pouco, ou
+ * ir buscar. A retirada nunca depende de mapa nenhum.
+ *
+ * Os erros que são sobre o ENDEREÇO — não encontrado, ambíguo, sem rota de
+ * carro — continuam com a mensagem específica: ali o cliente tem o que
+ * conferir ou corrigir, e trocar por um texto genérico seria perder
+ * informação que ele usa.
+ *
+ * Isto é microcopy. Nenhuma regra mudou: a falha segue fechando a entrega,
+ * e nunca produz taxa R$ 0,00.
+ */
+const ENTREGA_INDISPONIVEL_AGORA =
+  "Não conseguimos calcular a entrega agora. Tente de novo em instantes ou escolha retirada no local.";
+
 /** Falha: não há distância, e portanto nada a registrar no cache. */
 function semMedicao(cotacao: CotacaoEntrega): Medicao {
   return { cotacao, rotaMedidaAgora: false, distanciaKm: null, provedorDaRota: null };
@@ -188,6 +212,11 @@ async function localizarEMedir(endereco: EnderecoInformado): Promise<Medicao> {
     const geo = await provedor.geocodificar(paraBuscar);
     if (!geo.ok) {
       // RN-ENT-003: sem localização confiável, não se inventa coordenada.
+      //
+      // "Não encontrado" e "ambíguo" são sobre o endereço que o cliente
+      // digitou: a mensagem do provedor diz o que conferir e é mantida. Os
+      // demais são problema nosso, e recebem a mensagem operacional.
+      const sobreOEndereco = geo.motivo === "nao_encontrado" || geo.motivo === "ambiguo";
       return semMedicao({
         ok: false,
         motivo:
@@ -196,7 +225,7 @@ async function localizarEMedir(endereco: EnderecoInformado): Promise<Medicao> {
             : geo.motivo === "ambiguo"
               ? "endereco_ambiguo"
               : "nao_configurado",
-        erro: geo.mensagem,
+        erro: sobreOEndereco ? geo.mensagem : ENTREGA_INDISPONIVEL_AGORA,
       });
     }
     coordenada = geo.coordenada;
@@ -228,10 +257,13 @@ async function localizarEMedir(endereco: EnderecoInformado): Promise<Medicao> {
       coordenada,
     );
     if (!rota.ok) {
+      // "Sem rota de carro até esse endereço" é uma informação real sobre o
+      // destino, e o cliente precisa dela: fica como está. Serviço fora do ar
+      // ou credencial ausente, não — é problema nosso.
       return semMedicao({
         ok: false,
         motivo: rota.motivo === "configuracao" ? "nao_configurado" : "rota_indisponivel",
-        erro: rota.mensagem,
+        erro: rota.motivo === "sem_rota" ? rota.mensagem : ENTREGA_INDISPONIVEL_AGORA,
       });
     }
     distanciaKm = rota.distanciaKm;
