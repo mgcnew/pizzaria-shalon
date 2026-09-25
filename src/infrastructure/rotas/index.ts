@@ -1,5 +1,5 @@
 import type { ProvedorDeRotas } from "./contrato";
-import { provedorGoogle } from "./google";
+import { provedorHere } from "./here";
 import { provedorIndisponivel } from "./indisponivel";
 
 export type { Coordenada, EnderecoParaGeocodificar, ProvedorDeRotas, ResultadoGeocodificacao, ResultadoRota, MotivoFalha, Confianca } from "./contrato";
@@ -9,20 +9,26 @@ export { provedorFalso } from "./falso";
 /**
  * Escolhe o provedor de rotas a partir do ambiente.
  *
- * Só existem dois caminhos em produção: Google com credencial, ou
- * indisponível. Não há terceiro caminho "estimado", porque estimar distância
- * é exatamente o que CLAUDE.md §20 proíbe.
+ * Só existem dois caminhos em produção: HERE com credencial, ou indisponível.
+ * Não há terceiro caminho "estimado", porque estimar distância é exatamente o
+ * que CLAUDE.md §20 proíbe.
  *
- * A chave é lida de `GOOGLE_MAPS_SERVER_KEY` — server-side, nunca
- * `NEXT_PUBLIC_*` (CLAUDE.md §13/§45), e nunca registrada em log.
+ * SEM FALLBACK PARA O GOOGLE, por decisão explícita (D-2026-09-24-75). O
+ * arquivo `google.ts` continua no repositório como histórico da transição,
+ * mas não participa da seleção: um fallback automático para um provedor cujo
+ * faturamento não será ativado criaria dependência enganosa — pareceria haver
+ * uma rede de proteção que, na prática, responderia erro de credencial.
+ *
+ * A chave é lida de `HERE_API_KEY` — server-side, nunca `NEXT_PUBLIC_*`
+ * (CLAUDE.md §13/§45), e nunca registrada em log.
  */
 export function selecionarProvedorDeRotas(): ProvedorDeRotas {
-  const chave = process.env.GOOGLE_MAPS_SERVER_KEY?.trim();
-  if (chave) return provedorGoogle(chave);
+  const chave = process.env.HERE_API_KEY?.trim();
+  if (chave) return provedorHere(chave);
   return provedorIndisponivel();
 }
 
 /** Diz se há credencial de rotas, sem revelar nada sobre ela. */
 export function rotasConfiguradas(): boolean {
-  return Boolean(process.env.GOOGLE_MAPS_SERVER_KEY?.trim());
+  return Boolean(process.env.HERE_API_KEY?.trim());
 }

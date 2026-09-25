@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { consultaDeEndereco } from "@/infrastructure/rotas/contrato";
 import { provedorIndisponivel } from "@/infrastructure/rotas/indisponivel";
 import { provedorFalso } from "@/infrastructure/rotas/falso";
@@ -71,5 +71,58 @@ describe("dublê determinístico", () => {
     const p = provedorFalso();
     const r = await p.rota({ latitude: 0, longitude: 0 }, { latitude: 1, longitude: 1 });
     expect(r.ok).toBe(false);
+  });
+});
+
+/**
+ * Seleção do provedor — D-2026-09-24-75.
+ *
+ * A decisão foi "HERE ou indisponível", SEM fallback automático para o
+ * Google. Estes casos existem para que um fallback não volte por descuido:
+ * ele pareceria rede de proteção e responderia erro de credencial, porque o
+ * faturamento do Google não foi ativado.
+ */
+describe("seleção do provedor de rotas", () => {
+  const original = { here: process.env.HERE_API_KEY, google: process.env.GOOGLE_MAPS_SERVER_KEY };
+
+  afterEach(() => {
+    if (original.here === undefined) delete process.env.HERE_API_KEY;
+    else process.env.HERE_API_KEY = original.here;
+    if (original.google === undefined) delete process.env.GOOGLE_MAPS_SERVER_KEY;
+    else process.env.GOOGLE_MAPS_SERVER_KEY = original.google;
+  });
+
+  it("com HERE_API_KEY, o provedor é o HERE", async () => {
+    process.env.HERE_API_KEY = "chave-de-teste";
+    const { selecionarProvedorDeRotas, rotasConfiguradas } = await import(
+      "@/infrastructure/rotas"
+    );
+    expect(selecionarProvedorDeRotas().nome).toBe("here");
+    expect(rotasConfiguradas()).toBe(true);
+  });
+
+  it("sem HERE_API_KEY, o provedor é o indisponível", async () => {
+    delete process.env.HERE_API_KEY;
+    const { selecionarProvedorDeRotas, rotasConfiguradas } = await import(
+      "@/infrastructure/rotas"
+    );
+    expect(selecionarProvedorDeRotas().nome).toBe("indisponivel");
+    expect(rotasConfiguradas()).toBe(false);
+  });
+
+  it("chave só de espaços não conta como configurada", async () => {
+    process.env.HERE_API_KEY = "   ";
+    const { selecionarProvedorDeRotas } = await import("@/infrastructure/rotas");
+    expect(selecionarProvedorDeRotas().nome).toBe("indisponivel");
+  });
+
+  it("SEM FALLBACK: chave do Google presente NÃO reativa o Google", async () => {
+    delete process.env.HERE_API_KEY;
+    process.env.GOOGLE_MAPS_SERVER_KEY = "chave-antiga-do-google";
+    const { selecionarProvedorDeRotas, rotasConfiguradas } = await import(
+      "@/infrastructure/rotas"
+    );
+    expect(selecionarProvedorDeRotas().nome).toBe("indisponivel");
+    expect(rotasConfiguradas()).toBe(false);
   });
 });

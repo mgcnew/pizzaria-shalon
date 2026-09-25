@@ -11,8 +11,17 @@ import { consultaDeEndereco } from "./contrato";
 /**
  * Google Maps Platform.
  *
- * Provedor aprovado em D-2026-09-18-20. Toda particularidade do Google fica
- * DENTRO deste arquivo; o resto do sistema só conhece o contrato.
+ * ⚠️ FORA DO FLUXO ATIVO desde D-2026-09-24-75. O provedor de produção é o
+ * HERE (`here.ts`), e `selecionarProvedorDeRotas` NÃO importa este arquivo.
+ *
+ * Ele permanece no repositório como histórico da transição e referência de
+ * implementação — em particular do rigor no mapeamento de confiança, que o
+ * provedor do HERE manteve. **Não reintroduza no seletor** sem nova decisão:
+ * o faturamento do Google não foi ativado, então um fallback automático para
+ * cá responderia erro de credencial fingindo ser rede de proteção.
+ *
+ * Provedor originalmente aprovado em D-2026-09-18-20. Toda particularidade do
+ * Google fica DENTRO deste arquivo; o resto do sistema só conhece o contrato.
  *
  * APIS USADAS:
  *  · Geocoding API   — endereço → coordenada, com o nível de precisão;
