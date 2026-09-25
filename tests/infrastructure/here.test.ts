@@ -204,6 +204,69 @@ describe("HERE: geocodificação sem resultado", () => {
   });
 });
 
+// ------------------------------------------------------- cota e indisponibilidade
+
+/**
+ * O Limited Plan da HERE — o plano sem informação de pagamento, que é o da
+ * Shalon — limita 1.000 requisições por dia, 5 RPS em Geocode e 10 RPS em
+ * Routing. Estourar qualquer um devolve 429, e foi o que apareceu no
+ * diagnóstico contra a API real em 24/09/2026.
+ *
+ * A invariante deste bloco: cota esgotada é INDISPONIBILIDADE TEMPORÁRIA.
+ * Nunca vira taxa, nunca vira distância zero, e nunca é confundida com erro
+ * de credencial — 429 com a chave certa não é problema de configuração, e
+ * tratá-lo como tal mandaria a Shalon procurar defeito onde não há.
+ */
+describe("HERE: cota e indisponibilidade não viram frete", () => {
+  for (const [rotulo, status] of [
+    ["cota estourada (429)", 429],
+    ["serviço fora do ar (503)", 503],
+    ["erro interno (500)", 500],
+  ] as const) {
+    it(`${rotulo}: geocodificação devolve indisponivel, não configuracao`, async () => {
+      mockarFetch(respostaJson({ error: "Rate limit for this service has been reached" }, status));
+      const r = await provedorHere(CHAVE).geocodificar(ENDERECO);
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.motivo).toBe("indisponivel");
+    });
+
+    it(`${rotulo}: rota devolve indisponivel, não distância`, async () => {
+      mockarFetch(respostaJson({}, status));
+      const r = await provedorHere(CHAVE).rota(ORIGEM, DESTINO);
+      expect(r.ok).toBe(false);
+      if (!r.ok) expect(r.motivo).toBe("indisponivel");
+      // O ponto que protege o dinheiro: a falha não carrega distância.
+      expect(Object.keys(r)).not.toContain("distanciaKm");
+      expect(Object.keys(r)).not.toContain("duracaoMinutos");
+    });
+  }
+
+  it("NENHUMA falha do provedor carrega distância — nem zero", async () => {
+    const falhas: Array<[string, unknown, number]> = [
+      ["429", {}, 429],
+      ["503", {}, 503],
+      ["401", {}, 401],
+      ["sem rota", { routes: [] }, 200],
+      ["seção sem comprimento", { routes: [{ sections: [{ summary: {} }] }] }, 200],
+    ];
+    for (const [rotulo, corpo, status] of falhas) {
+      mockarFetch(respostaJson(corpo, status));
+      const r = await provedorHere(CHAVE).rota(ORIGEM, DESTINO);
+      expect(r.ok, rotulo).toBe(false);
+      expect(Object.keys(r), rotulo).not.toContain("distanciaKm");
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("429 na geocodificação não vira endereço aceito com confiança alguma", async () => {
+    mockarFetch(respostaJson({}, 429));
+    const r = await provedorHere(CHAVE).geocodificar(ENDERECO);
+    expect(r.ok).toBe(false);
+    expect(Object.keys(r)).not.toContain("coordenada");
+    expect(Object.keys(r)).not.toContain("confianca");
+  });
+});
+
 // -------------------------------------------------------------------- rota
 
 describe("HERE: rota rodoviária", () => {

@@ -1,9 +1,10 @@
 # 06 — PENDÊNCIAS DE VALIDAÇÃO PARA PRODUÇÃO
 ## Sistema de Gestão e Pedidos — Pizzaria Shalon
 
-**Versão:** 1.4 — aberto em 19/09/2026, Fases 6 e 7 encerradas em 21/09/2026,
+**Versão:** 1.5 — aberto em 19/09/2026, Fases 6 e 7 encerradas em 21/09/2026,
 Fase 10 encerrada em 24/09/2026, provedor de rotas trocado para HERE em
-24/09/2026 (`D-2026-09-24-75`)
+24/09/2026 (`D-2026-09-24-75`), limites do Limited Plan medidos e registrados
+em 25/09/2026
 **Status:** documento vivo
 **Função:** concentrar, em um lugar só, o que **não impede** o desenvolvimento
 das próximas fases mas **precisa ser resolvido e testado antes da produção**.
@@ -88,6 +89,127 @@ Duas coisas contêm o risco, e a primeira é a que importa:
 
 **O que isso NÃO resolve:** um endereço que o HERE localiza com confiança e
 erra. Só teste com endereço real detecta isso — ver abaixo.
+
+### Os limites do plano — HERE Limited Plan
+
+A Shalon usa o **Limited Plan**, que é o nível para quem **não cadastra
+informação de pagamento**. Foi exatamente por isso que ele substituiu o Google
+(`D-2026-09-24-75`): o Google exigia meio de pagamento, a proprietária não
+autoriza, e o HERE opera de verdade sem cartão.
+
+O preço disso é um teto. Números oficiais da HERE:
+
+| Limite | Valor |
+|---|---|
+| **Requisições por dia** | **1.000** |
+| Geocode & Reverse Geocode | 5 RPS |
+| Routing (car) | 10 RPS |
+| Matrix / Isoline Routing | 1 RPS |
+
+O nível seguinte (**Base Plan**) **exige informação de pagamento** — a mesma
+condição que levou ao abandono do Google. Subir de plano, portanto, não é
+decisão técnica: é a mesma decisão comercial que já foi tomada em sentido
+contrário.
+
+#### O consumo real da Shalon
+
+O checkout de entrega gasta **duas** chamadas (geocodificar + rotear), e
+`enviarPedido()` **refaz as duas** ao gravar, porque o servidor não aceita o
+cálculo do navegador (CLAUDE.md §16). São **4 requisições por pedido de
+entrega concluído**, mais 2 por checkout abandonado ou recalculado.
+
+Decidido em 25/09/2026 **manter as 4**: o volume não justifica mexer no
+recálculo autoritativo. A conta sustenta a decisão.
+
+Referência operacional informada pela Shalon:
+
+| Período | Pizzas/dia | Pedidos/dia |
+|---|---|---|
+| terça a quinta | ~60 | **igual ou menor** |
+| sexta a domingo | até 70 | **igual ou menor** |
+
+Pior caso plausível — **70 pedidos, todos de entrega**, mais metade disso em
+checkout abandonado:
+
+```text
+70 pedidos  × 4 chamadas = 280
+35 abandonos × 2 chamadas =  70
+                            ---
+                            350 requisições/dia
+```
+
+**350 de 1.000.** Folga de aproximadamente **2,9×**. Retirada não consome nada.
+
+Em RPS o consumo é irrelevante: 70 pedidos distribuídos numa noite ficam
+abaixo de 1 RPS mesmo concentrados.
+
+#### Medição real, 25/09/2026
+
+Rajadas simultâneas contra a API verdadeira, com orçamento fechado de **24
+requisições (2,4% da cota)**:
+
+| Rajada | Taxa efetiva | Resultado |
+|---|---|---|
+| 3 simultâneas | ~5,1 RPS | 3 OK, **zero 429** |
+| 5 simultâneas | ~9,5 RPS | 5 OK, **zero 429** |
+| 8 simultâneas | ~16,0 RPS | 8 OK, **zero 429** |
+| 8 simultâneas (repetição) | ~13,1 RPS | 8 OK, **zero 429** |
+
+**O teto de 5 RPS documentado não se manifestou** nem a 16 RPS. Ou a HERE é
+mais tolerante que o contrato, ou o limite é aplicado por janela mais longa.
+Não é prudente depender dessa folga: o número contratual continua sendo 5.
+
+#### Uma anomalia honesta, ainda sem explicação
+
+No diagnóstico de **24/09/2026**, com a chave recém-criada, apareceu HTTP 429
+repetido — `"Rate limit for this service has been reached"` — com requisições
+**sequenciais a ~0,5 RPS**, dez vezes abaixo do limite, e menos de 30
+requisições no dia. Foi preciso espaçar 8 a 10 segundos para completar o teste.
+
+Em 25/09 **não reproduziu**, nem sob rajada. A hipótese mais provável é
+provisionamento da conta nova, mas **isso não foi confirmado** e fica
+registrado como comportamento observado, não explicado.
+
+**Consequência prática:** 429 deve ser tratado como possível a qualquer
+momento, independentemente da conta estar dentro da cota.
+
+#### O que acontece quando o limite é atingido
+
+Verificado em 25/09/2026, em três camadas independentes:
+
+1. **Provedor** (`here.ts`): 429, 500 e 503 viram `indisponivel`; só 401 e 403
+   viram `configuracao`. Nenhum resultado de falha carrega `distanciaKm` ou
+   `duracaoMinutos` — a falha não tem como transportar número.
+2. **Server Action** (`enviarPedido`): falha em `localizarEMedir` retorna
+   `ok: false` e **o pedido não é criado**.
+3. **Banco** (`criar_pedido`, migration `20260919140400`): mesmo que as duas
+   camadas acima fossem contornadas, `distancia_km` nula ou negativa levanta
+   `rota_indisponivel`. Cenário exercitado em `pedidos_fase5.sql` — "entrega
+   sem distancia nao inventa taxa".
+
+A retirada continua funcionando em todos os casos.
+
+**Nunca taxa R$ 0,00.** A entrega fica indisponível e o cliente é orientado à
+retirada.
+
+#### Restrições de licença
+
+O Limited Plan **exclui** três usos. Um deles encosta no projeto:
+
+- **Asset Management** — localizar, rastrear e exibir ativos em mapa, com
+  rotas e alertas;
+- Usage Based Insurance / telemática;
+- Optimization — ordenar destinos para múltiplos veículos.
+
+Calcular taxa de entrega por distância **não está excluído**: o uso da Shalon
+é permitido. Mas **"GPS do motoboy" e "app do motoboy", já proibidos na V1**
+(CLAUDE.md §46), passam a ter também impedimento contratual. Se algum dia
+virarem escopo, a licença do HERE precisa entrar na conversa.
+
+Há ainda a regra de **um App ID por aplicação, sem compartilhamento** —
+relevante quando DEV e produção coexistirem: a rigor, credenciais separadas.
+
+---
 
 ### O que falta configurar
 
