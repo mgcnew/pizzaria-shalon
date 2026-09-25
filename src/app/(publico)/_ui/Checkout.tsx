@@ -11,6 +11,7 @@ import { paraRevalidacao } from "@/domain/carrinho/carrinho";
 import { revalidarCarrinho } from "@/application/publico/acoes";
 import type { Revalidacao } from "@/application/publico/tipos";
 import { cotarEntrega, enviarPedido } from "@/application/checkout/acoes";
+import { buscarEnderecoPorCep } from "@/application/checkout/cep";
 import type {
   CotacaoEntrega,
   FormaDePagamento,
@@ -60,6 +61,37 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
 
   const [cotacao, setCotacao] = useState<CotacaoEntrega | null>(null);
   const [cotando, iniciarCotacao] = useTransition();
+
+  // Preenchimento por CEP: conveniência de digitação. O ViaCEP não decide
+  // coordenada, distância nem taxa — quem faz isso é o provedor de rotas e a
+  // faixa no banco (D-2026-09-24-75).
+  const [buscandoCep, iniciarBuscaCep] = useTransition();
+  const [avisoCep, setAvisoCep] = useState<string | null>(null);
+
+  function preencherPeloCep(valor: string) {
+    const digitos = valor.replace(/\D/g, "");
+    setAvisoCep(null);
+    // Só tenta com CEP completo. Digitar não dispara requisição a cada tecla.
+    if (digitos.length !== 8) return;
+
+    iniciarBuscaCep(async () => {
+      const r = await buscarEnderecoPorCep(digitos);
+      if (!r.ok) {
+        // Falha NUNCA bloqueia: o cliente continua preenchendo à mão.
+        setAvisoCep(
+          r.motivo === "nao_encontrado"
+            ? "Não achamos esse CEP. Você pode preencher o endereço à mão."
+            : "Não conseguimos consultar o CEP agora. Preencha o endereço à mão.",
+        );
+        return;
+      }
+      // Não sobrescreve o que o cliente já digitou: o CEP completa, não manda.
+      if (r.logradouro) setLogradouro((atual) => atual.trim() || r.logradouro);
+      if (r.bairro) setBairro((atual) => atual.trim() || r.bairro);
+      setCidade(r.cidade);
+      setUf(r.uf);
+    });
+  }
 
   const [formaId, setFormaId] = useState("");
   const [bandeiraId, setBandeiraId] = useState("");
@@ -383,9 +415,18 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
               <Input
                 label="CEP"
                 value={cep}
-                onChange={(e) => setCep(e.target.value)}
+                onChange={(e) => {
+                  setCep(e.target.value);
+                  preencherPeloCep(e.target.value);
+                }}
                 inputMode="numeric"
                 maxLength={12}
+                hint={
+                  buscandoCep
+                    ? "Buscando o endereço…"
+                    : (avisoCep ??
+                      "Opcional. Preenchendo o CEP, a gente completa rua, bairro e cidade.")
+                }
               />
 
               {/* RN-ENT-004: estes dois vão para o entregador, não para o
