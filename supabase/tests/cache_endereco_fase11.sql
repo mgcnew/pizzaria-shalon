@@ -239,7 +239,10 @@ select pg_temp.checar('acerto mesmo escrevendo abreviado e sem acento', 'true',
      ->> 'encontrado'));
 
 -- O que o cache NUNCA devolve.
-select pg_temp.checar('NAO devolve distancia', 'true',
+-- Este registro nunca teve rota medida: não há distância a devolver. Depois
+-- da Fase B, ausência de distância significa "ninguém mediu ainda", e não
+-- "distância nunca é devolvida".
+select pg_temp.checar('sem rota medida: nenhuma distancia e devolvida', 'true',
   ((pg_temp.consultar() -> 'distancia_km') is null)::text);
 
 select pg_temp.checar('NAO devolve taxa', 'true',
@@ -396,7 +399,7 @@ reset role;
 -- =============================================================================
 
 -- O cache não tem como produzir taxa: ele não fala com faixa nenhuma.
-select pg_temp.checar('endereco_conhecido nao menciona faixa, taxa nem distancia', 'true',
+select pg_temp.checar('endereco_conhecido nao menciona faixa nem taxa', 'true',
   (select not (
        pg_get_functiondef(p.oid) ilike '%delivery_fee_bands%'
     or pg_get_functiondef(p.oid) ilike '%faixa_para_distancia%'
@@ -410,11 +413,288 @@ select pg_temp.checar('cotar_entrega sem distancia nao devolve taxa', 'true',
   ((public.cotar_entrega(null, current_setting('teste.segredo', true)) -> 'taxa')
      is null)::text);
 
--- §8.2 continua verdadeiro: a Fase B NÃO foi implementada.
-select pg_temp.checar('02 §8.2: endereco salvo NAO guarda distancia', '0',
+-- §8.2 REVISADO por `D-2026-09-25-77`: o endereço salvo passa a guardar
+-- DISTÂNCIA, e continua proibido de guardar TAXA. As duas metades da regra,
+-- em dois cenários.
+select pg_temp.checar('02 §8.2 revisado: guarda distancia', '1',
   (select count(*) from information_schema.columns c
     where c.table_schema='public' and c.table_name='customer_addresses'
-      and c.column_name in ('route_distance_km','distance_km','delivery_fee'))::text);
+      and c.column_name = 'route_distance_km')::text);
+
+select pg_temp.checar('RN-ENT-008: e NUNCA guarda taxa', '0',
+  (select count(*) from information_schema.columns c
+    where c.table_schema='public' and c.table_name='customer_addresses'
+      and (c.column_name ilike '%fee%' or c.column_name ilike '%taxa%'
+           or c.column_name ilike '%price%' or c.column_name ilike '%valor%'))::text);
+
+-- =============================================================================
+-- PARTE 6 — DISTÂNCIA REUTILIZÁVEL (FASE B, D-2026-09-25-77)
+--
+-- A PERGUNTA CENTRAL AQUI: reutilizar distância pode congelar preço?
+-- A resposta tem de ser NÃO, e o cenário "mudar a faixa muda a taxa" é o que
+-- prova. Se um dia ele falhar, a Fase B virou o que ela jurou não ser.
+-- =============================================================================
+
+-- Loja e faixas conhecidas. Substituem o que houver, dentro da transação.
+delete from public.delivery_fee_bands;
+delete from public.store_settings;
+
+insert into public.store_settings (
+  id, store_name, whatsapp, address_street, address_number, address_neighborhood,
+  address_city, address_state, address_postal_code, latitude, longitude,
+  delivery_minimum_enabled, delivery_minimum_subtotal, automatic_delivery_radius_km,
+  delivery_eta_min_minutes, delivery_eta_max_minutes,
+  pickup_eta_min_minutes, pickup_eta_max_minutes, addons_enabled, timezone
+) values (
+  'ccccccc9-0000-0000-0000-000000000001','Shalon F11','5500000000000','Rua T','1','Centro',
+  'Cidade','XX','00000-000', -20.0000000, -40.0000000,
+  false, null, 4.0, 40, 60, 20, 30, true, 'America/Sao_Paulo'
+);
+
+insert into public.delivery_fee_bands (min_distance_km, max_distance_km, fee, is_active, sort_order)
+values (0, 5, 8.50, true, 1), (5, 10, 15.00, true, 2);
+
+-- Endereço com coordenada válida e SEM rota medida ainda.
+insert into public.customer_addresses (
+  id, customer_id, street, number, neighborhood, city, state, postal_code,
+  latitude, longitude, geocode_provider, geocode_confidence, is_active)
+values (
+  'bbbbbbb2-0000-0000-0000-000000000001','aaaaaaa1-0000-0000-0000-000000000001',
+  'Avenida das Palmeiras','233','Jardim Modelo','Cidade','XX','00000-111',
+  -20.0100000, -40.0100000, 'here','exata', true);
+
+create or replace function pg_temp.consultar_b(
+  p_prov text default 'here', p_seg text default null
+) returns jsonb language sql as $$
+  select public.endereco_conhecido('Avenida das Palmeiras','233','Jardim Modelo',
+           'Cidade','XX','00000-111', p_prov,
+           coalesce(p_seg, current_setting('teste.segredo', true)));
+$$;
+
+-- ------------------------------------------------- antes de medir: sem rota
+select pg_temp.checar('sem medicao: coordenada sim, rota nao', 'false',
+  (pg_temp.consultar_b() ->> 'rota'));
+
+select pg_temp.checar('sem medicao: coordenada continua valendo', 'true',
+  (pg_temp.consultar_b() ->> 'encontrado'));
+
+-- ------------------------------------------------------------- a gravação
+select pg_temp.checar('gravar exige prova de origem', 'origem_nao_confiavel',
+  (public.registrar_rota_medida('Avenida das Palmeiras','233','Jardim Modelo',
+     'Cidade','XX','00000-111', 1.553, 'here', 'segredo-errado') ->> 'erro'));
+
+-- A origem NÃO é parâmetro: é lida de `store_settings` dentro da função. Se
+-- fosse parâmetro, o chamador poderia declarar uma origem que não é a da loja
+-- e a distância "válida" teria sido medida de outro lugar.
+select pg_temp.checar('origem NAO e parametro da gravacao', 'true',
+  (select count(*) = 0 from information_schema.parameters p
+    where p.specific_schema = 'public'
+      and p.specific_name like 'registrar_rota_medida%'
+      and p.parameter_name in ('p_origem_lat','p_origem_lng','p_latitude','p_longitude'))::text);
+
+select pg_temp.checar('distancia zero NAO e gravada', 'medicao_invalida',
+  (public.registrar_rota_medida('Avenida das Palmeiras','233','Jardim Modelo',
+     'Cidade','XX','00000-111', 0, 'here',
+     current_setting('teste.segredo', true)) ->> 'motivo'));
+
+select pg_temp.checar('distancia negativa NAO e gravada', 'medicao_invalida',
+  (public.registrar_rota_medida('Avenida das Palmeiras','233','Jardim Modelo',
+     'Cidade','XX','00000-111', -3, 'here',
+     current_setting('teste.segredo', true)) ->> 'motivo'));
+
+select pg_temp.checar('distancia nula NAO e gravada', 'medicao_invalida',
+  (public.registrar_rota_medida('Avenida das Palmeiras','233','Jardim Modelo',
+     'Cidade','XX','00000-111', null, 'here',
+     current_setting('teste.segredo', true)) ->> 'motivo'));
+
+select pg_temp.checar('a medicao valida e gravada', 'true',
+  (public.registrar_rota_medida('Avenida das Palmeiras','233','Jardim Modelo',
+     'Cidade','XX','00000-111', 1.553, 'here',
+     current_setting('teste.segredo', true)) ->> 'gravado'));
+
+select pg_temp.checar('gravou a origem que a loja tem AGORA', 'true',
+  (select route_origin_lat = -20.0000000 and route_origin_lng = -40.0000000
+     from public.customer_addresses
+    where id = 'bbbbbbb2-0000-0000-0000-000000000001')::text);
+
+select pg_temp.checar('gravou provedor e data da medicao', 'true',
+  (select route_provider = 'here' and route_measured_at is not null
+     from public.customer_addresses
+    where id = 'bbbbbbb2-0000-0000-0000-000000000001')::text);
+
+-- --------------------------------------------------------- as constraints
+--
+-- A gravação pela RPC já recusa distância inválida, mas a trava do BANCO é a
+-- que vale mesmo se alguém escrever por outro caminho. O bloco `exception`
+-- cria um savepoint implícito: a violação não aborta a transação da suíte.
+create or replace function pg_temp.tenta_rota(
+  p_km numeric, p_prov text, p_lat numeric, p_lng numeric, p_quando timestamptz
+) returns text language plpgsql as $$
+begin
+  begin
+    update public.customer_addresses
+       set route_distance_km = p_km, route_provider = p_prov,
+           route_origin_lat = p_lat, route_origin_lng = p_lng,
+           route_measured_at = p_quando
+     where id = 'bbbbbbb2-0000-0000-0000-000000000001';
+    return 'aceitou';
+  exception when check_violation then
+    return 'recusou';
+  end;
+end;
+$$;
+
+select pg_temp.checar('constraint recusa distancia zero', 'recusou',
+  pg_temp.tenta_rota(0, 'here', -23.5, -46.5, now()));
+
+select pg_temp.checar('constraint recusa distancia negativa', 'recusou',
+  pg_temp.tenta_rota(-1.5, 'here', -23.5, -46.5, now()));
+
+-- TUDO OU NADA: distância sem a origem que a produziu é número sem sentido.
+select pg_temp.checar('constraint recusa medicao pela metade: sem origem', 'recusou',
+  pg_temp.tenta_rota(3.2, 'here', null, null, now()));
+
+select pg_temp.checar('constraint recusa medicao pela metade: sem provedor', 'recusou',
+  pg_temp.tenta_rota(3.2, null, -23.5, -46.5, now()));
+
+select pg_temp.checar('constraint recusa medicao pela metade: sem data', 'recusou',
+  pg_temp.tenta_rota(3.2, 'here', -23.5, -46.5, null));
+
+select pg_temp.checar('constraint aceita medicao completa', 'aceitou',
+  pg_temp.tenta_rota(3.2, 'here', -23.5, -46.5, now()));
+
+select pg_temp.checar('constraint aceita rota totalmente ausente', 'aceitou',
+  pg_temp.tenta_rota(null, null, null, null, null));
+
+-- Restaura a medição válida para os cenários seguintes.
+select pg_temp.checar('medicao restaurada para os proximos cenarios', 'true',
+  (public.registrar_rota_medida('Avenida das Palmeiras','233','Jardim Modelo',
+     'Cidade','XX','00000-111', 1.553, 'here',
+     current_setting('teste.segredo', true)) ->> 'gravado'));
+
+-- --------------------------------------- reuso: quando tudo bate, tem rota
+select pg_temp.checar('agora a rota e reutilizavel', 'true',
+  (pg_temp.consultar_b() ->> 'rota'));
+
+select pg_temp.checar('devolve a distancia medida', '1.553',
+  (pg_temp.consultar_b() ->> 'distancia_km'));
+
+select pg_temp.checar('devolve o provedor da rota', 'here',
+  (pg_temp.consultar_b() ->> 'rota_provedor'));
+
+select pg_temp.checar('NUNCA devolve taxa junto da rota', 'true',
+  ((pg_temp.consultar_b() -> 'taxa') is null
+   and (pg_temp.consultar_b() -> 'fee') is null)::text);
+
+-- ---------------------------------- provedor diferente NAO reusa a rota
+--
+-- Consultar com outro provedor não serve para isolar isto: a COORDENADA
+-- também é recusada por provedor diferente, e o endereço inteiro deixa de
+-- casar — não sobra campo `rota` para examinar. O cenário útil é o registro
+-- cuja coordenada é do provedor atual mas cuja ROTA foi medida por outro.
+update public.customer_addresses set route_provider = 'mapbox'
+ where id = 'bbbbbbb2-0000-0000-0000-000000000001';
+
+select pg_temp.checar('rota medida por outro provedor NAO e reutilizada', 'false',
+  (pg_temp.consultar_b() ->> 'rota'));
+
+select pg_temp.checar('rota de outro provedor: a coordenada continua valendo', 'true',
+  (pg_temp.consultar_b() ->> 'encontrado'));
+
+update public.customer_addresses set route_provider = 'here'
+ where id = 'bbbbbbb2-0000-0000-0000-000000000001';
+
+select pg_temp.checar('com o provedor certo a rota volta a valer', 'true',
+  (pg_temp.consultar_b() ->> 'rota'));
+
+-- =================================================== REQUISITO 3
+-- Mudar a loja de endereço invalida SOMENTE a distância. O cliente não se
+-- mexeu: a coordenada dele continua valendo.
+update public.store_settings
+   set latitude = -21.0000000, longitude = -41.0000000;
+
+select pg_temp.checar('origem mudou: a rota deixa de valer', 'false',
+  (pg_temp.consultar_b() ->> 'rota'));
+
+select pg_temp.checar('origem mudou: a COORDENADA do cliente continua valendo', 'true',
+  (pg_temp.consultar_b() ->> 'encontrado'));
+
+select pg_temp.checar('origem mudou: nenhuma distancia e devolvida', 'true',
+  ((pg_temp.consultar_b() -> 'distancia_km') is null)::text);
+
+-- Volta a loja para o lugar: a rota antiga volta a servir.
+update public.store_settings
+   set latitude = -20.0000000, longitude = -40.0000000;
+
+select pg_temp.checar('loja de volta ao lugar: a rota volta a valer', 'true',
+  (pg_temp.consultar_b() ->> 'rota'));
+
+-- =================================================== REQUISITO 4
+-- Vencimento em 90 dias. A coordenada, com 180, continua válida.
+update public.customer_addresses
+   set route_measured_at = now() - interval '91 days'
+ where id = 'bbbbbbb2-0000-0000-0000-000000000001';
+
+select pg_temp.checar('rota com 91 dias NAO e reutilizada', 'false',
+  (pg_temp.consultar_b() ->> 'rota'));
+
+select pg_temp.checar('rota vencida: a coordenada continua valendo', 'true',
+  (pg_temp.consultar_b() ->> 'encontrado'));
+
+update public.customer_addresses
+   set route_measured_at = now() - interval '89 days'
+ where id = 'bbbbbbb2-0000-0000-0000-000000000001';
+
+select pg_temp.checar('rota com 89 dias ainda serve', 'true',
+  (pg_temp.consultar_b() ->> 'rota'));
+
+-- =================================================== REQUISITO 6
+-- Endereço diferente não pega a rota alheia.
+select pg_temp.checar('outro numero na mesma rua: sem rota', 'false',
+  (public.endereco_conhecido('Avenida das Palmeiras','999','Jardim Modelo',
+     'Cidade','XX','00000-111','here',
+     current_setting('teste.segredo', true)) ->> 'encontrado'));
+
+-- =================================================== REQUISITO 2
+-- O CENÁRIO QUE DEFINE A FASE B: a distância em cache NÃO congela preço.
+select set_config('teste.km',
+  (pg_temp.consultar_b() ->> 'distancia_km'), true);
+
+select pg_temp.checar('taxa da faixa vigente, com distancia do cache', '8.50',
+  (public.cotar_entrega(current_setting('teste.km')::numeric,
+     current_setting('teste.segredo', true)) ->> 'taxa'));
+
+-- A Shalon reajusta a tabela. NADA no cache é tocado.
+update public.delivery_fee_bands set fee = 11.00 where min_distance_km = 0;
+
+select pg_temp.checar('MESMA distancia em cache, taxa NOVA', '11.00',
+  (public.cotar_entrega(current_setting('teste.km')::numeric,
+     current_setting('teste.segredo', true)) ->> 'taxa'));
+
+select pg_temp.checar('a distancia em cache nao mudou', '1.553',
+  (pg_temp.consultar_b() ->> 'distancia_km'));
+
+-- Encurtar a area: a distancia em cache passa a cair fora dela.
+update public.delivery_fee_bands set is_active = false where min_distance_km = 0;
+
+select pg_temp.checar('distancia do cache pode cair FORA DE AREA', 'true',
+  (public.cotar_entrega(current_setting('teste.km')::numeric,
+     current_setting('teste.segredo', true)) ->> 'fora_de_area'));
+
+select pg_temp.checar('fora de area NAO devolve taxa', 'true',
+  ((public.cotar_entrega(current_setting('teste.km')::numeric,
+     current_setting('teste.segredo', true)) -> 'taxa') is null)::text);
+
+update public.delivery_fee_bands set is_active = true where min_distance_km = 0;
+
+-- ------------------------------------------------- a taxa nao mora aqui
+-- As colunas e `endereco_conhecido` já foram verificadas na PARTE 5; aqui
+-- falta a função de gravação, que é nova.
+select pg_temp.checar('registrar_rota_medida nao menciona faixa nem taxa', 'true',
+  (select not (pg_get_functiondef(p.oid) ilike '%delivery_fee_bands%'
+    or pg_get_functiondef(p.oid) ilike '%faixa_para_distancia%')
+     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname='public' and p.proname='registrar_rota_medida')::text);
 
 -- =============================================================================
 -- RESULTADO

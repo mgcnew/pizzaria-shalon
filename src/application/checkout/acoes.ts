@@ -10,6 +10,7 @@ import {
 } from "@/infrastructure/rotas";
 import {
   consultarEnderecoConhecido,
+  registrarRotaMedida,
   type ConfiancaReutilizavel,
 } from "./cacheDeEndereco";
 import { logger } from "@/lib/logger";
@@ -99,12 +100,32 @@ function paraGeocodificar(e: EnderecoInformado): EnderecoParaGeocodificar {
 }
 
 /**
+ * Resultado interno de `localizarEMedir`.
+ *
+ * `rotaMedidaAgora` NÃO vai para o navegador — é detalhe de implementação do
+ * cache, e existe por um motivo concreto: só medição real pode renovar o
+ * carimbo de validade da distância. Se a distância vinda do cache fosse
+ * regravada, o TTL de 90 dias se renovaria sozinho e nunca venceria.
+ */
+type Medicao = {
+  cotacao: CotacaoEntrega;
+  rotaMedidaAgora: boolean;
+  distanciaKm: number | null;
+  provedorDaRota: string | null;
+};
+
+/** Falha: não há distância, e portanto nada a registrar no cache. */
+function semMedicao(cotacao: CotacaoEntrega): Medicao {
+  return { cotacao, rotaMedidaAgora: false, distanciaKm: null, provedorDaRota: null };
+}
+
+/**
  * Localiza o endereço e mede a rota a partir da loja.
  *
  * Devolve sempre coordenada + distância juntas, porque uma sem a outra não
  * serve para nada aqui.
  */
-async function localizarEMedir(endereco: EnderecoInformado): Promise<CotacaoEntrega> {
+async function localizarEMedir(endereco: EnderecoInformado): Promise<Medicao> {
   const segredo = lerSegredoDeOrigem();
   const supabase = await getSupabaseServerClient();
   const provedor = selecionarProvedorDeRotas();
@@ -121,11 +142,11 @@ async function localizarEMedir(endereco: EnderecoInformado): Promise<CotacaoEntr
 
   if (erroOrigem || !origem?.ok) {
     logger.error("checkout:origem", { erro: origem?.ok === false ? origem.erro : "rpc" });
-    return {
+    return semMedicao({
       ok: false,
       motivo: "nao_configurado",
       erro: "Não conseguimos calcular a entrega agora. Você pode escolher retirada.",
-    };
+    });
   }
 
   const paraBuscar = paraGeocodificar(endereco);
@@ -167,7 +188,7 @@ async function localizarEMedir(endereco: EnderecoInformado): Promise<CotacaoEntr
     const geo = await provedor.geocodificar(paraBuscar);
     if (!geo.ok) {
       // RN-ENT-003: sem localização confiável, não se inventa coordenada.
-      return {
+      return semMedicao({
         ok: false,
         motivo:
           geo.motivo === "nao_encontrado"
@@ -176,28 +197,54 @@ async function localizarEMedir(endereco: EnderecoInformado): Promise<CotacaoEntr
               ? "endereco_ambiguo"
               : "nao_configurado",
         erro: geo.mensagem,
-      };
+      });
     }
     coordenada = geo.coordenada;
     confianca = geo.confianca;
     enderecoFormatado = geo.enderecoFormatado;
   }
 
-  const rota = await provedor.rota(
-    { latitude: origem.latitude, longitude: origem.longitude },
-    coordenada,
-  );
-  if (!rota.ok) {
-    return {
-      ok: false,
-      motivo: rota.motivo === "configuracao" ? "nao_configurado" : "rota_indisponivel",
-      erro: rota.mensagem,
-    };
+  // CACHE DE DISTÂNCIA (Fase B, D-2026-09-25-77). O banco só devolve a rota
+  // quando ela foi medida da MESMA origem que a loja tem agora, pelo mesmo
+  // provedor, e há menos de 90 dias. Loja em outro endereço é outra rota,
+  // ainda que o cliente não tenha se mexido.
+  let distanciaKm: number;
+  let provedorDaRota: string;
+  let rotaMedidaAgora: boolean;
+
+  if (conhecido.encontrado && conhecido.rota) {
+    logger.info("checkout:rota", {
+      cache: "hit",
+      provedor_original: conhecido.rota.provedor,
+      dias: conhecido.rota.dias,
+    });
+    distanciaKm = conhecido.rota.distanciaKm;
+    provedorDaRota = conhecido.rota.provedor;
+    rotaMedidaAgora = false;
+  } else {
+    logger.info("checkout:rota", { cache: "miss" });
+    const rota = await provedor.rota(
+      { latitude: origem.latitude, longitude: origem.longitude },
+      coordenada,
+    );
+    if (!rota.ok) {
+      return semMedicao({
+        ok: false,
+        motivo: rota.motivo === "configuracao" ? "nao_configurado" : "rota_indisponivel",
+        erro: rota.mensagem,
+      });
+    }
+    distanciaKm = rota.distanciaKm;
+    provedorDaRota = rota.provedor;
+    rotaMedidaAgora = true;
   }
 
   // A taxa sai da MESMA faixa que `criar_pedido` vai usar (uma fórmula só).
+  // A taxa sai SEMPRE daqui, das faixas vigentes — não importa se a distância
+  // veio do cache ou de uma medição agora. É o que garante que alterar a
+  // tabela de frete mude o valor do pedido seguinte (RN-ENT-008).
   const { data: cotacaoBruta, error: erroCotacao } = await supabase.rpc("cotar_entrega", {
-    p_km: rota.distanciaKm,
+    p_km: distanciaKm,
     p_segredo: segredo,
   });
 
@@ -214,36 +261,43 @@ async function localizarEMedir(endereco: EnderecoInformado): Promise<CotacaoEntr
 
   if (erroCotacao || !cotacao) {
     logger.error("checkout:cotar", { code: (erroCotacao as { code?: string } | null)?.code });
-    return {
+    return semMedicao({
       ok: false,
       motivo: "nao_configurado",
       erro: "Não conseguimos calcular a taxa agora. Tente de novo em instantes.",
-    };
+    });
   }
 
   if (!cotacao.ok) {
     // CLAUDE.md §20: sem faixa é fora de área — nunca R$ 0,00 por omissão.
-    return {
+    // Vale igualmente para distância vinda do cache: ela entra na mesma
+    // guarda, e continua podendo cair fora de área.
+    return semMedicao({
       ok: false,
       motivo: "fora_de_area",
       erro: "Esse endereço está fora da nossa área de entrega. Você pode escolher retirada.",
-      distancia_km: rota.distanciaKm,
+      distancia_km: distanciaKm,
       distancia_maxima_km: cotacao.distancia_maxima_km,
-    };
+    });
   }
 
   return {
-    ok: true,
-    distancia_km: rota.distanciaKm,
-    taxa: cotacao.taxa,
-    exige_aprovacao: cotacao.exige_aprovacao,
-    pedido_minimo_ativo: cotacao.pedido_minimo_ativo,
-    pedido_minimo_valor: cotacao.pedido_minimo_valor,
-    endereco_formatado: enderecoFormatado,
-    latitude: coordenada.latitude,
-    longitude: coordenada.longitude,
-    confianca,
-    provedor: rota.provedor,
+    cotacao: {
+      ok: true,
+      distancia_km: distanciaKm,
+      taxa: cotacao.taxa,
+      exige_aprovacao: cotacao.exige_aprovacao,
+      pedido_minimo_ativo: cotacao.pedido_minimo_ativo,
+      pedido_minimo_valor: cotacao.pedido_minimo_valor,
+      endereco_formatado: enderecoFormatado,
+      latitude: coordenada.latitude,
+      longitude: coordenada.longitude,
+      confianca,
+      provedor: provedorDaRota,
+    },
+    rotaMedidaAgora,
+    distanciaKm,
+    provedorDaRota,
   };
 }
 
@@ -259,7 +313,9 @@ export async function cotarEntrega(endereco: unknown): Promise<CotacaoEntrega> {
   }
 
   try {
-    return await localizarEMedir(validado.data);
+    // Só a cotação atravessa: `rotaMedidaAgora` é assunto interno do cache, e
+    // o navegador não precisa — nem deve — saber de onde veio a distância.
+    return (await localizarEMedir(validado.data)).cotacao;
   } catch (erro) {
     if (erro instanceof SegredoAusente) {
       logger.error("checkout:segredo_ausente", {});
@@ -304,6 +360,9 @@ export async function enviarPedido(pedido: unknown): Promise<ResultadoEnvio> {
 
   let rota: { distancia_km: number; provedor: string } | null = null;
   let enderecoParaBanco: Record<string, unknown> | null = null;
+  // Guardada para depois de `criar_pedido`: é ela que cria a linha de
+  // endereço, e sem linha não há onde gravar a distância.
+  let medicaoParaRegistrar: Medicao | null = null;
 
   if (dados.modalidade === "delivery") {
     if (!dados.endereco) {
@@ -311,8 +370,11 @@ export async function enviarPedido(pedido: unknown): Promise<ResultadoEnvio> {
     }
 
     // Recalcula endereço e rota AGORA. O que a tela mostrou na cotação não
-    // volta como verdade — nem a coordenada, nem a distância.
-    const medida = await localizarEMedir(dados.endereco);
+    // volta como verdade — nem a coordenada, nem a distância. O cache muda de
+    // onde o número vem, não quem tem autoridade sobre ele: `criar_pedido`
+    // segue recalculando a taxa do zero mais abaixo.
+    const medicao = await localizarEMedir(dados.endereco);
+    const medida = medicao.cotacao;
     if (!medida.ok) {
       return {
         ok: false,
@@ -325,6 +387,7 @@ export async function enviarPedido(pedido: unknown): Promise<ResultadoEnvio> {
       };
     }
 
+    medicaoParaRegistrar = medicao;
     rota = { distancia_km: medida.distancia_km, provedor: medida.provedor };
     enderecoParaBanco = {
       id: dados.endereco.id ?? null,
@@ -371,6 +434,30 @@ export async function enviarPedido(pedido: unknown): Promise<ResultadoEnvio> {
   const resposta = data as Record<string, unknown>;
   if (!resposta?.["ok"]) {
     return { ...(resposta as object), ok: false } as ResultadoEnvio;
+  }
+
+  // SEMEIA O CACHE DE DISTÂNCIA, agora que a linha de endereço existe.
+  //
+  // Só quando a rota foi medida de verdade nesta chamada. Regravar uma
+  // distância que veio do cache renovaria o carimbo de validade sozinho, e o
+  // TTL de 90 dias nunca venceria — o cache envelheceria para sempre sem
+  // nunca ser conferido contra o provedor.
+  //
+  // Depois de `criar_pedido`, e nunca antes: o pedido do cliente é o que
+  // importa, e uma falha ao semear cache não pode estragá-lo.
+  if (
+    medicaoParaRegistrar?.rotaMedidaAgora &&
+    medicaoParaRegistrar.distanciaKm !== null &&
+    medicaoParaRegistrar.provedorDaRota !== null &&
+    dados.endereco
+  ) {
+    await registrarRotaMedida(
+      supabase,
+      paraGeocodificar(dados.endereco),
+      medicaoParaRegistrar.distanciaKm,
+      medicaoParaRegistrar.provedorDaRota,
+      segredo,
+    );
   }
 
   return {

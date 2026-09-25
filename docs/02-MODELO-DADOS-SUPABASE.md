@@ -1,7 +1,7 @@
 # 02 — Modelo de Dados Supabase | Pizzaria Shalon
 
-**Versão:** 1.0  
-**Status:** Especificação arquitetural — não implementar ainda  
+**Versão:** 1.1 — §8.2 revisado em 25/09/2026 (`D-2026-09-25-76`, `D-2026-09-25-77`)  
+**Status:** Especificação arquitetural — implementada nas Fases 1 a 11  
 **Fonte de verdade funcional:** `01-DOCUMENTO-MESTRE.md` V2  
 **Documento complementar:** `03-RLS-RBAC-SEGURANCA.md`
 
@@ -483,8 +483,64 @@ O WhatsApp é identificador operacional, **não PK**. Estratégia de unicidade/m
 - `was_map_adjusted boolean default false`
 - `is_active boolean`
 - `created_at`, `updated_at`
+- `address_key text` — **gerada pelo banco** (`D-2026-09-25-76`)
+- `geocoded_at timestamptz nullable` (`D-2026-09-25-76`)
+- `route_distance_km numeric(8,3) nullable` (`D-2026-09-25-77`)
+- `route_provider text nullable` (`D-2026-09-25-77`)
+- `route_origin_lat numeric(10,7) nullable` (`D-2026-09-25-77`)
+- `route_origin_lng numeric(10,7) nullable` (`D-2026-09-25-77`)
+- `route_measured_at timestamptz nullable` (`D-2026-09-25-77`)
 
-Taxa/distância **não pertencem ao endereço salvo**. Devem ser recalculadas a cada novo pedido.
+### Taxa e distância — regra revisada em 25/09/2026
+
+> **A redação anterior desta seção era:** "Taxa/distância **não pertencem ao
+> endereço salvo**. Devem ser recalculadas a cada novo pedido."
+>
+> A metade sobre **taxa** continua valendo integralmente. A metade sobre
+> **distância** foi alterada por `D-2026-09-25-77`.
+
+**A TAXA não pertence ao endereço salvo, e nunca vai pertencer.**
+
+Não existe nem existirá coluna de taxa aqui. A taxa é recalculada pelas faixas
+vigentes em **toda** cotação (`cotar_entrega`) e em **todo** pedido
+(`criar_pedido`). RN-ENT-008 permanece intacto: taxa antiga não é autoridade,
+em nenhuma circunstância.
+
+Consequência prática, e é o teste que prova a regra: a Shalon altera a tabela
+de faixas e o **mesmo endereço já em cache** passa a custar diferente no pedido
+seguinte. Reutilizar distância não congela preço.
+
+**A DISTÂNCIA pode ser reutilizada temporariamente**, porque as duas coisas têm
+naturezas diferentes e a redação anterior as tratava como uma só:
+
+| | Taxa | Distância |
+|---|---|---|
+| O que é | preço | medida física entre dois pontos |
+| Muda quando | a Shalon muda a tabela | a malha viária muda |
+| Reutilizável | **nunca** | sim, com condições |
+
+O reuso só acontece quando **todas** estas condições valem:
+
+1. mesma identidade geográfica do endereço (`address_key`);
+2. **mesma origem** — `route_origin_lat/lng` iguais à coordenada atual da loja;
+3. mesmo provedor de rotas;
+4. medição com menos de **90 dias** (`route_measured_at`);
+5. distância **estritamente positiva** — garantido por constraint.
+
+O registro é **tudo ou nada**: constraint recusa medição pela metade, porque
+distância sem a origem que a produziu é um número sem sentido.
+
+Alterar as faixas de frete **não** invalida a distância. Mudar o endereço da
+loja invalida **somente** a distância — a coordenada do cliente continua
+válida, porque o cliente não se mexeu.
+
+Distância vencida, origem diferente, provedor diferente ou registro
+inconsistente produzem **miss**, e miss significa medir a rota de verdade. Em
+nenhuma hipótese produzem distância zero ou taxa R$ 0,00.
+
+A coordenada tem validade própria, mais longa (**180 dias**), medida por
+`geocoded_at` — e **não** por `updated_at`, que o trigger da tabela reescreve a
+cada alteração e renovaria a validade do cache por engano.
 
 ## 8.3 `public_devices`
 

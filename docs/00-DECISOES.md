@@ -2471,6 +2471,138 @@ acrescentado ou removido.
 ---
 ---
 
+---
+
+### D-2026-09-25-76 — Coordenada de endereço conhecido pode ser reutilizada (Fase A do cache)
+
+**A decisão.** Quando um endereço já foi geocodificado com confiança
+suficiente, a coordenada guardada é reutilizada e a chamada de geocodificação
+ao provedor é dispensada. A rota continua sendo medida de verdade.
+
+**O que motivou.** Nada de urgente: a cota do HERE Limited Plan tem folga de
+2,9× no pior caso (`06`, A-05). O ganho real é outro — `customer_addresses`
+guardava `latitude`, `longitude`, `geocode_provider` e `geocode_confidence`
+desde a Fase 5, gravados por `criar_pedido` a cada pedido de entrega, e
+**ninguém nunca leu de volta**. O projeto pagava o armazenamento sem receber
+benefício.
+
+**A identidade do endereço é derivada no banco, e só lá.** Função
+`chave_de_endereco()`, `IMMUTABLE`, usada tanto pela coluna gerada
+`address_key` quanto pela consulta. A normalização NÃO existe em TypeScript, e
+isso é decisão, não conveniência: duas definições da mesma regra divergiriam
+algum dia, e divergência aqui significa a coordenada de um endereço aplicada a
+outro — distância errada, taxa errada.
+
+**Complemento e ponto de referência não participam** (RN-ENT-004). "Ap 42" e
+"Ap 71" no mesmo prédio são a mesma coordenada, e devem ser o mesmo acerto.
+
+**Condições do reuso.** Confiança em `exata`, `aproximada` ou
+`ajustada_no_mapa`; nunca `ambigua`, nem quando o registro está
+contraditoriamente marcado como ajustado no mapa. Mesmo provedor. Menos de 180
+dias. Endereço ativo, coordenada presente.
+
+**Ajuste manual no mapa tem precedência absoluta** (RN-ENT-005): não expira por
+calendário e não é descartado por troca de provedor — foi uma pessoa que olhou
+o mapa, e isso não envelhece como palpite de API.
+
+**O navegador não é autoridade para nada disso.** A busca é por conteúdo, e a
+assinatura da função **não tem parâmetro de `id`**: se tivesse, um id forjado
+traria a coordenada do endereço de outro cliente. O caminho não existe.
+
+**`geocoded_at` nasceu de um teste que falhou.** A validade estava sendo medida
+por `updated_at`, que o trigger da tabela reescreve a cada UPDATE — marcar o
+endereço como preferido renovaria o prazo de uma coordenada velha sem que
+ninguém tivesse revalidado nada. A coluna nova só se move quando a coordenada
+se move, mantida por trigger próprio.
+
+**Não incluído:** deduplicação de `customer_addresses`, que exigiria alterar
+`criar_pedido`. Decisão explícita de não misturar os dois gates.
+
+**Evidência:** 58 cenários SQL e 23 em Vitest. Migrations `20260925100000`,
+`20260925100100`, `20260925100200`.
+
+---
+
+### D-2026-09-25-77 — Distância rodoviária pode ser reutilizada; a taxa nunca (Fase B do cache)
+
+**A decisão.** Uma distância rodoviária já validada pode ser reutilizada
+temporariamente para o mesmo endereço **e a mesma origem da loja**. O valor
+monetário do frete **nunca** é guardado.
+
+**Altera `02-MODELO-DADOS-SUPABASE.md` §8.2**, cuja redação era "Taxa/distância
+não pertencem ao endereço salvo. Devem ser recalculadas a cada novo pedido."
+
+A metade sobre **taxa** continua valendo integralmente. A metade sobre
+**distância** cai. O §8.2 tratava as duas como uma coisa só, e elas não são:
+
+| | Taxa | Distância |
+|---|---|---|
+| O que é | preço | medida física entre dois pontos |
+| Muda quando | a Shalon muda a tabela | a malha viária muda |
+| Reutilizável | **nunca** | sim, com condições |
+
+**RN-ENT-008 permanece intacto.** Nenhuma coluna de taxa existe ou existirá em
+`customer_addresses`. `cotar_entrega` e `criar_pedido` seguem sendo as únicas
+autoridades do preço, recalculando pelas faixas vigentes a cada cotação e a
+cada pedido — e nenhuma das duas foi alterada por este gate.
+
+Consequência prática, coberta por teste: a Shalon altera a tabela de faixas e o
+**mesmo endereço já em cache** passa a custar diferente no pedido seguinte.
+
+**Condições do reuso**, todas cumulativas: mesma `address_key`; **mesma
+origem** (`route_origin_lat/lng` iguais à coordenada atual da loja); mesmo
+provedor; menos de **90 dias**; distância **estritamente positiva**.
+
+**A origem gravada junto é o coração do desenho.** Distância só vale se os dois
+pontos forem os mesmos. Guardar a origem usada na medição é melhor que um
+trigger de invalidação: a comparação é explícita e não depende de alguém ter
+lembrado de limpar o cache quando a loja mudar de endereço. Loja em outro lugar
+invalida **somente** a distância — a coordenada do cliente continua válida,
+porque o cliente não se mexeu.
+
+**Registro é tudo ou nada.** Constraint recusa medição pela metade: distância
+sem a origem que a produziu é um número sem sentido, e reutilizá-la seria
+cobrar por uma rota que ninguém mediu.
+
+**A origem não é parâmetro da gravação.** `registrar_rota_medida` a lê de
+`store_settings`, para que nem o servidor possa declarar uma origem que não é a
+da loja.
+
+**Só medição real renova o carimbo.** A primeira versão da função de gravação
+só escrevia quando algum campo diferisse, para poupar UPDATE — o que faria uma
+remedição confirmatória não renovar a validade, e o registro venceria de novo
+no dia seguinte, para sempre. A versão final grava sempre que é chamada, e a
+responsabilidade passou para o chamador: distância vinda do cache **não** é
+regravada, porque isso renovaria o TTL de 90 dias sozinho e ele nunca venceria.
+
+**Só entrega concluída semeia o cache.** A gravação acontece depois de
+`criar_pedido` ter sucesso, porque é ela que cria a linha de endereço. Cotação
+abandonada não semeia.
+
+**Fail-closed preservado.** Distância vencida, origem diferente, provedor
+diferente, registro inconsistente, zero ou negativo produzem **miss**, e miss
+significa medir no HERE. `fora_de_area` e `rota_indisponivel` continuam
+funcionando com distância vinda do cache — ela entra na mesma guarda. Em
+nenhuma hipótese há frete R$ 0,00.
+
+**Ganho colateral que talvez importe mais que a cota:** com coordenada e
+distância em cache, um cliente recorrente consegue fechar pedido de entrega
+**com o HERE fora do ar**. Antes da Fase B, um 429 bloqueava a entrega mesmo
+para quem já havia pedido dali.
+
+**Limitação conhecida:** o pedido manual do painel interno consome o cache mas
+não o semeia — semear exigiria alterar `src/application/pedidos/acoes.ts`, fora
+do escopo deste gate. Não há prejuízo: o checkout público semeia.
+
+**Não incluído:** VPS, Nominatim, OSRM e Mapbox. Deduplicação de
+`customer_addresses`.
+
+**Evidência:** migration `20260925110000`; suíte SQL e Vitest ampliadas — ver
+checkpoint da Fase B.
+
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.

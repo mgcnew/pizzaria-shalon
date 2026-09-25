@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { consultarEnderecoConhecido } from "@/application/checkout/cacheDeEndereco";
+import {
+  consultarEnderecoConhecido,
+  registrarRotaMedida,
+} from "@/application/checkout/cacheDeEndereco";
 
 /**
  * Testes do reuso de coordenada — Fase A do cache (D-2026-09-25).
@@ -33,6 +36,16 @@ const HIT = {
   provedor: "here",
   ajustado_no_mapa: false,
   dias: 12,
+  rota: false,
+};
+
+/** Acerto que traz TAMBÉM a distância (Fase B). */
+const HIT_COM_ROTA = {
+  ...HIT,
+  rota: true,
+  distancia_km: 3.215,
+  rota_provedor: "here",
+  rota_dias: 7,
 };
 
 /** Cliente Supabase de mentira: só `rpc`, devolvendo o que o teste quiser. */
@@ -84,12 +97,12 @@ describe("cache de endereço: acerto", () => {
 
   it("converte coordenada que vem como texto — `numeric` do Postgres costuma vir assim", async () => {
     const { r } = await consultar({
-      data: { ...HIT, latitude: "-23.6959433", longitude: "-46.6426328" },
+      data: { ...HIT, latitude: "-20.0100000", longitude: "-40.0100000" },
     });
     expect(r.encontrado).toBe(true);
     if (r.encontrado) {
-      expect(r.latitude).toBeCloseTo(-23.6959433, 7);
-      expect(r.longitude).toBeCloseTo(-46.6426328, 7);
+      expect(r.latitude).toBeCloseTo(-20.0100000, 7);
+      expect(r.longitude).toBeCloseTo(-40.0100000, 7);
     }
   });
 
@@ -245,5 +258,151 @@ describe("cache de endereço: o que é enviado ao banco", () => {
     await consultarEnderecoConhecido(cliente, semCep, "here", "segredo-de-teste");
     const [, args] = rpc.mock.calls[0] ?? [];
     expect((args as { p_cep: unknown }).p_cep).toBeNull();
+  });
+});
+
+// ============================================================== FASE B: rota
+
+/**
+ * Reuso de distância (D-2026-09-25-77).
+ *
+ * A INVARIANTE: a distância pode ser reaproveitada; o PREÇO nunca. Nada neste
+ * módulo devolve taxa, e o banco só entrega a distância quando a origem atual
+ * da loja é a mesma que produziu a medição — comparação feita no SQL, sobre
+ * `store_settings`, fora do alcance de quem chama.
+ *
+ * Zero, negativo, nulo e inconsistente viram MISS. Miss significa medir no
+ * HERE, que é o comportamento de antes da Fase B.
+ */
+describe("cache de rota: acerto", () => {
+  it("devolve a distância já medida", async () => {
+    const { r } = await consultar({ data: HIT_COM_ROTA });
+    expect(r.encontrado).toBe(true);
+    if (r.encontrado) {
+      expect(r.rota).not.toBeNull();
+      expect(r.rota?.distanciaKm).toBe(3.215);
+      expect(r.rota?.provedor).toBe("here");
+      expect(r.rota?.dias).toBe(7);
+    }
+  });
+
+  it("converte distância que vem como texto — `numeric` do Postgres", async () => {
+    const { r } = await consultar({ data: { ...HIT_COM_ROTA, distancia_km: "2.655" } });
+    expect(r.encontrado).toBe(true);
+    if (r.encontrado) expect(r.rota?.distanciaKm).toBeCloseTo(2.655, 3);
+  });
+
+  it("NUNCA devolve taxa, mesmo que a resposta trouxesse uma", async () => {
+    const { r } = await consultar({
+      data: { ...HIT_COM_ROTA, taxa: 9.9, delivery_fee: 9.9, fee: 9.9 },
+    });
+    expect(r.encontrado).toBe(true);
+    const texto = JSON.stringify(r);
+    expect(texto).not.toContain("taxa");
+    expect(texto).not.toContain("9.9");
+    expect(texto).not.toContain("fee");
+  });
+});
+
+describe("cache de rota: coordenada válida com rota inválida", () => {
+  /**
+   * O par de cenários que mais importa no desenho: as duas metades vencem
+   * separado. Quando a loja muda de endereço, o cliente continua onde estava
+   * — a coordenada dele vale, a rota até ele não.
+   */
+  it("`rota: false` mantém a coordenada e descarta a distância", async () => {
+    const { r } = await consultar({ data: { ...HIT_COM_ROTA, rota: false } });
+    expect(r.encontrado).toBe(true);
+    if (r.encontrado) {
+      expect(r.latitude).toBe(-23.5);
+      expect(r.rota).toBeNull();
+    }
+  });
+
+  it("distância ausente com `rota: true` é MISS de rota, não de endereço", async () => {
+    const { distancia_km: _, ...semDistancia } = HIT_COM_ROTA;
+    const { r } = await consultar({ data: semDistancia });
+    expect(r.encontrado).toBe(true);
+    if (r.encontrado) expect(r.rota).toBeNull();
+  });
+});
+
+describe("cache de rota: distância inválida nunca vira acerto", () => {
+  it("ZERO é MISS — zero km cairia na faixa mais barata", async () => {
+    const { r } = await consultar({ data: { ...HIT_COM_ROTA, distancia_km: 0 } });
+    expect(r.encontrado).toBe(true);
+    if (r.encontrado) expect(r.rota).toBeNull();
+  });
+
+  it("negativo é MISS", async () => {
+    const { r } = await consultar({ data: { ...HIT_COM_ROTA, distancia_km: -3.2 } });
+    expect(r.encontrado).toBe(true);
+    if (r.encontrado) expect(r.rota).toBeNull();
+  });
+
+  it("nulo, NaN, Infinity e texto não numérico são MISS", async () => {
+    for (const v of [null, NaN, Infinity, -Infinity, "longe", ""]) {
+      const { r } = await consultar({ data: { ...HIT_COM_ROTA, distancia_km: v } });
+      expect(r.encontrado, String(v)).toBe(true);
+      if (r.encontrado) expect(r.rota, String(v)).toBeNull();
+    }
+  });
+
+  it("sem provedor da rota é MISS: medição sem autor não é medição", async () => {
+    for (const v of [null, "", "   ", 42]) {
+      const { r } = await consultar({ data: { ...HIT_COM_ROTA, rota_provedor: v } });
+      expect(r.encontrado, String(v)).toBe(true);
+      if (r.encontrado) expect(r.rota, String(v)).toBeNull();
+    }
+  });
+
+  it("`rota_dias` inválido não impede o acerto — vira zero", async () => {
+    const { r } = await consultar({ data: { ...HIT_COM_ROTA, rota_dias: "muitos" } });
+    expect(r.encontrado).toBe(true);
+    if (r.encontrado) expect(r.rota?.dias).toBe(0);
+  });
+});
+
+// ------------------------------------------------------------- gravação
+
+describe("registro da medição", () => {
+  it("manda distância e provedor, e NUNCA a origem", async () => {
+    const { cliente, rpc } = supabaseFalso({ data: { ok: true, gravado: true } });
+    await registrarRotaMedida(cliente, ENDERECO, 3.215, "here", "segredo-de-teste");
+    expect(rpc).toHaveBeenCalledTimes(1);
+    const [nome, args] = rpc.mock.calls[0] ?? [];
+    expect(nome).toBe("registrar_rota_medida");
+    const chaves = Object.keys(args as Record<string, unknown>);
+    expect(chaves).toContain("p_distancia_km");
+    expect(chaves).toContain("p_provedor");
+    // A origem é lida de `store_settings` DENTRO do banco. Se viesse daqui,
+    // este código poderia declarar uma origem que não é a da loja, e a
+    // distância "válida" teria sido medida de outro lugar.
+    expect(chaves).not.toContain("p_origem_lat");
+    expect(chaves).not.toContain("p_origem_lng");
+    // E nunca taxa.
+    expect(JSON.stringify(args)).not.toContain("taxa");
+  });
+
+  it("distância inválida não chega ao banco", async () => {
+    for (const km of [0, -1, NaN, Infinity]) {
+      const { cliente, rpc } = supabaseFalso({ data: { ok: true } });
+      await registrarRotaMedida(cliente, ENDERECO, km, "here", "segredo-de-teste");
+      expect(rpc, String(km)).not.toHaveBeenCalled();
+    }
+  });
+
+  it("falha na gravação não lança: o pedido do cliente já foi criado", async () => {
+    const { cliente } = supabaseFalso(new Error("conexão caiu"));
+    await expect(
+      registrarRotaMedida(cliente, ENDERECO, 3.215, "here", "segredo-de-teste"),
+    ).resolves.toBeUndefined();
+  });
+
+  it("erro devolvido pelo banco também é silencioso", async () => {
+    const { cliente } = supabaseFalso({ error: { code: "42501" } });
+    await expect(
+      registrarRotaMedida(cliente, ENDERECO, 3.215, "here", "segredo-de-teste"),
+    ).resolves.toBeUndefined();
   });
 });
