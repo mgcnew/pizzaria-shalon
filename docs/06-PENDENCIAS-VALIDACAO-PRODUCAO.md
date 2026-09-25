@@ -1,8 +1,9 @@
 # 06 — PENDÊNCIAS DE VALIDAÇÃO PARA PRODUÇÃO
 ## Sistema de Gestão e Pedidos — Pizzaria Shalon
 
-**Versão:** 1.3 — aberto em 19/09/2026, Fases 6 e 7 encerradas em 21/09/2026,
-Fase 10 encerrada em 24/09/2026
+**Versão:** 1.4 — aberto em 19/09/2026, Fases 6 e 7 encerradas em 21/09/2026,
+Fase 10 encerrada em 24/09/2026, provedor de rotas trocado para HERE em
+24/09/2026 (`D-2026-09-24-75`)
 **Status:** documento vivo
 **Função:** concentrar, em um lugar só, o que **não impede** o desenvolvimento
 das próximas fases mas **precisa ser resolvido e testado antes da produção**.
@@ -39,40 +40,66 @@ Cada pendência traz, sempre:
 
 ---
 
-## Google Maps e validação E2E da Fase 5
+## A-05 — Provedor de rotas (HERE) e validação E2E da Fase 5
 
 > **OBRIGATÓRIA ANTES DE PRODUÇÃO — NÃO BLOQUEIA DESENVOLVIMENTO DAS
 > PRÓXIMAS FASES.**
 
+> **O provedor mudou em 24/09/2026.** `D-2026-09-24-75` substituiu o Google
+> Maps pelo **HERE**, porque o Google exige ativação de faturamento com meio
+> de pagamento e a proprietária não autoriza cartão. Tudo abaixo passou a se
+> referir ao HERE. As partes sobre **restrição de credencial na Vercel** e
+> sobre **o que validar com endereço real** valem igual, e por isso foram
+> mantidas.
+
 ### Situação atual
 
-- A integração com o **Google Maps Platform** está implementada, atrás da
-  abstração de provedor (`src/infrastructure/rotas/`). Nenhuma regra de
-  negócio conhece o Google: o contrato fala em coordenada, confiança e
-  distância de rota — não em `place_id` nem em `routes[0]`.
-- Os **testes automatizados estão concluídos**: contrato de geocodificação,
-  dublê determinístico, provedor `indisponivel`, e 66 cenários SQL que
-  exercitam faixa, raio, mínimo, troco, idempotência e exposição pública.
-- **A integração real com o Google NÃO foi validada.** Nenhuma chamada saiu
-  deste projeto para a Geocoding API ou para a Routes API. O que foi
-  verificado é o comportamento contra o *contrato*, não contra o fornecedor.
-- A credencial está **temporariamente ausente** porque a configuração de
-  billing do Google Cloud será feita depois. É uma decisão de calendário,
-  não um impedimento técnico.
-- **Nada disso autoriza considerar o Maps validado.** Enquanto esta seção
-  não estiver marcada como concluída, a integração é código não exercitado.
+- A integração com o **HERE Location Services** está implementada, atrás da
+  mesma abstração de provedor (`src/infrastructure/rotas/`). Nenhuma regra de
+  negócio conhece o HERE: o contrato fala em coordenada, confiança e distância
+  de rota — não em `resultType` nem em `sections[0].summary`.
+- **Os testes automatizados cobrem o parsing**, o que não era verdade na
+  integração anterior: 22 casos do provedor HERE e 14 do ViaCEP, com `fetch`
+  em dublê, cobrindo mapeamento de confiança, ambiguidade, credencial
+  recusada, timeout, corpo inválido, ausência de rota e arredondamento de km.
+  Mais os 13 casos de faixa e os 66 cenários SQL da Fase 5, que exercitam
+  faixa, raio, mínimo, troco, idempotência e exposição pública.
+- **A integração real com o HERE NÃO foi validada.** Nenhuma chamada saiu
+  deste projeto para a Geocoding & Search API ou para a Routing API. O que foi
+  verificado é o comportamento contra o *contrato* e contra respostas
+  simuladas — não contra o fornecedor.
+- **Nada disso autoriza considerar o provedor validado.** Enquanto esta seção
+  não estiver marcada como concluída, a integração é código não exercitado
+  contra o mundo real.
+
+### O risco específico deste provedor
+
+A qualidade de geocodificação do HERE no Brasil, em endereço residencial de
+cidade menor, **pode ser inferior à do Google**. E geocodificação errada
+produz distância errada, que produz **taxa errada** — dinheiro.
+
+Duas coisas contêm o risco, e a primeira é a que importa:
+
+1. O provedor **rejeita** qualquer resultado que não seja `houseNumber` com
+   tipo conhecido. Centro de rua, bairro ou cidade não passam. Endereço que
+   não atinge essa precisão cai no ajuste pelo mapa (RN-ENT-005) ou na
+   retirada — nunca em cobrança sobre coordenada fraca.
+2. Falha de cálculo deixa a entrega **indisponível**, jamais R$ 0,00.
+
+**O que isso NÃO resolve:** um endereço que o HERE localiza com confiança e
+erra. Só teste com endereço real detecta isso — ver abaixo.
 
 ### O que falta configurar
 
 | # | Item | Observação |
 |---|---|---|
-| 1 | Projeto adequado no **Google Cloud** | separado, identificável como o da Shalon |
-| 2 | **Billing/faturamento** habilitado | Geocoding e Routes não respondem sem isso |
-| 3 | **Geocoding API** habilitada | endereço → coordenada, com nível de precisão |
-| 4 | **Routes API** habilitada | distância **rodoviária**; linha reta é proibida (CLAUDE.md §20) |
+| 1 | Conta/projeto no **HERE platform** | identificável como o da Shalon |
+| 2 | Plano **freemium** confirmado, sem pré-pagamento | é a razão da troca (`D-2026-09-24-75`); se a HERE passar a exigir cartão ou caução, isso volta a ser decisão da Shalon, não técnica |
+| 3 | **Geocoding & Search v1** habilitada | endereço → coordenada, com o tipo do resultado |
+| 4 | **Routing v8** habilitada | distância **rodoviária** (`transportMode=car`); linha reta é proibida (CLAUDE.md §20) |
 | 5 | Criação da **credencial server-side** | uma chave, usada só pelo servidor |
 | 6 | **Restrições** adequadas da credencial | ver a ressalva sobre a Vercel, logo abaixo |
-| 7 | `GOOGLE_MAPS_SERVER_KEY` no ambiente | **nunca no Git**, **nunca em `NEXT_PUBLIC_*`**, nunca em log (CLAUDE.md §13 e §45) |
+| 7 | `HERE_API_KEY` no ambiente | **nunca no Git**, **nunca em `NEXT_PUBLIC_*`**, nunca em log (CLAUDE.md §13 e §45) |
 | 8 | `SHALON_CHECKOUT_ORIGIN_SECRET` no ambiente | obtido uma vez com `select public.ler_segredo_do_servidor('checkout_origem');`, que exige `settings.manage` |
 | 9 | **Configurações reais da Shalon** necessárias ao E2E | endereço e coordenadas da loja, horários, faixas de distância, raio automático, distância máxima, formas de pagamento, chave Pix quando houver, e catálogo com preço (liga-se a A-07) |
 
@@ -89,7 +116,7 @@ realmente suporta** naquele momento, entre as alternativas possíveis:
 
 - restrição por IP, **somente** se houver egresso estático contratado e os
   endereços forem conhecidos e estáveis;
-- restrição **por API** (limitar a chave a Geocoding API + Routes API), que é
+- restrição **por serviço** no painel do HERE, quando disponível, limitando a chave a Geocoding e Routing, que é
   independente de IP e deve ser aplicada em qualquer cenário;
 - quotas e alertas de consumo, para que uso anômalo apareça cedo;
 - rotação da chave documentada e possível sem downtime.
@@ -104,7 +131,7 @@ Antes da liberação para produção, executar o fluxo real, **em celular**:
 
 ```text
 celular → cardápio → produto/pizza → carrinho → checkout → endereço real
-→ Geocoding API → Routes API → distância rodoviária → faixa → taxa
+→ Geocoding & Search → Routing v8 → distância rodoviária → faixa → taxa
 → pagamento esperado → criação do pedido → tracking
 → Meus pedidos/Histórico
 ```
@@ -113,7 +140,7 @@ E validar também, caso a caso:
 
 | # | Cenário | O que precisa ser observado |
 |---|---|---|
-| 1 | **Retirada** | nenhuma chamada ao Google acontece; sem taxa, sem distância |
+| 1 | **Retirada** | nenhuma chamada ao HERE acontece; sem taxa, sem distância |
 | 2 | **Entrega dentro do raio automático** | fluxo normal, sem aprovação pendente |
 | 3 | **Entrega acima do raio e dentro da área máxima** | taxa calculada, envio permitido, pedido **aguardando aprovação** da Shalon |
 | 4 | **Endereço além da área máxima** | entrega bloqueada, retirada oferecida |
@@ -123,8 +150,8 @@ E validar também, caso a caso:
 | 8 | **Snapshot** | distância e taxa gravadas no pedido conferem com o que foi cobrado |
 | 9 | **Idempotência** | clique duplo e reenvio produzem **um** pedido e o **mesmo** link de acompanhamento |
 | 10 | **Segurança do tracking** | token não adivinhável; token errado e pedido inexistente respondem igual; sem telefone completo, coordenada ou dado interno na tela |
-| 11 | **Chave Google ausente do cliente** | varrer bundle do navegador, HTML servido, requisições de rede e logs da aplicação |
-| 12 | **Falha das APIs Google** | indisponibilidade, timeout, 403 e quota estourada: o checkout recusa com mensagem segura e **não** cria pedido com taxa arbitrária |
+| 11 | **Chave HERE ausente do cliente** | varrer bundle do navegador, HTML servido, requisições de rede e logs da aplicação — o HERE autentica por parâmetro de consulta, então a URL nunca pode aparecer |
+| 12 | **Falha das APIs HERE** | indisponibilidade, timeout, 401/403 e franquia estourada: o checkout recusa com mensagem segura e **não** cria pedido com taxa arbitrária |
 
 Concluída a validação, registrar aqui a data, quem executou e o que foi
 observado — e só então marcar a pendência como resolvida, com a entrada
@@ -139,8 +166,8 @@ O comportamento atual é **fail-closed**, e continua assim por decisão
 - **não** calcular em linha reta, por CEP ou por bairro;
 - **não** assumir taxa, nem "provisória";
 - **nunca** transformar ausência de integração em entrega R$ 0,00;
-- a **retirada** continua funcionando normalmente, porque não depende do
-  Google.
+- a **retirada** continua funcionando normalmente, porque não depende de
+  provedor de rotas.
 
 Não alterar a implementação do provedor apenas por falta da chave.
 
@@ -359,9 +386,9 @@ pedido → pagamento esperado → pagamento realizado → eventual divisão
 
 ### Quando executar
 
-Junto da configuração real da Shalon, **na mesma sessão** da validação
-Google Maps e do E2E já pendentes da Fase 5 — os dois precisam do mesmo
-ambiente configurado.
+Junto da configuração real da Shalon, **na mesma sessão** da validação do
+provedor de rotas (HERE) e do E2E já pendentes da Fase 5 — os dois precisam do
+mesmo ambiente configurado.
 
 ### O que NÃO deve ser feito para "adiantar"
 
@@ -375,10 +402,12 @@ ambiente configurado.
 ## Estado da Fase 5
 
 **Implementada e aprovada para continuidade do desenvolvimento**, com
-validação real de Google Maps e E2E **pendentes antes da produção**, conforme
-a seção acima.
+validação real do provedor de rotas e E2E **pendentes antes da produção**,
+conforme a seção acima.
 
-A integração Google **não está validada**.
+A integração **HERE** — provedor ativo desde `D-2026-09-24-75` — **não está
+validada** contra a API real. O parsing das respostas tem cobertura
+automatizada; a API verdadeira nunca respondeu a este código.
 
 ---
 
@@ -629,9 +658,10 @@ Nada abaixo foi convertido em "testado".
 
 ### O que segue sem validação real
 
-1. **A-05 — Google Maps real.** Seção "Google Maps e validação E2E da Fase 5"
-   neste documento. O provedor de rota tem abstração interna e teste com
-   provedor falso; a API verdadeira nunca respondeu a este código.
+1. **A-05 — provedor de rotas real (HERE).** Seção "A-05 — Provedor de rotas
+   (HERE) e validação E2E da Fase 5" neste documento. O provedor de rota tem
+   abstração interna, provedor falso nos testes e cobertura do parsing do HERE;
+   a API verdadeira nunca respondeu a este código.
 
 2. **A-20 — criação de conta Auth de funcionário.** O sistema **vincula** uma
    conta que já existe no Auth; não a cria. Criar exigiria `service_role`

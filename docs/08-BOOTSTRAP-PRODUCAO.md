@@ -2,7 +2,8 @@
 
 ## Sistema de Gestão e Pedidos — Pizzaria Shalon
 
-**Versão:** 1.0 — aberto em 24/09/2026, no Gate 11.1 da Fase 11
+**Versão:** 1.1 — aberto em 24/09/2026 no Gate 11.1; provedor de rotas
+trocado para HERE em 24/09/2026 (`D-2026-09-24-75`)
 **Status:** documento operacional vivo
 **Função:** descrever, passo a passo, como a produção nasce — e como se volta
 atrás se algo der errado.
@@ -86,9 +87,9 @@ catálogo bloqueadas. Isso está incorporado a B6.
 | R1 | Organização Supabase | hospedar o projeto de produção | **existe** |
 | R2 | Projeto Supabase de **produção** | banco, Auth, Storage | **falta criar** |
 | R3 | Plano da organização Supabase | — | **decidido: Free** (24/09/2026) |
-| R4 | Projeto Google Cloud | Geocoding API + Routes API | **falta criar** |
-| R5 | Conta de faturamento Google | habilitar as APIs de rota | **falta criar** |
-| R6 | Chave server-side do Google Maps | distância real de rota | **falta gerar** |
+| R4 | Conta/projeto no **HERE platform** | Geocoding & Search v1 + Routing v8 | **existe** — criada por Marcelo em 24/09/2026 |
+| R5 | Plano freemium da HERE, **sem pré-pagamento** | habilitar as APIs de rota | **existe** — é a razão da troca (`D-2026-09-24-75`) |
+| R6 | Chave server-side da HERE (`HERE_API_KEY`) | distância real de rota | **existe** — em posse de Marcelo, **fora do Git** |
 | R7 | Conta Vercel | build e hospedagem do front | **existe** |
 | R8 | Projeto Vercel | deploy | **existe e está no ar** — inventariar, não recriar |
 | R9 | Domínio próprio | endereço público da loja | **opcional**, sem vínculo com plano |
@@ -123,7 +124,7 @@ backup, pausa por inatividade, custo e impacto operacional.
 |---|---|---|---|
 | Projeto Supabase de produção | Marcelo | **não** | Free, `sa-east-1`, `pizzaria-shalon-prod` |
 | Projeto descartável do ensaio | Marcelo | **não** | Free, temporário, removido depois — seção 9 |
-| Projeto Google Cloud | Marcelo | **sim** | faturamento é pré-requisito das APIs |
+| Projeto HERE platform | Marcelo | **não** | **já criado** em 24/09/2026; freemium, sem caução — foi o motivo de abandonar o Google |
 | Contas de Auth da equipe | Marcelo | não | manualmente, no painel — opção A de A-20 |
 | Domínio | Marcelo | **sim, se houver** | **opcional**, sem prazo e sem vínculo com plano |
 
@@ -157,14 +158,18 @@ gate que o autorizar explicitamente.
 - [ ] Anotar os valores atuais das variáveis **antes** de sobrescrever.
 - [ ] Repontar e **reimplantar** (B6.2).
 
-**Google**
+**HERE** (provedor de rotas desde `D-2026-09-24-75`)
 
-- [ ] Criar projeto no Google Cloud, habilitar faturamento e **apenas**
-      Geocoding e Routes.
-- [ ] Gerar a chave e **restringi-la às duas APIs** (restrição por IP não se
-      aplica: a Vercel não tem egresso estático).
-- [ ] Configurar **alerta de orçamento** e **cota defensiva por API** antes do
-      primeiro uso.
+- [x] Criar conta no HERE platform e gerar a `HERE_API_KEY` — feito em
+      24/09/2026.
+- [ ] Conferir que **Geocoding & Search v1** e **Routing v8** estão habilitadas
+      no projeto da chave.
+- [ ] **Restringir a credencial por serviço** a essas duas APIs (restrição por
+      IP não se aplica: a Vercel não tem egresso estático).
+- [ ] Conferir o **limite do plano freemium** e o comportamento ao estourá-lo —
+      o esperado é a entrega ficar indisponível, nunca taxa R$ 0,00.
+- [ ] Cadastrar `HERE_API_KEY` na Vercel **como variável de servidor**, sem
+      prefixo `NEXT_PUBLIC_` (B8).
 
 **Backup e go-live**
 
@@ -265,7 +270,8 @@ neste gate.**
 | `NEXT_PUBLIC_SUPABASE_URL` | pública | projeto de produção | passo B1 |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | pública | projeto de produção | passo B1 |
 | `SHALON_CHECKOUT_ORIGIN_SECRET` | **servidor** | **gerado pela migration 0040 durante o replay** | passo B4 |
-| `GOOGLE_MAPS_SERVER_KEY` | **servidor** | Google Cloud | passo B8 |
+| `HERE_API_KEY` | **servidor** | HERE platform | passo B8 |
+| `GOOGLE_MAPS_SERVER_KEY` | **servidor** | — | **legado**, fora do fluxo ativo desde `D-2026-09-24-75`; não cadastrar em produção |
 
 ### Três avisos que não são formalidade
 
@@ -302,8 +308,8 @@ A ordem abaixo ajusta a sugerida no plano por três dependências reais:
 
 - **Entrada:** nenhuma contratação. Supabase permanece **Free**; Vercel
   permanece no plano e no deployment atuais.
-- **Ação:** confirmar acesso administrativo ao Supabase e à Vercel. O Google
-  Cloud é o único serviço novo, e só é criado em B8.
+- **Ação:** confirmar acesso administrativo ao Supabase, à Vercel e ao HERE
+  platform. A conta HERE já existe; nada de novo precisa ser contratado.
 - **Resultado:** acesso administrativo confirmado.
 - **Evidência:** login funcionando nos painéis.
 - **Rollback:** nenhuma infraestrutura foi criada; basta não prosseguir.
@@ -373,8 +379,7 @@ passo, a sequência da seção 9 precisa ter liberado um slot.
 - **Entrada:** B3 aprovado.
 - **Ação:** obter os três valores e cadastrá-los na Vercel
   (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
-  `SHALON_CHECKOUT_ORIGIN_SECRET`). `GOOGLE_MAPS_SERVER_KEY` fica pendente
-  até B8.
+  `SHALON_CHECKOUT_ORIGIN_SECRET`). `HERE_API_KEY` fica pendente até B8.
 - **Resultado:** ambiente de produção configurável.
 - **Evidência:** as três variáveis presentes, nenhum `service_role` cadastrado.
 - **Rollback:** remover as variáveis; nada foi publicado ainda.
@@ -568,18 +573,32 @@ Levantar e **registrar** (sem copiar valores de segredo):
 - **Rollback:** a partir daqui recriar o projeto deixa de ser barato. Correção
   passa a ser pelas próprias telas, com auditoria. **Fazer backup ao final.**
 
-### B8 — Google Maps
+### B8 — Provedor de rotas (HERE)
 
-- **Entrada:** B0; endereço exato da loja (item 1).
-- **Ação:** habilitar Geocoding e Routes, gerar a chave, restringi-la às duas
-  APIs, cadastrar `GOOGLE_MAPS_SERVER_KEY` na Vercel, configurar alerta de
-  orçamento.
+- **Entrada:** B0; endereço exato da loja (item 1); `HERE_API_KEY` já em posse
+  de Marcelo.
+- **Ação:** conferir que **Geocoding & Search v1** e **Routing v8** estão
+  habilitadas, **restringir a credencial por serviço** a essas duas, e
+  cadastrar `HERE_API_KEY` na Vercel **como variável de servidor**.
 - **Resultado:** distância real de rota disponível.
 - **Evidência:** checkout de entrega devolve distância e taxa coerentes com
   trajetos conhecidos da Shalon; **falha de cálculo não produz R$ 0,00** —
   a entrega fica indisponível e a retirada continua funcionando.
-- **Rollback:** remover a variável. A loja opera só com retirada até voltar.
+- **Rollback:** remover a variável. Sem ela o seletor devolve
+  `provedorIndisponivel` por decisão (`D-2026-09-24-75`, sem fallback), e a
+  loja opera só com retirada até a chave voltar.
 - **Fecha A-05** quando a API real for exercitada e conferida.
+
+**Três cuidados específicos deste provedor:**
+
+1. A chave viaja **na query string** (`?apiKey=`), como a API exige. Nenhum
+   erro do provedor pode registrar a URL em log — só o status HTTP.
+2. A cobertura de endereço no Brasil **pode ser inferior à do Google** em
+   cidade pequena. Endereço que o HERE não resolve com confiança é rejeitado,
+   não estimado: ver a matriz de confiança em `06`, seção A-05.
+3. `GOOGLE_MAPS_SERVER_KEY` **não deve ser cadastrada** em produção. A que
+   existe hoje na Vercel é do ambiente atual e sua remoção é decisão separada,
+   ainda não autorizada.
 
 ### B9 — Storage com identidade real
 

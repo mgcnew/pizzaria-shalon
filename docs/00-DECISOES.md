@@ -362,6 +362,11 @@ publicado e **nunca** `force push`.
 
 ### D-2026-09-18-20 — Provedor de rotas: Google Maps Platform, com a regra agnóstica
 
+> ⚠️ **SUPERADA na escolha do fornecedor por `D-2026-09-24-75`**: o provedor
+> de produção passou a ser o **HERE**. O que esta decisão estabeleceu sobre a
+> **regra continuar agnóstica ao fornecedor** permanece válido — e foi
+> justamente o que tornou a troca barata.
+
 **Decisão:** o provedor de geocodificação e distância de rota da V1 será o
 **Google Maps Platform**, conforme definido pelo usuário em 18/09/2026.
 
@@ -2386,6 +2391,82 @@ acomodar uma instrução incompleta seria o caminho errado.
 
 **Impacto no design.** Nenhum. Nada no produto muda; muda o texto que descreve
 como configurar um ambiente novo.
+
+---
+
+### D-2026-09-24-75 — HERE substitui o Google como provedor de rotas
+
+**A decisão.** O provedor de geocodificação e distância de rota passa a ser o
+**HERE Location Services**. Supera `D-2026-09-18-20` **na escolha do
+fornecedor** — e só nisso.
+
+**Motivo.** O Google Maps Platform exige ativação de faturamento com meio de
+pagamento. A proprietária da Shalon não autoriza cadastrar cartão, e não é
+obrigada a justificar. O HERE oferece plano sem essa exigência.
+
+**Três decisões que acompanham, tomadas em 24/09/2026:**
+
+1. **Mapeamento de confiança conservador.** `street`, `locality` e
+   `administrativeArea` são tratados como **ambíguos e rejeitados** para
+   cálculo automático de frete. Só `houseNumber` serve: com
+   `houseNumberType = PA` vale **exata**, `interpolated` vale **aproximada**.
+   Mais de um resultado também é rejeitado.
+
+   **Por que rejeitar.** `street` é o caso que mais tenta: o HERE devolve com
+   aparência de sucesso, mas o ponto é o centro da rua — numa rua longa, isso
+   põe a coordenada a centenas de metros do imóvel. Cobrar por essa distância
+   seria inventar o número (RN-ENT-003). Rejeitar cai no ajuste pelo mapa
+   (RN-ENT-005) ou na retirada; **o erro caro é o oposto.**
+
+2. **Sem fallback para o Google.** `HERE_API_KEY` presente → HERE; ausente →
+   `provedorIndisponivel`. Nada no meio.
+
+   **Por que não manter fallback.** O faturamento do Google não foi ativado,
+   então um fallback automático responderia erro de credencial **fingindo ser
+   rede de proteção** — dependência enganosa. O arquivo `google.ts` fica no
+   repositório como histórico e referência de rigor, marcado como fora do
+   fluxo ativo, e não é importado pelo seletor.
+
+3. **ViaCEP como conveniência, nunca como autoridade.** A consulta por CEP
+   preenche **texto** — rua, bairro, cidade, UF — para poupar digitação. Ela
+   **não devolve coordenada** e não participa de distância nem de taxa. Um CEP
+   brasileiro pode cobrir uma rua inteira ou várias; usá-lo para inferir
+   distância produziria taxa errada. Falha do ViaCEP **não bloqueia** o
+   checkout: o cliente preenche à mão.
+
+**O que NÃO mudou, e é o ponto central.** A regra que transforma quilômetro em
+real continua no banco: `cotar_entrega` → `faixa_para_distancia`, e
+`criar_pedido` recalcula na transação. **O HERE não decide quanto cobrar** —
+ele fornece coordenada e distância. Nenhuma regra de taxa foi tocada, e as
+suítes de faixa passaram sem alteração.
+
+**Zero migrations.** `geocode_provider` e `delivery_route_provider` são `text`
+sem `CHECK`, então gravar `"here"` já era aceito; `geocode_confidence` continua
+restrito aos mesmos quatro valores do contrato. Nenhuma migration histórica foi
+alterada.
+
+**Dívida paga de passagem.** O provedor do Google nunca teve teste — o parsing
+que decide dinheiro estava descoberto. O provedor do HERE nasce com **22
+casos**, e o ViaCEP com **14**, todos com `fetch` em dublê e sem nenhuma chave
+real. Para isso, o Vitest passou a resolver `server-only` para o `empty.js` do
+próprio pacote, que é o que a condição `react-server` do Next já fazia no
+servidor — a guarda continua valendo no código de produção.
+
+**Variável de ambiente:** `HERE_API_KEY`, server-side. **Nunca
+`NEXT_PUBLIC_`**: o HERE autentica por parâmetro de consulta, então a chave
+viaja na URL e, exposta ao navegador, seria usada por terceiros contra a
+franquia. O provedor nunca registra a URL em log, só o status HTTP.
+
+**Mapbox** poderá ser avaliado como fallback futuro. **Não foi implementado.**
+
+**Onde foi formalizada.** `src/infrastructure/rotas/here.ts`,
+`src/application/checkout/cep.ts`, `.env.example`,
+`06-PENDENCIAS-VALIDACAO-PRODUCAO.md` (A-05) e
+`08-BOOTSTRAP-PRODUCAO.md` §6 e B8.
+
+**Impacto no design.** Nenhum na experiência aprovada. O campo de CEP do
+checkout ganhou preenchimento automático e uma dica de texto; nenhum campo foi
+acrescentado ou removido.
 
 ---
 ---
