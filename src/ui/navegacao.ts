@@ -12,6 +12,7 @@ export type ItemNav = { nome: string; href: string };
 export const MENU_ADMIN: readonly ItemNav[] = [
   { nome: "Dashboard", href: "/admin" },
   { nome: "Pedidos", href: "/admin/pedidos" },
+  { nome: "PDV", href: "/admin/pdv" },
   { nome: "Caixa", href: "/admin/caixa" },
   { nome: "Entregas", href: "/admin/entregas" },
   { nome: "Produtos", href: "/admin/produtos" },

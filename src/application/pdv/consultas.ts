@@ -1,7 +1,7 @@
 import "server-only";
 import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
 import { logger } from "@/lib/logger";
-import type { ItemCatalogoPdv, ResolucaoDeCodigo } from "./tipos";
+import type { ItemCatalogoPdv, PedidoAReceber, ResolucaoDeCodigo } from "./tipos";
 
 /**
  * Leituras do PDV — Fase 12, Etapa 4.
@@ -74,4 +74,41 @@ export async function buscarCatalogoPdv(termo: string): Promise<ItemCatalogoPdv[
   }
 
   return (data ?? []) as ItemCatalogoPdv[];
+}
+
+/**
+ * A fila de recebimento — Fase 12, Etapa 5.
+ *
+ * 09-PDV-FRENTE-DE-CAIXA.md §1.3, §4.2, §6.1
+ *
+ * ESTA FUNÇÃO NÃO TEM CRITÉRIO NENHUM. O `where` mora na RPC, e é de propósito:
+ * um segundo filtro aqui viraria uma segunda autoridade sobre o que pode ser
+ * cobrado, e por omissão — bastaria ela ser mais restritiva que
+ * `registrar_pagamento` para um pedido com o cliente devendo desaparecer da
+ * tela em silêncio (D-2026-09-26-79). Aqui só se transporta.
+ *
+ * Também não ordena: a ordem é `created_at` no banco, o mais antigo primeiro,
+ * porque quem está esperando há mais tempo no balcão é quem precisa ser
+ * atendido (§1.3).
+ *
+ * Não depende de caixa aberto: a RPC não olha `cash_sessions`, e o PDV precisa
+ * abrir com o caixa fechado (§4.4).
+ *
+ * Falha devolve lista vazia, não exceção — a fila é uma das três áreas da tela,
+ * e um erro nela não pode derrubar a venda em andamento (CLAUDE.md §37). A tela
+ * distingue "nada a receber" de "não deu para consultar" pelo segundo campo.
+ */
+export async function listarPedidosAReceber(): Promise<{
+  pedidos: PedidoAReceber[];
+  falhou: boolean;
+}> {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("pedidos_a_receber");
+
+  if (error) {
+    logger.error("pdv:listarPedidosAReceber", { code: (error as { code?: string }).code });
+    return { pedidos: [], falhou: true };
+  }
+
+  return { pedidos: (data ?? []) as PedidoAReceber[], falhou: false };
 }

@@ -5,7 +5,14 @@ import { usePathname } from "next/navigation";
 import { MENU_ADMIN } from "@/ui/navegacao";
 
 const GRUPOS = [
-  { titulo: "Operação", rotas: ["/admin", "/admin/pedidos", "/admin/caixa", "/admin/entregas"] },
+  {
+    titulo: "Operação",
+    // A ordem exibida é a do MENU_ADMIN, não a desta lista: aqui só se diz
+    // QUAIS rotas pertencem ao grupo. Rota fora de todos os grupos simplesmente
+    // não aparece na barra — foi o que aconteceu com o PDV quando ele entrou só
+    // no MENU_ADMIN.
+    rotas: ["/admin", "/admin/pedidos", "/admin/pdv", "/admin/caixa", "/admin/entregas"],
+  },
   {
     titulo: "Cardápio e clientes",
     rotas: ["/admin/produtos", "/admin/clientes", "/admin/remarketing"],
@@ -41,6 +48,18 @@ function IconeMenu({ href }: { href: string }) {
       <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className={classe}>
         <path d="M4 7.5h16v11H4v-11Zm2-3h12v3H6v-3Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
         <path d="M15.5 12h4.5v3h-4.5a1.5 1.5 0 0 1 0-3Z" stroke="currentColor" strokeWidth="1.7" />
+      </svg>
+    );
+  }
+
+  // Leitor de código de barras: é o gesto que define o PDV (§2.1). Sem este
+  // caso, o PDV herdaria o ícone de engrenagem do fallback, que nesta barra
+  // significa configuração.
+  if (href === "/admin/pdv") {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className={classe}>
+        <path d="M3.5 7.5v-3h3M20.5 7.5v-3h-3M3.5 16.5v3h3M20.5 16.5v3h-3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M7.5 8.5v7M10.5 8.5v7M13.5 8.5v7M16.5 8.5v7" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
       </svg>
     );
   }

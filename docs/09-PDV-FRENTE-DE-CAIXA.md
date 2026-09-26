@@ -2,8 +2,9 @@
 
 ## Sistema de Gestão e Pedidos — Pizzaria Shalon
 
-**Versão:** 1.0 — aberto em 25/09/2026
-**Status:** especificação aprovada, **ainda não implementada**
+**Versão:** 1.1 — reconciliado em 26/09/2026 (Etapa 5: critério `reversed` e o
+vocabulário de origem × modalidade)
+**Status:** Etapas 1 a 4 implementadas e persistidas no DEV; Etapa 5 em curso
 **Decisão de origem:** `D-2026-09-25-78`
 **Função:** fonte de verdade da implementação do PDV. Arquitetura, fluxos,
 telas, atalhos, regras financeiras, código de barras, concorrência,
@@ -58,6 +59,33 @@ O sistema tem dois eixos independentes, e o PDV depende dessa separação:
 **Pagar não avança a produção. Ficar pronto não paga.** É decisão aprovada
 (`D-2026-09-25-78`, item 3) e é o que permite receber um pedido que ainda está
 no forno.
+
+### 0.3 Origem e modalidade são coisas diferentes
+
+Registrado em 26/09/2026, na Etapa 5, porque os wireframes deste documento
+escrevem "Balcão" e "Retirada" na mesma linha e isso se lê como se fossem dois
+valores do mesmo campo. Não são.
+
+| Conceito | Coluna | Valores reais |
+|---|---|---|
+| **Origem** — por onde o pedido entrou | `orders.source` | `shalon_link`, `whatsapp`, `phone`, `counter`, `ifood`, `other` |
+| **Modalidade** — como o cliente recebe | `orders.fulfillment_type` | `delivery`, `pickup` |
+
+Portanto:
+
+- `source = 'counter'` significa **origem Balcão**;
+- `fulfillment_type = 'pickup'` significa **Retirada**;
+- `fulfillment_type = 'delivery'` significa **Entrega**.
+
+**NÃO existe, e não deve ser criada, a modalidade `balcao`.** Um pedido de balcão
+é `source = 'counter'` com `fulfillment_type = 'pickup'` — a pessoa está ali e
+leva. A constraint `orders_modalidade` aceita exatamente dois valores, e
+acrescentar um terceiro quebraria `orders_entrega_com_snapshot` e
+`orders_retirada_sem_entrega`, que existem para garantir que só entrega carrega
+endereço e distância.
+
+A linha `#150  Balcão  Retirada` do wireframe em §4.2 é, no modelo,
+`source='counter'` + `fulfillment_type='pickup'`: duas colunas, exibidas juntas.
 
 ---
 
@@ -127,7 +155,7 @@ Uso real: o cliente pediu no balcão, vai esperar sentado e paga na retirada.
 ```
 F4 → aba "Pedidos a receber"
        pedidos_a_receber():
-         payment_status = 'pending'
+         payment_status in ('pending','reversed')
          and status not in ('cancelled','rejected')
        ordenado por created_at, com idade em minutos
        mostra: #nº · cliente · modalidade · total · status operacional
@@ -140,6 +168,33 @@ F4 → aba "Pedidos a receber"
 **O status operacional não filtra a lista.** Um pedido `in_production` aparece
 e pode ser pago. O banco já permite: `registrar_pagamento` só recusa
 `cancelled` e `rejected`.
+
+**Por que `reversed` também entra.** Decisão de 26/09/2026, tomada na Etapa 5
+depois de a especificação original dizer apenas `payment_status = 'pending'`.
+
+`reverter_pagamento` **não exige** que o pedido esteja cancelado: ela pede
+`finance.reverse`, estorna os pagamentos confirmados e faz
+`orders.payment_status = 'reversed'` sem tocar em `orders.status`. Existe,
+portanto, um estado alcançável de **dinheiro devolvido com pedido vivo** — e
+nele o cliente continua devendo, porque não há pagamento confirmado.
+
+Comprovado em transação com `rollback`: pedido pago, avançado para
+`in_production`, estornado sem cancelamento, e então `registrar_pagamento`
+devolveu `ok: true`. Ou seja, **o banco aceita receber esse pedido**.
+
+Se a fila usasse o critério literal `= 'pending'`, ela mostraria um conjunto
+MENOR do que `registrar_pagamento` aceita, e passaria a ser uma segunda
+autoridade sobre dinheiro — mais restritiva, e por omissão. Um pedido com a
+pizza no forno e o cliente devendo simplesmente não apareceria para cobrança, e
+a casa descobriria no fechamento.
+
+O risco das duas opções é assimétrico: incluindo `reversed`, o pedido aparece e
+o operador decide; excluindo, ele desaparece em silêncio.
+
+**`reversed` NÃO é apresentado como `pending`.** A interface mostra o
+`payment_status` real — "Pendente" e "Estornado" são rótulos diferentes — para
+o operador saber que aquele pedido já teve dinheiro devolvido por decisão da
+casa, e não é um pedido que nunca foi pago.
 
 A forma esperada vem de `order_payment_intents`, que já guarda `needs_change`
 e `change_for_amount`. Se o cliente avisou "levo R$ 100", o painel abre com
@@ -523,7 +578,7 @@ teclado em primeiro lugar.
 
 | RPC | Para que | Permissão |
 |---|---|---|
-| `pedidos_a_receber()` | `payment_status='pending'` fora de cancelado/rejeitado; devolve nº, cliente, modalidade, total, status operacional, idade, forma esperada e troco esperado | `payments.register` |
+| `pedidos_a_receber()` | `payment_status in ('pending','reversed')` fora de cancelado/rejeitado (ver §1.3); devolve nº, origem, cliente, modalidade, total, status operacional, status financeiro, idade, forma esperada e troco esperado | `payments.register` |
 | `resolver_codigo_de_barras(p_codigo)` | código → produto **ou** variante, com preço efetivo, disponibilidade e `precisa_escolher_variante` | `catalog.view` |
 | `buscar_catalogo_pdv(p_termo)` | como `buscar_catalogo`, mas devolve **variantes com id e preço** e casa código exato | `catalog.view` |
 | `cancelar_pedido_com_estorno(p_order_id, p_motivo)` | estorno + cancelamento numa transação | `orders.cancel` **e** `finance.reverse` |
@@ -752,7 +807,7 @@ variante resolve a variante; código de produto **com** variante ativa devolve
 sem acento; `buscar_catalogo` **pública permanece idêntica** (teste de
 regressão explícito).
 
-### Etapa 5 — Pedidos a receber
+### Etapa 5 — Pedidos a receber — CONCLUÍDA em 26/09/2026
 
 Primeira etapa com tela.
 
@@ -763,6 +818,26 @@ Primeira etapa com tela.
 **Como se testa:** SQL do filtro — pendente aparece, pago não, cancelado não,
 `in_production` **aparece**; Vitest da camada de aplicação; e a prova do caso de
 uso 3: receber um pedido que está em produção.
+
+**Entregue:**
+
+- `pedidos_a_receber()` (migration `20260926150000`, DEV no ledger 119),
+  `stable security definer set search_path = ''`, sem `EXECUTE` para `anon` nem
+  `PUBLIC`, exigindo `payments.register` no corpo;
+- rota `/admin/pdv` com a área **Pedidos a receber** e o item próprio no menu,
+  entre *Pedidos* e *Caixa*;
+- porta `listarPedidosAReceber()` em `src/application/pdv/consultas.ts`.
+
+**Provado:** `pdv_etapa5_fase12.sql`, 69/69 — inclusive o percurso completo do
+pedido estornado e vivo (pago → `in_production` → estornado sem cancelamento →
+volta à fila como `reversed` → `registrar_pagamento` aceita de novo), os dois
+eixos independentes, as permissões, e o bloco F fechando o caixa no meio da
+suíte para mostrar que a consulta não depende de gaveta aberta nem escreve nada.
+Regressão das Etapas 3 (153/153) e 4 (118/118) contra o estado persistido.
+
+**Recorte desta etapa:** a tela LISTA e mostra o pedido selecionado. Não recebe
+pagamento — isso é a Etapa 7, e a autoridade continua sendo
+`registrar_pagamento`. O `Recebimento.tsx` citado acima entra lá.
 
 ### Etapa 6 — Nova venda
 

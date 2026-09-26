@@ -2662,6 +2662,70 @@ escrito. A implementação virá por etapas, aprovadas separadamente.
 
 
 
+## D-2026-09-26-79 — A fila do PDV inclui pedido estornado e vivo
+
+**Decisão.** `pedidos_a_receber()` considera recebível
+`payment_status in ('pending','reversed')`, desde que o pedido não esteja
+`cancelled` nem `rejected`. A especificação original de
+`09-PDV-FRENTE-DE-CAIXA.md` dizia apenas `payment_status = 'pending'`.
+
+- `pending` → aparece
+- `reversed` + pedido operacionalmente vivo → **aparece**
+- `confirmed` → não aparece
+- `cancelled` → não aparece
+- `rejected` → não aparece
+
+**Motivo.** `reverter_pagamento` não exige que o pedido esteja cancelado: pede
+`finance.reverse`, estorna os pagamentos e faz
+`orders.payment_status = 'reversed'` sem tocar em `orders.status`. Existe então
+um estado alcançável de dinheiro devolvido com pedido vivo, e nele o cliente
+continua devendo — não há pagamento confirmado.
+
+Comprovado em transação com `rollback` antes da decisão: pedido pago, avançado
+para `in_production`, estornado sem cancelamento, e `registrar_pagamento`
+devolveu `ok: true`. O banco aceita receber esse pedido.
+
+Com o critério literal, a fila mostraria um conjunto **menor** do que
+`registrar_pagamento` aceita e viraria uma segunda autoridade sobre dinheiro —
+mais restritiva, e por omissão. Um pedido com a pizza no forno e o cliente
+devendo não apareceria para cobrança.
+
+**`reversed` não é apresentado como `pending`.** A interface mostra o
+`payment_status` real, com rótulos distintos ("Pendente" e "Estornado"), para o
+operador saber que aquele dinheiro já foi devolvido por decisão da casa.
+
+**Onde foi formalizada.** `09-PDV-FRENTE-DE-CAIXA.md` §1.3 e §6.1 (v1.1).
+
+**Impacto no design.** Um cenário da suíte da Etapa 5 percorre o caminho
+completo — pago, estornado, vivo, aparece com `payment_status = 'reversed'`, e
+segue elegível para `registrar_pagamento`.
+
+## D-2026-09-26-80 — Origem e modalidade não se confundem; não existe modalidade `balcao`
+
+**Decisão.** Registrado explicitamente que `orders.source` é a **origem**
+(`shalon_link`, `whatsapp`, `phone`, `counter`, `ifood`, `other`) e
+`orders.fulfillment_type` é a **modalidade** (`delivery`, `pickup`). Portanto:
+`source = 'counter'` é origem Balcão, `fulfillment_type = 'pickup'` é Retirada,
+`fulfillment_type = 'delivery'` é Entrega. **A modalidade `balcao` não existe e
+não deve ser criada.**
+
+**Motivo.** Os wireframes do `09` escrevem "Balcão" e "Retirada" na mesma linha,
+o que se lê como dois valores do mesmo campo. Um pedido de balcão é
+`source='counter'` com `fulfillment_type='pickup'`. Acrescentar um terceiro
+valor à modalidade quebraria `orders_entrega_com_snapshot` e
+`orders_retirada_sem_entrega`, que existem para garantir que só entrega carrega
+endereço e distância.
+
+**Onde foi formalizada.** `09-PDV-FRENTE-DE-CAIXA.md` §0.3 (nova, v1.1).
+
+**Impacto no design.** `pedidos_a_receber()` devolve as duas colunas separadas,
+e a tela as exibe juntas sem fundi-las num campo só.
+
+
+---
+
+
+
 ---
 
 # Como registrar uma nova decisão

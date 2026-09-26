@@ -113,3 +113,51 @@ export type ItemCatalogoPdv = {
   /** Verdadeiro quando o termo casou um código exato deste item. */
   casou_codigo: boolean;
 };
+
+/**
+ * Uma linha da fila de recebimento — Fase 12, Etapa 5.
+ *
+ * 09-PDV-FRENTE-DE-CAIXA.md §1.3, §4.2, §6.1 · D-2026-09-26-79 · D-2026-09-26-80
+ *
+ * OS DOIS EIXOS SÃO DOIS CAMPOS, e é deliberado que nenhum dos dois derive do
+ * outro: `status_operacional` diz onde está a pizza, `status_financeiro` diz se
+ * o cliente pagou. Um pedido `in_production` com `pending` é normal, e é
+ * exatamente o caso de uso 3 do documento (§1.3).
+ *
+ * `status_financeiro` chega COMO ESTÁ, `pending` ou `reversed`, e a tela mostra
+ * rótulos diferentes para os dois. Colapsar `reversed` em "Pendente" esconderia
+ * do operador que aquele dinheiro já foi devolvido por decisão da casa
+ * (D-2026-09-26-79).
+ *
+ * `origem` e `modalidade` também são coisas distintas: `counter` é Balcão e
+ * responde "de onde veio o pedido"; `pickup`/`delivery` é Retirada/Entrega e
+ * responde "como o cliente recebe". Não existe modalidade `balcao`
+ * (D-2026-09-26-80).
+ *
+ * Os campos `*_esperado` vêm de `order_payment_intents`: são a INTENÇÃO
+ * declarada pelo cliente, nunca um pagamento (CLAUDE.md §24). Nada aqui é
+ * autoridade sobre dinheiro recebido — isto é uma lista.
+ */
+export type PedidoAReceber = {
+  id: string;
+  numero: number;
+  /** `counter`, `whatsapp`, `phone`, `shalon_link`, `ifood`, `other`. */
+  origem: string;
+  /** `pickup` ou `delivery`. Somente esses dois. */
+  modalidade: string;
+  cliente_nome: string | null;
+  cliente_whatsapp: string | null;
+  total: number;
+  status_operacional: string;
+  /** `pending` ou `reversed`. NUNCA apresentados com o mesmo rótulo. */
+  status_financeiro: string;
+  criado_em: string;
+  /** Idade calculada NO BANCO, para não depender do relógio do navegador. */
+  idade_minutos: number;
+  forma_esperada: string | null;
+  bandeira_esperada: string | null;
+  valor_esperado: number | null;
+  precisa_troco: boolean;
+  troco_para: number | null;
+  troco_esperado: number | null;
+};
