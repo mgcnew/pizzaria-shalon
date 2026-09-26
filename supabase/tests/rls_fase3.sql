@@ -100,6 +100,21 @@ insert into public.store_hours (weekday, is_closed, opens_at, closes_at, sort_or
   (1, false, '18:00', '23:00', 1),   -- segunda: janela normal
   (2, false, '18:00', '02:00', 2);   -- terça: atravessa a meia-noite
 
+-- Faixas de entrega zeradas pelo MESMO motivo das duas tabelas acima, e esta
+-- linha faltava: os cenários 2.10, 9.1 e 9.3 criam as faixas de que precisam e
+-- foram escritos quando o ambiente não tinha nenhuma. Quando a Shalon cadastrou
+-- as faixas reais pela tela, `delivery_fee_bands_sem_sobreposicao` passou a
+-- recusar as faixas do teste — a constraint fazendo exatamente o que deve, e a
+-- suíte medindo o estado do ambiente em vez da regra.
+--
+-- Zerar aqui é o que mantém os cenários INDEPENDENTES do ambiente. A correção
+-- não é ajustar os valores das fixtures para caberem entre as faixas reais:
+-- isso só adiaria a quebra até a próxima vez que alguém mudasse o frete.
+--
+-- Nada é perdido: a transação inteira termina em ROLLBACK (linha 17 abre, a
+-- última linha do arquivo desfaz), e não há savepoint nem commit no caminho.
+delete from public.delivery_fee_bands;
+
 -- Tamanhos: Tradicional aceita meio a meio, Brotinho não (RN-PIZZA-004).
 insert into public.pizza_sizes (id, name, slice_count, max_flavors, sort_order) values
   ('dddddddd-0000-0000-0000-000000000001','Tradicional Teste', 8, 2, 1),
