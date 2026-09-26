@@ -1,10 +1,10 @@
 # 06 — PENDÊNCIAS DE VALIDAÇÃO PARA PRODUÇÃO
 ## Sistema de Gestão e Pedidos — Pizzaria Shalon
 
-**Versão:** 1.5 — aberto em 19/09/2026, Fases 6 e 7 encerradas em 21/09/2026,
+**Versão:** 1.6 — aberto em 19/09/2026, Fases 6 e 7 encerradas em 21/09/2026,
 Fase 10 encerrada em 24/09/2026, provedor de rotas trocado para HERE em
 24/09/2026 (`D-2026-09-24-75`), limites do Limited Plan medidos e registrados
-em 25/09/2026
+em 25/09/2026, PI-F12-01 aberta em 25/09/2026
 **Status:** documento vivo
 **Função:** concentrar, em um lugar só, o que **não impede** o desenvolvimento
 das próximas fases mas **precisa ser resolvido e testado antes da produção**.
@@ -852,6 +852,59 @@ hora.
 existe para exercitar o replay das migrations em banco vazio e nada mais.
 Não deve ser confundido com nenhum dos dois em documento, script, variável de
 ambiente ou procedimento, e não deve receber dado real da Shalon.
+
+---
+
+## PI-F12-01 — estorno pode deixar o esperado em caixa negativo
+
+**Aberta.** Débito **preexistente**, anterior à Fase 12 e **não introduzido**
+por ela. Encontrado em 25/09/2026 ao escrever a suíte da Etapa 1 do PDV.
+
+**O que é.** `movimentar_caixa` recusa uma sangria maior que o dinheiro
+esperado em caixa — saldo negativo é impossibilidade física, não saldo:
+
+```
+if v_sentido = 'out' and v_valor > public.esperado_em_caixa(...) then
+  return ... 'O valor é maior que o dinheiro esperado em caixa.'
+```
+
+`reverter_pagamento` **não tem essa guarda**. Ela insere o movimento de
+`refund`/`out` diretamente, sem comparar com o esperado. Então um estorno de
+recebimento em dinheiro pode levar `esperado_em_caixa` a valor negativo — por
+exemplo, estornar R$ 40 numa sessão recém-aberta com fundo R$ 0.
+
+**Por que importa.** Encadeia num segundo efeito: `cash_sessions` tem
+`check (counted_cash_amount >= 0)`. Com o esperado negativo, a pessoa não
+consegue informar um contado que feche sem diferença, porque o contado real
+seria negativo — e valor negativo é recusado pela constraint. O fechamento fica
+obrigado a registrar diferença e justificativa por uma razão que não é erro de
+contagem.
+
+**Por que não foi corrigido junto.** Decisão de 25/09/2026: não misturar
+correção de débito preexistente com a Etapa 1, cujo escopo é o cancelamento com
+estorno. A Etapa 1 **não agravou** o problema — ela apenas chama
+`reverter_pagamento`, que já se comportava assim.
+
+**Onde está registrado no código.** Comentário no bloco F de
+`supabase/tests/pdv_etapa1_fase12.sql`, que abre o segundo caixa com fundo
+suficiente justamente para não medir esta constraint em vez do estorno.
+
+**O que precisa ser decidido antes de corrigir.** Não é óbvio qual é o certo, e
+por isso é decisão de produto, não técnica:
+
+- **recusar o estorno** quando não houver dinheiro na gaveta? Impediria devolver
+  ao cliente que está no balcão — e o dinheiro pode estar fisicamente lá, vindo
+  de outra fonte;
+- **exigir reforço antes**? Correto contabilmente, um passo a mais no balcão;
+- **permitir negativo e destacá-lo** no fechamento, como já se faz com o
+  dinheiro fora da gaveta? Preserva a operação e mostra o fato.
+
+Minha leitura é que a terceira opção conversa melhor com o que o projeto já
+faz em RN-CAIXA-013/014, mas isso é decisão da proprietária sobre como a loja
+devolve dinheiro.
+
+**Não bloqueia** a Fase 12 nem a produção. Bloqueia dizer que o fechamento de
+caixa está completo em todos os caminhos.
 
 ---
 
