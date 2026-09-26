@@ -2725,6 +2725,59 @@ e a tela as exibe juntas sem fundi-las num campo só.
 ---
 
 
+## D-2026-09-26-81 — Venda de balcão sem cliente identificado
+
+**Decisão.** `criar_pedido` passa a aceitar venda **sem bloco `cliente`**, sob
+**quatro condições cumulativas**: lançamento interno (`orders.create_manual`),
+origem `counter`, modalidade `pickup`, e os **dois** campos do cliente vazios.
+Nesse caso o pedido nasce com `customer_id = NULL`, `customer_name_snapshot =
+'Balcão'` e `customer_whatsapp_snapshot` vazio. Em todos os outros casos, nada
+muda: nome e WhatsApp continuam obrigatórios.
+
+**Motivo.** O wireframe aprovado do PDV (§4.1) não tem campo de cliente — quem
+está no balcão leva e vai embora. Mas `criar_pedido` exigia nome e um WhatsApp
+casando `^[0-9]{10,15}$`, sem alternativa.
+
+As duas saídas erradas foram descartadas com motivo:
+
+1. **Inventar um telefone.** `customers_whatsapp_unico` é índice ÚNICO sobre
+   `whatsapp_normalized` — é a identidade do cliente. Um número fixo faria toda
+   venda de balcão virar o MESMO cliente, e histórico, `padrao_de_compra` e
+   remarketing (CLAUDE.md §31) passariam a descrever um "super cliente"
+   inexistente. Números sintéticos por venda encheriam `customers` de lixo, com
+   risco de colidir com o número de um cliente real.
+2. **Uma RPC `venda_de_balcao` ao lado.** Seria uma segunda autoridade sobre
+   preço e criação de pedido — exatamente o que CLAUDE.md §16 proíbe.
+
+`orders.customer_id` **já era nulável**: o modelo sempre admitiu pedido sem
+cliente cadastrado. A mudança foi feita na autoridade existente, e só do lado de
+dentro.
+
+**Por que as quatro condições.** O checkout público continua exigindo
+identificação — sem cliente não há a quem entregar, acompanhar ou avisar.
+WhatsApp e telefone têm, por definição, alguém do outro lado. Entrega exige
+cliente porque `customer_addresses.customer_id` é NOT NULL. E exigir os DOIS
+campos vazios faz um telefone digitado errado falhar alto, em vez de virar
+silenciosamente uma venda anônima.
+
+**Onde foi formalizada.** `supabase/migrations/20260926170000_venda_de_balcao_sem_cliente.sql`
+(ledger 120) · `09-PDV-FRENTE-DE-CAIXA.md` §13, Etapa 6.
+
+**Impacto no design.** O PDV salva venda de balcão sem pedir dados de quem
+comprou. A forma de pagamento ESPERADA continua obrigatória (CLAUDE.md §24), e é
+ela que a fila da Etapa 5 exibe. Nenhum pagamento é criado ao salvar: receber é
+a Etapa 7.
+
+**Verificado no DEV.** `pdv_etapa6_fase12.sql`, 49/49, com o bloco B testando
+cada uma das quatro condições pela sua negação. Venda real de validação:
+**pedido #33730**, `counter`/`pickup`, `customer_id` nulo, snapshot "Balcão",
+`payment_status='pending'`, zero pagamentos — e a contagem de `customers`
+permaneceu em 1.
+
+
+---
+
+
 
 ---
 

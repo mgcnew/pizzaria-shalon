@@ -839,7 +839,7 @@ Regressão das Etapas 3 (153/153) e 4 (118/118) contra o estado persistido.
 pagamento — isso é a Etapa 7, e a autoridade continua sendo
 `registrar_pagamento`. O `Recebimento.tsx` citado acima entra lá.
 
-### Etapa 6 — Nova venda
+### Etapa 6 — Nova venda — CONCLUÍDA em 26/09/2026
 
 - área central: carrinho, quantidade, remoção, total de exibição;
 - configurador reaproveitado para variante, sabores, borda e adicionais;
@@ -848,6 +848,55 @@ pagamento — isso é a Etapa 7, e a autoridade continua sendo
 **Como se testa:** Vitest do carrinho e do total; e o teste que importa —
 **divergência entre o total da tela e o do servidor para o fluxo** em vez de
 cobrar o da tela.
+
+**Entregue:**
+
+- área **Nova venda** em `/admin/pdv`: campo único de busca/leitura, resultados
+  do catálogo, carrinho com quantidade e remoção, total em destaque, forma de
+  pagamento esperada e *Salvar venda sem receber*;
+- o mesmo campo resolve código de barras e, não encontrando, cai para a busca
+  do catálogo (§2.1). Código de VARIANTE abre o configurador **naquele
+  tamanho**; produto com tamanhos ativos abre a escolha **sem escolher por
+  ela**; item inativo ou indisponível é informado e **não** entra no carrinho;
+- migration `20260926170000` (ledger 120) — venda de balcão sem cliente
+  identificado, `D-2026-09-26-81`.
+
+**O que NÃO foi criado, e é o essencial:** nenhuma segunda autoridade. O
+configurador é o `NucleoConfigurador` do cardápio público, cada item é
+precificado por `montar_item`, e salvar chama `criarPedidoManual` → a mesma
+`criar_pedido` de `/admin/pedidos/novo` e do checkout. O total da tela é
+rotulado "Conferência" e nunca cobra.
+
+**Divergência encontrada e resolvida.** `criar_pedido` exigia nome + WhatsApp
+sem alternativa, e o WhatsApp é índice único — a identidade do cliente.
+Inventar telefone colapsaria todas as vendas de balcão num cliente só. A saída
+foi ajustar a autoridade existente, sob quatro condições cumulativas
+(`D-2026-09-26-81`). Segunda descoberta: a forma de pagamento **é obrigatória
+na criação** mesmo no F7; o PDV pergunta a forma ESPERADA (§24), que é o que a
+fila da Etapa 5 já exibe.
+
+**Provado:** `pdv_etapa6_fase12.sql`, 49/49 contra o DEV persistido — bloco A
+(a venda anônima nasce certa e `customers` não cresce), bloco B (cada uma das
+quatro condições testada pela negação), bloco C (o caminho com cliente
+intacto), bloco D (preço e disponibilidade do servidor, idempotência), bloco E
+(caixa fechado não impede). Regressão das Etapas 3 (153/153), 4 (118/118) e 5
+(69/69). Vitest 350/350.
+
+**Validação manual no DEV (26/09/2026).** Busca textual, código inexistente com
+fallback, e o código operacional `1254` resolvendo para "Refrigerante Coca cola
+2 litros" a R$ 16,00. Venda de teste salva: **pedido #33730** — `source` =
+`counter`, `fulfillment_type` = `pickup`, `customer_id` NULO, snapshot
+"Balcão", `payment_status` = `pending`, **zero** registros em `payments`,
+status operacional `confirmed` pelo próprio lançamento interno (RN-MAN-004, não
+por avanço do PDV), e presença imediata em *Pedidos a receber*. O carrinho só
+foi limpo após a confirmação do servidor, que devolveu o número e o total.
+
+> **Pendência operacional registrada:** o DEV não tem **nenhuma bandeira de
+> cartão cadastrada**, e `criar_pedido` recusa débito, crédito e voucher sem
+> bandeira. Hoje só Dinheiro e Pix na maquininha funcionam de ponta a ponta,
+> em qualquer canal. É dado de configuração, não código.
+
+**Fora desta etapa:** receber (Etapa 7), aba Caixa (8), atalhos completos (9).
 
 ### Etapa 7 — Recebimento no PDV
 

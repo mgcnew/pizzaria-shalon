@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { formatBRL } from "@/lib/format";
 import { montarItem } from "@/application/publico/acoes";
 import type { ItemMontado } from "@/application/publico/tipos";
@@ -38,6 +38,7 @@ export function NucleoConfigurador({
   aviso,
   rotuloAcao = "Adicionar",
   mensagemSucesso = "Adicionado ao carrinho.",
+  variacaoInicial = null,
   aoConfirmar,
 }: {
   dados: DadosDoConfigurador;
@@ -46,6 +47,17 @@ export function NucleoConfigurador({
   aviso?: ReactNode;
   rotuloAcao?: string;
   mensagemSucesso?: string;
+  /**
+   * Tamanho já decidido por quem abriu — hoje, o bipe do PDV que resolveu para
+   * uma VARIANTE (09 §2.1). Não é atalho de conveniência: o código de barras
+   * identifica aquele tamanho específico, e reabrir no primeiro da lista faria
+   * o operador conferir de novo o que o leitor já tinha dito.
+   *
+   * Continua sendo só o ESTADO INICIAL: o operador troca à vontade, e o preço
+   * é repedido ao servidor como em qualquer outra troca. Omitido, o
+   * comportamento é exatamente o de antes — o primeiro tamanho disponível.
+   */
+  variacaoInicial?: string | null;
   aoConfirmar: (item: ItemConfigurado) => void;
 }) {
   const { produto, tamanhos, porTamanho, montadoInicial } = dados;
@@ -53,8 +65,16 @@ export function NucleoConfigurador({
 
   const disponiveis = tamanhos.filter((t) => t.disponivel);
 
+  // Só vale se o tamanho pedido estiver realmente disponível: um código de
+  // barras pode apontar para uma variante que hoje não se vende, e nesse caso
+  // quem manda é a disponibilidade, não o leitor.
+  const inicial =
+    disponiveis.find((t) => t.variacao_id === variacaoInicial)?.variacao_id ??
+    disponiveis[0]?.variacao_id ??
+    null;
+
   const [config, setConfig] = useState<Escolhas>({
-    variacaoId: disponiveis[0]?.variacao_id ?? null,
+    variacaoId: inicial,
     sabores: [],
     bordaId: null,
     adicionais: [],
@@ -63,6 +83,23 @@ export function NucleoConfigurador({
   });
   const [montado, setMontado] = useState<ItemMontado>(montadoInicial);
   const [confirmado, setConfirmado] = useState(false);
+
+  /**
+   * `montadoInicial` foi calculado no servidor para o PRIMEIRO tamanho. Quando
+   * se abre em outro, aquele preço é de outro item — e mostrar preço de outro
+   * item, mesmo por um instante, é o tipo de mentira que esta tela não pode
+   * contar. Então repergunta-se ao servidor, uma vez só.
+   */
+  const jaAjustou = useRef(false);
+  useEffect(() => {
+    if (jaAjustou.current) return;
+    jaAjustou.current = true;
+    if (inicial !== null && inicial !== (disponiveis[0]?.variacao_id ?? null)) {
+      aplicar({ variacaoId: inicial });
+    }
+    // Uma vez, na montagem: é ajuste de abertura, não reação a mudança.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const tamanho = tamanhos.find((t) => t.variacao_id === config.variacaoId) ?? null;
   const dadosDoTamanho = tamanho ? porTamanho[tamanho.tamanho_id] : undefined;

@@ -290,10 +290,26 @@ const pedidoManualSchema = z.object({
   idempotency_key: z.string().uuid(),
   origem: z.enum(["whatsapp", "phone", "counter", "ifood", "other"]),
   modalidade: z.enum(["delivery", "pickup"]),
-  cliente: z.object({
-    nome: z.string().min(2).max(120),
-    whatsapp: z.string().min(8).max(24),
-  }),
+  /**
+   * OPCIONAL desde a Etapa 6 do PDV (D-2026-09-26-81) — e só isso.
+   *
+   * Quem decide se a venda pode existir sem cliente é `criar_pedido`, que só
+   * abre mão dele no lançamento interno, com origem `counter` e retirada. Não
+   * repito essas condições aqui: seriam uma segunda regra sobre quando um
+   * pedido pode ser anônimo, e duas regras divergem no primeiro ajuste
+   * (CLAUDE.md §16). O que este schema faz é o que schema faz — validar
+   * FORMA. Se o cliente faltar onde é exigido, o servidor responde
+   * "Informe seu nome.", que é a mensagem certa vinda da autoridade certa.
+   *
+   * O que continua valendo: informado, o cliente tem de estar COMPLETO. Nome
+   * sem telefone não passa por aqui nem por lá.
+   */
+  cliente: z
+    .object({
+      nome: z.string().min(2).max(120),
+      whatsapp: z.string().min(8).max(24),
+    })
+    .optional(),
   endereco: z
     .object({
       logradouro: z.string().min(2).max(160),
@@ -397,7 +413,10 @@ export async function criarPedidoManual(entrada: unknown): Promise<ResultadoPedi
       tracking_token: token,
       origem: dados.origem,
       modalidade: dados.modalidade,
-      cliente: dados.cliente,
+      // Ausente vira objeto vazio, não `null`: é assim que `criar_pedido` lê
+      // (`p_pedido -> 'cliente' ->> 'nome'`), e é o que a suíte da Etapa 6
+      // exercita.
+      cliente: dados.cliente ?? {},
       endereco: enderecoParaBanco,
       rota,
       itens: dados.itens,
