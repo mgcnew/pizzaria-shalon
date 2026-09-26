@@ -41,9 +41,18 @@ function paraNumero(texto: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function linhaVazia(formas: FormaParaRecebimento[], total: string): Linha {
+function linhaVazia(
+  formas: FormaParaRecebimento[],
+  total: string,
+  formaInicialId?: string | null,
+): Linha {
+  // A forma ESPERADA abre selecionada (09 §1.3). O cliente já disse como
+  // pretende pagar; começar em outra obriga o operador a corrigir a tela toda
+  // vez, e é assim que se registra dinheiro na forma errada com pressa.
+  // Só vale se a forma ainda estiver ativa — senão cai no padrão de antes.
+  const esperada = formas.find((f) => f.id === formaInicialId)?.id;
   return {
-    forma_id: formas[0]?.id ?? "",
+    forma_id: esperada ?? formas[0]?.id ?? "",
     bandeira_id: "",
     valor: total,
     recebido: "",
@@ -58,6 +67,8 @@ export function Recebimento({
   formas,
   caixaAberto,
   tentativa,
+  formaInicialId = null,
+  aoConcluir,
 }: {
   pedidoId: string;
   total: number;
@@ -65,9 +76,27 @@ export function Recebimento({
   formas: FormaParaRecebimento[];
   caixaAberto: boolean;
   tentativa: string;
+  /**
+   * Forma que o cliente declarou no checkout, para o painel abrir nela
+   * (§1.3). É só o ponto de partida: o operador troca à vontade, e o que
+   * vale é o RECEBIDO, que pode diferir do esperado (§24).
+   */
+  formaInicialId?: string | null;
+  /**
+   * Chamado depois que o SERVIDOR confirmou (recebimento ou estorno).
+   *
+   * Existe para o PDV, onde este painel vive ao lado da fila de "Pedidos a
+   * receber": sem o aviso, o pedido recém-pago continuaria listado como a
+   * pagar até alguém recarregar a página — e fila velha no balcão é como se
+   * cobra duas vezes. Na tela de pedido, onde não há fila ao lado, a prop é
+   * omitida e nada muda.
+   */
+  aoConcluir?: () => void;
 }) {
   const totalTexto = total.toFixed(2).replace(".", ",");
-  const [linhas, setLinhas] = useState<Linha[]>([linhaVazia(formas, totalTexto)]);
+  const [linhas, setLinhas] = useState<Linha[]>([
+    linhaVazia(formas, totalTexto, formaInicialId),
+  ]);
   const [erro, setErro] = useState<string | null>(null);
   const [estornando, setEstornando] = useState(false);
   const [enviando, iniciar] = useTransition();
@@ -91,9 +120,13 @@ export function Recebimento({
         setErro(r.erro ?? "Não foi possível concluir esta ação.");
         return;
       }
+      // Chave NOVA só depois do sucesso: enquanto a tentativa não vingou, a
+      // mesma chave tem de ser reenviada, senão o retry vira segundo
+      // pagamento em vez de repetição da mesma intenção (CLAUDE.md §34).
       chave.current = crypto.randomUUID();
-      setLinhas([linhaVazia(formas, totalTexto)]);
+      setLinhas([linhaVazia(formas, totalTexto, formaInicialId)]);
       setEstornando(false);
+      aoConcluir?.();
     });
   }
 

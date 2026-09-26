@@ -3,6 +3,7 @@ import Link from "next/link";
 import { obterCaixa } from "@/application/caixa/consultas";
 import { listarPedidosAReceber } from "@/application/pdv/consultas";
 import { formasDePagamento } from "@/application/checkout/consultas";
+import { listarBandeiras, listarFormasPagamento } from "@/application/configuracoes/consultas";
 import { obterSessaoInterna, podeNaUI } from "@/application/auth/sessao";
 import { formatBRL } from "@/lib/format";
 import { NovaVenda } from "./_ui/NovaVenda";
@@ -37,12 +38,30 @@ export const metadata: Metadata = { title: "PDV" };
  * caixa falhando devolve "fechado" em vez de derrubar a página.
  */
 export default async function Page() {
-  const [caixa, fila, formas, sessao] = await Promise.all([
+  const [caixa, fila, formas, sessao, todasAsFormas, bandeiras] = await Promise.all([
     obterCaixa(),
     listarPedidosAReceber(),
     formasDePagamento("pickup"),
     obterSessaoInterna(),
+    listarFormasPagamento(),
+    listarBandeiras(),
   ]);
+
+  // As formas do RECEBIMENTO são outra lista, e é de propósito: a intenção é
+  // filtrada por modalidade (regra do checkout), enquanto o recebido é o que a
+  // pizzaria aceita hoje, com as bandeiras cadastradas (RN-PGTO-001/006). É a
+  // mesma projeção da tela de pedido — não uma segunda leitura de formas.
+  const formasDeRecebimento = todasAsFormas
+    .filter((f) => f.is_active)
+    .map((f) => ({
+      id: f.id,
+      nome: f.name,
+      familia: f.payment_family,
+      exige_bandeira: f.requires_brand,
+      bandeiras: bandeiras
+        .filter((b) => b.payment_method_id === f.id && b.is_active)
+        .map((b) => ({ id: b.id, nome: b.name })),
+    }));
 
   return (
     <div className="flex flex-col gap-5">
@@ -71,9 +90,19 @@ export default async function Page() {
         )}
       </header>
 
-      <NovaVenda formas={formas} autorizado={podeNaUI(sessao, "orders.create_manual")} />
+      <NovaVenda
+        formas={formas}
+        formasDeRecebimento={formasDeRecebimento}
+        caixaAberto={caixa.aberto}
+        autorizado={podeNaUI(sessao, "orders.create_manual")}
+      />
 
-      <PainelPedidosAReceber pedidos={fila.pedidos} falhou={fila.falhou} />
+      <PainelPedidosAReceber
+        pedidos={fila.pedidos}
+        falhou={fila.falhou}
+        formas={formasDeRecebimento}
+        caixaAberto={caixa.aberto}
+      />
     </div>
   );
 }

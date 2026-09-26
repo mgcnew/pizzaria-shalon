@@ -898,7 +898,8 @@ foi limpo após a confirmação do servidor, que devolveu o número e o total.
 
 **Fora desta etapa:** receber (Etapa 7), aba Caixa (8), atalhos completos (9).
 
-### Etapa 7 — Recebimento no PDV
+### Etapa 7 — Recebimento no PDV — CONCLUÍDA em 26/09/2026
+
 
 - painel com divisão, troco, "falta R$", atalhos `/` e `*`;
 - `Ctrl+Enter`; idempotência gerada **na abertura do painel**.
@@ -906,6 +907,76 @@ foi limpo após a confirmação do servidor, que devolveu o número e o total.
 **Como se testa:** Vitest — soma exata libera o confirmar e soma diferente não;
 troco só em dinheiro; seis formas no máximo; forma repetida recusada;
 `ja_pago` tratado como caminho normal e não como erro.
+
+**SEM MIGRATION, e isso é o resultado.** `registrar_pagamento` já fazia tudo o
+que esta etapa pede: recusa `cancelled`/`rejected`, devolve `ja_pago`, exige a
+soma exata, calcula o troco, separa gaveta de não-gaveta, exige bandeira quando
+a forma pede, devolve `sem_caixa`, confere a chave de idempotência **antes** de
+qualquer escrita e trava o pedido com `for update`. A Etapa 7 integrou a
+autoridade existente; não criou uma segunda.
+
+**Reutilizado:** o componente `Recebimento` inteiro — o mesmo da tela de pedido
+—, as portas `registrarPagamento`/`estornarPagamento`, `pagamento_do_pedido`, e
+a projeção de formas e bandeiras. Três acréscimos pequenos: prop `aoConcluir`
+(sem ela a fila do PDV ficaria velha depois de pagar), `revalidatePath` do PDV
+na própria autoridade, e `formaInicialId`, que faz o painel abrir na forma
+ESPERADA conforme §1.3 — antes ele abria sempre na primeira da lista.
+
+**Dois caminhos, sempre em duas chamadas.** Pedido existente: fila → selecionar
+→ `Recebimento`. Nova venda: carrinho → `criar_pedido` → *Receber agora* ou
+*Deixar para receber depois*. Se o pagamento falhar, o pedido **permanece**,
+pendente e legítimo, na fila — nada é apagado nem revertido.
+
+**Provado:** `pdv_etapa7_fase12.sql`, 84/84 — dinheiro com troco, Pix, divisão,
+soma que não fecha, duplo clique, dois terminais, pedido cancelado com a tela
+aberta, estornado que volta a ser recebível, caixa fechado, e o bloco G
+mostrando que a função não escreve em `orders.status`. Regressão das Etapas 3
+(153/153), 4 (118/118), 5 (69/69) e 6 (49/49). Vitest 364/364.
+
+#### Validações operacionais no DEV (26/09/2026)
+
+**1 — Recebimento de pedido existente, em dinheiro com troco.** Pedido
+**#33730** (R$ 16,00, intenção Dinheiro), recebido pelo `/admin/pdv` com
+R$ 20,00 entregues:
+
+| | antes | depois |
+|---|---|---|
+| `payment_status` | `pending` | **`confirmed`** |
+| status operacional | `confirmed` | **`confirmed` — inalterado** |
+| pagamentos do pedido | 0 | **1** (devido 16,00 · entregue 20,00 · **troco 4,00**) |
+| movimento de gaveta | 0 | **1** — `sale_receipt in 16,00`, o DEVIDO, não o entregue |
+| esperado em caixa | R$ 30,00 | **R$ 46,00** (+16,00 exatos) |
+| clientes | 1 | **1 — nenhum artificial** |
+
+**2 — Nova venda com recebimento em Pix.** Venda montada pelo código `1254`,
+intenção **Pix na maquininha**, salva como **#33766** e recebida em seguida:
+
+- o pedido existiu **primeiro**: `pending`, zero pagamentos, intenção Pix;
+- o painel abriu **já em Pix** (§1.3) e os campos de dinheiro e gaveta
+  desapareceram, porque a família não é `cash`;
+- depois: `confirmed`, **um** pagamento Pix;
+- **nenhum** movimento físico, e o esperado em caixa permaneceu em **R$ 46,00**;
+- status operacional não avançou; o pedido saiu da fila; o carrinho já estava
+  limpo desde a criação e assim permaneceu;
+- nenhum cliente criado, nenhuma bandeira cadastrada.
+
+> **Pendência registrada, não corrigida nesta etapa:** `payments_select` exige
+> `finance.view` e `pagamento_do_pedido` é `SECURITY INVOKER`. Um operador pode
+> ter **`payments.register` sem `finance.view`** — ou seja, pode registrar
+> pagamento sem enxergar o histórico financeiro realizado pela leitura atual, e
+> para ele o bloco "Recebido de fato" apareceria vazio. Nada foi afrouxado: o
+> servidor continua recusando o que tem de recusar e a fila do PDV é `DEFINER`
+> com checagem própria. **Não ampliar permissão financeira silenciosamente** —
+> a correção, se houver, é decisão de produto.
+
+> **Isolamento das suítes corrigido.** Com pagamentos reais no DEV, o
+> `delete from cash_sessions` dos fixtures das Etapas 5, 6 e 7 passou a violar
+> `payments_cash_session_id_fkey`. As três suítes deixaram de apagar caixa:
+> reutilizam a sessão que encontrarem e medem DELTA. Apagar ali não seria só
+> impossível — seria destruir evidência financeira para um teste passar.
+
+**Fora desta etapa:** comprovante e reimpressão (Etapa 8), operações completas
+de caixa (8), atalhos globais (9).
 
 ### Etapa 8 — Aba Caixa e caixa fechado
 

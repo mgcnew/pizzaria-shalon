@@ -28,6 +28,9 @@ import type { Resultado } from "./tipos";
 const ROTA_CAIXA = "/admin/caixa";
 const ROTA_FIN = "/admin/financeiro";
 const ROTA_PEDIDOS = "/admin/pedidos";
+// A frente de caixa lista os pedidos a receber. Receber ou estornar muda essa
+// lista, e é aqui — na autoridade — que a invalidação pertence.
+const ROTA_PDV = "/admin/pdv";
 
 const dinheiro = z
   .number()
@@ -212,6 +215,7 @@ export async function registrarPagamento(entrada: unknown): Promise<Resultado> {
   if (error) return falha("registrarPagamento", error);
 
   revalidatePath(ROTA_CAIXA);
+  revalidatePath(ROTA_PDV);
   revalidatePath(`${ROTA_PEDIDOS}/${v.data.pedido_id}`);
   return resposta(data);
 }
@@ -233,6 +237,7 @@ export async function estornarPagamento(entrada: unknown): Promise<Resultado> {
   if (error) return falha("estornarPagamento", error);
 
   revalidatePath(ROTA_CAIXA);
+  revalidatePath(ROTA_PDV);
   revalidatePath(`${ROTA_PEDIDOS}/${v.data.pedido_id}`);
   return resposta(data);
 }

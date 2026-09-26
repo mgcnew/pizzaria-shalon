@@ -132,9 +132,14 @@ insert into public.user_roles (app_user_id, role_id) values
   ('b6b6b6b6-0000-0000-0000-000000000002','c6c6c6c6-0000-0000-0000-00000000000b');
 
 -- Ambiente de loja próprio, como as demais suítes fazem.
-delete from public.cash_movements;
-delete from public.cash_session_corrections;
-delete from public.cash_sessions;
+-- CAIXA: NÃO SE APAGA MAIS.
+--
+-- Desde a validação da Etapa 7 existem pagamentos REAIS no DEV apontando para
+-- a sessão aberta, e `payments_cash_session_id_fkey` recusa o delete. Mas o
+-- problema de fundo não é a constraint: apagar caixa aqui seria destruir
+-- evidência financeira para fazer um teste passar — a mesma tentação que
+-- `rls_fase3` e a suíte da Etapa 3 já ensinaram a recusar. A suíte passa a
+-- REUTILIZAR a sessão que encontrar, e a medir DELTA em vez de valor absoluto.
 delete from public.store_settings;
 insert into public.store_settings (
   id, store_name, whatsapp, address_street, address_number, address_neighborhood,
@@ -204,11 +209,16 @@ set local request.jwt.claims = '{"sub":"99999999-eeee-1111-1111-111111111111","r
 -- devolver `ok: false` em silêncio, e foi exatamente isso que fez o bloco F
 -- medir "não há caixa aberto" acreditando ter fechado um caixa que nunca abriu.
 -- Fixture que pode falhar calado é defeito da suíte, não do código.
-select set_config('teste.caixa', public.abrir_caixa('{"fundo":300.00}'::jsonb)::text, true);
-select pg_temp.checar('fixture: caixa aberto', 'true',
-  (current_setting('teste.caixa')::jsonb ->> 'ok'));
+-- Reutiliza a sessão aberta, se houver; só abre uma quando não houver.
 select set_config('teste.sessao',
-  (current_setting('teste.caixa')::jsonb ->> 'sessao_id'), true);
+  coalesce((select id::text from public.cash_sessions where status = 'open'), ''), true);
+select case when current_setting('teste.sessao') = ''
+            then (public.abrir_caixa('{"fundo":300.00}'::jsonb) ->> 'ok')
+            else 'ja estava aberto' end as caixa;
+select set_config('teste.sessao',
+  coalesce((select id::text from public.cash_sessions where status = 'open'), ''), true);
+select pg_temp.checar('fixture: ha caixa aberto', 'true',
+  (current_setting('teste.sessao') <> '')::text);
 
 -- Os pedidos de cada cenário.
 select set_config('teste.p1', pg_temp.pedido('66000001-0000-0000-0000-000000000001')::text, true);

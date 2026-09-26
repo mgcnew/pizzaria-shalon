@@ -1,6 +1,8 @@
 "use server";
 
 import { buscarCatalogoPdv, resolverCodigoDeBarras } from "./consultas";
+import { obterPagamentoDoPedido } from "@/application/caixa/consultas";
+import type { PagamentoDoPedido } from "@/application/caixa/tipos";
 import type { ItemCatalogoPdv, ResolucaoDeCodigo } from "./tipos";
 
 /**
@@ -32,4 +34,21 @@ export async function resolverCodigo(codigo: unknown): Promise<ResolucaoDeCodigo
 export async function buscarNoCatalogo(termo: unknown): Promise<ItemCatalogoPdv[]> {
   if (typeof termo !== "string" || termo.trim().length === 0 || termo.length > 120) return [];
   return buscarCatalogoPdv(termo);
+}
+
+/**
+ * O pagamento de UM pedido, para abrir o painel de recebimento — Etapa 7.
+ *
+ * A fila já traz o ESPERADO; isto traz também o REALIZADO, que é o que
+ * distingue "ninguém pagou ainda" de "pagou e foi estornado". São coisas
+ * diferentes na frente do caixa, e o operador precisa ver as duas (§1.3).
+ *
+ * Leitura pura: `pagamento_do_pedido` não escreve nada e verifica a própria
+ * permissão. Esta função só atravessa.
+ */
+export async function obterPagamentoDoPedidoNoPdv(
+  pedidoId: unknown,
+): Promise<PagamentoDoPedido | null> {
+  if (typeof pedidoId !== "string" || pedidoId.length !== 36) return null;
+  return obterPagamentoDoPedido(pedidoId);
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { formatBRL } from "@/lib/format";
 import { Select } from "@/ui/components/Select";
 import { NucleoConfigurador } from "@/ui/configurador/NucleoConfigurador";
@@ -11,6 +12,7 @@ import { resolverCodigo, buscarNoCatalogo } from "@/application/pdv/acoes";
 import type { ItemCatalogoPdv } from "@/application/pdv/tipos";
 import type { ItemDoRascunho } from "@/application/pedidos/tipos";
 import type { FormaDePagamento } from "@/application/checkout/tipos";
+import { Recebimento, type FormaParaRecebimento } from "@/app/(admin)/admin/pedidos/_ui/Recebimento";
 
 /**
  * Nova venda de balcão — Fase 12, Etapa 6.
@@ -23,9 +25,14 @@ import type { FormaDePagamento } from "@/application/checkout/tipos";
  *     configurador, e o pedido inteiro é recalculado por `criar_pedido` ao
  *     salvar. O total daqui é SOMA DE CONFERÊNCIA — existe para o operador
  *     olhar, nunca para cobrar (CLAUDE.md §16);
- *  2. não recebe pagamento. Não há `registrar_pagamento`, não há troco, não há
- *     valor recebido: a venda nasce devendo e vai para *Pedidos a receber*.
- *     Receber é a Etapa 7;
+ *  2. não decide nada sobre dinheiro. Desde a Etapa 7 a venda pode ser recebida
+ *     logo depois de criada, mas em DUAS chamadas: `criar_pedido` primeiro,
+ *     `registrar_pagamento` depois. Nunca uma "venda com pagamento" só.
+ *
+ *     A ordem não é detalhe de implementação, é a regra (§1.1, item 2):
+ *     "pedido criado e ainda não pago" é estado legítimo. Se o recebimento
+ *     falhar, o pedido PERMANECE — pendente, íntegro, e visível em *Pedidos a
+ *     receber*. Nada é apagado nem revertido para "desfazer" a venda;
  *  3. não normaliza código de barras. O que foi lido sobe como veio, com os
  *     zeros à esquerda, e quem normaliza é o banco.
  *
@@ -42,11 +49,18 @@ type Resolucao =
 
 export function NovaVenda({
   formas,
+  formasDeRecebimento,
+  caixaAberto,
   autorizado,
 }: {
+  /** Formas ESPERADAS, filtradas por retirada: alimentam a intenção. */
   formas: FormaDePagamento[];
+  /** Formas REALIZADAS, com bandeiras: alimentam o recebimento (§24). */
+  formasDeRecebimento: FormaParaRecebimento[];
+  caixaAberto: boolean;
   autorizado: boolean;
 }) {
+  const router = useRouter();
   const [leitura, setLeitura] = useState("");
   const [estado, setEstado] = useState<Resolucao>({ tipo: "nada" });
   const [dados, setDados] = useState<DadosDoConfigurador | null>(null);
@@ -57,7 +71,10 @@ export function NovaVenda({
   const [bandeiraId, setBandeiraId] = useState("");
 
   const [erro, setErro] = useState<string | null>(null);
-  const [criado, setCriado] = useState<{ numero: number; total: number } | null>(null);
+  const [criado, setCriado] = useState<
+    { id: string; numero: number; total: number; formaEsperadaId: string } | null
+  >(null);
+  const [recebendo, setRecebendo] = useState(false);
   const [ocupado, iniciar] = useTransition();
   const campo = useRef<HTMLInputElement>(null);
 
@@ -92,6 +109,7 @@ export function NovaVenda({
     setItens([]);
     setErro(null);
     setCriado(null);
+    setRecebendo(false);
     tentativa.current = null;
     limparBusca();
   }
@@ -205,7 +223,13 @@ export function NovaVenda({
 
       // E só some depois da confirmação do servidor — com o número que ELE deu
       // e o total que ELE calculou.
-      setCriado({ numero: r.numero, total: r.total });
+      setCriado({
+        id: r.pedido_id,
+        numero: r.numero,
+        total: r.total,
+        formaEsperadaId: forma.id,
+      });
+      setRecebendo(false);
       setItens([]);
       setFormaId("");
       setBandeiraId("");
@@ -370,13 +394,64 @@ export function NovaVenda({
         <h2 className="m-0 mb-3 text-[15px] font-bold text-ink">Venda atual</h2>
 
         {criado !== null ? (
-          <p
-            role="status"
-            className="m-0 mb-3 rounded-12 border border-tsb bg-ts px-3 py-2 text-[14px] font-semibold text-tsf"
-          >
-            Pedido #{criado.numero} salvo · {formatBRL(criado.total)} · aguardando
-            recebimento
-          </p>
+          <div className="mb-3 rounded-12 border border-tsb bg-ts p-3">
+            <p role="status" className="m-0 text-[14px] font-semibold text-tsf">
+              Pedido #{criado.numero} salvo · {formatBRL(criado.total)}
+            </p>
+
+            {recebendo ? (
+              /*
+               * O MESMO painel da fila e da tela de pedido. O pedido já existe
+               * e tem número; daqui em diante este é um recebimento como
+               * qualquer outro — se falhar, o pedido continua lá, pendente.
+               */
+              <div className="mt-3 rounded-12 bg-surface p-3">
+                <Recebimento
+                  key={criado.id}
+                  pedidoId={criado.id}
+                  total={criado.total}
+                  pagamento={null}
+                  formas={formasDeRecebimento}
+                  caixaAberto={caixaAberto}
+                  tentativa={crypto.randomUUID()}
+                  /*
+                   * Aqui não há adivinhação: a forma esperada foi escolhida
+                   * nesta mesma tela, segundos atrás. O painel abre nela.
+                   */
+                  formaInicialId={criado.formaEsperadaId}
+                  aoConcluir={() => {
+                    setRecebendo(false);
+                    setCriado(null);
+                    router.refresh();
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRecebendo(true)}
+                  className="motion-interactive min-h-touch-cta cursor-pointer rounded-12 border-0 bg-cta px-4 text-[14.5px] font-semibold text-cta-fg"
+                >
+                  Receber agora
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCriado(null)}
+                  className="min-h-touch-cta cursor-pointer rounded-12 border-[1.5px] border-border-shalon bg-surface px-4 text-[14.5px] font-semibold text-ink"
+                >
+                  Deixar para receber depois
+                </button>
+              </div>
+            )}
+
+            {!recebendo ? (
+              <p className="m-0 mt-2 text-[12px] text-ink-2">
+                Deixando para depois, ele fica em <span className="font-semibold">Pedidos a
+                receber</span> até alguém cobrar.
+              </p>
+            ) : null}
+          </div>
         ) : null}
 
         {itens.length === 0 ? (

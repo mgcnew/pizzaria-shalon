@@ -1,8 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Cartao, EmptyState, Aviso, ParDeDados } from "@/ui/patterns";
 import { formatBRL } from "@/lib/format";
+import { obterPagamentoDoPedidoNoPdv } from "@/application/pdv/acoes";
+import { Recebimento, type FormaParaRecebimento } from "@/app/(admin)/admin/pedidos/_ui/Recebimento";
+import type { PagamentoDoPedido } from "@/application/caixa/tipos";
 import type { PedidoAReceber } from "@/application/pdv/tipos";
 
 /**
@@ -12,8 +16,9 @@ import type { PedidoAReceber } from "@/application/pdv/tipos";
  *
  * O QUE ESTA TELA NÃO FAZ, e não por falta de tempo:
  *
- *  - não recebe pagamento. Isso é a Etapa 7, e a autoridade continua sendo
- *    `registrar_pagamento`. Aqui não existe botão que mexa em dinheiro;
+ *  - não decide nada sobre dinheiro. Desde a Etapa 7 existe aqui um painel de
+ *    recebimento, mas ele é o MESMO `Recebimento` da tela de pedido, e quem
+ *    autoriza continua sendo `registrar_pagamento`;
  *  - não filtra a lista. Quem decide o que é "a receber" é a RPC. Um filtro
  *    nesta camada seria uma segunda regra sobre cobrança, mais restritiva por
  *    acidente (D-2026-09-26-79);
@@ -75,12 +80,43 @@ function idade(minutos: number): string {
 export function PainelPedidosAReceber({
   pedidos,
   falhou,
+  formas,
+  caixaAberto,
 }: {
   pedidos: PedidoAReceber[];
   falhou: boolean;
+  formas: FormaParaRecebimento[];
+  caixaAberto: boolean;
 }) {
+  const router = useRouter();
   const [selecionado, setSelecionado] = useState<string | null>(null);
+  const [pagamento, setPagamento] = useState<PagamentoDoPedido | null>(null);
+  const [carregando, iniciar] = useTransition();
   const atual = pedidos.find((p) => p.id === selecionado) ?? null;
+
+  /**
+   * O pagamento do pedido selecionado, buscado sob demanda.
+   *
+   * Por que não vem junto da fila: seriam N chamadas de `pagamento_do_pedido`
+   * para montar uma lista em que o operador vai abrir UMA. E por que não vem
+   * por parâmetro na URL: a venda em andamento vive ao lado, em estado de
+   * cliente, e trocar a URL arriscaria perdê-la.
+   */
+  useEffect(() => {
+    if (selecionado === null) {
+      setPagamento(null);
+      return;
+    }
+    let vigente = true;
+    iniciar(async () => {
+      const p = await obterPagamentoDoPedidoNoPdv(selecionado);
+      // A resposta de uma seleção anterior não pode sobrescrever a atual.
+      if (vigente) setPagamento(p);
+    });
+    return () => {
+      vigente = false;
+    };
+  }, [selecionado]);
 
   // "Não deu para consultar" e "não há nada a receber" são coisas opostas, e
   // apresentá-las com a mesma tela vazia faria a casa achar que está tudo
@@ -214,12 +250,43 @@ export function PainelPedidosAReceber({
               valor={`${new Date(atual.criado_em).toLocaleString("pt-BR")} · ${idade(atual.idade_minutos)}`}
             />
           </div>
-          {/* O recebimento é a Etapa 7. Dizer isso na tela é melhor do que
-              oferecer um botão que não registra nada. */}
-          <p className="m-0 mt-3 text-[12.5px] text-muted">
-            O recebimento pelo PDV entra na Etapa 7. Por enquanto, receba por
-            <span className="text-ink"> Pedidos → pedido → Registrar pagamento</span>.
-          </p>
+          {/* ------------------------------------------------ recebimento */}
+          <div className="mt-3 border-t border-border-shalon pt-3">
+            {carregando && pagamento === null ? (
+              <p className="m-0 text-[13px] text-muted">Carregando o pagamento…</p>
+            ) : (
+              /*
+               * `key` pelo pedido: trocar de pedido REMONTA o painel. Sem isso
+               * a chave de idempotência e as linhas da divisão do pedido
+               * anterior sobreviveriam para o seguinte — e chave reaproveitada
+               * faz o servidor responder "já existia" para um pagamento que
+               * nunca aconteceu.
+               */
+              <Recebimento
+                key={atual.id}
+                pedidoId={atual.id}
+                total={atual.total}
+                pagamento={pagamento}
+                formas={formas}
+                caixaAberto={caixaAberto}
+                tentativa={crypto.randomUUID()}
+                /*
+                 * A intenção do checkout vira o ponto de partida do painel
+                 * (§1.3). Casamos pelo NOME porque é o que `pagamento_do_pedido`
+                 * devolve; se não casar — forma renomeada ou desativada — o
+                 * painel abre no padrão, que é o comportamento de antes.
+                 */
+                formaInicialId={
+                  formas.find((f) => f.nome === pagamento?.esperado?.metodo)?.id ?? null
+                }
+                aoConcluir={() => {
+                  // A fila é dado de servidor: quem a atualiza é o servidor.
+                  router.refresh();
+                  setSelecionado(null);
+                }}
+              />
+            )}
+          </div>
         </Cartao>
       ) : null}
     </div>

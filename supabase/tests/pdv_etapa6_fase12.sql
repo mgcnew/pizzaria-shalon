@@ -68,14 +68,23 @@ select 'c7c7c7c7-0000-0000-0000-00000000000a', id from public.permissions
  -- `pedidos_a_receber()` a exige no corpo, entao sem ela a fila viria vazia e
  -- o cenario passaria a medir a permissao em vez da venda. Nada na Etapa 6
  -- depende dela -- a venda exige `orders.create_manual`, e receber e a Etapa 7.
+ --
+ -- `cash.view` e `cash.close` também são de FIXTURE: o bloco E precisa fechar
+ -- o caixa para provar que a venda funciona com ele fechado, e não pode mais
+ -- apagar a sessão. Criar venda não exige nenhuma das duas.
  where code in ('orders.view','orders.accept','orders.create_manual','catalog.view',
-                'payments.register');
+                'payments.register','cash.view','cash.close');
 insert into public.user_roles (app_user_id, role_id)
 values ('b7b7b7b7-0000-0000-0000-000000000001','c7c7c7c7-0000-0000-0000-00000000000a');
 
-delete from public.cash_movements;
-delete from public.cash_session_corrections;
-delete from public.cash_sessions;
+-- CAIXA: NÃO SE APAGA MAIS.
+--
+-- Desde a validação da Etapa 7 existem pagamentos REAIS no DEV apontando para
+-- a sessão aberta, e `payments_cash_session_id_fkey` recusa o delete. Mas o
+-- problema de fundo não é a constraint: apagar caixa aqui seria destruir
+-- evidência financeira para fazer um teste passar — a mesma tentação que
+-- `rls_fase3` e a suíte da Etapa 3 já ensinaram a recusar. A suíte passa a
+-- REUTILIZAR a sessão que encontrar, e a medir DELTA em vez de valor absoluto.
 delete from public.store_settings;
 insert into public.store_settings (
   id, store_name, whatsapp, address_street, address_number, address_neighborhood,
@@ -307,6 +316,13 @@ select pg_temp.checar('D10 e devolve o mesmo pedido', current_setting('teste.pa'
 -- =============================================================================
 -- BLOCO E — CAIXA FECHADO NÃO IMPEDE MONTAR NEM SALVAR (§1.8)
 -- =============================================================================
+-- Fecha o que estiver aberto, em vez de apagar. Dentro da transação, e
+-- desfeito no rollback.
+select case when exists (select 1 from public.cash_sessions where status = 'open')
+            then (public.fechar_caixa(jsonb_build_object('contado',
+                    public.esperado_em_caixa(
+                      (select id from public.cash_sessions where status='open')))) ->> 'ok')
+            else 'ja estava fechado' end as fechamento;
 select pg_temp.checar('E1 nao ha caixa aberto', '0',
   (select count(*)::text from public.cash_sessions where status = 'open'));
 select set_config('teste.e', pg_temp.venda('77000013-0000-0000-0000-000000000013')::text, true);
