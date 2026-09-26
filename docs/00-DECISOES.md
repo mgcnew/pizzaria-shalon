@@ -2600,6 +2600,67 @@ do escopo deste gate. Não há prejuízo: o checkout público semeia.
 **Evidência:** migration `20260925110000`; suíte SQL e Vitest ampliadas — ver
 checkpoint da Fase B.
 
+---
+
+### D-2026-09-25-78 — O Caixa vira PDV / frente de caixa
+
+**A decisão.** O módulo Caixa evolui para uma **frente de caixa operacional**,
+com três áreas integradas: *Nova venda* (pedido de balcão com busca, carrinho e
+recebimento), *Pedidos a receber* (pendentes financeiramente) e *Caixa*
+(abertura, reforço, sangria, movimentos, fechamento, reabertura). A sessão de
+caixa atual **não é descartada** — vira uma das abas.
+
+**Especificação completa em `docs/09-PDV-FRENTE-DE-CAIXA.md`**, que é a fonte de
+verdade da implementação. Esta entrada registra a decisão; não a repete.
+
+**O que o levantamento de 25/09/2026 mostrou, e mudou o desenho.** O modelo já
+suportava quase tudo, sem tela: `orders.payment_status` separado de
+`orders.status`; pagamento **dividido** em até 6 formas com soma exata; **troco**
+em duas camadas (`order_payment_intents` para o esperado, `payments` para o
+realizado); `orders.source` já admitindo `'counter'`; estorno auditável em
+`reverter_pagamento`. O recebimento existia — só morava na tela do pedido, não
+no caixa.
+
+Por isso o PDV custa **uma** migration estrutural, **zero** coluna alterada em
+tabela existente, **zero** permissão nova e **zero** impacto no fechamento.
+
+**Decisões aprovadas:**
+
+1. **Pagamento parcial não será implementado.** A divisão continua quitando o
+   pedido integralmente naquele recebimento.
+2. **Pedido com pagamento confirmado não pode ser simplesmente cancelado.**
+   Cancelar exige estorno na mesma transação, com motivo e com as duas
+   permissões. Vira RN-CAIXA-019. Corrige um furo real: hoje o cancelamento
+   deixa `status='cancelled'` com `payment_status='confirmed'` e o dinheiro na
+   gaveta, sem registro de devolução.
+3. **Código de barras para produto E para variante**, em tabela própria
+   `product_barcodes`, com unicidade **global** do código normalizado. Colunas
+   separadas nas duas tabelas permitiriam o mesmo código apontar para duas
+   coisas, e a leitura resolveria qualquer uma — em cima de dinheiro. Modelo em
+   `02` §5.4-A, RLS em `03` §33.2-A.
+4. **EAN é validado como aviso, nunca como bloqueio.** Código interno impresso
+   pela casa não segue EAN.
+5. **`product_variants.sku` fica intocado** e separado do código de barras: é
+   cadastro de fornecedor, não identificador de venda.
+6. **O pagamento não conclui o pedido.** O eixo financeiro não empurra o
+   operacional. Vira RN-CAIXA-018. Venda rápida que conclui na hora fica fora
+   de escopo: exigiria um critério de "item sem produção" que o catálogo não tem.
+7. **O PDV abre com o caixa fechado**, indicando o estado e permitindo o que as
+   permissões permitirem. A recusa do recebimento continua sendo **do servidor**
+   — a interface não reimplementa autorização.
+8. **Atalhos** sem teclas reservadas pelo navegador. Sangria, reforço e
+   fechamento ficam dentro de F9 nesta versão.
+9. **Sem lock de "pedido em atendimento".** A trava do banco (`for update` mais
+   a recusa de segundo pagamento) já resolve a corrida, e um lock de interface
+   traria lock órfão.
+
+**Não implementado nesta decisão.** Nenhuma migration criada, nenhum código
+escrito. A implementação virá por etapas, aprovadas separadamente.
+
+
+---
+
+
 
 ---
 

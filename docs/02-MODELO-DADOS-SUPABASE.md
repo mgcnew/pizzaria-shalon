@@ -1,7 +1,8 @@
 # 02 — Modelo de Dados Supabase | Pizzaria Shalon
 
-**Versão:** 1.1 — §8.2 revisado em 25/09/2026 (`D-2026-09-25-76`, `D-2026-09-25-77`)  
-**Status:** Especificação arquitetural — implementada nas Fases 1 a 11  
+**Versão:** 1.2 — §8.2 revisado e §5.4-A acrescentada em 25/09/2026
+(`D-2026-09-25-76`, `D-2026-09-25-77`, `D-2026-09-25-78`)  
+**Status:** Especificação arquitetural — implementada nas Fases 1 a 11; §5.4-A aprovada e não implementada  
 **Fonte de verdade funcional:** `01-DOCUMENTO-MESTRE.md` V2  
 **Documento complementar:** `03-RLS-RBAC-SEGURANCA.md`
 
@@ -289,6 +290,34 @@ Variação comercial produto+tamanho. Principalmente pizzas.
 - UNIQUE (`product_id`, `size_id`)
 
 Somente produtos compatíveis com variação devem usar esta tabela. Fogazza simples e bebida não precisam ganhar tamanho artificial.
+
+O `sku` é **cadastro de fornecedor** e não identificador de venda. Ele não é
+usado por nenhum fluxo e **não** se confunde com código de barras, que tem
+estrutura própria em §5.4-A (decisão `D-2026-09-25-78`).
+
+## 5.4-A `product_barcodes` — aprovada, ainda não implementada
+
+Código de barras de venda, para **produto** ou **variante**. Aprovada em
+25/09/2026 por `D-2026-09-25-78`; a especificação completa, com a justificativa
+da unicidade e as regras de resolução, está em
+**`09-PDV-FRENTE-DE-CAIXA.md` §2.3**.
+
+- `id uuid PK`
+- `code text` — como digitado
+- `code_normalized text` — **coluna gerada**, `IMMUTABLE`
+- `product_id uuid nullable FK -> products.id`
+- `variant_id uuid nullable FK -> product_variants.id`
+- `is_primary boolean default false`
+- `created_at`, `created_by`
+- CHECK: exatamente **um** alvo — `(product_id is null) <> (variant_id is null)`
+- **UNIQUE (`code_normalized`)** — unicidade **global**
+- UNIQUE parcial de um código primário por produto e por variante
+
+A unicidade é global de propósito: com colunas separadas em `products` e
+`product_variants`, o mesmo código poderia apontar para duas coisas, e a
+leitura resolveria qualquer uma delas — em cima de dinheiro.
+
+Este código serve à **venda**. Não é controle de estoque, que segue fora da V1.
 
 ## 5.5 `crusts`
 

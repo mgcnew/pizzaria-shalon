@@ -1,8 +1,8 @@
 # 05 — PLANO DE IMPLEMENTAÇÃO
 ## Sistema de Gestão e Pedidos — Pizzaria Shalon
 
-**Versão:** 1.1 — Fase 10 concluída em 24/09/2026  
-**Status:** Plano executivo da V1 — Fases 0 a 10 concluídas; Fase 11 (implantação) não iniciada  
+**Versão:** 1.2 — Fase 10 concluída em 24/09/2026; Fase 12 (PDV) especificada em 25/09/2026  
+**Status:** Plano executivo da V1 — Fases 0 a 10 concluídas; Fase 11 (implantação) em curso; Fase 12 (PDV) especificada e não iniciada  
 **Documentos normativos anteriores:**
 - `01-DOCUMENTO-MESTRE.md`
 - `02-MODELO-DADOS-SUPABASE.md`
@@ -1198,6 +1198,32 @@ avançar nas fases; **impedem liberar para produção**.
 
 Nenhuma delas pode ser dada por resolvida sem execução real registrada
 naquele documento.
+
+---
+
+# 25-B. FASE 12 — PDV / FRENTE DE CAIXA
+
+Especificada em 25/09/2026, **não iniciada**. Decisão `D-2026-09-25-78`.
+
+**A especificação NÃO está aqui.** Ela é um subsistema com arquitetura própria e
+mora em **`09-PDV-FRENTE-DE-CAIXA.md`**, que é a fonte de verdade da
+implementação: fluxos, wireframe, atalhos, regras financeiras, código de
+barras, concorrência, cancelamento com estorno, permissões e auditoria.
+
+Regras normativas derivadas: **RN-CAIXA-018** (pagar não avança a produção) e
+**RN-CAIXA-019** (cancelar pedido pago exige estorno), em `04`. Modelo da tabela
+nova em `02` §5.4-A; RLS em `03` §33.2-A.
+
+**Por que é Fase 12 e não continuação da 7.** O módulo Caixa da Fase 7 fica
+inteiro e passa a ser uma das três abas. O que a Fase 12 acrescenta é a frente
+de venda e o recebimento no balcão — comportamento novo, não correção.
+
+**Pré-condição:** a Fase 11 não precisa estar concluída. A Fase 12 não toca
+frete, provedor de rotas nem infraestrutura de produção.
+
+**Etapas de implementação:** definidas no checkpoint de 25/09/2026, pequenas e
+testáveis, cada uma aprovada separadamente. A ordem está em
+`09-PDV-FRENTE-DE-CAIXA.md`; nenhuma etapa começa sem autorização explícita.
 
 ---
 

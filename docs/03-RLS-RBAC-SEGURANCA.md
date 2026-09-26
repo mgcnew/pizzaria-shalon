@@ -1,7 +1,7 @@
 # 03 — RLS, RBAC e Segurança | Pizzaria Shalon
 
-**Versão:** 1.0  
-**Status:** Especificação arquitetural — não implementar ainda  
+**Versão:** 1.1 — §33.2-A acrescentada em 25/09/2026 (`D-2026-09-25-78`)  
+**Status:** Especificação arquitetural — implementada nas Fases 1 a 11; §33.2-A aprovada e não implementada  
 **Fontes de verdade:** `01-DOCUMENTO-MESTRE.md` V2, `02-MODELO-DADOS-SUPABASE.md`
 
 > Este documento define as fronteiras de acesso do sistema, a estratégia de autenticação, autorização, RLS, operações públicas controladas, auditoria e proteção de dados sensíveis. Ele **não é um conjunto de policies SQL pronto** e ainda não autoriza o Claude Code a implementar o banco. A implementação deve ocorrer somente após a consolidação das regras de negócio e do plano de implementação.
@@ -1330,6 +1330,18 @@ A matriz abaixo é referência inicial; será congelada antes da implementação
 - interno: SELECT conforme acesso;
 - INSERT/UPDATE: `catalog.manage`;
 - DELETE físico: negar quando houver referência.
+
+### 33.2-A `product_barcodes` — aprovada, ainda não implementada
+
+Exceção deliberada ao restante do catálogo: código de barras é **dado interno**
+e não pertence à vitrine.
+
+- **público (`anon`): negar tudo**, inclusive SELECT;
+- SELECT interno: `catalog.view`;
+- INSERT/UPDATE/DELETE: `catalog.manage`, por RPC com auditoria explícita.
+
+Aprovada por `D-2026-09-25-78`; modelo em `02` §5.4-A, desenho em
+`09-PDV-FRENTE-DE-CAIXA.md` §2.3 e §7.
 
 ## 33.3 clientes/endereço
 

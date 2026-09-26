@@ -1,7 +1,7 @@
 # 04 — REGRAS DE NEGÓCIO
 ## Sistema de Gestão e Pedidos — Pizzaria Shalon
 
-**Versão:** 1.0  
+**Versão:** 1.1 — RN-CAIXA-018 e RN-CAIXA-019 acrescentadas em 25/09/2026 (`D-2026-09-25-78`)  
 **Status:** Especificação normativa da V1  
 **Dependências:** `01-DOCUMENTO-MESTRE.md`, `02-MODELO-DADOS-SUPABASE.md`, `03-RLS-RBAC-SEGURANCA.md`
 
@@ -810,6 +810,34 @@ dessa conta, mas o pagamento registrado permanece no histórico.
 
 Cartão, Pix e voucher nunca entram no esperado em caixa: eles são
 recebimento, e aparecem no fechamento em bloco separado do dinheiro físico.
+
+### RN-CAIXA-018 — Pagar não avança a produção
+
+O eixo financeiro (`payment_status`) e o eixo operacional (`status`) do pedido
+são independentes. Registrar o pagamento **não** conclui o pedido, **não** o
+coloca em produção e **não** o marca como pronto. Um pedido pode ser pago
+enquanto está no forno, e um pedido pronto pode seguir sem pagamento.
+
+A única dependência existente é no sentido inverso e já valia: concluir uma
+**retirada** exige pagamento confirmado.
+
+Decisão de 25/09/2026 (`D-2026-09-25-78`). Desenho do fluxo em
+`09-PDV-FRENTE-DE-CAIXA.md` §1.1.
+
+### RN-CAIXA-019 — Cancelar pedido pago exige estorno
+
+Pedido com pagamento confirmado **não pode ser cancelado sozinho**. O
+cancelamento simples é recusado; cancelar exige o **estorno financeiro na mesma
+transação**, com motivo e com as permissões de cancelar **e** de estornar.
+
+Não pode existir pedido cancelado com pagamento confirmado e sem estorno: seria
+dinheiro retido sem venda e sem registro de devolução.
+
+Consequência herdada e desejada: recebimento em dinheiro cuja sessão já fechou
+só pode ser estornado com **caixa aberto** — tirar dinheiro exige gaveta aberta.
+
+Decisão de 25/09/2026 (`D-2026-09-25-78`). Desenho em
+`09-PDV-FRENTE-DE-CAIXA.md` §1.5.
 
 ---
 

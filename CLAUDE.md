@@ -46,6 +46,12 @@ equipamento físico ou dado real da Shalon:
 8. `docs/07-MOVIMENTO-E-DESEMPENHO.md` quando o trabalho alterar transições,
    animações, drawers, modais, abas, feedback de carregamento ou desempenho visual.
 
+9. `docs/09-PDV-FRENTE-DE-CAIXA.md` quando o trabalho tocar o PDV, o caixa, o
+   recebimento de pagamento, o código de barras ou o cancelamento com estorno.
+   É **fonte de verdade da implementação** desse subsistema — arquitetura,
+   fluxos, telas, atalhos e decisões aprovadas. Não é fonte normativa: regra de
+   negócio continua em `04`, modelo em `02`, autorização em `03`.
+
 Não trabalhe usando somente contexto de conversa.
 
 Os documentos no repositório são a fonte persistente de verdade.
