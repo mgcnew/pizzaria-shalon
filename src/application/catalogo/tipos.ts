@@ -137,3 +137,21 @@ export type PrecoPorTamanho = {
 
 /** Estado devolvido por toda Server Action de formulário desta fase. */
 export type EstadoFormulario = { erro?: string; ok?: string };
+
+/**
+ * Código de barras de venda (09 §2.3). O `codigo_normalizado` é gerado pelo
+ * banco e é sobre ele que existe a unicidade global — nunca recalcule no
+ * cliente.
+ *
+ * `ean_valido` tem TRÊS estados de propósito: `null` significa "não é um EAN",
+ * que é diferente de "é um EAN errado". Só o `false` gera aviso.
+ */
+export type CodigoDeBarras = {
+  id: string;
+  codigo: string;
+  codigo_normalizado: string;
+  primario: boolean;
+  ean_valido: boolean | null;
+  aviso_ean: string | null;
+  criado_em: string;
+};

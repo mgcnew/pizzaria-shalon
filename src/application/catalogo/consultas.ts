@@ -6,6 +6,7 @@ import type {
   BannerAdmin,
   Borda,
   Categoria,
+  CodigoDeBarras,
   ComboAdmin,
   PrecoPorTamanho,
   ProdutoAdmin,
@@ -228,4 +229,28 @@ export async function listarImagens(tipo: "product" | "banner") {
     height: number | null;
     file_size_bytes: number | null;
   }[];
+}
+
+/**
+ * Códigos de barras de um produto ou de uma variante (09 §2.3).
+ *
+ * Fica aqui, e não no arquivo de actions: `consultas.ts` é `server-only` e
+ * nunca vira endpoint, enquanto todo export de um arquivo `"use server"` se
+ * torna uma Server Action alcançável pela rede. Leitura não precisa dessa
+ * superfície.
+ *
+ * Quem autoriza é a policy `catalog.view` — a RPC é `SECURITY INVOKER` de
+ * propósito, então quem não pode ver recebe lista vazia em vez de erro.
+ */
+export async function lerCodigosDeBarras(alvo: {
+  produtoId?: string;
+  varianteId?: string;
+}): Promise<CodigoDeBarras[]> {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("codigos_de_barras_do_item", {
+    p_produto_id: alvo.produtoId ?? null,
+    p_variante_id: alvo.varianteId ?? null,
+  });
+  if (error) return [];
+  return (data ?? []) as CodigoDeBarras[];
 }

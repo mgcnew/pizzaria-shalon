@@ -6,6 +6,7 @@ import { Input, Select, StatusBadge } from "@/ui/components";
 import { Cartao, LinhaLista } from "@/ui/patterns";
 import { obterSessaoInterna, podeNaUI } from "@/application/auth/sessao";
 import {
+  lerCodigosDeBarras,
   listarCategorias,
   listarTamanhos,
   listarVariacoes,
@@ -23,6 +24,7 @@ import { AbasEdicaoProduto, type SecaoEdicaoProduto } from "./AbasEdicaoProduto"
 import { BotaoAcao } from "./BotaoAcao";
 import { FormularioAcao } from "./FormularioAcao";
 import { FormularioProduto } from "./FormularioProduto";
+import { PainelCodigosDeBarras } from "./PainelCodigosDeBarras";
 import { ModalFerramentaCatalogo } from "./ModalFerramentaCatalogo";
 
 export async function EdicaoProduto({
@@ -53,6 +55,24 @@ export async function EdicaoProduto({
     (t) => t.is_active && !variacoes.some((v) => v.tamanho_id === t.id),
   );
   const imagemUrl = produto.imagem_path ? await urlPublica(produto.imagem_path) : null;
+
+  // Uma leitura para o produto e uma por variante. São poucas — o catálogo da
+  // Shalon tem dois tamanhos — e cada uma é filtrada pela policy `catalog.view`.
+  const [codigosDoProduto, codigosDasVariacoes] = await Promise.all([
+    lerCodigosDeBarras({ produtoId: produto.id }),
+    Promise.all(
+      variacoes.map(async (v) => ({
+        variacao: v,
+        codigos: await lerCodigosDeBarras({ varianteId: v.id }),
+      })),
+    ),
+  ]);
+
+  // 09 §2.3: um código no PRODUTO resolve direto só se o produto não tiver
+  // variante ativa. Tendo, o leitor pede o tamanho. A tela não proíbe — a regra
+  // é sobre resolução, não sobre cadastro — mas precisa dizer o que vai
+  // acontecer, senão alguém cadastra no produto e estranha o PDV depois.
+  const temVarianteAtiva = variacoes.some((v) => v.ativa);
 
   const dados = (
     <div className="flex flex-col gap-4">
@@ -226,6 +246,34 @@ export async function EdicaoProduto({
     </Cartao>
   );
 
+  const codigosDeBarras = (
+    <div className="flex flex-col gap-4">
+      <PainelCodigosDeBarras
+        titulo="Códigos do produto"
+        descricao={
+          temVarianteAtiva
+            ? "Este produto tem tamanhos. Um código cadastrado aqui não entra direto pelo leitor: o PDV vai pedir para escolher o tamanho. Para bipar e entrar, use os códigos por tamanho abaixo."
+            : "O código cadastrado aqui entra direto pelo leitor. Vários códigos por item são permitidos — EAN do fabricante e código interno da casa convivem."
+        }
+        produtoId={produto.id}
+        codigos={codigosDoProduto}
+        podeGerenciar={podeGerenciar}
+      />
+
+      {codigosDasVariacoes.map(({ variacao, codigos }) => (
+        <PainelCodigosDeBarras
+          key={variacao.id}
+          titulo={`Códigos · ${variacao.tamanho_nome}`}
+          descricao="Código deste tamanho. É o que entra direto pelo leitor, sem pedir escolha."
+          produtoId={produto.id}
+          varianteId={variacao.id}
+          codigos={codigos}
+          podeGerenciar={podeGerenciar}
+        />
+      ))}
+    </div>
+  );
+
   const secoes: SecaoEdicaoProduto[] = [
     { id: "dados", nome: "Dados", conteudo: dados },
     ...(tamanhosHabilitados
@@ -234,6 +282,7 @@ export async function EdicaoProduto({
     ...(personalizacao
       ? [{ id: "personalizacao", nome: "Personalização", conteudo: personalizacao }]
       : []),
+    { id: "codigos", nome: "Códigos de barras", conteudo: codigosDeBarras },
     { id: "imagem", nome: "Imagem", conteudo: imagem },
   ];
 
