@@ -200,6 +200,37 @@ insert into public.product_variants (id, product_id, size_id, price)
 values ('e3e3e3e3-0000-0000-0000-000000000001','d3d3d3d3-0000-0000-0000-0000000000f1',
         'e3e3e3e3-0000-0000-0000-00000000000f', 50.00);
 
+-- Códigos de barras zerados, pelo MESMO princípio que `rls_fase3.sql` aplica às
+-- faixas de entrega — e esta linha faltava.
+--
+-- Os cenários B16 e B17 afirmam que uma recusa por falta de permissão não gravou
+-- NADA: zero linha e zero auditoria. Eles foram escritos quando a tabela estava
+-- vazia, e mediam a coisa certa. Quando a Shalon cadastrou o primeiro código de
+-- verdade pela tela, os dois passaram a contar o dado operacional junto com o do
+-- teste, e falharam por um motivo que não é o que eles querem medir.
+--
+-- A correção NÃO é aceitar 1, nem ler o estado do DEV para comparar: os dois
+-- cenários voltariam a quebrar no próximo código que a casa cadastrasse, e o
+-- segundo ainda os tornaria incapazes de detectar a regressão que existem para
+-- detectar. Zerar aqui faz cada cenário medir exclusivamente os PRÓPRIOS
+-- fixtures, seja o ambiente vazio ou cheio.
+--
+-- Nada é perdido: a suíte inteira é uma transação só, aberta na linha 25 e
+-- desfeita na última linha do arquivo, sem savepoint e sem commit no caminho.
+-- O `delete` vale apenas dentro dela, e o ROLLBACK devolve os códigos da casa
+-- com id, texto, normalizado, alvo, `is_primary`, `created_at` e `created_by`
+-- idênticos.
+--
+-- ISTO RESOLVE AS LINHAS, E NÃO A AUDITORIA — de propósito. Remover um código
+-- NÃO remove o registro de auditoria dele, e não deve: auditoria é histórico
+-- (§28, §33), e um teste que apagasse `audit_logs` estaria ensaiando justamente
+-- o que o projeto proíbe. Por isso o B17 mede DELTA, não total: ver abaixo.
+delete from public.product_barcodes;
+
+-- Quantas auditorias de cadastro existem ANTES de qualquer coisa que esta suíte
+-- faça. O B17 compara contra este número.
+select set_config('teste.b_audit', pg_temp.auditorias('codigo_de_barras_cadastrar')::text, true);
+
 -- =============================================================================
 -- BLOCO A — EAN: AVISAR, NUNCA BLOQUEAR
 --
@@ -335,7 +366,20 @@ select pg_temp.checar('B15 so ver NAO altera', 'sem_permissao',
      jsonb_build_object('codigo','B0002')) ->> 'bloqueio'));
 select pg_temp.checar('B16 a recusa nao gravou linha nenhuma', '0',
   (select count(*)::text from public.product_barcodes));
-select pg_temp.checar('B17 e nao gravou auditoria nenhuma', '0',
+-- ZERO REGISTROS NOVOS, e não "zero registros no banco".
+--
+-- A afirmação do cenário sempre foi "a recusa não gravou auditoria". O total
+-- absoluto só era igual a isso enquanto o DEV estava vazio; quando a Shalon
+-- cadastrou o primeiro código de verdade, o cenário passou a somar o histórico
+-- dela junto com o do teste.
+--
+-- Comparar com o valor capturado nos fixtures NÃO é aceitar o estado do
+-- ambiente: nenhum número do DEV está escrito aqui, e o cenário continua
+-- falhando se a recusa algum dia gravar uma linha. É a mesma forma que o F7
+-- deste arquivo já usa, e é mais forte que o zero absoluto — que só estava
+-- certo por acidente.
+select pg_temp.checar('B17 e nao gravou auditoria nenhuma',
+  current_setting('teste.b_audit'),
   pg_temp.auditorias('codigo_de_barras_cadastrar')::text);
 
 reset role;
