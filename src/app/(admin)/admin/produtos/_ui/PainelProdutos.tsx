@@ -27,10 +27,9 @@ import { FiltrosProdutos } from "./FiltrosProdutos";
  *    único para ela;
  *  · a edição abre uma rota própria em vez de modal (ver produtos/[id]).
  *
- * A MINIATURA é de 56px e não cresce. Aqui a pessoa está administrando, não
- * escolhendo o jantar: o que ela precisa varrer é preço, disponibilidade e
- * ação, e foto grande empurraria isso para fora da tela. O card vertical com
- * foto grande existe no cardápio público, nas vitrines (D-2026-09-21-56).
+ * No desktop a leitura é tabular, com miniatura de 48px para comparar muitos
+ * itens rapidamente. Abaixo de 1024px cada linha assume formato de card com
+ * foto panorâmica, mais adequado a toque e a colunas estreitas.
  *
  * Quando não há foto, o cartão DIZ que não há. É no painel que essa falta é
  * acionável — e produto sem foto aparece pior no cardápio do que qualquer
@@ -109,89 +108,124 @@ export async function PainelProdutos({
           descricao="Ajuste a busca ou cadastre um novo item do cardápio."
         />
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+        <div
+          role="table"
+          aria-label="Produtos do cardápio"
+          className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:block lg:overflow-hidden lg:rounded-16 lg:border lg:border-border-shalon lg:bg-surface"
+        >
+          <div
+            role="row"
+            className="sr-only grid-cols-[minmax(220px,1.5fr)_minmax(90px,0.65fr)_minmax(105px,0.75fr)_minmax(130px,0.85fr)_minmax(175px,auto)] border-b border-border-shalon bg-bg/60 text-[11px] font-bold uppercase tracking-[0.05em] text-muted lg:not-sr-only lg:grid"
+          >
+            <span role="columnheader" className="px-3 py-2.5">Produto</span>
+            <span role="columnheader" className="px-3 py-2.5">Preço</span>
+            <span role="columnheader" className="px-3 py-2.5">Configuração</span>
+            <span role="columnheader" className="px-3 py-2.5">Situação</span>
+            <span role="columnheader" className="px-3 py-2.5 text-right">Ações</span>
+          </div>
+
           {filtrados.map((p) => {
             const motivo = p.disponivel ? null : motivoIndisponivel(p);
             const imagem = p.imagem_path ? (imagens.get(p.imagem_path) ?? null) : null;
+            const configuracao =
+              p.tamanhos > 0
+                ? `${p.tamanhos} ${p.tamanhos === 1 ? "tamanho" : "tamanhos"}`
+                : p.preco_base !== null
+                  ? "Preço próprio"
+                  : "Sem preço configurado";
+
             return (
               <article
                 key={p.id}
-                className="group flex min-w-0 flex-col overflow-hidden rounded-16 border border-border-shalon bg-surface shadow-[0_4px_16px_rgb(41_37_36/0.035)]"
+                role="row"
+                className="group flex min-w-0 flex-col overflow-hidden rounded-16 border border-border-shalon bg-surface shadow-[0_4px_16px_rgb(41_37_36/0.035)] lg:grid lg:grid-cols-[minmax(220px,1.5fr)_minmax(90px,0.65fr)_minmax(105px,0.75fr)_minmax(130px,0.85fr)_minmax(175px,auto)] lg:items-center lg:rounded-none lg:border-0 lg:border-b lg:shadow-none lg:transition-colors lg:last:border-b-0 lg:hover:bg-elev"
               >
-                <div className="relative aspect-[5/2] w-full overflow-hidden bg-elev">
-                  {imagem ? (
-                    <Image
-                      src={imagem}
-                      alt={p.nome}
-                      fill
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 33vw, 25vw"
-                      className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                    />
-                  ) : (
-                    <span
-                      aria-hidden="true"
-                      className="flex h-full w-full items-center justify-center bg-gradient-to-br from-tn to-elev text-[40px] opacity-60"
-                    >
-                      🍕
-                    </span>
-                  )}
+                <div role="cell" className="min-w-0 lg:flex lg:items-center lg:gap-3 lg:px-3 lg:py-2.5">
+                  <div className="relative aspect-[5/2] w-full shrink-0 overflow-hidden bg-elev lg:h-12 lg:w-12 lg:rounded-10 lg:aspect-square">
+                    {imagem ? (
+                      <Image
+                        src={imagem}
+                        alt={p.nome}
+                        fill
+                        sizes="(min-width: 1024px) 48px, (max-width: 640px) 100vw, 33vw"
+                        className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                      />
+                    ) : (
+                      <span
+                        aria-hidden="true"
+                        className="flex h-full w-full items-center justify-center bg-gradient-to-br from-tn to-elev text-[40px] opacity-60 lg:text-[20px]"
+                      >
+                        🍕
+                      </span>
+                    )}
 
-                  <div className="absolute left-2 top-2 flex flex-wrap gap-1.5">
-                    {p.destaque ? <Badge tom="destaque">Destaque</Badge> : null}
-                    {p.em_promocao ? <Badge tom="promocao">Promoção</Badge> : null}
+                    <div className="absolute left-2 top-2 flex flex-wrap gap-1.5 lg:hidden">
+                      {p.destaque ? <Badge tom="destaque">Destaque</Badge> : null}
+                      {p.em_promocao ? <Badge tom="promocao">Promoção</Badge> : null}
+                    </div>
+
+                    {!p.disponivel ? (
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent px-3 pb-2 pt-8 lg:hidden">
+                        <span className="text-[12px] font-semibold text-white">
+                          {motivo ?? "Indisponível"}
+                        </span>
+                      </div>
+                    ) : null}
                   </div>
 
-                  {!p.disponivel ? (
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent px-3 pb-2 pt-8">
-                      <span className="text-[12px] font-semibold text-white">
-                        {motivo ?? "Indisponível"}
-                      </span>
+                  <div className="min-w-0 p-3 pb-0 lg:p-0">
+                    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                      <h3 className="m-0 min-w-0 truncate font-display text-[15.5px] font-bold leading-tight text-ink">
+                        {p.nome}
+                      </h3>
+                      <div className="hidden flex-wrap gap-1 lg:flex">
+                        {p.destaque ? <Badge tom="destaque">Destaque</Badge> : null}
+                        {p.em_promocao ? <Badge tom="promocao">Promoção</Badge> : null}
+                      </div>
                     </div>
+                    <p className="mb-0 mt-1 truncate text-[12px] font-medium text-muted">
+                      {p.categoria_nome} · {rotuloTipo(p.tipo)}
+                    </p>
+                    {p.descricao ? (
+                      <p className="mb-0 mt-1.5 line-clamp-1 text-[12px] leading-relaxed text-ink-2 lg:hidden">
+                        {p.descricao}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div role="cell" className="px-3 pt-2.5 lg:py-2.5">
+                  <p className="m-0 tabular-nums text-[16px] font-extrabold text-ink lg:text-[13.5px]">
+                    {precoExibido(p)}
+                  </p>
+                </div>
+
+                <div role="cell" className="px-3 pt-1 lg:py-2.5">
+                  <p className="m-0 text-[12px] font-medium text-ink-2">{configuracao}</p>
+                  {imagem === null ? (
+                    <p className="mb-0 mt-0.5 text-[11px] text-muted">Sem foto</p>
                   ) : null}
                 </div>
 
-                <div className="flex min-w-0 flex-1 flex-col p-3">
-                  <div className="min-w-0">
-                    <h3 className="m-0 line-clamp-2 font-display text-[15.5px] font-bold leading-tight text-ink">
-                      {p.nome}
-                    </h3>
-                    <p className="mb-0 mt-1 text-[12.5px] font-medium text-muted">
-                      {p.categoria_nome} · {rotuloTipo(p.tipo)}
-                    </p>
-                  </div>
-
-                  {p.descricao ? (
-                    <p className="mb-0 mt-1.5 line-clamp-1 text-[12px] leading-relaxed text-ink-2">
-                      {p.descricao}
-                    </p>
-                  ) : null}
-
-                  <div className="mt-2.5">
-                    <p className="m-0 tabular-nums text-[16px] font-extrabold text-ink">
-                      {precoExibido(p)}
-                    </p>
-                    <p className="mb-0 mt-1 text-[12px] text-muted">
-                      {p.tamanhos > 0
-                        ? `${p.tamanhos} ${p.tamanhos === 1 ? "tamanho" : "tamanhos"} cadastrado${p.tamanhos === 1 ? "" : "s"}`
-                        : p.preco_base !== null
-                          ? "Preço próprio, sem tamanhos"
-                          : "Ainda sem preço — habilite um tamanho ou defina o preço próprio"}
-                      {imagem === null ? " · sem foto" : ""}
-                    </p>
-                  </div>
-
-                  <div className="mt-auto pt-3">
-                    {p.disponivel ? (
-                      <StatusBadge tom="sucesso">Disponível</StatusBadge>
-                    ) : (
+                <div role="cell" className="px-3 py-3 lg:py-2.5">
+                  {p.disponivel ? (
+                    <StatusBadge tom="sucesso">Disponível</StatusBadge>
+                  ) : (
+                    <>
                       <StatusBadge tom={p.ativo ? "atencao" : "neutro"}>
                         {p.ativo ? "Indisponível" : "Inativo"}
                       </StatusBadge>
-                    )}
-                  </div>
+                      <p className="mb-0 mt-1 line-clamp-2 text-[11px] leading-snug text-muted">
+                        {motivo ?? "Indisponível"}
+                      </p>
+                    </>
+                  )}
                 </div>
 
-                <div className="flex flex-wrap items-center gap-1.5 border-t border-border-shalon bg-bg/45 px-3 py-2.5">
+                <div
+                  role="cell"
+                  className="flex flex-wrap items-center gap-1.5 border-t border-border-shalon bg-bg/45 px-3 py-2.5 lg:flex-nowrap lg:justify-end lg:border-0 lg:bg-transparent"
+                >
                   {/* RN-DISP-002: alternar a disponibilidade de HOJE. Não
                       confundir com inativar o cadastro, que fica na edição. */}
                   {podeGerenciar ? (
@@ -205,12 +239,16 @@ export async function PainelProdutos({
 
                   <Link
                     href={`/admin/produtos/editar/${p.id}`}
-                    className="motion-interactive ml-auto inline-flex min-h-[42px] items-center gap-1.5 rounded-10 px-2 text-[13px] font-semibold text-ink-2 transition-colors hover:bg-surface hover:text-ink"
+                    aria-label={`${podeGerenciar ? "Editar" : "Ver detalhes de"} ${p.nome}`}
+                    title={podeGerenciar ? "Editar produto" : "Ver detalhes"}
+                    className="motion-interactive ml-auto inline-flex min-h-[42px] min-w-[42px] items-center justify-center gap-1.5 rounded-10 px-2 text-[13px] font-semibold text-ink-2 transition-colors hover:bg-surface hover:text-ink lg:ml-0"
                   >
                     <svg aria-hidden="true" viewBox="0 0 20 20" className="h-4 w-4" fill="none">
                       <path d="m13.7 3.3 3 3M4 16l3.2-.7 8.5-8.5a2.12 2.12 0 0 0-3-3l-8.5 8.5L4 16Z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
-                    {podeGerenciar ? "Editar" : "Ver detalhes"}
+                    <span className="lg:sr-only">
+                      {podeGerenciar ? "Editar" : "Ver detalhes"}
+                    </span>
                   </Link>
                 </div>
               </article>

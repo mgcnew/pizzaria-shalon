@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { MenuLateralAdmin } from "./MenuLateralAdmin";
 
 /**
@@ -44,14 +43,10 @@ export function DrawerAdmin() {
             onClick={(e) => e.stopPropagation()}
             className="motion-drawer-left-in flex w-[76%] max-w-drawer flex-col overflow-hidden border-r border-admin-nav-border bg-admin-nav-bg"
           >
-            <div className="flex items-center justify-between border-b border-admin-nav-border bg-admin-nav-bg px-4 py-4">
-              <Image
-                src="/marca/logo-shalon.webp"
-                alt="Pizzaria Shalon"
-                width={512}
-                height={256}
-                className="h-[34px] w-auto"
-              />
+            <div className="flex h-[53px] shrink-0 items-center justify-between border-b border-admin-nav-border bg-admin-nav-bg px-4">
+              <p className="m-0 text-[10px] font-bold uppercase tracking-[0.14em] text-admin-nav-active-fg">
+                Painel administrativo
+              </p>
               <button
                 type="button"
                 aria-label="Fechar menu"

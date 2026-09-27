@@ -57,6 +57,17 @@
     display: none;
   }
 
+  /* Áreas verticais compactas continuam roláveis, mas sem a barra nativa
+   * competir com a navegação e variar visualmente entre sistemas. */
+  .scrollbar-hidden {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .scrollbar-hidden::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Scroll interno de modais: visível para orientação, sem competir com o conteúdo. */
   .scrollbar-subtle {
     scrollbar-color: var(--shalon-muted) transparent;

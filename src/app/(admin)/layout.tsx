@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { DrawerAdmin } from "@/ui/components/DrawerAdmin";
@@ -15,7 +16,8 @@ import { sair } from "@/app/(auth)/admin/login/actions";
  * Preserva do protótipo: sidebar de 232px fixa no desktop, cabeçalho sticky,
  * identidade do usuário na topbar e o tema de acento vermelho
  * (`data-acento="vermelho"`), padrão do administrativo. A navegação inteiramente
- * clara, incluindo o cabeçalho da marca, é a revisão D-2026-09-22-62.
+ * clara, com a marca na topbar e o título compacto na sidebar, é a revisão
+ * atual do shell.
  *
  * DIFERENÇA DELIBERADA: o design decidia sidebar × drawer medindo
  * `window.innerWidth` em JavaScript. Aqui a decisão é CSS puro
@@ -44,15 +46,8 @@ export default async function LayoutAdmin({
         aria-label="Navegação principal do administrativo"
         className="sticky top-0 hidden h-screen w-sidebar shrink-0 flex-col overflow-hidden border-r border-admin-nav-border bg-admin-nav-bg shadow-[4px_0_18px_rgb(41_37_36/0.06)] lg:flex"
       >
-        <div className="border-b border-admin-nav-border bg-admin-nav-bg px-5 pb-5 pt-5">
-          <Image
-            src="/marca/logo-shalon.webp"
-            alt="Pizzaria Shalon"
-            width={512}
-            height={256}
-            className="h-[42px] w-auto"
-          />
-          <p className="mb-0 mt-2 text-[10px] font-bold uppercase tracking-[0.14em] text-admin-nav-active-fg">
+        <div className="flex h-[53px] shrink-0 items-center border-b border-admin-nav-border bg-admin-nav-bg px-4">
+          <p className="m-0 text-[10px] font-bold uppercase tracking-[0.14em] text-admin-nav-active-fg">
             Painel administrativo
           </p>
         </div>
@@ -61,14 +56,22 @@ export default async function LayoutAdmin({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex flex-wrap items-center gap-3 border-b border-border-shalon bg-surface px-4 py-3">
+        <header className="sticky top-0 z-30 flex min-h-[53px] flex-wrap items-center gap-3 border-b border-admin-nav-border bg-admin-nav-bg px-4 py-1">
           <DrawerAdmin />
-          <div className="min-w-[120px] flex-1">
-            <h1 className="m-0 font-display text-[20px] font-extrabold leading-[1.15] text-ink">
-              Pizzaria Shalon
-            </h1>
-            <p className="mt-[2px] text-[12.5px] text-muted">Administrativo</p>
-          </div>
+          <Link
+            href="/admin"
+            aria-label="Ir para o painel administrativo"
+            className="flex min-w-[120px] flex-1 items-center self-stretch"
+          >
+            <Image
+              src="/marca/logo-shalon.webp"
+              alt="Pizzaria Shalon"
+              width={512}
+              height={256}
+              priority
+              className="h-[34px] w-auto sm:h-[38px]"
+            />
+          </Link>
           <SeletorDeTema atual={temaAtual} />
           <MenuUsuarioAdmin nome={sessao.nome} papeis={sessao.papeis} acaoSair={sair} />
         </header>

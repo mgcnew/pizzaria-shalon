@@ -120,13 +120,13 @@ export function MenuLateralAdmin({ aoNavegar }: { aoNavegar?: () => void }) {
   const pathname = usePathname();
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3 py-4">
+    <div className="scrollbar-hidden flex min-h-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-3 [@media(max-height:720px)]:gap-0 [@media(max-height:720px)]:py-2">
       {GRUPOS.map((grupo) => (
         <div key={grupo.titulo}>
-          <p className="mb-1.5 mt-0 px-3 text-[10px] font-bold uppercase tracking-[0.12em] text-admin-nav-muted">
+          <p className="mb-1 mt-0 px-3 text-[10px] font-bold uppercase tracking-[0.12em] text-admin-nav-muted [@media(max-height:720px)]:sr-only">
             {grupo.titulo}
           </p>
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-0.5 [@media(max-height:720px)]:gap-0">
             {MENU_ADMIN.filter((item) => grupo.rotas.some((rota) => rota === item.href)).map((item) => {
               const ativo =
                 item.href === "/admin"
@@ -140,7 +140,7 @@ export function MenuLateralAdmin({ aoNavegar }: { aoNavegar?: () => void }) {
                   {...(aoNavegar ? { onClick: aoNavegar } : {})}
                   aria-current={ativo ? "page" : undefined}
                   className={[
-                    "motion-interactive group flex min-h-touch items-center gap-2.5 rounded-10 border-l-[3px] px-2.5 py-2 text-[13.5px] transition-colors",
+                    "motion-interactive group flex min-h-touch items-center gap-2.5 rounded-10 border-l-[3px] px-2.5 py-2 text-[13.5px] transition-colors [@media(max-height:720px)]:py-1.5",
                     ativo
                       ? "border-brand-orange bg-admin-nav-active font-semibold text-admin-nav-text"
                       : "border-transparent font-medium text-admin-nav-text hover:bg-admin-nav-icon",
