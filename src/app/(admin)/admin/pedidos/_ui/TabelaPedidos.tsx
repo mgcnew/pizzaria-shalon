@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { StatusBadge } from "@/ui/components";
 import { formatBRL, formatarEspera, minutosDesde } from "@/lib/format";
 import { rotuloDeModalidade, rotuloDeOrigem, rotuloInterno } from "@/domain/pedidos/estados";
@@ -91,22 +90,22 @@ export function TabelaPedidos({
   return (
     /* A tabela rola DENTRO de si. Sem isto, uma observação longa faria a
        página inteira rolar na horizontal e levaria a barra lateral junto. */
-    <div className="hidden overflow-x-auto rounded-16 border border-border-shalon bg-surface lg:block">
-      <table className="w-full min-w-[920px] border-collapse text-[13.5px]">
+    <div className="hidden overflow-x-auto rounded-16 border border-border-shalon bg-surface shadow-[0_4px_16px_rgb(41_37_36/0.035)] lg:block">
+      <table className="w-full min-w-[960px] border-collapse text-[13.5px]">
         <caption className="sr-only">{rotulo}</caption>
         <thead>
-          <tr className="border-b border-border-shalon text-left text-[12px] uppercase tracking-wide text-muted">
-            <th scope="col" className="px-3 py-2 text-right font-bold">
+          <tr className="border-b border-border-shalon bg-bg/60 text-left text-[11px] uppercase tracking-[0.05em] text-muted">
+            <th scope="col" className="px-4 py-2.5 text-right font-bold">
               {aberto ? "Espera" : "Quando"}
             </th>
-            <th scope="col" className="px-3 py-2 font-bold">Pedido</th>
-            <th scope="col" className="px-3 py-2 font-bold">Cliente</th>
-            <th scope="col" className="px-3 py-2 font-bold">Canal</th>
-            <th scope="col" className="px-3 py-2 text-right font-bold">Itens</th>
-            <th scope="col" className="px-3 py-2 text-right font-bold">Total</th>
-            <th scope="col" className="px-3 py-2 font-bold">Pagamento</th>
-            <th scope="col" className="px-3 py-2 font-bold">Situação</th>
-            {aberto ? <th scope="col" className="px-3 py-2 font-bold">Ação</th> : null}
+            <th scope="col" className="px-3 py-2.5 font-bold">Pedido</th>
+            <th scope="col" className="px-3 py-2.5 font-bold">Cliente</th>
+            <th scope="col" className="px-3 py-2.5 font-bold">Canal</th>
+            <th scope="col" className="px-3 py-2.5 text-right font-bold">Itens</th>
+            <th scope="col" className="px-3 py-2.5 text-right font-bold">Total</th>
+            <th scope="col" className="px-3 py-2.5 font-bold">Pagamento</th>
+            <th scope="col" className="px-3 py-2.5 font-bold">Situação</th>
+            <th scope="col" className="px-4 py-2.5 text-right font-bold">Ações</th>
           </tr>
         </thead>
         <tbody>
@@ -128,9 +127,9 @@ export function TabelaPedidos({
             return (
               <tr
                 key={p.id}
-                className="border-b border-border-shalon align-top last:border-b-0"
+                className="border-b border-border-shalon align-middle transition-colors last:border-b-0 hover:bg-elev"
               >
-                <td className="px-3 py-[10px] text-right">
+                <td className="px-4 py-3 text-right">
                   {aberto ? (
                     <>
                       <span className="block font-semibold tabular-nums text-ink">
@@ -145,16 +144,13 @@ export function TabelaPedidos({
                   )}
                 </td>
 
-                <td className="px-3 py-[10px]">
-                  <Link
-                    href={`/admin/pedidos/${p.id}`}
-                    className="font-display text-[15px] font-extrabold text-ink no-underline hover:underline"
-                  >
+                <td className="px-3 py-3">
+                  <span className="font-display text-[15px] font-extrabold text-ink">
                     #{p.numero}
-                  </Link>
+                  </span>
                 </td>
 
-                <td className="max-w-[220px] px-3 py-[10px]">
+                <td className="max-w-[220px] px-3 py-3">
                   <span className="block truncate text-ink">{p.cliente}</span>
                   {/* A observação é operacional ("sem cebola") e não pode sumir
                       só porque virou tabela. Truncada, com o texto inteiro no
@@ -169,21 +165,21 @@ export function TabelaPedidos({
                   ) : null}
                 </td>
 
-                <td className="whitespace-nowrap px-3 py-[10px] text-ink-2">
+                <td className="whitespace-nowrap px-3 py-3 text-ink-2">
                   {rotuloDeOrigem(p.origem)}
                   <span className="text-muted"> · </span>
                   {rotuloDeModalidade(p.modalidade)}
                 </td>
 
-                <td className="px-3 py-[10px] text-right tabular-nums text-ink-2">
+                <td className="px-3 py-3 text-right tabular-nums text-ink-2">
                   {p.itens}
                 </td>
 
-                <td className="px-3 py-[10px] text-right font-display text-[15px] font-extrabold tabular-nums text-ink">
+                <td className="px-3 py-3 text-right font-display text-[15px] font-extrabold tabular-nums text-ink">
                   {formatBRL(p.total)}
                 </td>
 
-                <td className="px-3 py-[10px] text-ink-2">
+                <td className="px-3 py-3 text-ink-2">
                   {p.forma_pagamento ?? "—"}
                   {p.troco !== null ? (
                     <span className="block text-[12px] text-muted">
@@ -192,7 +188,7 @@ export function TabelaPedidos({
                   ) : null}
                 </td>
 
-                <td className="px-3 py-[10px]">
+                <td className="px-3 py-3">
                   <StatusBadge
                     tom={estado.tom}
                     pulsante={p.status === "waiting_store_confirmation"}
@@ -210,9 +206,8 @@ export function TabelaPedidos({
                   ))}
                 </td>
 
-                {aberto ? (
-                  <td className="px-3 py-[10px]">
-                    <div className="flex items-center gap-1">
+                <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-1">
                       {/*
                        * QUANDO O PEDIDO DEVE, RECEBER É A PRIMÁRIA — e o valor
                        * vai no botão. É a ação que o balcão mais repete, e o
@@ -237,10 +232,19 @@ export function TabelaPedidos({
                         compacto
                         modo="linha"
                         comPrimaria={!(cobravel && podeReceber)}
+                        itensAdicionais={[
+                          {
+                            rotulo: "Ver detalhes",
+                            href: `/admin/pedidos?${aberto ? "" : "aba=encerrados&"}modal=detalhes&pedido=${p.id}`,
+                          },
+                          {
+                            rotulo: "Emitir comanda",
+                            href: `/admin/pedidos?${aberto ? "" : "aba=encerrados&"}modal=comanda&pedido=${p.id}`,
+                          },
+                        ]}
                       />
                     </div>
                   </td>
-                ) : null}
               </tr>
             );
           })}

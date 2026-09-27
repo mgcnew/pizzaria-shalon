@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { executarComando } from "@/application/pedidos/acoes";
 import type { AcaoDoPedido } from "@/application/pedidos/tipos";
@@ -37,6 +38,7 @@ export function AcoesDoPedido({
   compacto = false,
   modo = "lista",
   comPrimaria = true,
+  itensAdicionais = [],
 }: {
   pedidoId: string;
   acoes: AcaoDoPedido[];
@@ -47,6 +49,7 @@ export function AcoesDoPedido({
    * linha já tem outra primária, como "Receber" num pedido que está devendo.
    */
   comPrimaria?: boolean;
+  itensAdicionais?: { rotulo: string; href: string }[];
 }) {
   const [pedindoMotivo, setPedindoMotivo] = useState<AcaoDoPedido | null>(null);
   const [motivo, setMotivo] = useState("");
@@ -103,7 +106,7 @@ export function AcoesDoPedido({
     disparar(acao);
   }
 
-  if (acoes.length === 0 && erro === null) return null;
+  if (acoes.length === 0 && itensAdicionais.length === 0 && erro === null) return null;
 
   /*
    * A PRIMÁRIA é a primeira não destrutiva, na ordem que o banco definiu
@@ -136,7 +139,7 @@ export function AcoesDoPedido({
             </button>
           ) : null}
 
-          {noMenu.length > 0 ? (
+          {noMenu.length > 0 || itensAdicionais.length > 0 ? (
             <div ref={caixaDoMenu} className="relative">
               {/*
                * O `⋯` guarda o que é destrutivo. Não é só economia de largura:
@@ -162,6 +165,20 @@ export function AcoesDoPedido({
                   role="menu"
                   className="motion-popover-in absolute right-0 top-[calc(100%+4px)] z-30 flex min-w-[210px] flex-col overflow-hidden rounded-12 border border-border-shalon bg-surface shadow-[0_8px_24px_rgb(41_37_36/0.16)]"
                 >
+                  {itensAdicionais.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      role="menuitem"
+                      onClick={() => setMenuAberto(false)}
+                      className="flex min-h-touch items-center border-0 bg-transparent px-3 text-[13.5px] font-semibold text-ink no-underline hover:bg-elev"
+                    >
+                      {item.rotulo}
+                    </Link>
+                  ))}
+                  {itensAdicionais.length > 0 && noMenu.length > 0 ? (
+                    <div className="mx-3 border-t border-border-shalon" />
+                  ) : null}
                   {noMenu.map((acao) => (
                     <button
                       key={acao.comando}

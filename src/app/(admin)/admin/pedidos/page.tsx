@@ -4,7 +4,7 @@ import { Abas, type Aba } from "@/ui/patterns";
 import { obterSessaoInterna, podeNaUI } from "@/application/auth/sessao";
 import { obterLojaPublica } from "@/application/publico/consultas";
 import { formasDePagamento } from "@/application/checkout/consultas";
-import { esperaDaFila, listarFila } from "@/application/pedidos/consultas";
+import { esperaDaFila, listarFila, obterPedido } from "@/application/pedidos/consultas";
 import { listarPedidosAReceber } from "@/application/pdv/consultas";
 import { formasParaRecebimento } from "@/application/configuracoes/consultas";
 import { obterCaixa } from "@/application/caixa/consultas";
@@ -12,6 +12,7 @@ import { CentralDePedidos } from "./_ui/CentralDePedidos";
 import { CartaoPedido } from "./_ui/CartaoPedido";
 import { TabelaPedidos } from "./_ui/TabelaPedidos";
 import { ModalNovoPedido } from "./_ui/ModalNovoPedido";
+import { ModalPedido } from "./_ui/ModalPedido";
 
 export const metadata: Metadata = { title: "Pedidos" };
 
@@ -33,12 +34,13 @@ const ABAS: readonly Aba[] = [
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ aba?: string; novo?: string }>;
+  searchParams: Promise<{ aba?: string; novo?: string; modal?: string; pedido?: string }>;
 }) {
-  const { aba, novo } = await searchParams;
+  const { aba, novo, modal, pedido: pedidoId } = await searchParams;
   const encerrados = aba === "encerrados";
+  const tipoModal = modal === "detalhes" || modal === "comanda" ? modal : null;
 
-  const [sessao, pedidos, loja, aReceber, formasDeRecebimento, caixa] = await Promise.all([
+  const [sessao, pedidos, loja, aReceber, formasDeRecebimento, caixa, pedidoModal] = await Promise.all([
     obterSessaoInterna(),
     listarFila(encerrados),
     obterLojaPublica(),
@@ -47,6 +49,7 @@ export default async function Page({
     listarPedidosAReceber(),
     formasParaRecebimento(),
     obterCaixa(),
+    tipoModal && pedidoId ? obterPedido(pedidoId) : Promise.resolve(null),
   ]);
 
   const cobraveis = Object.fromEntries(aReceber.pedidos.map((p) => [p.id, p]));
@@ -148,6 +151,15 @@ export default async function Page({
       {abrirNovoPedido ? (
         <ModalNovoPedido
           formasPorModalidade={{ delivery: formasEntrega, pickup: formasRetirada }}
+        />
+      ) : null}
+
+      {tipoModal && pedidoModal ? (
+        <ModalPedido
+          pedido={pedidoModal}
+          tipo={tipoModal}
+          fuso={fuso}
+          fecharEm={encerrados ? "/admin/pedidos?aba=encerrados" : "/admin/pedidos"}
         />
       ) : null}
     </div>

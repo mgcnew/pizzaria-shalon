@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { StatusBadge } from "@/ui/components";
 import { formatBRL } from "@/lib/format";
 import { rotuloDeModalidade, rotuloDeOrigem, rotuloInterno } from "@/domain/pedidos/estados";
@@ -49,12 +48,9 @@ export function CartaoPedido({
     <article className="rounded-16 border border-border-shalon bg-surface p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <Link
-            href={`/admin/pedidos/${pedido.id}`}
-            className="font-display text-[20px] font-extrabold text-ink no-underline"
-          >
+          <span className="font-display text-[20px] font-extrabold text-ink">
             #{pedido.numero}
-          </Link>
+          </span>
           <p className="m-0 text-[14px] text-ink-2">{pedido.cliente}</p>
           {/* A ESPERA NA FRENTE, como na tabela do desktop. O cartão mostrava
               só a hora do relógio, e `20:41` sem data parecia recente quando
@@ -117,7 +113,23 @@ export function CartaoPedido({
             Receber {formatBRL(cobravel.total)}
           </button>
         ) : null}
-        <AcoesDoPedido pedidoId={pedido.id} acoes={pedido.acoes} compacto />
+        <AcoesDoPedido
+          pedidoId={pedido.id}
+          acoes={pedido.acoes}
+          compacto
+          modo="linha"
+          comPrimaria={!cobravel}
+          itensAdicionais={[
+            {
+              rotulo: "Ver detalhes",
+              href: `/admin/pedidos?${pedido.encerrado ? "aba=encerrados&" : ""}modal=detalhes&pedido=${pedido.id}`,
+            },
+            {
+              rotulo: "Emitir comanda",
+              href: `/admin/pedidos?${pedido.encerrado ? "aba=encerrados&" : ""}modal=comanda&pedido=${pedido.id}`,
+            },
+          ]}
+        />
       </div>
     </article>
   );
