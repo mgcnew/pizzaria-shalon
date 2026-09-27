@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { formatBRL } from "@/lib/format";
 import { Select } from "@/ui/components/Select";
@@ -12,8 +12,13 @@ import { resolverCodigo, buscarNoCatalogo } from "@/application/pdv/acoes";
 import type { ItemCatalogoPdv } from "@/application/pdv/tipos";
 import type { ItemDoRascunho } from "@/application/pedidos/tipos";
 import type { FormaDePagamento } from "@/application/checkout/tipos";
-import { Recebimento, type FormaParaRecebimento } from "@/app/(admin)/admin/pedidos/_ui/Recebimento";
+import {
+  Recebimento,
+  type ComandosDoRecebimento,
+  type FormaParaRecebimento,
+} from "@/app/(admin)/admin/pedidos/_ui/Recebimento";
 import { Comanda } from "@/app/(admin)/admin/pedidos/_ui/Comanda";
+import type { AreaComTeclado } from "./PdvComTeclado";
 
 /**
  * Nova venda de balcão — Fase 12, Etapa 6.
@@ -53,6 +58,8 @@ export function NovaVenda({
   formasDeRecebimento,
   caixaAberto,
   autorizado,
+  registrar,
+  aoMudar,
 }: {
   /** Formas ESPERADAS, filtradas por retirada: alimentam a intenção. */
   formas: FormaDePagamento[];
@@ -60,6 +67,10 @@ export function NovaVenda({
   formasDeRecebimento: FormaParaRecebimento[];
   caixaAberto: boolean;
   autorizado: boolean;
+  /** Entrega ao casco o `estado()` e o `executar()` desta área (Etapa 9). */
+  registrar: (area: AreaComTeclado | null) => void;
+  /** Avisa o casco que a faixa de atalhos precisa ser recalculada. */
+  aoMudar: () => void;
 }) {
   const router = useRouter();
   const [leitura, setLeitura] = useState("");
@@ -78,6 +89,27 @@ export function NovaVenda({
   const [recebendo, setRecebendo] = useState(false);
   const [ocupado, iniciar] = useTransition();
   const campo = useRef<HTMLInputElement>(null);
+
+  /**
+   * NAVEGAÇÃO POR TECLADO — Etapa 9, §3.
+   *
+   * `−1` é "nenhum em destaque", e é o estado inicial de propósito: a primeira
+   * seta ↓ destaca o primeiro resultado em vez de pular para o segundo.
+   */
+  const [resultadoEmFoco, setResultadoEmFoco] = useState(-1);
+  /**
+   * A "linha atual" do carrinho, que `+`, `−` e Delete afetam.
+   *
+   * O índice é DERIVADO na leitura (`linhaAtual`) em vez de corrigido por
+   * efeito quando o carrinho encolhe: corrigir depois deixaria um render com o
+   * destaque numa linha que não existe mais, e o lint reprova com razão.
+   */
+  const [linhaEmFoco, setLinhaEmFoco] = useState(0);
+  /** Os comandos do painel de recebimento, quando ele está montado. */
+  const comandos = useRef<ComandosDoRecebimento | null>(null);
+
+  /** O índice válido agora, sempre dentro do carrinho. */
+  const linhaAtual = itens.length === 0 ? 0 : Math.min(linhaEmFoco, itens.length - 1);
 
   const forma = formas.find((f) => f.id === formaId) ?? null;
   // Soma de conferência. O total que vale é o que o servidor devolver.
@@ -100,6 +132,7 @@ export function NovaVenda({
   function limparBusca() {
     setLeitura("");
     setEstado({ tipo: "nada" });
+    setResultadoEmFoco(-1);
     setDados(null);
     setVariacaoInicial(null);
     campo.current?.focus();
@@ -180,11 +213,19 @@ export function NovaVenda({
 
       // Não é código cadastrado: vira termo de busca (§2.1).
       const achados = await buscarNoCatalogo(valor);
+      // O destaque volta para "nenhum" JUNTO com a lista nova, no mesmo
+      // update: corrigir isso depois, num efeito, deixaria um render com o
+      // índice da busca anterior apontando para outro produto.
+      setResultadoEmFoco(-1);
       setEstado({ tipo: "resultados", itens: achados, termo: valor });
     });
   }
 
-  function salvar() {
+  /**
+   * `receberDepois` existe para o F8: salvar e já abrir a cobrança, que é o
+   * fluxo §1.1. O F7 e o botão continuam salvando sem abrir nada (§1.2).
+   */
+  function salvar(receberDepois = false) {
     if (!podeSalvar || forma === null) return;
     setErro(null);
     tentativa.current ??= crypto.randomUUID();
@@ -230,7 +271,7 @@ export function NovaVenda({
         total: r.total,
         formaEsperadaId: forma.id,
       });
-      setRecebendo(false);
+      setRecebendo(receberDepois);
       setItens([]);
       setFormaId("");
       setBandeiraId("");
@@ -238,6 +279,168 @@ export function NovaVenda({
       limparBusca();
     });
   }
+
+  // ------------------------------------------------------- teclado (Etapa 9)
+
+  /**
+   * O que o casco precisa saber. Lido no INSTANTE da tecla, por função — é o
+   * que evita empurrar todo este estado para cima só para manter a faixa de
+   * atalhos informada.
+   */
+  const estadoParaOTeclado = () => ({
+      leituraPreenchida: leitura.trim() !== "",
+      temItens: itens.length > 0,
+      podeSalvar,
+      temResultados: estado.tipo === "resultados" && estado.itens.length > 0,
+      configuradorAberto: dados !== null,
+      vendaSalvaSemReceber: criado !== null && !recebendo,
+    recebimentoDaVendaAberto: recebendo,
+  });
+
+  /**
+   * O EXECUTOR NÃO É MEMOIZADO, e essa é a correção de um defeito real.
+   *
+   * Na primeira versão ele era um `useCallback` com lista de dependências à
+   * mão. `confirmar`, `salvar` e `novaVenda` são funções recriadas a cada
+   * render, então o executor guardava as do render em que a lista mudou por
+   * último — e `confirmar` lia o campo de leitura do fecho dele. Resultado
+   * medido no navegador: bipar e apertar Tab não fazia nada, porque o
+   * `confirmar` capturado ainda via o campo vazio.
+   *
+   * Manter dependências à mão para um executor que toca quase todo o estado da
+   * tela é uma lista que vai divergir. Então: função nova a cada render, guardada
+   * num ref por efeito, e o que o casco registra é um invólucro estável. Sempre
+   * fresco, sem lista para manter.
+   */
+  const executarAtalho = (acao: string) => {
+    {
+      switch (acao) {
+        case "venda:nova":
+          novaVenda();
+          return;
+        case "venda:focar-leitura":
+          campo.current?.focus();
+          campo.current?.select();
+          return;
+        case "venda:resolver":
+          confirmar();
+          return;
+        case "venda:limpar-leitura":
+          limparBusca();
+          return;
+
+        case "venda:resultado-proximo":
+        case "venda:resultado-anterior": {
+          if (estado.tipo !== "resultados") return;
+          const n = estado.itens.length;
+          if (n === 0) return;
+          const delta = acao === "venda:resultado-proximo" ? 1 : -1;
+          setResultadoEmFoco((i) => {
+            // Da última para a primeira: a lista do balcão é curta, e dar a
+            // volta é menos atrito do que travar na ponta.
+            const proximo = i === -1 ? (delta === 1 ? 0 : n - 1) : (i + delta + n) % n;
+            return proximo;
+          });
+          return;
+        }
+        case "venda:escolher-resultado": {
+          if (estado.tipo !== "resultados") return;
+          const escolhido = estado.itens[resultadoEmFoco === -1 ? 0 : resultadoEmFoco];
+          // Indisponível não entra pelo teclado, como não entra pelo clique:
+          // quem decide disponibilidade é o banco, e a tela só relata.
+          if (escolhido === undefined || !escolhido.ativo || !escolhido.disponivel) return;
+          iniciar(async () => {
+            await abrirConfigurador(escolhido.slug, null);
+          });
+          return;
+        }
+
+        case "venda:linha-proxima":
+        case "venda:linha-anterior": {
+          if (itens.length === 0) return;
+          const delta = acao === "venda:linha-proxima" ? 1 : -1;
+          setLinhaEmFoco((i) => (Math.min(i, itens.length - 1) + delta + itens.length) % itens.length);
+          return;
+        }
+        case "venda:mais":
+        case "venda:menos": {
+          const linha = itens[linhaAtual];
+          if (linha === undefined) return;
+          mudarQuantidade(linha.linha, acao === "venda:mais" ? 1 : -1);
+          return;
+        }
+        case "venda:remover": {
+          const linha = itens[linhaAtual];
+          if (linha === undefined) return;
+          setItens((lista) => lista.filter((x) => x.linha !== linha.linha));
+          return;
+        }
+
+        case "venda:salvar":
+          salvar();
+          return;
+        case "venda:receber":
+          /*
+           * F8 — DESVIO DELIBERADO DO DIAGRAMA §1.1, registrado na Etapa 9.
+           *
+           * O diagrama abre o painel de recebimento ANTES de o pedido existir e
+           * cria tudo no `Ctrl+Enter`. Aqui o F8 salva primeiro, quando há
+           * carrinho, e só então abre o painel — então o painel sempre fala de
+           * um pedido que já tem número.
+           *
+           * A razão é a própria regra 2 do §1.1: "pedido criado e ainda não
+           * pago" é estado legítimo, e se o recebimento falhar nada se perde. O
+           * caminho inverso exigiria orquestrar `criar_pedido` +
+           * `registrar_pagamento` dentro do componente, criando no frontend uma
+           * sequência sobre dinheiro que hoje não existe em lugar nenhum.
+           */
+          if (criado !== null) {
+            setRecebendo(true);
+            return;
+          }
+          if (podeSalvar) salvar(true);
+          return;
+        case "venda:fechar-recebimento":
+          setRecebendo(false);
+          return;
+        case "venda:fechar-configurador":
+          limparBusca();
+          return;
+
+        case "recebimento:dividir":
+          comandos.current?.dividir();
+          return;
+        case "recebimento:exato":
+          comandos.current?.exato();
+          return;
+        case "recebimento:confirmar":
+          comandos.current?.confirmar();
+          return;
+      }
+    }
+  };
+
+  /** O par vivo, trocado depois de cada render. */
+  const vivo = useRef({ estado: estadoParaOTeclado, executar: executarAtalho });
+  useEffect(() => {
+    vivo.current = { estado: estadoParaOTeclado, executar: executarAtalho };
+  });
+
+  /** O que o casco registra: estável, e sempre delegando para o par vivo. */
+  const area = useRef<AreaComTeclado>({
+    estado: () => vivo.current.estado(),
+    executar: (acao) => vivo.current.executar(acao),
+  });
+
+  useEffect(() => {
+    registrar(area.current);
+    return () => registrar(null);
+  }, [registrar]);
+
+  /** A faixa de atalhos do casco precisa saber que algo mudou por aqui. */
+  useEffect(() => {
+    aoMudar();
+  }, [aoMudar, itens.length, estado.tipo, recebendo, criado, podeSalvar, leitura]);
 
   function mudarQuantidade(linha: string, delta: number) {
     setItens((lista) =>
@@ -274,17 +477,25 @@ export function NovaVenda({
             EAN-13 o zero à esquerda é significativo. */}
         <input
           ref={campo}
+          /*
+           * `data-pdv="leitura"` é como o casco reconhece ESTE campo sem
+           * precisar de uma ref compartilhada: ele lê `document.activeElement`
+           * no instante da tecla, e o atributo diz se o foco está aqui (§2.1).
+           */
+          data-pdv="leitura"
           type="text"
           inputMode="text"
           autoComplete="off"
           value={leitura}
           onChange={(e) => setLeitura(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              confirmar();
-            }
-          }}
+          /*
+           * SEM `onKeyDown` AQUI, e isto é a Etapa 9.
+           *
+           * Enter e Tab passaram a ser decididos por `atalhos.ts`, através do
+           * listener único do casco. Manter o handler local faria o Enter
+           * resolver DUAS vezes — o local e o global — e duas resoluções do
+           * mesmo bipe é como um item entra dobrado no carrinho.
+           */
           placeholder="Código de barras ou nome do produto"
           aria-label="Código de barras ou nome do produto"
           className="mt-3 min-h-touch-cta w-full rounded-11 border-[1.5px] border-border-shalon bg-surface px-3 font-mono text-[15px] tracking-wide text-ink focus:border-brand-orange focus:outline-none"
@@ -314,14 +525,21 @@ export function NovaVenda({
             </p>
           ) : (
             <ul className="m-0 mt-3 list-none p-0">
-              {estado.itens.map((p) => (
+              {estado.itens.map((p, indice) => (
                 <li key={p.id}>
                   <button
                     type="button"
                     disabled={!p.disponivel || !p.ativo}
+                    /* O destaque do teclado é VISUAL e não é foco do DOM: mover
+                       o foco real para cá tiraria o campo de leitura de baixo
+                       dos dedos, que é o oposto do que a Etapa 9 quer. */
+                    data-emfoco={indice === resultadoEmFoco ? "sim" : undefined}
                     onClick={() => iniciar(async () => { await abrirConfigurador(p.slug, null); })}
                     className={[
-                      "flex w-full min-h-touch items-center justify-between gap-3 rounded-11 border-0 bg-transparent px-2 py-2 text-left",
+                      "flex w-full min-h-touch items-center justify-between gap-3 rounded-11 border-[1.5px] bg-transparent px-2 py-2 text-left",
+                      indice === resultadoEmFoco
+                        ? "border-cta bg-elev"
+                        : "border-transparent",
                       p.disponivel && p.ativo
                         ? "cursor-pointer hover:bg-elev"
                         : "cursor-not-allowed opacity-60",
@@ -409,6 +627,9 @@ export function NovaVenda({
               <div className="mt-3 rounded-12 bg-surface p-3">
                 <Recebimento
                   key={criado.id}
+                  aoRegistrarComandos={(c) => {
+                    comandos.current = c;
+                  }}
                   pedidoId={criado.id}
                   total={criado.total}
                   pagamento={null}
@@ -485,8 +706,18 @@ export function NovaVenda({
           </p>
         ) : (
           <ul className="m-0 list-none p-0">
-            {itens.map((i) => (
-              <li key={i.linha} className="border-b border-border-shalon py-2 last:border-0">
+            {itens.map((i, indice) => (
+              <li
+                key={i.linha}
+                /* A "linha atual" precisa ser VISÍVEL, senão `+` e Delete agem
+                   num item que o operador não sabe qual é. */
+                className={[
+                  "border-b border-border-shalon py-2 last:border-0",
+                  indice === linhaAtual && itens.length > 1
+                    ? "-mx-2 rounded-11 border-b-0 bg-elev px-2"
+                    : "",
+                ].join(" ")}
+              >
                 <div className="flex justify-between gap-3">
                   <span className="text-[14.5px] font-semibold text-ink">{i.nome}</span>
                   <span className="whitespace-nowrap tabular-nums text-[14.5px] text-ink">
@@ -605,7 +836,9 @@ export function NovaVenda({
         <button
           type="button"
           disabled={!podeSalvar}
-          onClick={salvar}
+          /* `() => salvar()` e não `salvar`: como handler, o React passaria o
+             evento no lugar de `receberDepois`, e um objeto é verdadeiro. */
+          onClick={() => salvar()}
           className="motion-interactive mt-3 flex min-h-[52px] w-full cursor-pointer items-center justify-center rounded-13 border-0 bg-cta text-[16px] font-semibold text-cta-fg transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:bg-tn disabled:text-muted disabled:opacity-100"
         >
           {ocupado ? "Salvando…" : "Salvar venda sem receber"}
@@ -625,6 +858,44 @@ export function NovaVenda({
           </p>
         ) : null}
       </section>
+
+      {/*
+       * BARRA FIXA DO MOBILE — §4.5.
+       *
+       * Abaixo de `lg` as áreas empilham, e o total sai da tela junto com o
+       * botão de salvar: quem está com um tablet no salão perde de vista
+       * exatamente os dois números que precisa. A barra traz os dois de volta.
+       *
+       * Só aparece com carrinho montado — barra fixa vazia é altura roubada —,
+       * e `lg:hidden` porque no desktop o total já está visível ao lado. Quem
+       * decide o ponto de corte é o CSS, nunca uma medição em JavaScript
+       * (CLAUDE.md §8).
+       *
+       * `pb-[env(safe-area-inset-bottom)]` mantém o botão acima da barra de
+       * gestos do iOS, senão o alvo de 44px fica por baixo dela (§38).
+       */}
+      {itens.length > 0 ? (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border-shalon bg-surface px-4 pb-[env(safe-area-inset-bottom)] pt-2 shadow-[0_-4px_18px_rgb(41_37_36/0.10)] lg:hidden">
+          <div className="flex items-center gap-3">
+            <div className="min-w-0">
+              <p className="m-0 text-[12px] text-ink-2">
+                {itens.length} {itens.length === 1 ? "item" : "itens"}
+              </p>
+              <p className="m-0 font-display text-[20px] font-extrabold tabular-nums leading-tight text-ink">
+                {formatBRL(subtotal)}
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={!podeSalvar}
+              onClick={() => salvar()}
+              className="motion-interactive ml-auto min-h-touch-cta shrink-0 cursor-pointer rounded-12 border-0 bg-cta px-5 text-[15px] font-semibold text-cta-fg disabled:cursor-not-allowed disabled:bg-tn disabled:text-muted"
+            >
+              {ocupado ? "Salvando…" : "Salvar"}
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

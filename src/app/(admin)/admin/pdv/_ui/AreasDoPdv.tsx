@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { PainelDoCaixa } from "@/app/(admin)/admin/caixa/_ui/PainelDoCaixa";
 import { PainelPedidosAReceber } from "./PainelPedidosAReceber";
 import type { FormaParaRecebimento } from "@/app/(admin)/admin/pedidos/_ui/Recebimento";
 import type { EstadoDoCaixa, ResumoDeFechamento } from "@/application/caixa/tipos";
 import type { PedidoAReceber } from "@/application/pdv/tipos";
+import type { AreaComTeclado } from "./PdvComTeclado";
 
 /**
  * As áreas de trabalho do balcão — Fase 12, Etapa 8.
@@ -34,6 +34,10 @@ export function AreasDoPdv({
   resumo,
   tentativa,
   podeMovimentar,
+  aba,
+  aoTrocarAba,
+  registrar,
+  aoMudar,
 }: {
   pedidos: PedidoAReceber[];
   falhouAFila: boolean;
@@ -48,8 +52,18 @@ export function AreasDoPdv({
    * operador descobrir a recusa só depois de contar o dinheiro.
    */
   podeMovimentar: boolean;
+  /**
+   * A ABA VEM DE FORA desde a Etapa 9.
+   *
+   * F4 e F9 trocam de aba, e quem ouve o teclado é o casco — se o estado
+   * continuasse aqui, o casco precisaria de um caminho para mexer nele, o que é
+   * a mesma coisa com um passo a mais. A aba é do PDV, não desta seção.
+   */
+  aba: Aba;
+  aoTrocarAba: (aba: Aba) => void;
+  registrar: (area: AreaComTeclado | null) => void;
+  aoMudar: () => void;
 }) {
-  const [aba, setAba] = useState<Aba>("receber");
 
   const abas: { valor: Aba; rotulo: string }[] = [
     { valor: "receber", rotulo: `Pedidos a receber (${pedidos.length})` },
@@ -67,7 +81,7 @@ export function AreasDoPdv({
               type="button"
               role="tab"
               aria-selected={ativa}
-              onClick={() => setAba(a.valor)}
+              onClick={() => aoTrocarAba(a.valor)}
               className={[
                 "inline-flex min-h-touch-cta shrink-0 cursor-pointer items-center rounded-pill border-[1.5px] px-4",
                 "text-[13.5px] font-semibold transition-colors motion-reduce:transition-none",
@@ -91,6 +105,8 @@ export function AreasDoPdv({
           falhou={falhouAFila}
           formas={formas}
           caixaAberto={caixa.aberto}
+          registrar={registrar}
+          aoMudar={aoMudar}
         />
       </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Button, Input, Select, StatusBadge } from "@/ui/components";
 import { Aviso, ParDeDados } from "@/ui/patterns";
 import { formatBRL } from "@/lib/format";
@@ -33,6 +33,16 @@ export type FormaParaRecebimento = {
 };
 
 type Linha = { forma_id: string; bandeira_id: string; valor: string; recebido: string; na_gaveta: boolean };
+
+/** O que o teclado do PDV pode pedir a este painel (§3). */
+export type ComandosDoRecebimento = {
+  /** `/` — nova forma com o QUE FALTA, não com zero. */
+  dividir: () => void;
+  /** `*` — preenche "recebido em mãos" com o valor exato da linha em dinheiro. */
+  exato: () => void;
+  /** `Ctrl+Enter` — confirma, se a soma fechar. */
+  confirmar: () => void;
+};
 
 function paraNumero(texto: string): number | null {
   const limpo = texto.replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
@@ -69,6 +79,7 @@ export function Recebimento({
   tentativa,
   formaInicialId = null,
   aoConcluir,
+  aoRegistrarComandos,
 }: {
   pedidoId: string;
   total: number;
@@ -82,6 +93,17 @@ export function Recebimento({
    * vale é o RECEBIDO, que pode diferir do esperado (§24).
    */
   formaInicialId?: string | null;
+  /**
+   * Registra os comandos de teclado do painel — Etapa 9, §3.
+   *
+   * O painel NÃO escuta o teclado: quem escuta é o casco do PDV, que é o único
+   * que sabe se há um modal por cima ou um campo com foco. Aqui só ficam as
+   * três funções, e elas são as MESMAS que os botões chamam — o atalho não
+   * abre um segundo caminho para o dinheiro.
+   *
+   * Na tela de pedido a prop é omitida e nada muda.
+   */
+  aoRegistrarComandos?: (comandos: ComandosDoRecebimento | null) => void;
   /**
    * Chamado depois que o SERVIDOR confirmou (recebimento ou estorno).
    *
@@ -107,6 +129,79 @@ export function Recebimento({
 
   const somado = linhas.reduce((s, l) => s + (paraNumero(l.valor) ?? 0), 0);
   const fecha = Math.round(somado * 100) === Math.round(total * 100);
+  /**
+   * O QUE FALTA, em reais e com sinal.
+   *
+   * Negativo significa que somaram MAIS que o total — e o servidor recusa os
+   * dois casos igualmente, porque "sobra" em pagamento dividido é dinheiro que
+   * ninguém sabe de onde veio. Mostrar o número com sinal deixa o operador ver
+   * qual dos dois erros ele cometeu, em vez de só "não fecha" (§4.1).
+   */
+  const falta = Math.round((total - somado) * 100) / 100;
+
+  const formatarValor = (n: number) => n.toFixed(2).replace(".", ",");
+
+  /**
+   * `/` — nova forma JÁ COM O QUE FALTA.
+   *
+   * Abrir em zero obrigaria a digitar o restante à mão, que é a conta que a
+   * tela acabou de fazer. Se já fechou, a linha nova nasce em zero: acrescentar
+   * o total outra vez produziria o dobro.
+   */
+  const dividir = useCallback(() => {
+    if (jaPago) return;
+    setLinhas((atuais) => {
+      const somadoAgora = atuais.reduce((s, l) => s + (paraNumero(l.valor) ?? 0), 0);
+      const restante = Math.round((total - somadoAgora) * 100) / 100;
+      return [...atuais, { ...linhaVazia(formas, formatarValor(restante > 0 ? restante : 0)) }];
+    });
+  }, [formas, jaPago, total]);
+
+  /**
+   * `*` — "recebido em mãos" igual ao valor devido, na última linha em dinheiro.
+   *
+   * É o caso do cliente que paga justo: sem isto o operador digita o mesmo
+   * número duas vezes. Só em dinheiro, porque troco só existe em dinheiro
+   * (RN-PGTO-005) — e o servidor recusa `recebido` em qualquer outra forma.
+   */
+  const exato = useCallback(() => {
+    if (jaPago) return;
+    setLinhas((atuais) => {
+      // Busca de trás para frente: a linha em dinheiro mais recente é a que o
+      // operador acabou de mexer. `findLastIndex` existe no runtime, mas o
+      // `lib` do projeto é anterior a ES2023 — e mudar o alvo do TypeScript por
+      // uma linha seria alteração estrutural fora de escopo (CLAUDE.md §44-A).
+      let i = -1;
+      for (let j = atuais.length - 1; j >= 0; j -= 1) {
+        if (formas.find((f) => f.id === atuais[j]?.forma_id)?.familia === "cash") {
+          i = j;
+          break;
+        }
+      }
+      if (i === -1) return atuais;
+      return atuais.map((l, j) => (j === i ? { ...l, recebido: l.valor } : l));
+    });
+  }, [formas, jaPago]);
+
+  const formulario = useRef<HTMLFormElement>(null);
+
+  /**
+   * `Ctrl+Enter` — confirma pelo MESMO caminho do botão.
+   *
+   * `requestSubmit` dispara a `action` do formulário, com validação de campo
+   * obrigatório e tudo. Chamar `registrarPagamento` daqui seria um segundo
+   * caminho para o dinheiro, e dois caminhos divergem.
+   */
+  const confirmar = useCallback(() => {
+    if (jaPago || enviando) return;
+    formulario.current?.requestSubmit();
+  }, [enviando, jaPago]);
+
+  useEffect(() => {
+    if (aoRegistrarComandos === undefined) return;
+    aoRegistrarComandos({ dividir, exato, confirmar });
+    return () => aoRegistrarComandos(null);
+  }, [aoRegistrarComandos, dividir, exato, confirmar]);
 
   function atualizar(i: number, campo: keyof Linha, valor: string | boolean) {
     setLinhas(linhas.map((l, j) => (j === i ? { ...l, [campo]: valor } : l)));
@@ -193,6 +288,7 @@ export function Recebimento({
       {/* -------------------------------------------------- registrar */}
       {!jaPago ? (
         <form
+          ref={formulario}
           className="flex flex-col gap-3 border-t border-border-shalon pt-3"
           action={() => {
             const montadas = linhas.map((l) => {
@@ -299,15 +395,23 @@ export function Recebimento({
           })}
 
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <Button
-              variante="secundario"
-              tamanho="sm"
-              onClick={() => setLinhas([...linhas, { ...linhaVazia(formas, "0,00") }])}
-            >
+            {/* O botão e o `/` chamam a MESMA função: um caminho só. */}
+            <Button variante="secundario" tamanho="sm" onClick={dividir}>
               Dividir em outra forma
             </Button>
-            <span className={`text-[13.5px] font-semibold ${fecha ? "text-tgf" : "text-tdf"}`}>
-              {formatBRL(somado)} de {formatBRL(total)}
+            <span className="flex flex-wrap items-baseline gap-x-2 text-[13.5px]">
+              <span className="text-ink-2">
+                Somado <span className="font-semibold tabular-nums text-ink">{formatBRL(somado)}</span>
+              </span>
+              {fecha ? (
+                <span className="font-semibold text-tgf">FALTA {formatBRL(0)} ✓</span>
+              ) : falta > 0 ? (
+                <span className="font-semibold text-tdf">FALTA {formatBRL(falta)}</span>
+              ) : (
+                <span className="font-semibold text-tdf">
+                  SOBRA {formatBRL(Math.abs(falta))}
+                </span>
+              )}
             </span>
           </div>
 

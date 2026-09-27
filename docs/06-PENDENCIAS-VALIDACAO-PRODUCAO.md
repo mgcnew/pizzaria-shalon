@@ -908,6 +908,27 @@ caixa está completo em todos os caminhos.
 
 ---
 
+## Melhoria registrada — chips de categoria no PDV
+
+**Aberta, sem prazo.** Registrada em 27/09/2026, na Etapa 9.
+
+O wireframe de `09-PDV-FRENTE-DE-CAIXA.md` §4.1 mostra uma faixa de filtros
+acima da lista de produtos — `Tudo · Pizzas · Bebidas · Combos`. Ela nunca foi
+implementada e **não pertence a nenhuma etapa do plano**: apareceu no esboço e
+não entrou em nenhuma lista de trabalho.
+
+**Não é lacuna funcional.** O balcão chega ao produto por código de barras ou
+por nome, e as duas coisas funcionam. Os chips seriam navegação por exploração —
+útil para quem não lembra o nome, irrelevante para quem bipa.
+
+**Decisão de 27/09/2026:** ficam fora da Etapa 9 e registrados aqui para não
+voltarem como surpresa na leitura do wireframe. Se a Shalon sentir falta ao usar,
+vira etapa própria com escopo pequeno.
+
+**Não bloqueia** nada.
+
+---
+
 ## PI-F12-02 — o DEV não tem acesso de Atendente
 
 **Aberta.** Observado em 27/09/2026, na validação operacional da Etapa 8 do PDV.

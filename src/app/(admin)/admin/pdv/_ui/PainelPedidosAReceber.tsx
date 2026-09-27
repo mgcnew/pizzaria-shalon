@@ -1,13 +1,18 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Cartao, EmptyState, Aviso, ParDeDados } from "@/ui/patterns";
 import { formatBRL } from "@/lib/format";
 import { obterPagamentoDoPedidoNoPdv } from "@/application/pdv/acoes";
-import { Recebimento, type FormaParaRecebimento } from "@/app/(admin)/admin/pedidos/_ui/Recebimento";
+import {
+  Recebimento,
+  type ComandosDoRecebimento,
+  type FormaParaRecebimento,
+} from "@/app/(admin)/admin/pedidos/_ui/Recebimento";
 import type { PagamentoDoPedido } from "@/application/caixa/tipos";
 import type { PedidoAReceber } from "@/application/pdv/tipos";
+import type { AreaComTeclado } from "./PdvComTeclado";
 
 /**
  * A fila de recebimento do PDV — Fase 12, Etapa 5.
@@ -26,8 +31,10 @@ import type { PedidoAReceber } from "@/application/pdv/tipos";
  *    estado local, e o servidor nem sabe que houve.
  *
  * A seleção usa `<button>` de verdade em vez de `<div onClick>`: foco, Enter,
- * espaço e leitor de tela vêm de graça, sem nenhum atalho global — estes são a
- * Etapa 9 (CLAUDE.md §38).
+ * espaço e leitor de tela vêm de graça. Desde a Etapa 9 as setas ↑↓ também
+ * percorrem a fila, mas o Enter dos itens continua sendo o NATIVO do botão —
+ * duplicá-lo no atalho global faria a seleção disparar duas vezes
+ * (CLAUDE.md §38).
  */
 
 /** Rótulos do status operacional. Só leitura; a máquina de estados é do banco. */
@@ -82,11 +89,16 @@ export function PainelPedidosAReceber({
   falhou,
   formas,
   caixaAberto,
+  registrar,
+  aoMudar,
 }: {
   pedidos: PedidoAReceber[];
   falhou: boolean;
   formas: FormaParaRecebimento[];
   caixaAberto: boolean;
+  /** Entrega ao casco o `estado()` e o `executar()` desta área (Etapa 9). */
+  registrar: (area: AreaComTeclado | null) => void;
+  aoMudar: () => void;
 }) {
   const router = useRouter();
   const [selecionado, setSelecionado] = useState<string | null>(null);
@@ -100,6 +112,15 @@ export function PainelPedidosAReceber({
    */
   const [pagamentos, setPagamentos] = useState<Record<string, PagamentoDoPedido | null>>({});
   const [carregando, iniciar] = useTransition();
+  /**
+   * O painel de recebimento só abre por ação explícita — Enter no item ou F8.
+   *
+   * Antes da Etapa 9 ele vinha junto da seleção. Com as setas percorrendo a
+   * fila, isso montaria e desmontaria o painel a cada tecla, e quem estivesse no
+   * meio de digitar um valor veria tudo desaparecer.
+   */
+  const [cobrando, setCobrando] = useState(false);
+  const comandos = useRef<ComandosDoRecebimento | null>(null);
   const atual = pedidos.find((p) => p.id === selecionado) ?? null;
   const pagamento = selecionado === null ? null : (pagamentos[selecionado] ?? null);
 
@@ -123,6 +144,71 @@ export function PainelPedidosAReceber({
       vigente = false;
     };
   }, [selecionado]);
+
+  // ------------------------------------------------------- teclado (Etapa 9)
+
+  const estadoParaOTeclado = useCallback(
+    () => ({
+      temPendentes: pedidos.length > 0,
+      pedidoSelecionado: selecionado !== null,
+      recebimentoDoPedidoAberto: selecionado !== null && cobrando,
+    }),
+    [cobrando, pedidos.length, selecionado],
+  );
+
+  const executarAtalho = useCallback(
+    (acao: string) => {
+      switch (acao) {
+        case "fila:proximo":
+        case "fila:anterior": {
+          if (pedidos.length === 0) return;
+          const delta = acao === "fila:proximo" ? 1 : -1;
+          const atualIndice = pedidos.findIndex((p) => p.id === selecionado);
+          const proximo =
+            atualIndice === -1
+              ? delta === 1
+                ? 0
+                : pedidos.length - 1
+              : (atualIndice + delta + pedidos.length) % pedidos.length;
+          const escolhido = pedidos[proximo];
+          if (escolhido === undefined) return;
+          // Navegar NÃO abre a cobrança: só move o destaque. Abrir a cada seta
+          // remontaria o painel e apagaria o que estivesse digitado nele.
+          setSelecionado(escolhido.id);
+          setCobrando(false);
+          return;
+        }
+        case "fila:receber":
+          if (selecionado !== null) setCobrando(true);
+          return;
+        case "fila:desselecionar":
+          // Um nível por Escape: primeiro fecha a cobrança, depois solta o item.
+          if (cobrando) setCobrando(false);
+          else setSelecionado(null);
+          return;
+
+        case "recebimento:dividir":
+          comandos.current?.dividir();
+          return;
+        case "recebimento:exato":
+          comandos.current?.exato();
+          return;
+        case "recebimento:confirmar":
+          comandos.current?.confirmar();
+          return;
+      }
+    },
+    [cobrando, pedidos, selecionado],
+  );
+
+  useEffect(() => {
+    registrar({ estado: estadoParaOTeclado, executar: executarAtalho });
+    return () => registrar(null);
+  }, [registrar, estadoParaOTeclado, executarAtalho]);
+
+  useEffect(() => {
+    aoMudar();
+  }, [aoMudar, pedidos.length, selecionado, cobrando]);
 
   // "Não deu para consultar" e "não há nada a receber" são coisas opostas, e
   // apresentá-las com a mesma tela vazia faria a casa achar que está tudo
@@ -155,7 +241,10 @@ export function PainelPedidosAReceber({
                 <li key={p.id}>
                   <button
                     type="button"
-                    onClick={() => setSelecionado(ativo ? null : p.id)}
+                    onClick={() => {
+                      setSelecionado(ativo ? null : p.id);
+                      setCobrando(false);
+                    }}
                     aria-pressed={ativo}
                     className={[
                       "flex w-full min-h-[44px] flex-col gap-1 rounded-16 border-[1.5px] p-3 text-left",
@@ -258,7 +347,15 @@ export function PainelPedidosAReceber({
           </div>
           {/* ------------------------------------------------ recebimento */}
           <div className="mt-3 border-t border-border-shalon pt-3">
-            {carregando && pagamento === null ? (
+            {!cobrando ? (
+              <button
+                type="button"
+                onClick={() => setCobrando(true)}
+                className="motion-interactive min-h-touch-cta cursor-pointer rounded-12 border-0 bg-cta px-4 text-[14.5px] font-semibold text-cta-fg"
+              >
+                Receber este pedido
+              </button>
+            ) : carregando && pagamento === null ? (
               <p className="m-0 text-[13px] text-muted">Carregando o pagamento…</p>
             ) : (
               /*
@@ -270,6 +367,9 @@ export function PainelPedidosAReceber({
                */
               <Recebimento
                 key={atual.id}
+                aoRegistrarComandos={(c) => {
+                  comandos.current = c;
+                }}
                 pedidoId={atual.id}
                 total={atual.total}
                 pagamento={pagamento}
@@ -292,6 +392,7 @@ export function PainelPedidosAReceber({
                   // mantê-lo mostraria "nada recebido" num pedido já pago.
                   setPagamentos({});
                   setSelecionado(null);
+                  setCobrando(false);
                 }}
               />
             )}

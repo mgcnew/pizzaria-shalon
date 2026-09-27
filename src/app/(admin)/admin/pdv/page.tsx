@@ -6,8 +6,7 @@ import { listarBandeiras, listarFormasPagamento } from "@/application/configurac
 import { obterSessaoInterna, podeNaUI } from "@/application/auth/sessao";
 import { formatBRL } from "@/lib/format";
 import { randomUUID } from "node:crypto";
-import { NovaVenda } from "./_ui/NovaVenda";
-import { AreasDoPdv } from "./_ui/AreasDoPdv";
+import { PdvComTeclado } from "./_ui/PdvComTeclado";
 
 export const metadata: Metadata = { title: "PDV" };
 
@@ -16,9 +15,10 @@ export const metadata: Metadata = { title: "PDV" };
  *
  * 09-PDV-FRENTE-DE-CAIXA.md §4.1, §4.2, §4.4
  *
- * NOVA VENDA + PEDIDOS A RECEBER. O recebimento é a Etapa 7, a aba Caixa é a 8
- * e os atalhos completos são a 9 — e não há aqui esqueleto vazio de nenhuma
- * delas: meia tela que não funciona é pior do que tela que ainda não existe.
+ * NOVA VENDA + PEDIDOS A RECEBER + CAIXA, e desde a Etapa 9 tudo alcançável
+ * pelo teclado. Os painéis continuam client components; o que mudou é que eles
+ * ficam dentro de `PdvComTeclado`, que instala UM listener e distribui as ações
+ * decididas por `atalhos.ts`.
  *
  * As formas de pagamento vêm só de `pickup`: a venda de balcão é retirada por
  * definição (§0.3), e oferecer formas de entrega produziria uma intenção que
@@ -103,17 +103,12 @@ export default async function Page() {
         )}
       </header>
 
-      <NovaVenda
+      <PdvComTeclado
         formas={formas}
         formasDeRecebimento={formasDeRecebimento}
-        caixaAberto={caixa.aberto}
         autorizado={podeNaUI(sessao, "orders.create_manual")}
-      />
-
-      <AreasDoPdv
         pedidos={fila.pedidos}
         falhouAFila={fila.falhou}
-        formas={formasDeRecebimento}
         caixa={caixa}
         resumo={resumo}
         tentativa={randomUUID()}

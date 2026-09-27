@@ -427,8 +427,22 @@ como o projeto perderia a unicidade do código de barras.
 
 ## 3. Atalhos de teclado
 
-Escolhidos evitando o que o navegador sequestra: **F1**, **F5**, **F11**,
-**F12**, **Ctrl+N/T/W** estão fora (decisão aprovada, item 5).
+Escolhidos evitando o que o navegador sequestra. **Corrigido em 27/09/2026,
+por medição:** a lista original dizia que só F1, F5, F11, F12 e Ctrl+N/T/W
+estavam fora, e isso estava incompleto.
+
+Fora da tabela: **F1** (ajuda), **F5** (recarregar), **F6** (barra de endereço),
+**F10** (menu), **F11** (tela cheia), **F12** (devtools) e todo **Ctrl+…** que
+não seja `Ctrl+Enter`. F11 e F12 não são sequer interceptáveis; as outras são,
+mas tirá-las do operador seria pior — recarregar é justamente o que ele vai
+querer quando algo travar no balcão.
+
+**F3 e F7 SÃO reclamadas pelo navegador** — F3 abre o "localizar" e F7 alterna
+navegação por cursor no Firefox — e continuam na tabela porque são
+neutralizáveis. Medido no navegador em 27/09/2026: as seis teclas usadas (F2,
+F3, F4, F7, F8, F9) chegam com `cancelable: true` e o `preventDefault` pega. O
+PDV só chama `preventDefault` quando a tecla vira ação dele; o que não vira ação
+segue intacto para o navegador.
 
 | Tecla | Ação | Contexto |
 |---|---|---|
@@ -439,7 +453,7 @@ Escolhidos evitando o que o navegador sequestra: **F1**, **F5**, **F11**,
 | **F8** | Abrir recebimento | venda com itens, ou pedido selecionado |
 | **F9** | Aba *Caixa* — operações da sessão | global |
 | **Enter** | resolver código / adicionar item selecionado | busca |
-| **Tab** | equivalente a Enter | campo de leitura |
+| **Tab** | equivalente a Enter, **só com conteúdo** | campo de leitura |
 | **↑ ↓** | navegar resultados ou pendentes | listas |
 | **+ / −** | quantidade da linha atual | carrinho |
 | **Delete** | remover linha | carrinho |
@@ -451,6 +465,26 @@ Escolhidos evitando o que o navegador sequestra: **F1**, **F5**, **F11**,
 **Duas regras de segurança.** `Ctrl+Enter` é deliberadamente de **dois dedos**:
 confirmar dinheiro não pode ser um Enter distraído. E nenhum atalho dispara
 ação irreversível sem o painel aberto e o valor visível na tela.
+
+**Tab só equivale a Enter com conteúdo no campo.** Vazio, ele navega como
+sempre — senão o campo de leitura prenderia o foco e tiraria do teclado a única
+saída dele (CLAUDE.md §38). Leitor de código sempre manda o conteúdo antes do
+Tab, então o caso que importa está coberto. Com o configurador aberto nem Enter
+nem Tab resolvem: o campo ainda tem o código que abriu a escolha de tamanho, e
+resolver de novo reabriria a mesma escolha em cima dela.
+
+**A guarda de campo, e a exceção que ela precisa ter.** `+`, `−`, `/`, `*` e
+`Delete` são CARACTERES: com um campo em foco eles pertencem a quem digita, e é
+isso que impede "1/2 calabresa" numa observação de adicionar uma forma de
+pagamento. A exceção é o **campo de leitura vazio** — não há texto para roubar,
+e sem ela esses atalhos nunca agiriam, já que aquele campo é o foco padrão da
+tela. Preço aceito conscientemente: um código que comece por `-` perde o
+primeiro caractere ao ser bipado num campo vazio; não resolve, o operador vê e
+bipa de novo.
+
+**Menu, modal ou drawer aberto: o PDV cede a vez inteira**, `Escape` incluído.
+Eles têm o próprio `Escape`, e dois na mesma tecla fechariam duas coisas de uma
+vez.
 
 **Sangria, reforço e fechamento ficam dentro de F9** nesta versão, sem atalho
 próprio. Atalhos contextuais para elas poderão ser adicionados depois, com uso
@@ -469,6 +503,20 @@ estado do caixa fica **permanentemente visível** no topo, porque quase toda
 operação depende dele.
 
 ### 4.1 Wireframe — desktop (balcão)
+
+> **Reconciliado em 27/09/2026, na Etapa 9.** O esboço abaixo foi desenhado
+> antes da implementação e duas coisas dele mudaram por decisão:
+>
+> 1. **São DUAS abas, não três.** O recebimento não virou aba: ele aparece
+>    embutido, ao lado do que o gerou — embaixo da venda recém-criada e dentro
+>    do pedido selecionado na fila. Uma aba esconderia justamente o contexto que
+>    o operador precisa olhar enquanto cobra. O **F8** abre o painel embutido.
+> 2. **Os chips de categoria** (`Tudo · Pizzas · Bebidas · Combos`) **não foram
+>    implementados** e ficam registrados como melhoria posterior. Não pertencem
+>    a nenhuma etapa do plano; a busca por nome e o código de barras cobrem o
+>    caso de uso do balcão.
+>
+> O resto do esboço vale como está.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────┐
@@ -489,7 +537,7 @@ operação depende dele.
 │ │ ...                       │ │                                                  │
 │ └───────────────────────────┘ │  [F7 Salvar sem receber]   [F8 RECEBER  ▶]      │
 │                               ├──────────────────────────────────────────────────┤
-│                               │  RECEBIMENTO │ PEDIDOS A RECEBER (3) │ CAIXA     │
+│                               │  PEDIDOS A RECEBER (3) │ CAIXA                   │
 │                               │ ┌──────────────────────────────────────────────┐ │
 │                               │ │ Total do pedido              R$ 106,00       │ │
 │                               │ │ ────────────────────────────────────────────  │ │
@@ -545,6 +593,14 @@ servidor recusa. O botão **ABRIR CAIXA** aparece para quem tem `cash.open`.
 Abaixo de 1024 px as três áreas empilham, o total vai para barra fixa inferior,
 e os alvos de toque sobem para ≥ 44 px (CLAUDE.md §38). O PDV é de balcão, mas
 um tablet no salão precisa funcionar.
+
+**Implementado na Etapa 9.** A barra fixa traz o total e o *Salvar* de volta ao
+alcance quando as áreas empilham e os dois saem da tela; ela só aparece com
+carrinho montado, porque barra fixa vazia é altura roubada, e respeita
+`safe-area-inset-bottom` para não ficar sob a barra de gestos do iOS. A **faixa
+de atalhos some** onde não há teclado (`pointer: coarse` ou abaixo de `lg`):
+anunciar F7 para quem não tem F7 é ocupar a tela sem informar nada. Quem decide
+o corte é o CSS, nunca uma medição de largura em JavaScript.
 
 ---
 
@@ -900,6 +956,18 @@ foi limpo após a confirmação do servidor, que devolveu o número e o total.
 
 ### Etapa 7 — Recebimento no PDV — CONCLUÍDA em 26/09/2026
 
+> **Correção do registro, 27/09/2026.** A lista abaixo é a de PLANEJAMENTO, e
+> ficou intacta quando a etapa foi marcada como concluída — passando a afirmar
+> mais do que a etapa entregou. O que a Etapa 7 realmente fez foi integrar
+> `registrar_pagamento` ao PDV: divisão, troco e idempotência, tudo funcionando.
+>
+> **Não foram feitos ali:** os atalhos `/` e `*`, o `Ctrl+Enter` e o rótulo
+> "FALTA R$" — o rodapé mostrava "R$ X de R$ Y". Verificado lendo
+> `Recebimento.tsx` inteiro: não havia `onKeyDown` nem `ctrlKey` no arquivo.
+>
+> Os quatro foram implementados na **Etapa 9**, onde pertencem por natureza:
+> §3 os classifica como atalhos de recebimento. A etapa 7 permanece concluída;
+> o que muda é o que ela declara ter feito.
 
 - painel com divisão, troco, "falta R$", atalhos `/` e `*`;
 - `Ctrl+Enter`; idempotência gerada **na abertura do painel**.
@@ -1060,14 +1128,54 @@ sangria, fechamento, abertura, impressão). Os dois pagamentos reais das etapas
 anteriores atravessaram com fingerprint idêntico (`8f7bf19a…`), e os seis
 pedidos continuam os mesmos.
 
-### Etapa 9 — Atalhos, foco e leitor
+### Etapa 9 — Atalhos, foco e leitor — CONCLUÍDA em 27/09/2026
 
-- campo de leitura como foco padrão, Tab tratado como Enter, reconquista de
-  foco ao ficar ocioso;
-- faixa inferior contextual; equivalente clicável para todo atalho.
+- campo de leitura como foco padrão, Tab tratado como Enter **com conteúdo**,
+  reconquista de foco ao ficar ocioso;
+- faixa inferior contextual; equivalente clicável para todo atalho;
+- os quatro itens que a Etapa 7 declarava e não entregou: `/`, `*`,
+  `Ctrl+Enter` e "FALTA R$";
+- barra fixa inferior no mobile (§4.5).
 
-**Como se testa:** Vitest de teclado para cada atalho e para o contexto em que
-ele **não** deve agir; conferência de que nenhuma tecla reservada é capturada.
+**SEM MIGRATION, SEM RPC, SEM RBAC.** A etapa inteira é frontend sobre as
+autoridades que já existiam. Nenhuma permissão nova (§8.1 continua valendo) e
+nenhum atalho executa o que o clique equivalente não executaria — `F7` usa a
+mesma condição que desabilita o botão, e a recusa real continua sendo do
+servidor (CLAUDE.md §12).
+
+**A decisão mora num módulo puro.** `_ui/atalhos.ts` é uma função
+`(tecla, contexto) → ação | null`, e os componentes são adaptadores burros: leem
+o contexto, chamam a função, executam. A razão é testabilidade — a pergunta que
+importa não é "a tecla funciona?", é **em que contexto ela NÃO deve agir**, e
+isso só se pergunta exaustivamente a uma função pura. O Vitest do projeto roda
+em `environment: node`, sem DOM: o módulo puro cabe nele sem dependência nova.
+
+**Um listener só, no nível da tela.** F8 decide entre a venda e o pedido
+selecionado, que vivem em componentes irmãos; dois listeners precisariam
+combinar quem age, e é assim que duas teclas passam a disparar juntas.
+
+**Desvio deliberado do diagrama §1.1.** No esboço, o F8 abre o painel ANTES de o
+pedido existir e o `Ctrl+Enter` faz `criar_pedido` + `registrar_pagamento`. Aqui
+o F8 **salva primeiro** e só então abre o painel — que assim sempre fala de um
+pedido com número. A justificativa é a regra 2 do próprio §1.1: "pedido criado e
+ainda não pago" é estado legítimo, e se o recebimento falhar nada se perde. O
+caminho do esboço exigiria orquestrar duas chamadas sobre dinheiro dentro de um
+componente, sequência que hoje não existe em lugar nenhum do projeto.
+
+**Como se testa:** `tests/ui/atalhosDoPdv.test.ts` — cada atalho no contexto
+dele, cada atalho **fora** do contexto devolvendo `null`, a guarda de campo para
+todo caractere digitável, e a faixa nunca anunciando tecla que a tabela
+recusaria. Mais a medição no navegador, que é a única que prova que o navegador
+não sequestrou a tecla.
+
+**Validado no DEV, sem mouse:** `F2` → bipa `1254` → **Tab** resolveu e abriu o
+configurador → item no carrinho → `+` duas vezes com o campo de leitura focado e
+vazio (1 → 3, R$ 48,00) → forma → `F8` salvou o **#33845** e abriu o
+recebimento → `*` preencheu o recebido → `Ctrl+Enter` confirmou, esperado em
+caixa R$ 20,00 → **R$ 36,00**. `F9`/`F4` trocaram de aba, `↑↓` percorreram a
+fila, `F8` abriu a cobrança do pedido selecionado e dois `Esc` fecharam painel e
+seleção, um nível por vez. Digitar `1/2*` no campo "recebido" **não** adicionou
+forma nenhuma. Com o menu do usuário aberto, `F9` não agiu e a faixa ficou vazia.
 
 ### Etapa 10 — Concorrência, realtime e reconciliação
 

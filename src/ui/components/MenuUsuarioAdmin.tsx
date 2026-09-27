@@ -43,6 +43,11 @@ export function MenuUsuarioAdmin({
         ref={botaoRef}
         type="button"
         aria-label="Abrir menu do usuário"
+        /* `aria-haspopup` estava faltando, e é a verdade sobre este botão: ele
+           abre um menu. Além de acessibilidade, é por este atributo que o PDV
+           reconhece que há algo por cima e para de responder aos atalhos — sem
+           ele, F9 trocava de aba atrás do menu aberto (Etapa 9, §3). */
+        aria-haspopup="menu"
         aria-expanded={aberto}
         aria-controls="menu-usuario-admin"
         onClick={() => setAberto((valor) => !valor)}
