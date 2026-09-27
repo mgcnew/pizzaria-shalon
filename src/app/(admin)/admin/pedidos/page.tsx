@@ -4,9 +4,13 @@ import { Abas, type Aba } from "@/ui/patterns";
 import { obterSessaoInterna, podeNaUI } from "@/application/auth/sessao";
 import { obterLojaPublica } from "@/application/publico/consultas";
 import { formasDePagamento } from "@/application/checkout/consultas";
-import { listarFila } from "@/application/pedidos/consultas";
+import { esperaDaFila, listarFila } from "@/application/pedidos/consultas";
+import { listarPedidosAReceber } from "@/application/pdv/consultas";
+import { formasParaRecebimento } from "@/application/configuracoes/consultas";
+import { obterCaixa } from "@/application/caixa/consultas";
 import { CentralDePedidos } from "./_ui/CentralDePedidos";
 import { CartaoPedido } from "./_ui/CartaoPedido";
+import { TabelaPedidos } from "./_ui/TabelaPedidos";
 import { ModalNovoPedido } from "./_ui/ModalNovoPedido";
 
 export const metadata: Metadata = { title: "Pedidos" };
@@ -34,11 +38,18 @@ export default async function Page({
   const { aba, novo } = await searchParams;
   const encerrados = aba === "encerrados";
 
-  const [sessao, pedidos, loja] = await Promise.all([
+  const [sessao, pedidos, loja, aReceber, formasDeRecebimento, caixa] = await Promise.all([
     obterSessaoInterna(),
     listarFila(encerrados),
     obterLojaPublica(),
+    // A MESMA autoridade que monta a fila do PDV decide quem está devendo
+    // aqui. Nada de um segundo critério de "quem é cobrável".
+    listarPedidosAReceber(),
+    formasParaRecebimento(),
+    obterCaixa(),
   ]);
+
+  const cobraveis = Object.fromEntries(aReceber.pedidos.map((p) => [p.id, p]));
   const podeCriarPedido = podeNaUI(sessao, "orders.create_manual");
   const abrirNovoPedido = novo === "1" && podeCriarPedido;
   const [formasEntrega, formasRetirada] = abrirNovoPedido
@@ -57,6 +68,10 @@ export default async function Page({
   const hora = Object.fromEntries(
     pedidos.map((p) => [p.id, formatador.format(new Date(p.criado_em))]),
   );
+
+  // A espera nasce no relógio do SERVIDOR, na camada de aplicação. Este é o
+  // valor do primeiro render; a tabela reancora nele e depois avança sozinha.
+  const espera = esperaDaFila(pedidos);
 
   return (
     <div className="flex flex-col gap-4">
@@ -100,14 +115,34 @@ export default async function Page({
             </p>
           </div>
         ) : (
-          <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(320px,1fr))]">
-            {pedidos.map((p) => (
-              <CartaoPedido key={p.id} pedido={p} hora={hora[p.id] ?? ""} />
-            ))}
-          </div>
+          <>
+            {/* ENCERRADOS MANTÉM O MAIS NOVO EM CIMA. Esta lista é consulta,
+                não operação: quem abre aqui procura o que acabou de acontecer.
+                É a ordem que a RPC já devolve, e por isso não se mexe nela. */}
+            <TabelaPedidos
+              pedidos={pedidos}
+              hora={hora}
+              espera={espera}
+              modo="encerrado"
+              rotulo="Pedidos encerrados, do mais recente para o mais antigo"
+            />
+            <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(320px,1fr))] lg:hidden">
+              {pedidos.map((p) => (
+                <CartaoPedido key={p.id} pedido={p} hora={hora[p.id] ?? ""} />
+              ))}
+            </div>
+          </>
         )
       ) : (
-        <CentralDePedidos pedidos={pedidos} hora={hora} />
+        <CentralDePedidos
+          pedidos={pedidos}
+          hora={hora}
+          espera={espera}
+          cobraveis={cobraveis}
+          formasDeRecebimento={formasDeRecebimento}
+          caixaAberto={caixa.aberto}
+          podeReceber={podeNaUI(sessao, "payments.register")}
+        />
       )}
 
       {abrirNovoPedido ? (

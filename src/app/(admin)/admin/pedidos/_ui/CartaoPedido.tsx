@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { StatusBadge } from "@/ui/components";
 import { formatBRL } from "@/lib/format";
-import { rotuloInterno } from "@/domain/pedidos/estados";
+import { rotuloDeModalidade, rotuloDeOrigem, rotuloInterno } from "@/domain/pedidos/estados";
 import type { PedidoNaFila } from "@/application/pedidos/tipos";
+import type { PedidoAReceber } from "@/application/pdv/tipos";
 import { AcoesDoPedido } from "./AcoesDoPedido";
 
 /**
@@ -12,7 +13,30 @@ import { AcoesDoPedido } from "./AcoesDoPedido";
  * em texto (não só em cor, CLAUDE.md §38), o que está travando e as ações
  * possíveis ali mesmo — sem precisar abrir o detalhe para aceitar.
  */
-export function CartaoPedido({ pedido, hora }: { pedido: PedidoNaFila; hora: string }) {
+export function CartaoPedido({
+  pedido,
+  hora,
+  espera,
+  cobravel,
+  aoCobrar,
+}: {
+  pedido: PedidoNaFila;
+  hora: string;
+  /**
+   * Quanto já esperou, do relógio do servidor. Opcional: a aba *Encerrados*
+   * não passa — lá "espera" não quer dizer nada, o pedido acabou.
+   */
+  espera?: string;
+  /**
+   * O mesmo atalho de cobrança da tabela, para o mobile.
+   *
+   * Sem ele a gaveta seria inalcançável no celular e a tela contaria duas
+   * histórias conforme a largura — que foi o problema que a coluna de espera
+   * já tinha criado uma vez.
+   */
+  cobravel?: PedidoAReceber | null;
+  aoCobrar?: (pedido: PedidoAReceber) => void;
+}) {
   const estado = rotuloInterno(pedido.status);
 
   const travas = [
@@ -32,9 +56,15 @@ export function CartaoPedido({ pedido, hora }: { pedido: PedidoNaFila; hora: str
             #{pedido.numero}
           </Link>
           <p className="m-0 text-[14px] text-ink-2">{pedido.cliente}</p>
+          {/* A ESPERA NA FRENTE, como na tabela do desktop. O cartão mostrava
+              só a hora do relógio, e `20:41` sem data parecia recente quando
+              era o pedido mais antigo da fila. A hora fica, em segundo plano:
+              serve para localizar, não para priorizar. */}
           <p className="m-0 text-[12.5px] text-muted">
+            {espera ? <span className="font-semibold text-ink-2">{espera}</span> : null}
+            {espera ? " · " : ""}
             {hora} · {pedido.itens} {pedido.itens === 1 ? "item" : "itens"}
-            {pedido.origem !== "shalon_link" ? ` · ${pedido.origem}` : ""}
+            {pedido.origem !== "shalon_link" ? ` · ${rotuloDeOrigem(pedido.origem)}` : ""}
           </p>
         </div>
 
@@ -43,7 +73,7 @@ export function CartaoPedido({ pedido, hora }: { pedido: PedidoNaFila; hora: str
             {estado.rotulo}
           </StatusBadge>
           <span className="rounded-pill border border-border-shalon px-[10px] py-[3px] text-[12px] font-semibold text-ink">
-            {pedido.modalidade === "delivery" ? "Entrega" : "Retirada"}
+            {rotuloDeModalidade(pedido.modalidade)}
           </span>
         </div>
       </div>
@@ -77,7 +107,16 @@ export function CartaoPedido({ pedido, hora }: { pedido: PedidoNaFila; hora: str
         </p>
       ) : null}
 
-      <div className="mt-3">
+      <div className="mt-3 flex flex-col gap-2">
+        {cobravel && aoCobrar ? (
+          <button
+            type="button"
+            onClick={() => aoCobrar(cobravel)}
+            className="min-h-touch-cta w-full cursor-pointer rounded-11 border-0 bg-cta px-4 text-[14px] font-semibold text-cta-fg"
+          >
+            Receber {formatBRL(cobravel.total)}
+          </button>
+        ) : null}
         <AcoesDoPedido pedidoId={pedido.id} acoes={pedido.acoes} compacto />
       </div>
     </article>
