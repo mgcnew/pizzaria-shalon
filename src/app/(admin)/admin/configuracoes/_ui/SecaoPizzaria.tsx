@@ -21,125 +21,163 @@ export async function SecaoPizzaria({ podeGerenciar }: { podeGerenciar: boolean 
   const aberta = loja ? await lojaAberta() : false;
 
   return (
-    <div className="flex flex-col gap-4">
-      {loja ? (
-        <Cartao titulo="Dados da pizzaria">
-          <ParDeDados chave="Nome" valor={loja.store_name} />
-          <ParDeDados chave="WhatsApp" valor={loja.whatsapp} />
-          {loja.phone ? <ParDeDados chave="Telefone" valor={loja.phone} /> : null}
-          <ParDeDados
-            chave="Endereço"
-            valor={`${loja.address_street}, ${loja.address_number}${
-              loja.address_complement ? ` — ${loja.address_complement}` : ""
-            } · ${loja.address_neighborhood} · ${loja.address_city}/${loja.address_state} · ${loja.address_postal_code}`}
-          />
-          <ParDeDados
-            chave="Coordenadas"
-            valor={
-              loja.latitude !== null && loja.longitude !== null
-                ? `${loja.latitude}, ${loja.longitude}`
-                : "ainda não informadas"
-            }
-          />
-          <ParDeDados chave="Fuso horário" valor={loja.timezone} />
-          <ParDeDados
-            chave="Situação agora"
-            valor={
-              <StatusBadge tom={aberta ? "sucesso" : "neutro"}>
-                {aberta ? "Aberta" : "Fechada"}
-              </StatusBadge>
-            }
-          />
-        </Cartao>
-      ) : (
-        <Cartao titulo="Loja ainda não configurada">
-          <p className="m-0 text-[13.5px] text-ink-2">
-            Preencha os dados abaixo para o cardápio saber quem é a loja, onde ela fica e em que
-            horários funciona. Nada foi preenchido automaticamente: esses dados são da Shalon.
-          </p>
-        </Cartao>
-      )}
-
-      {loja && podeGerenciar ? (
-        <Cartao
-          titulo={loja.is_temporarily_closed ? "Loja fechada temporariamente" : "Fechar temporariamente"}
-          descricao="Fechar não esconde o cardápio: o cliente continua navegando, mas não consegue enviar pedido."
-        >
-          {loja.is_temporarily_closed ? (
-            <p className="mb-3 rounded-12 border border-twb bg-tw px-3 py-[10px] text-[13.5px] font-semibold text-twf">
-              Motivo registrado: {loja.temporary_close_reason}
-            </p>
-          ) : null}
-          <FormularioAcao
-            acao={alternarFechamento}
-            rotulo={loja.is_temporarily_closed ? "Reabrir a loja" : "Fechar agora"}
-            variante={loja.is_temporarily_closed ? "primario" : "secundario"}
-          >
-            <input
-              type="hidden"
-              name="fechar"
-              value={String(!loja.is_temporarily_closed)}
+    <div className="grid items-start gap-4 md:grid-cols-[minmax(260px,0.8fr)_minmax(400px,1.2fr)] xl:grid-cols-[minmax(340px,0.75fr)_minmax(560px,1.25fr)]">
+      <div className="flex min-w-0 flex-col gap-4">
+        {loja ? (
+          <Cartao titulo="Dados da pizzaria" largura="cheio">
+            <ParDeDados chave="Nome" valor={loja.store_name} />
+            <ParDeDados chave="WhatsApp" valor={loja.whatsapp} />
+            {loja.phone ? <ParDeDados chave="Telefone" valor={loja.phone} /> : null}
+            <ParDeDados
+              chave="Endereço"
+              valor={`${loja.address_street}, ${loja.address_number}${
+                loja.address_complement ? ` — ${loja.address_complement}` : ""
+              } · ${loja.address_neighborhood} · ${loja.address_city}/${loja.address_state} · ${loja.address_postal_code}`}
             />
-            {!loja.is_temporarily_closed ? (
-              <Input
-                label="Motivo"
-                name="motivo"
-                required
-                placeholder="Ex.: forno em manutenção"
-                hint="Obrigatório: o atendimento precisa saber o que responder ao cliente."
-              />
+            <ParDeDados
+              chave="Coordenadas"
+              valor={
+                loja.latitude !== null && loja.longitude !== null
+                  ? `${loja.latitude}, ${loja.longitude}`
+                  : "ainda não informadas"
+              }
+            />
+            <ParDeDados chave="Fuso horário" valor={loja.timezone} />
+            <ParDeDados
+              chave="Situação agora"
+              valor={
+                <StatusBadge tom={aberta ? "sucesso" : "neutro"}>
+                  {aberta ? "Aberta" : "Fechada"}
+                </StatusBadge>
+              }
+            />
+          </Cartao>
+        ) : (
+          <Cartao titulo="Loja ainda não configurada" largura="cheio">
+            <p className="m-0 text-[13.5px] text-ink-2">
+              Preencha o formulário para o cardápio saber quem é a loja, onde ela fica e em que
+              horários funciona. Nada foi preenchido automaticamente: esses dados são da Shalon.
+            </p>
+          </Cartao>
+        )}
+
+        {loja && podeGerenciar ? (
+          <Cartao
+            titulo={loja.is_temporarily_closed ? "Loja fechada temporariamente" : "Fechar temporariamente"}
+            descricao="Fechar não esconde o cardápio: o cliente continua navegando, mas não consegue enviar pedido."
+            largura="cheio"
+          >
+            {loja.is_temporarily_closed ? (
+              <p className="mb-3 rounded-12 border border-twb bg-tw px-3 py-[10px] text-[13.5px] font-semibold text-twf">
+                Motivo registrado: {loja.temporary_close_reason}
+              </p>
             ) : null}
-          </FormularioAcao>
-        </Cartao>
-      ) : null}
+            <FormularioAcao
+              acao={alternarFechamento}
+              rotulo={loja.is_temporarily_closed ? "Reabrir a loja" : "Fechar agora"}
+              variante={loja.is_temporarily_closed ? "primario" : "secundario"}
+            >
+              <input
+                type="hidden"
+                name="fechar"
+                value={String(!loja.is_temporarily_closed)}
+              />
+              {!loja.is_temporarily_closed ? (
+                <Input
+                  label="Motivo"
+                  name="motivo"
+                  required
+                  placeholder="Ex.: forno em manutenção"
+                  hint="Obrigatório: o atendimento precisa saber o que responder ao cliente."
+                />
+              ) : null}
+            </FormularioAcao>
+          </Cartao>
+        ) : null}
+      </div>
 
       {podeGerenciar ? (
-        <Cartao titulo={loja ? "Editar dados da loja" : "Configurar a loja"}>
+        <Cartao titulo={loja ? "Editar dados da loja" : "Configurar a loja"} largura="cheio">
           <FormularioAcao acao={salvarLoja} rotulo={loja ? "Salvar" : "Configurar loja"}>
-            <Input label="Nome da loja" name="nome" required defaultValue={loja?.store_name ?? ""} />
-            <Input
-              label="Nome de exibição (opcional)"
-              name="nome_exibicao"
-              defaultValue={loja?.display_name ?? ""}
-            />
-            <Input
-              label="WhatsApp"
-              name="whatsapp"
-              required
-              defaultValue={loja?.whatsapp ?? ""}
-              placeholder="Ex.: 5511988124477"
-            />
-            <Input label="Telefone (opcional)" name="telefone" defaultValue={loja?.phone ?? ""} />
-            <Input label="Logradouro" name="logradouro" required defaultValue={loja?.address_street ?? ""} />
-            <Input label="Número" name="numero" required defaultValue={loja?.address_number ?? ""} />
-            <Input
-              label="Complemento (opcional)"
-              name="complemento"
-              defaultValue={loja?.address_complement ?? ""}
-            />
-            <Input label="Bairro" name="bairro" required defaultValue={loja?.address_neighborhood ?? ""} />
-            <Input label="Cidade" name="cidade" required defaultValue={loja?.address_city ?? ""} />
-            <Input label="UF" name="uf" required maxLength={2} defaultValue={loja?.address_state ?? ""} />
-            <Input label="CEP" name="cep" required defaultValue={loja?.address_postal_code ?? ""} />
+            <fieldset className="m-0 min-w-0 border-0 p-0">
+              <legend className="mb-3 text-[12px] font-bold uppercase tracking-[0.06em] text-muted">
+                Identidade e contato
+              </legend>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input label="Nome da loja" name="nome" required defaultValue={loja?.store_name ?? ""} />
+                <Input
+                  label="Nome de exibição (opcional)"
+                  name="nome_exibicao"
+                  defaultValue={loja?.display_name ?? ""}
+                />
+                <Input
+                  label="WhatsApp"
+                  name="whatsapp"
+                  required
+                  defaultValue={loja?.whatsapp ?? ""}
+                  placeholder="Ex.: 5511988124477"
+                />
+                <Input label="Telefone (opcional)" name="telefone" defaultValue={loja?.phone ?? ""} />
+              </div>
+            </fieldset>
 
-            {/* 79.2: a coordenada é a origem das rotas. O cálculo de distância
-                e o provedor são da Fase 5; aqui só se guarda o ponto. */}
-            <Input
-              label="Latitude (opcional)"
-              name="latitude"
-              defaultValue={loja?.latitude ?? ""}
-              hint="Origem das rotas de entrega. O cálculo de distância é da Fase 5."
-            />
-            <Input label="Longitude (opcional)" name="longitude" defaultValue={loja?.longitude ?? ""} />
-            <Input label="Fuso horário" name="fuso" defaultValue={loja?.timezone ?? "America/Sao_Paulo"} />
+            <fieldset className="m-0 min-w-0 border-0 border-t border-border-shalon p-0 pt-4">
+              <legend className="px-2 text-[12px] font-bold uppercase tracking-[0.06em] text-muted">
+                Endereço
+              </legend>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <Input label="Logradouro" name="logradouro" required defaultValue={loja?.address_street ?? ""} />
+                </div>
+                <Input label="Número" name="numero" required defaultValue={loja?.address_number ?? ""} />
+                <Input
+                  label="Complemento (opcional)"
+                  name="complemento"
+                  defaultValue={loja?.address_complement ?? ""}
+                />
+                <Input label="Bairro" name="bairro" required defaultValue={loja?.address_neighborhood ?? ""} />
+                <Input label="Cidade" name="cidade" required defaultValue={loja?.address_city ?? ""} />
+                <Input label="UF" name="uf" required maxLength={2} defaultValue={loja?.address_state ?? ""} />
+                <Input label="CEP" name="cep" required defaultValue={loja?.address_postal_code ?? ""} />
+              </div>
+            </fieldset>
+
+            <fieldset className="m-0 min-w-0 border-0 border-t border-border-shalon p-0 pt-4">
+              <legend className="px-2 text-[12px] font-bold uppercase tracking-[0.06em] text-muted">
+                Localização e fuso
+              </legend>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {/* 79.2: a coordenada é a origem das rotas. O cálculo de distância
+                    e o provedor são da Fase 5; aqui só se guarda o ponto. */}
+                <Input
+                  label="Latitude (opcional)"
+                  name="latitude"
+                  defaultValue={loja?.latitude ?? ""}
+                />
+                <Input label="Longitude (opcional)" name="longitude" defaultValue={loja?.longitude ?? ""} />
+                <div className="sm:col-span-2">
+                  <Input
+                    label="Fuso horário"
+                    name="fuso"
+                    defaultValue={loja?.timezone ?? "America/Sao_Paulo"}
+                    hint="As coordenadas são a origem usada no cálculo das rotas de entrega."
+                  />
+                </div>
+              </div>
+            </fieldset>
 
             {!loja ? (
-              <>
-                <Input label="Entrega: tempo mínimo (min)" name="entrega_min" type="number" min={1} required defaultValue={40} />
-                <Input label="Entrega: tempo máximo (min)" name="entrega_max" type="number" min={1} required defaultValue={60} />
-                <Input label="Retirada: tempo mínimo (min)" name="retirada_min" type="number" min={1} required defaultValue={20} />
-                <Input label="Retirada: tempo máximo (min)" name="retirada_max" type="number" min={1} required defaultValue={30} />
-              </>
+              <fieldset className="m-0 min-w-0 border-0 border-t border-border-shalon p-0 pt-4">
+                <legend className="px-2 text-[12px] font-bold uppercase tracking-[0.06em] text-muted">
+                  Tempos iniciais
+                </legend>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Input label="Entrega: tempo mínimo (min)" name="entrega_min" type="number" min={1} required defaultValue={40} />
+                  <Input label="Entrega: tempo máximo (min)" name="entrega_max" type="number" min={1} required defaultValue={60} />
+                  <Input label="Retirada: tempo mínimo (min)" name="retirada_min" type="number" min={1} required defaultValue={20} />
+                  <Input label="Retirada: tempo máximo (min)" name="retirada_max" type="number" min={1} required defaultValue={30} />
+                </div>
+              </fieldset>
             ) : null}
           </FormularioAcao>
         </Cartao>

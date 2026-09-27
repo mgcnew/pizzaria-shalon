@@ -1,8 +1,5 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
-import { Abas, Cartao, type Aba } from "@/ui/patterns";
-import { SeletorDeTema } from "@/ui/components";
-import { COOKIE_TEMA, temaDoCookie } from "@/ui/tema";
+import { Abas, type Aba } from "@/ui/patterns";
 import { obterSessaoInterna, podeNaUI } from "@/application/auth/sessao";
 import { SecaoPizzaria } from "./_ui/SecaoPizzaria";
 import { SecaoHorarios } from "./_ui/SecaoHorarios";
@@ -25,8 +22,8 @@ export const metadata: Metadata = { title: "Configurações" };
  * aba com botão "Teste de impressão" que não imprime seria pior que a
  * ausência dela.
  *
- * As demais seções estão todas aqui, e agora editáveis: no protótipo a maior
- * parte era lista somente leitura.
+ * "Aparência" deixou de ser uma seção: claro/escuro é preferência do
+ * navegador e fica disponível globalmente na topbar administrativa.
  */
 
 const SECOES: readonly Aba[] = [
@@ -35,7 +32,6 @@ const SECOES: readonly Aba[] = [
   { nome: "Entrega", valor: "entrega" },
   { nome: "Pagamentos", valor: "pagamentos" },
   { nome: "Operação", valor: "operacao" },
-  { nome: "Aparência", valor: "aparencia" },
   { nome: "Auditoria", valor: "auditoria" },
 ];
 
@@ -48,14 +44,12 @@ export default async function Page({
   const bruto = typeof params["secao"] === "string" ? params["secao"] : "";
   const secao = SECOES.some((s) => s.valor === bruto) ? bruto : "pizzaria";
 
-  const temaAtual = temaDoCookie((await cookies()).get(COOKIE_TEMA)?.value);
-
   const sessao = await obterSessaoInterna();
   const podeGerenciar = podeNaUI(sessao, "settings.manage");
   const podeVerAuditoria = podeNaUI(sessao, "audit.view");
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4">
       <Abas abas={SECOES} atual={secao} parametro="secao" base="/admin/configuracoes" />
 
       {!podeGerenciar ? (
@@ -70,19 +64,6 @@ export default async function Page({
       {secao === "entrega" ? <SecaoEntrega podeGerenciar={podeGerenciar} /> : null}
       {secao === "pagamentos" ? <SecaoPagamentos podeGerenciar={podeGerenciar} /> : null}
       {secao === "operacao" ? <SecaoOperacao podeGerenciar={podeGerenciar} /> : null}
-
-      {secao === "aparencia" ? (
-        <Cartao
-          titulo="Aparência"
-          descricao="Preferência deste navegador. Não muda nada para as outras pessoas da equipe."
-        >
-          <SeletorDeTema atual={temaAtual} />
-          <p className="mt-[14px] text-[13px] text-ink-2">
-            O tema de acento — amarelo no cardápio público, vermelho no administrativo — é um token
-            do design e acompanha a área do sistema, não uma escolha por pessoa.
-          </p>
-        </Cartao>
-      ) : null}
 
       {secao === "auditoria" ? <SecaoAuditoria podeVer={podeVerAuditoria} /> : null}
     </div>

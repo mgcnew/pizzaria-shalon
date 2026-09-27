@@ -1,8 +1,11 @@
 import Image from "next/image";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { DrawerAdmin } from "@/ui/components/DrawerAdmin";
 import { MenuLateralAdmin } from "@/ui/components/MenuLateralAdmin";
 import { MenuUsuarioAdmin } from "@/ui/components/MenuUsuarioAdmin";
+import { SeletorDeTema } from "@/ui/components/SeletorDeTema";
+import { COOKIE_TEMA, temaDoCookie } from "@/ui/tema";
 import { obterSessaoInterna } from "@/application/auth/sessao";
 import { sair } from "@/app/(auth)/admin/login/actions";
 
@@ -32,6 +35,8 @@ export default async function LayoutAdmin({
   // o caso de estar autenticado SEM ser usuário interno ativo — por exemplo,
   // acesso revogado enquanto a sessão seguia aberta (§5.4).
   if (!sessao) redirect("/admin/login");
+
+  const temaAtual = temaDoCookie((await cookies()).get(COOKIE_TEMA)?.value);
 
   return (
     <div data-acento="vermelho" className="flex min-h-screen bg-bg">
@@ -64,6 +69,7 @@ export default async function LayoutAdmin({
             </h1>
             <p className="mt-[2px] text-[12.5px] text-muted">Administrativo</p>
           </div>
+          <SeletorDeTema atual={temaAtual} />
           <MenuUsuarioAdmin nome={sessao.nome} papeis={sessao.papeis} acaoSair={sair} />
         </header>
 

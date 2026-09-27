@@ -3,6 +3,7 @@
 import Form from "next/form";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { SelectMenu } from "@/ui/components";
 
 type CategoriaFiltro = { id: string; nome: string };
 
@@ -18,6 +19,8 @@ export function FiltrosProdutos({
   categorias: readonly CategoriaFiltro[];
 }) {
   const [aberto, setAberto] = useState(false);
+  const [categoriaSelecionada, setCategoriaSelecionada] = useState(categoria);
+  const [situacaoSelecionada, setSituacaoSelecionada] = useState(situacao);
   const filtrosRef = useRef<HTMLDivElement>(null);
   const quantidadeAtivos = Number(Boolean(categoria)) + Number(Boolean(situacao));
   const hrefLimpar = busca
@@ -83,7 +86,13 @@ export function FiltrosProdutos({
           aria-haspopup="dialog"
           aria-expanded={aberto}
           aria-controls="painel-filtros-produtos"
-          onClick={() => setAberto((valor) => !valor)}
+          onClick={() => {
+            if (!aberto) {
+              setCategoriaSelecionada(categoria);
+              setSituacaoSelecionada(situacao);
+            }
+            setAberto((valor) => !valor);
+          }}
           className={[
             "motion-interactive inline-flex min-h-[48px] cursor-pointer items-center gap-2 rounded-12 border-[1.5px] px-[14px] text-[14px] font-semibold transition-colors",
             aberto || quantidadeAtivos > 0
@@ -131,37 +140,31 @@ export function FiltrosProdutos({
             </div>
 
             <div className="grid gap-3">
-              <label className="grid gap-1.5 text-[12.5px] font-semibold text-ink-2">
-                Categoria
-                <select
-                  name="categoria"
-                  defaultValue={categoria}
-                  className="motion-interactive min-h-touch rounded-10 border-[1.5px] border-border-shalon bg-surface px-3 text-[14px] font-medium text-ink outline-none transition-colors focus:border-brand-orange"
-                >
-                  <option value="">Todas as categorias</option>
-                  {categorias.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.nome}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <SelectMenu
+                name="categoria"
+                label="Categoria"
+                valor={categoriaSelecionada}
+                aoMudar={setCategoriaSelecionada}
+                opcoes={[
+                  { valor: "", texto: "Todas as categorias" },
+                  ...categorias.map((item) => ({ valor: item.id, texto: item.nome })),
+                ]}
+              />
 
-              <label className="grid gap-1.5 text-[12.5px] font-semibold text-ink-2">
-                Status
-                <select
-                  name="situacao"
-                  defaultValue={situacao}
-                  className="motion-interactive min-h-touch rounded-10 border-[1.5px] border-border-shalon bg-surface px-3 text-[14px] font-medium text-ink outline-none transition-colors focus:border-brand-orange"
-                >
-                  <option value="">Qualquer status</option>
-                  <option value="disponivel">Disponíveis</option>
-                  <option value="indisponivel">Indisponíveis</option>
-                  <option value="hoje">Indisponíveis hoje</option>
-                  <option value="inativo">Inativos</option>
-                  <option value="promo">Em promoção</option>
-                </select>
-              </label>
+              <SelectMenu
+                name="situacao"
+                label="Status"
+                valor={situacaoSelecionada}
+                aoMudar={setSituacaoSelecionada}
+                opcoes={[
+                  { valor: "", texto: "Qualquer status" },
+                  { valor: "disponivel", texto: "Disponíveis" },
+                  { valor: "indisponivel", texto: "Indisponíveis" },
+                  { valor: "hoje", texto: "Indisponíveis hoje" },
+                  { valor: "inativo", texto: "Inativos" },
+                  { valor: "promo", texto: "Em promoção" },
+                ]}
+              />
             </div>
 
             <button

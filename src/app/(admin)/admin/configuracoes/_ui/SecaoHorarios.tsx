@@ -1,5 +1,5 @@
 import { Input, StatusBadge } from "@/ui/components";
-import { Cartao, LinhaLista } from "@/ui/patterns";
+import { Cartao } from "@/ui/patterns";
 import { listarHorarios } from "@/application/configuracoes/consultas";
 import { salvarHorario } from "@/application/configuracoes/acoes";
 import { DIAS_DA_SEMANA } from "@/application/configuracoes/tipos";
@@ -22,63 +22,72 @@ export async function SecaoHorarios({ podeGerenciar }: { podeGerenciar: boolean 
     <Cartao
       titulo="Horários de funcionamento"
       descricao="Fora do horário o cardápio continua visível e o envio do pedido fica bloqueado. Sem agendamento futuro nesta versão."
+      largura="cheio"
     >
-      {DIAS_DA_SEMANA.map((nome, dia) => {
-        const h = porDia.get(dia);
-        const viraMeiaNoite =
-          h && !h.is_closed && h.opens_at && h.closes_at && h.closes_at <= h.opens_at;
+      <div className="divide-y divide-border-shalon">
+        {DIAS_DA_SEMANA.map((nome, dia) => {
+          const h = porDia.get(dia);
+          const viraMeiaNoite =
+            h && !h.is_closed && h.opens_at && h.closes_at && h.closes_at <= h.opens_at;
+          const horarioAtual = !h
+            ? "Não configurado"
+            : h.is_closed
+              ? "Sem atendimento"
+              : `${h.opens_at?.slice(0, 5)} — ${h.closes_at?.slice(0, 5)}${viraMeiaNoite ? " · dia seguinte" : ""}`;
 
-        return (
-          <LinhaLista key={dia}>
-            <span className="min-w-[110px] flex-1 text-[14px] font-semibold text-ink">{nome}</span>
+          return (
+            <div
+              key={dia}
+              className="grid items-center gap-3 py-4 first:pt-1 last:pb-1 lg:grid-cols-[minmax(170px,0.55fr)_minmax(440px,1.45fr)]"
+            >
+              <div className="flex min-w-0 items-center justify-between gap-3 lg:block">
+                <div className="min-w-0">
+                  <p className="m-0 text-[14px] font-bold text-ink">{nome}</p>
+                  <p className="mt-1 truncate text-[12.5px] text-muted">{horarioAtual}</p>
+                </div>
+                <StatusBadge tom={h && !h.is_closed ? "sucesso" : "neutro"}>
+                  {h && !h.is_closed ? "Aberto" : "Fechado"}
+                </StatusBadge>
+              </div>
 
-            <span className="text-[13.5px] text-ink-2">
-              {!h
-                ? "não configurado"
-                : h.is_closed
-                  ? "Fechado"
-                  : `${h.opens_at?.slice(0, 5)} — ${h.closes_at?.slice(0, 5)}${viraMeiaNoite ? " (do dia seguinte)" : ""}`}
-            </span>
-
-            <StatusBadge tom={h && !h.is_closed ? "sucesso" : "neutro"}>
-              {h && !h.is_closed ? "Aberto" : "Fechado"}
-            </StatusBadge>
-
-            {podeGerenciar ? (
-              <FormularioAcao
-                acao={salvarHorario}
-                rotulo="Salvar"
-                variante="secundario"
-                tamanho="sm"
-                className="w-full gap-2 md:w-auto md:flex-row md:items-end"
-              >
-                <input type="hidden" name="dia" value={dia} />
-                <Input
-                  label="Abre"
-                  name="abre"
-                  type="time"
-                  defaultValue={h?.opens_at?.slice(0, 5) ?? ""}
-                />
-                <Input
-                  label="Fecha"
-                  name="fecha"
-                  type="time"
-                  defaultValue={h?.closes_at?.slice(0, 5) ?? ""}
-                />
-                <label className="flex min-h-touch items-center gap-2 text-[13px] font-semibold text-ink">
-                  <input
-                    type="checkbox"
-                    name="fechado"
-                    defaultChecked={h?.is_closed ?? false}
-                    className="h-5 w-5 accent-[var(--brand-orange)]"
-                  />
-                  Fechado
-                </label>
-              </FormularioAcao>
-            ) : null}
-          </LinhaLista>
-        );
-      })}
+              {podeGerenciar ? (
+                <FormularioAcao
+                  acao={salvarHorario}
+                  rotulo="Salvar dia"
+                  variante="secundario"
+                  tamanho="sm"
+                  className="w-full gap-2 sm:flex-row sm:items-end"
+                >
+                  <input type="hidden" name="dia" value={dia} />
+                  <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-2">
+                    <Input
+                      label="Abre"
+                      name="abre"
+                      type="time"
+                      defaultValue={h?.opens_at?.slice(0, 5) ?? ""}
+                    />
+                    <Input
+                      label="Fecha"
+                      name="fecha"
+                      type="time"
+                      defaultValue={h?.closes_at?.slice(0, 5) ?? ""}
+                    />
+                  </div>
+                  <label className="flex min-h-touch shrink-0 items-center gap-2 rounded-11 border border-border-shalon px-3 text-[13px] font-semibold text-ink">
+                    <input
+                      type="checkbox"
+                      name="fechado"
+                      defaultChecked={h?.is_closed ?? false}
+                      className="h-5 w-5 accent-[var(--brand-orange)]"
+                    />
+                    Fechado
+                  </label>
+                </FormularioAcao>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
     </Cartao>
   );
 }

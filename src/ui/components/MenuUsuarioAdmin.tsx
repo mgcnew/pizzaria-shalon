@@ -112,7 +112,7 @@ export function MenuUsuarioAdmin({
               </span>
               <span>
                 <span className="block text-[13px] font-bold text-ink">Configurações</span>
-                <span className="mt-0.5 block text-[11px] text-muted">Loja, operação e aparência</span>
+                <span className="mt-0.5 block text-[11px] text-muted">Loja, entrega e operação</span>
               </span>
             </Link>
           </div>

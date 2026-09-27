@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { Button, Input, Select, StatusBadge, Textarea } from "@/ui/components";
+import { Button, Input, SelectMenu, StatusBadge, Textarea } from "@/ui/components";
 import { Aviso, Cartao, EmptyState } from "@/ui/patterns";
 import { formatBRL } from "@/lib/format";
 import {
@@ -46,6 +46,17 @@ const TIPOS: Record<CategoriaFinanceira["tipo"], string> = {
   both: "Entrada e despesa",
 };
 
+const OPCOES_LANCAMENTO = [
+  { valor: "expense", texto: "Despesa" },
+  { valor: "income", texto: "Entrada" },
+] as const;
+
+const OPCOES_CATEGORIA = [
+  { valor: "expense", texto: "Despesa" },
+  { valor: "income", texto: "Entrada" },
+  { valor: "both", texto: "Entrada e despesa" },
+] as const;
+
 function paraNumero(texto: string): number | null {
   const limpo = texto.replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
   if (limpo === "") return null;
@@ -70,6 +81,11 @@ export function PainelFinanceiro({
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, iniciar] = useTransition();
   const chave = useRef(tentativa);
+  const ativas = categorias.filter((c) => c.ativa);
+  const [tipoLancamento, setTipoLancamento] = useState<"income" | "expense">("expense");
+  const [categoriaId, setCategoriaId] = useState(ativas[0]?.id ?? "");
+  const [formaId, setFormaId] = useState("");
+  const [tipoCategoria, setTipoCategoria] = useState<CategoriaFinanceira["tipo"]>("expense");
 
   function executar(acao: () => Promise<{ ok: boolean; erro?: string }>) {
     setErro(null);
@@ -82,8 +98,6 @@ export function PainelFinanceiro({
       chave.current = crypto.randomUUID();
     });
   }
-
-  const ativas = categorias.filter((c) => c.ativa);
 
   return (
     <div className="flex flex-col gap-4">
@@ -152,17 +166,23 @@ export function PainelFinanceiro({
                 }}
               >
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Select name="tipo" label="Tipo" defaultValue="expense">
-                    <option value="expense">Despesa</option>
-                    <option value="income">Entrada</option>
-                  </Select>
-                  <Select name="categoria_id" label="Categoria" required>
-                    {ativas.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.nome}
-                      </option>
-                    ))}
-                  </Select>
+                  <SelectMenu
+                    name="tipo"
+                    label="Tipo"
+                    valor={tipoLancamento}
+                    aoMudar={(valor) => setTipoLancamento(valor as "income" | "expense")}
+                    opcoes={OPCOES_LANCAMENTO}
+                  />
+                  <SelectMenu
+                    name="categoria_id"
+                    label="Categoria"
+                    valor={categoriaId}
+                    aoMudar={setCategoriaId}
+                    opcoes={ativas.map((categoria) => ({
+                      valor: categoria.id,
+                      texto: categoria.nome,
+                    }))}
+                  />
                   <Input
                     name="valor"
                     label="Valor"
@@ -170,14 +190,16 @@ export function PainelFinanceiro({
                     placeholder="0,00"
                     required
                   />
-                  <Select name="forma_id" label="Forma (opcional)" defaultValue="">
-                    <option value="">Não informar</option>
-                    {formas.map((f) => (
-                      <option key={f.id} value={f.id}>
-                        {f.nome}
-                      </option>
-                    ))}
-                  </Select>
+                  <SelectMenu
+                    name="forma_id"
+                    label="Forma (opcional)"
+                    valor={formaId}
+                    aoMudar={setFormaId}
+                    opcoes={[
+                      { valor: "", texto: "Não informar" },
+                      ...formas.map((forma) => ({ valor: forma.id, texto: forma.nome })),
+                    ]}
+                  />
                 </div>
 
                 <Textarea name="descricao" label="Descrição" rows={2} required />
@@ -241,11 +263,13 @@ export function PainelFinanceiro({
               }
             >
               <Input name="nome" label="Nome" required />
-              <Select name="tipo" label="Serve para" defaultValue="expense">
-                <option value="expense">Despesa</option>
-                <option value="income">Entrada</option>
-                <option value="both">Entrada e despesa</option>
-              </Select>
+              <SelectMenu
+                name="tipo"
+                label="Serve para"
+                valor={tipoCategoria}
+                aoMudar={(valor) => setTipoCategoria(valor as CategoriaFinanceira["tipo"])}
+                opcoes={OPCOES_CATEGORIA}
+              />
               <Button type="submit" disabled={enviando}>
                 Criar
               </Button>

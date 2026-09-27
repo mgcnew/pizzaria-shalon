@@ -2,7 +2,7 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Badge, Button, Input, Select, Textarea } from "@/ui/components";
+import { Badge, Button, Input, SelectMenu, Textarea } from "@/ui/components";
 import { Abas, Aviso, Cartao, EmptyState, LinhaLista, ParDeDados } from "@/ui/patterns";
 import { formatBRL } from "@/lib/format";
 import { EscolherProduto } from "../../pedidos/_ui/EscolherProduto";
@@ -65,6 +65,12 @@ const ROTULO_LANCAMENTO: Record<string, string> = {
   adjustment: "Ajuste",
   other: "Outro",
 };
+
+const OPCOES_TIPO = TIPOS.map((tipo) => ({
+  valor: tipo.valor,
+  texto: tipo.texto,
+  descricao: tipo.ajuda,
+}));
 
 function paraNumero(texto: string): number | null {
   const limpo = texto.replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
@@ -162,35 +168,27 @@ export function PainelDaEquipe({
         largura="cheio"
       >
         <div className="flex flex-col gap-3">
-          <Select
+          <SelectMenu
             label="Tipo"
             hint={TIPOS.find((t) => t.valor === tipo)?.ajuda ?? ""}
-            value={tipo}
-            onChange={(e) => setTipo(e.target.value as TipoDeMovimento)}
-          >
-            {TIPOS.map((t) => (
-              <option key={t.valor} value={t.valor}>
-                {t.texto}
-              </option>
-            ))}
-          </Select>
+            valor={tipo}
+            aoMudar={(valor) => setTipo(valor as TipoDeMovimento)}
+            opcoes={OPCOES_TIPO}
+          />
 
           {/* RN-CONS-001: consumo tem dono. Cortesia e perda, não. */}
           {exigeFuncionario ? (
-            <Select
+            <SelectMenu
               label="De quem foi o consumo"
-              value={funcionarioId}
-              onChange={(e) => setFuncionarioId(e.target.value)}
-            >
-              <option value="">Escolha o funcionário</option>
-              {funcionarios
+              valor={funcionarioId}
+              aoMudar={setFuncionarioId}
+              opcoes={[
+                { valor: "", texto: "Escolha o funcionário" },
+                ...funcionarios
                 .filter((f) => f.ativo)
-                .map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.nome}
-                  </option>
-                ))}
-            </Select>
+                .map((f) => ({ valor: f.id, texto: f.nome })),
+              ]}
+            />
           ) : null}
 
           <Textarea
@@ -402,20 +400,17 @@ export function PainelDaEquipe({
       descricao="Consumo, adiantamento e diferença de acerto. Conferência gerencial — não é folha de pagamento."
       largura="cheio"
     >
-      <Select
+      <SelectMenu
         label="Funcionário"
-        value={funcionarioSelecionado ?? ""}
-        onChange={(e) => {
-          router.push(`/admin/equipe?aba=livro&funcionario=${e.target.value}`);
+        valor={funcionarioSelecionado ?? ""}
+        aoMudar={(valor) => {
+          router.push(`/admin/equipe?aba=livro&funcionario=${valor}`);
         }}
-      >
-        <option value="">Escolha o funcionário</option>
-        {funcionarios.map((f) => (
-          <option key={f.id} value={f.id}>
-            {f.nome}
-          </option>
-        ))}
-      </Select>
+        opcoes={[
+          { valor: "", texto: "Escolha o funcionário" },
+          ...funcionarios.map((f) => ({ valor: f.id, texto: f.nome })),
+        ]}
+      />
 
       {/* RN-EMPFIN-004: um fato, dois livros. A tela diz isso antes de gravar. */}
       {podeLancar && funcionarioSelecionado ? (

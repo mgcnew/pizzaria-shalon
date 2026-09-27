@@ -39,58 +39,66 @@ export async function SecaoEntrega({ podeGerenciar }: { podeGerenciar: boolean }
   );
 
   return (
-    <div className="flex flex-col gap-4">
-      <Cartao
-        titulo="Faixas de distância e taxa"
-        descricao="A taxa é calculada pela distância real de rota, não em linha reta. Faixas ativas não podem se sobrepor."
-        largura="cheio"
-      >
-        {faixas.length === 0 ? (
-          <p className="m-0 py-2 text-[13.5px] text-muted">
-            Nenhuma faixa cadastrada. Sem faixa, nenhuma entrega é atendida — e é isso mesmo:
-            falha de configuração não pode virar taxa R$ 0,00 acidental.
-          </p>
-        ) : (
-          faixas.map((f) => (
-            <LinhaLista key={f.id}>
-              <span className="min-w-[140px] flex-1 text-[14px] font-semibold text-ink">
-                de {Number(f.min_distance_km)} km até {Number(f.max_distance_km)} km
-              </span>
-              <span className="text-[13.5px] text-ink-2">{formatBRL(Number(f.fee))}</span>
-              <StatusBadge tom={f.is_active ? "sucesso" : "neutro"}>
-                {f.is_active ? "Ativa" : "Inativa"}
-              </StatusBadge>
-              {podeGerenciar ? (
-                <>
-                  <BotaoAcao
-                    acao={alternarAtivoFaixa}
-                    campos={{ id: f.id, ativar: String(!f.is_active) }}
-                  >
-                    {f.is_active ? "Desativar" : "Ativar"}
-                  </BotaoAcao>
-                  <BotaoAcao acao={removerFaixa} campos={{ id: f.id }} tom="perigo">
-                    Excluir
-                  </BotaoAcao>
-                </>
-              ) : null}
-            </LinhaLista>
-          ))
-        )}
+    <div className="grid items-start gap-4 lg:grid-cols-2">
+      <div className="lg:col-span-2">
+        <Cartao
+          titulo="Faixas de distância e taxa"
+          descricao="A taxa é calculada pela distância real de rota, não em linha reta. Faixas ativas não podem se sobrepor."
+          largura="cheio"
+        >
+          {faixas.length === 0 ? (
+            <p className="m-0 py-2 text-[13.5px] text-muted">
+              Nenhuma faixa cadastrada. Sem faixa, nenhuma entrega é atendida — e é isso mesmo:
+              falha de configuração não pode virar taxa R$ 0,00 acidental.
+            </p>
+          ) : (
+            faixas.map((f) => (
+              <LinhaLista key={f.id}>
+                <span className="min-w-[140px] flex-1 text-[14px] font-semibold text-ink">
+                  de {Number(f.min_distance_km)} km até {Number(f.max_distance_km)} km
+                </span>
+                <span className="text-[13.5px] text-ink-2">{formatBRL(Number(f.fee))}</span>
+                <StatusBadge tom={f.is_active ? "sucesso" : "neutro"}>
+                  {f.is_active ? "Ativa" : "Inativa"}
+                </StatusBadge>
+                {podeGerenciar ? (
+                  <>
+                    <BotaoAcao
+                      acao={alternarAtivoFaixa}
+                      campos={{ id: f.id, ativar: String(!f.is_active) }}
+                    >
+                      {f.is_active ? "Desativar" : "Ativar"}
+                    </BotaoAcao>
+                    <BotaoAcao acao={removerFaixa} campos={{ id: f.id }} tom="perigo">
+                      Excluir
+                    </BotaoAcao>
+                  </>
+                ) : null}
+              </LinhaLista>
+            ))
+          )}
 
-        <p className="mt-3 text-[12.5px] text-muted">
-          Distância máxima atendida: <strong>{maxima} km</strong>. Esse número não é um campo — ele
-          é a maior faixa ativa, para não existirem duas verdades. Acima dele, a entrega é
-          bloqueada no checkout.
-        </p>
-      </Cartao>
+          <p className="mt-3 text-[12.5px] text-muted">
+            Distância máxima atendida: <strong>{maxima} km</strong>. Esse número não é um campo — ele
+            é a maior faixa ativa, para não existirem duas verdades. Acima dele, a entrega é
+            bloqueada no checkout.
+          </p>
+        </Cartao>
+      </div>
 
       {podeGerenciar ? (
-        <Cartao titulo="Nova faixa">
+        <Cartao
+          titulo="Nova faixa"
+          descricao="Defina um intervalo contínuo e o valor cobrado para ele."
+          largura="cheio"
+        >
           <FormularioAcao acao={salvarFaixa} rotulo="Criar faixa">
-            <Input label="De (km)" name="min" inputMode="decimal" required defaultValue="0" />
-            <Input label="Até (km)" name="max" inputMode="decimal" required placeholder="Ex.: 2" />
-            <Input label="Taxa" name="taxa" inputMode="decimal" required placeholder="Ex.: 7,00" />
-            <Input label="Ordem" name="ordem" type="number" min={0} defaultValue={0} />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Input label="De (km)" name="min" inputMode="decimal" required defaultValue="0" />
+              <Input label="Até (km)" name="max" inputMode="decimal" required placeholder="Ex.: 2" />
+              <Input label="Taxa" name="taxa" inputMode="decimal" required placeholder="Ex.: 7,00" />
+              <Input label="Ordem" name="ordem" type="number" min={0} defaultValue={0} />
+            </div>
           </FormularioAcao>
         </Cartao>
       ) : null}
@@ -99,6 +107,7 @@ export async function SecaoEntrega({ podeGerenciar }: { podeGerenciar: boolean }
         <Cartao
           titulo="Regras de entrega"
           descricao="Dentro do raio automático o pedido segue normalmente. Entre o raio e a distância máxima, o cliente vê a taxa e o pedido aguarda sua aprovação."
+          largura="cheio"
         >
           <FormularioAcao acao={salvarRegrasDeEntrega} rotulo="Salvar regras">
             <Input

@@ -53,8 +53,8 @@ export function LinhaLista({ children }: { children: ReactNode }) {
 export function ParDeDados({ chave, valor }: { chave: string; valor: ReactNode }) {
   return (
     <div className="flex justify-between gap-3 border-b border-border-shalon py-[9px] last:border-b-0">
-      <span className="text-[13.5px] text-muted">{chave}</span>
-      <span className="text-right text-[13.5px] font-semibold text-ink">{valor}</span>
+      <span className="shrink-0 text-[13.5px] text-muted">{chave}</span>
+      <span className="min-w-0 break-words text-right text-[13.5px] font-semibold text-ink">{valor}</span>
     </div>
   );
 }
