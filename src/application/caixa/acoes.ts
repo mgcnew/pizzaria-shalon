@@ -120,6 +120,61 @@ const fecharSchema = z.object({
   justificativa: z.string().max(400).optional(),
 });
 
+export type ResultadoDoFechamentoCego =
+  | {
+      ok: true;
+      fechado: boolean;
+      esperado: number;
+      contado: number;
+      diferenca: number;
+    }
+  | { ok: false; erro: string };
+
+/**
+ * Primeiro passo do fechamento cego, usando a própria autoridade do caixa.
+ *
+ * Sem diferença, o caixa fecha imediatamente. Com diferença, a RPC não fecha:
+ * devolve a conferência e exige uma segunda chamada com justificativa. Assim o
+ * esperado nunca chega antes da primeira confirmação da contagem.
+ */
+export async function iniciarFechamentoCego(
+  entrada: unknown,
+): Promise<ResultadoDoFechamentoCego> {
+  const v = z.object({ contado: dinheiro }).safeParse(entrada);
+  if (!v.success) return { ok: false, erro: "Informe o valor contado na gaveta." };
+
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("fechar_caixa", {
+    p_dados: { contado: v.data.contado, justificativa: null },
+  });
+  if (error) {
+    logger.error("caixa:iniciarFechamentoCego", { code: (error as { code?: string }).code });
+    return { ok: false, erro: "Não foi possível conferir o caixa agora." };
+  }
+
+  const resultado = (data ?? {}) as Record<string, unknown>;
+  const temConferencia =
+    typeof resultado["esperado"] === "number" &&
+    typeof resultado["contado"] === "number" &&
+    typeof resultado["diferenca"] === "number";
+
+  if (!temConferencia) {
+    return {
+      ok: false,
+      erro: String(resultado["erro"] ?? "Não foi possível conferir o caixa agora."),
+    };
+  }
+
+  if (resultado["ok"]) revalidatePath(ROTA_PDV);
+  return {
+    ok: true,
+    fechado: Boolean(resultado["ok"]),
+    esperado: resultado["esperado"] as number,
+    contado: resultado["contado"] as number,
+    diferenca: resultado["diferenca"] as number,
+  };
+}
+
 /** RN-CAIXA-011/012: o esperado é do servidor; a pessoa informa o contado. */
 export async function fecharCaixa(entrada: unknown): Promise<Resultado> {
   const v = fecharSchema.safeParse(entrada);

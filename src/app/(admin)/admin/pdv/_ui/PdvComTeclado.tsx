@@ -4,21 +4,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ProvedorDeOperacaoEmVoo } from "@/ui/operacaoEmVoo";
 import { useRealtimeDoPdv } from "./useRealtimeDoPdv";
 import { NovaVenda } from "./NovaVenda";
-import { AreasDoPdv } from "./AreasDoPdv";
+import {
+  PainelDoCaixa,
+  type ComandosDoCaixa,
+  type EstadoVisivelDoCaixa,
+} from "@/ui/caixa/PainelDoCaixa";
 import {
   decidirAtalho,
   teclasAtivas,
   type AcaoDoPdv,
   type ContextoDoPdv,
 } from "./atalhos";
-import type { FormaParaRecebimento } from "@/app/(admin)/admin/pedidos/_ui/Recebimento";
-import type {
-  EstadoDoCaixa,
-  ResumoDeFechamento,
-  SessaoHistorica,
-} from "@/application/caixa/tipos";
 import type { FormaDePagamento } from "@/application/checkout/tipos";
-import type { PedidoAReceber } from "@/application/pdv/tipos";
 
 /**
  * O TECLADO DO PDV — Fase 12, Etapa 9.
@@ -71,29 +68,17 @@ function ehCampo(alvo: EventTarget | null): boolean {
 
 export function PdvComTeclado({
   formas,
-  formasDeRecebimento,
   autorizado,
-  pedidos,
-  falhouAFila,
   caixa,
-  resumo,
   tentativa,
   podeMovimentar,
-  sessoesAnteriores,
 }: {
   formas: FormaDePagamento[];
-  formasDeRecebimento: FormaParaRecebimento[];
   autorizado: boolean;
-  pedidos: PedidoAReceber[];
-  falhouAFila: boolean;
-  caixa: EstadoDoCaixa;
-  resumo: ResumoDeFechamento | null;
+  caixa: EstadoVisivelDoCaixa;
   tentativa: string;
   podeMovimentar: boolean;
-  sessoesAnteriores: SessaoHistorica[];
 }) {
-  const [aba, setAba] = useState<"receber" | "caixa">("receber");
-
   /**
    * O PDV acorda sozinho — Etapa 10.
    *
@@ -104,7 +89,7 @@ export function PdvComTeclado({
    */
   const realtime = useRealtimeDoPdv();
   const venda = useRef<AreaComTeclado | null>(null);
-  const fila = useRef<AreaComTeclado | null>(null);
+  const comandosDoCaixa = useRef<ComandosDoCaixa | null>(null);
 
   /**
    * A FAIXA É ESTADO, e não cálculo de render.
@@ -119,11 +104,11 @@ export function PdvComTeclado({
   const registrarVenda = useCallback((a: AreaComTeclado | null) => {
     venda.current = a;
   }, []);
-  const registrarFila = useCallback((a: AreaComTeclado | null) => {
-    fila.current = a;
+  const registrarCaixa = useCallback((comandos: ComandosDoCaixa | null) => {
+    comandosDoCaixa.current = comandos;
   }, []);
 
-  /** O contexto completo, montado das duas áreas no instante da tecla. */
+  /** O contexto completo da venda no instante da tecla. */
   const lerContexto = useCallback((): ContextoDoPdv => {
     const ativo = document.activeElement;
     return {
@@ -132,59 +117,29 @@ export function PdvComTeclado({
         ativo instanceof HTMLElement && ativo.dataset.pdv === "leitura",
       leituraPreenchida: false,
       cedendoAVez: document.querySelector(SELETOR_POR_CIMA) !== null,
-      aba,
       temItens: false,
       podeSalvar: false,
       temResultados: false,
       configuradorAberto: false,
-      vendaSalvaSemReceber: false,
-      recebimentoDaVendaAberto: false,
-      temPendentes: false,
-      pedidoSelecionado: false,
-      recebimentoDoPedidoAberto: false,
+      podeMovimentarCaixa: caixa.aberto && podeMovimentar,
       ...venda.current?.estado(),
-      ...fila.current?.estado(),
     };
-  }, [aba]);
+  }, [caixa.aberto, podeMovimentar]);
 
   const avisar = useCallback(() => {
     setFaixa(teclasAtivas(lerContexto()));
   }, [lerContexto]);
 
-  /** Roteia pelo prefixo. `recebimento:` vai para quem tem painel aberto. */
+  /** Roteia pelo prefixo para a venda ou para as operações da gaveta. */
   const executar = useCallback(
-    (acao: AcaoDoPdv, ctx: ContextoDoPdv) => {
-      if (acao === "aba:receber") {
-        setAba("receber");
-        avisar();
-        return;
-      }
-      if (acao === "aba:caixa") {
-        setAba("caixa");
-        avisar();
-        return;
-      }
+    (acao: AcaoDoPdv) => {
+      if (acao === "caixa:reforco") return comandosDoCaixa.current?.abrirReforco();
+      if (acao === "caixa:sangria") return comandosDoCaixa.current?.abrirSangria();
       if (acao.startsWith("venda:")) {
         venda.current?.executar(acao);
-        return;
       }
-      if (acao.startsWith("fila:")) {
-        // Receber um pendente só faz sentido com a aba dele à frente.
-        if (
-          acao === "fila:receber" ||
-          acao === "fila:anterior" ||
-          acao === "fila:proximo"
-        ) {
-          setAba("receber");
-        }
-        fila.current?.executar(acao);
-        return;
-      }
-      // `recebimento:*` — a venda tem precedência, a mesma ordem do `Escape`.
-      if (ctx.recebimentoDaVendaAberto) venda.current?.executar(acao);
-      else fila.current?.executar(acao);
     },
-    [avisar],
+    [],
   );
 
   // ---------------------------------------------------------------- o listener
@@ -211,7 +166,7 @@ export function PdvComTeclado({
       // "localizar" do navegador e F7 a navegação por cursor do Firefox; as
       // duas são canceláveis, e foi medido. O que não vira ação segue intacto.
       evento.preventDefault();
-      executar(acao, ctx);
+      executar(acao);
       avisar();
     }
 
@@ -272,7 +227,6 @@ export function PdvComTeclado({
       if (document.querySelector(SELETOR_POR_CIMA) !== null) return;
 
       const ctx = lerContexto();
-      if (ctx.recebimentoDaVendaAberto || ctx.recebimentoDoPedidoAberto) return;
       if (ctx.configuradorAberto) return;
 
       venda.current?.executar("venda:focar-leitura");
@@ -309,32 +263,13 @@ export function PdvComTeclado({
 
         <NovaVenda
           formas={formas}
-          formasDeRecebimento={formasDeRecebimento}
-          caixaAberto={caixa.aberto}
           autorizado={autorizado}
           registrar={registrarVenda}
           aoMudar={avisar}
         />
 
-        <AreasDoPdv
-          pedidos={pedidos}
-          falhouAFila={falhouAFila}
-          formas={formasDeRecebimento}
-          caixa={caixa}
-          resumo={resumo}
-          tentativa={tentativa}
-          podeMovimentar={podeMovimentar}
-          sessoesAnteriores={sessoesAnteriores}
-          aba={aba}
-          aoTrocarAba={(a) => {
-            setAba(a);
-            avisar();
-          }}
-          registrar={registrarFila}
-          aoMudar={avisar}
-        />
-
-        {/*
+        <div className="flex flex-col gap-2 lg:sticky lg:bottom-3 lg:z-20">
+          {/*
          * A FAIXA DE ATALHOS — §3, último parágrafo: "quem está aprendendo não
          * precisa decorar".
          *
@@ -343,24 +278,29 @@ export function PdvComTeclado({
          * tela para não informar nada. Quem decide é o CSS, nunca uma medição de
          * largura em JavaScript (CLAUDE.md §8).
          */}
-        {faixa.length > 0 ? (
-          <div
-            aria-hidden="true"
-            className="hidden flex-wrap items-center gap-x-4 gap-y-1 rounded-12 border border-border-shalon bg-elev px-3 py-2 lg:flex [@media(pointer:coarse)]:!hidden"
-          >
-            {faixa.map((t) => (
-              <span
-                key={t.tecla}
-                className="flex items-center gap-1.5 text-[12px] text-ink-2"
-              >
-                <kbd className="rounded-8 border border-border-shalon bg-surface px-1.5 py-[1px] font-mono text-[11px] font-semibold text-ink">
-                  {t.tecla}
-                </kbd>
-                {t.rotulo}
-              </span>
-            ))}
-          </div>
-        ) : null}
+          {faixa.length > 0 ? (
+            <div
+              aria-hidden="true"
+              className="hidden flex-wrap items-center gap-x-4 gap-y-1 rounded-12 border border-border-shalon bg-elev/95 px-3 py-2 backdrop-blur lg:flex [@media(pointer:coarse)]:!hidden"
+            >
+              {faixa.map((t) => (
+                <span key={t.tecla} className="flex items-center gap-1.5 text-[12px] text-ink-2">
+                  <kbd className="rounded-8 border border-border-shalon bg-surface px-1.5 py-[1px] font-mono text-[11px] font-semibold text-ink">
+                    {t.tecla}
+                  </kbd>
+                  {t.rotulo}
+                </span>
+              ))}
+            </div>
+          ) : null}
+
+          <PainelDoCaixa
+            estado={caixa}
+            tentativa={tentativa}
+            podeMovimentar={podeMovimentar}
+            aoRegistrarComandos={registrarCaixa}
+          />
+        </div>
       </div>
     </ProvedorDeOperacaoEmVoo>
   );

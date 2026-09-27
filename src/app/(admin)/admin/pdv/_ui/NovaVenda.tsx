@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { formatBRL } from "@/lib/format";
 import { Select } from "@/ui/components/Select";
 import { NucleoConfigurador } from "@/ui/configurador/NucleoConfigurador";
@@ -12,11 +12,6 @@ import { resolverCodigo, buscarNoCatalogo } from "@/application/pdv/acoes";
 import type { ItemCatalogoPdv } from "@/application/pdv/tipos";
 import type { ItemDoRascunho } from "@/application/pedidos/tipos";
 import type { FormaDePagamento } from "@/application/checkout/tipos";
-import {
-  Recebimento,
-  type ComandosDoRecebimento,
-  type FormaParaRecebimento,
-} from "@/app/(admin)/admin/pedidos/_ui/Recebimento";
 import { Comanda } from "@/app/(admin)/admin/pedidos/_ui/Comanda";
 import type { AreaComTeclado } from "./PdvComTeclado";
 
@@ -31,14 +26,8 @@ import type { AreaComTeclado } from "./PdvComTeclado";
  *     configurador, e o pedido inteiro é recalculado por `criar_pedido` ao
  *     salvar. O total daqui é SOMA DE CONFERÊNCIA — existe para o operador
  *     olhar, nunca para cobrar (CLAUDE.md §16);
- *  2. não decide nada sobre dinheiro. Desde a Etapa 7 a venda pode ser recebida
- *     logo depois de criada, mas em DUAS chamadas: `criar_pedido` primeiro,
- *     `registrar_pagamento` depois. Nunca uma "venda com pagamento" só.
- *
- *     A ordem não é detalhe de implementação, é a regra (§1.1, item 2):
- *     "pedido criado e ainda não pago" é estado legítimo. Se o recebimento
- *     falhar, o pedido PERMANECE — pendente, íntegro, e visível em *Pedidos a
- *     receber*. Nada é apagado nem revertido para "desfazer" a venda;
+ *  2. não recebe dinheiro. A venda é criada pendente e segue para Pedidos,
+ *     que concentra o checkout e impede dois fluxos concorrentes de cobrança;
  *  3. não normaliza código de barras. O que foi lido sobe como veio, com os
  *     zeros à esquerda, e quem normaliza é o banco.
  *
@@ -55,24 +44,18 @@ type Resolucao =
 
 export function NovaVenda({
   formas,
-  formasDeRecebimento,
-  caixaAberto,
   autorizado,
   registrar,
   aoMudar,
 }: {
   /** Formas ESPERADAS, filtradas por retirada: alimentam a intenção. */
   formas: FormaDePagamento[];
-  /** Formas REALIZADAS, com bandeiras: alimentam o recebimento (§24). */
-  formasDeRecebimento: FormaParaRecebimento[];
-  caixaAberto: boolean;
   autorizado: boolean;
   /** Entrega ao casco o `estado()` e o `executar()` desta área (Etapa 9). */
   registrar: (area: AreaComTeclado | null) => void;
   /** Avisa o casco que a faixa de atalhos precisa ser recalculada. */
   aoMudar: () => void;
 }) {
-  const router = useRouter();
   const [leitura, setLeitura] = useState("");
   const [estado, setEstado] = useState<Resolucao>({ tipo: "nada" });
   const [dados, setDados] = useState<DadosDoConfigurador | null>(null);
@@ -88,23 +71,8 @@ export function NovaVenda({
       id: string;
       numero: number;
       total: number;
-      formaEsperadaId: string;
-      /**
-       * A chave de idempotência do recebimento desta venda, gerada UMA VEZ,
-       * junto do pedido.
-       *
-       * Antes da Etapa 10 ela era `crypto.randomUUID()` escrito no JSX, e
-       * portanto refeita a cada render. `Recebimento` a captura com `useRef`
-       * no mount, então nada quebrava — mas a proteção morava no componente,
-       * não em quem entrega. Com Realtime recarregando a tela sozinha, render
-       * deixou de ser evento raro: quem um dia lesse a prop direto faria cada
-       * refresh rotacionar a chave, e um retry de rede viraria SEGUNDO
-       * pagamento (CLAUDE.md §34).
-       */
-      tentativa: string;
     } | null
   >(null);
-  const [recebendo, setRecebendo] = useState(false);
   const [ocupado, iniciar] = useTransition();
   const campo = useRef<HTMLInputElement>(null);
 
@@ -123,9 +91,6 @@ export function NovaVenda({
    * destaque numa linha que não existe mais, e o lint reprova com razão.
    */
   const [linhaEmFoco, setLinhaEmFoco] = useState(0);
-  /** Os comandos do painel de recebimento, quando ele está montado. */
-  const comandos = useRef<ComandosDoRecebimento | null>(null);
-
   /** O índice válido agora, sempre dentro do carrinho. */
   const linhaAtual = itens.length === 0 ? 0 : Math.min(linhaEmFoco, itens.length - 1);
 
@@ -161,7 +126,6 @@ export function NovaVenda({
     setItens([]);
     setErro(null);
     setCriado(null);
-    setRecebendo(false);
     tentativa.current = null;
     limparBusca();
   }
@@ -269,11 +233,7 @@ export function NovaVenda({
     });
   }
 
-  /**
-   * `receberDepois` existe para o F8: salvar e já abrir a cobrança, que é o
-   * fluxo §1.1. O F7 e o botão continuam salvando sem abrir nada (§1.2).
-   */
-  function salvar(receberDepois = false) {
+  function salvar() {
     if (!podeSalvar || forma === null) return;
     setErro(null);
     tentativa.current ??= crypto.randomUUID();
@@ -317,10 +277,7 @@ export function NovaVenda({
         id: r.pedido_id,
         numero: r.numero,
         total: r.total,
-        formaEsperadaId: forma.id,
-        tentativa: crypto.randomUUID(),
       });
-      setRecebendo(receberDepois);
       setItens([]);
       setFormaId("");
       setBandeiraId("");
@@ -342,8 +299,6 @@ export function NovaVenda({
       podeSalvar,
       temResultados: estado.tipo === "resultados" && estado.itens.length > 0,
       configuradorAberto: dados !== null,
-      vendaSalvaSemReceber: criado !== null && !recebendo,
-    recebimentoDaVendaAberto: recebendo,
   });
 
   /**
@@ -434,42 +389,8 @@ export function NovaVenda({
         case "venda:salvar":
           salvar();
           return;
-        case "venda:receber":
-          /*
-           * F8 — DESVIO DELIBERADO DO DIAGRAMA §1.1, registrado na Etapa 9.
-           *
-           * O diagrama abre o painel de recebimento ANTES de o pedido existir e
-           * cria tudo no `Ctrl+Enter`. Aqui o F8 salva primeiro, quando há
-           * carrinho, e só então abre o painel — então o painel sempre fala de
-           * um pedido que já tem número.
-           *
-           * A razão é a própria regra 2 do §1.1: "pedido criado e ainda não
-           * pago" é estado legítimo, e se o recebimento falhar nada se perde. O
-           * caminho inverso exigiria orquestrar `criar_pedido` +
-           * `registrar_pagamento` dentro do componente, criando no frontend uma
-           * sequência sobre dinheiro que hoje não existe em lugar nenhum.
-           */
-          if (criado !== null) {
-            setRecebendo(true);
-            return;
-          }
-          if (podeSalvar) salvar(true);
-          return;
-        case "venda:fechar-recebimento":
-          setRecebendo(false);
-          return;
         case "venda:fechar-configurador":
           limparBusca();
-          return;
-
-        case "recebimento:dividir":
-          comandos.current?.dividir();
-          return;
-        case "recebimento:exato":
-          comandos.current?.exato();
-          return;
-        case "recebimento:confirmar":
-          comandos.current?.confirmar();
           return;
       }
     }
@@ -495,7 +416,7 @@ export function NovaVenda({
   /** A faixa de atalhos do casco precisa saber que algo mudou por aqui. */
   useEffect(() => {
     aoMudar();
-  }, [aoMudar, itens.length, estado.tipo, recebendo, criado, podeSalvar, leitura]);
+  }, [aoMudar, itens.length, estado.tipo, criado, podeSalvar, leitura]);
 
   function mudarQuantidade(linha: string, delta: number) {
     setItens((lista) =>
@@ -679,61 +600,24 @@ export function NovaVenda({
               Pedido #{criado.numero} salvo · {formatBRL(criado.total)}
             </p>
 
-            {recebendo ? (
-              /*
-               * O MESMO painel da fila e da tela de pedido. O pedido já existe
-               * e tem número; daqui em diante este é um recebimento como
-               * qualquer outro — se falhar, o pedido continua lá, pendente.
-               */
-              <div className="mt-3 rounded-12 bg-surface p-3">
-                <Recebimento
-                  key={criado.id}
-                  aoRegistrarComandos={(c) => {
-                    comandos.current = c;
-                  }}
-                  pedidoId={criado.id}
-                  total={criado.total}
-                  pagamento={null}
-                  formas={formasDeRecebimento}
-                  caixaAberto={caixaAberto}
-                  tentativa={criado.tentativa}
-                  /*
-                   * Aqui não há adivinhação: a forma esperada foi escolhida
-                   * nesta mesma tela, segundos atrás. O painel abre nela.
-                   */
-                  formaInicialId={criado.formaEsperadaId}
-                  aoConcluir={() => {
-                    setRecebendo(false);
-                    setCriado(null);
-                    router.refresh();
-                  }}
-                />
-              </div>
-            ) : (
-              <div className="mt-2 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setRecebendo(true)}
-                  className="motion-interactive min-h-touch-cta cursor-pointer rounded-12 border-0 bg-cta px-4 text-[14.5px] font-semibold text-cta-fg"
-                >
-                  Receber agora
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCriado(null)}
-                  className="min-h-touch-cta cursor-pointer rounded-12 border-[1.5px] border-border-shalon bg-surface px-4 text-[14.5px] font-semibold text-ink"
-                >
-                  Deixar para receber depois
-                </button>
-              </div>
-            )}
-
-            {!recebendo ? (
-              <p className="m-0 mt-2 text-[12px] text-ink-2">
-                Deixando para depois, ele fica em <span className="font-semibold">Pedidos a
-                receber</span> até alguém cobrar.
-              </p>
-            ) : null}
+            <p className="m-0 mt-1 text-[12.5px] text-ink-2">
+              A venda foi enviada para Pedidos, onde o pagamento pode ser concluído.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link
+                href="/admin/pedidos"
+                className="motion-interactive inline-flex min-h-touch items-center rounded-11 border-0 bg-cta px-4 text-[13.5px] font-semibold text-cta-fg no-underline"
+              >
+                Ir para Pedidos
+              </Link>
+              <button
+                type="button"
+                onClick={() => setCriado(null)}
+                className="min-h-touch cursor-pointer rounded-11 border-[1.5px] border-border-shalon bg-surface px-4 text-[13.5px] font-semibold text-ink"
+              >
+                Iniciar outra venda
+              </button>
+            </div>
 
             {/*
              * COMANDA — Etapa 8, e só o que dá para reutilizar com segurança.
@@ -902,12 +786,12 @@ export function NovaVenda({
           onClick={() => salvar()}
           className="motion-interactive mt-3 flex min-h-[52px] w-full cursor-pointer items-center justify-center rounded-13 border-0 bg-cta text-[16px] font-semibold text-cta-fg transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:bg-tn disabled:text-muted disabled:opacity-100"
         >
-          {ocupado ? "Salvando…" : "Salvar venda sem receber"}
+          {ocupado ? "Salvando…" : "Enviar para Pedidos"}
         </button>
 
         <p className="m-0 mt-2 text-[12px] text-muted">
-          A venda entra como pedido de balcão para retirada e fica aguardando
-          recebimento. Receber pelo PDV é a Etapa 7.
+          A venda entra como pedido de balcão para retirada. O pagamento é
+          concluído na tela de Pedidos.
         </p>
 
         {!autorizado ? (

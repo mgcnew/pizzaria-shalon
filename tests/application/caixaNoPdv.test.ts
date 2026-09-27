@@ -34,7 +34,7 @@ vi.mock("@/infrastructure/supabase/server", () => ({
 
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 
-const { abrirCaixa, movimentarCaixa, fecharCaixa } = await import(
+const { abrirCaixa, movimentarCaixa, fecharCaixa, iniciarFechamentoCego } = await import(
   "@/application/caixa/acoes"
 );
 
@@ -125,6 +125,43 @@ describe("suprimento e sangria", () => {
 });
 
 describe("fechamento", () => {
+  it("a primeira confirmação manda apenas o contado, sem revelar nem aceitar o esperado", async () => {
+    resposta = {
+      data: { ok: true, esperado: 90, contado: 90, diferenca: 0 },
+      error: null,
+    };
+
+    const r = await iniciarFechamentoCego({ contado: 90 });
+
+    expect(enviado()).toEqual({ contado: 90, justificativa: null });
+    expect(r).toMatchObject({ ok: true, fechado: true, esperado: 90, diferenca: 0 });
+  });
+
+  it("com diferença mantém a contagem e só então devolve a conferência", async () => {
+    resposta = {
+      data: {
+        ok: false,
+        exige_justificativa: true,
+        esperado: 100,
+        contado: 90,
+        diferenca: -10,
+        erro: "Há diferença no caixa.",
+      },
+      error: null,
+    };
+
+    const r = await iniciarFechamentoCego({ contado: 90 });
+
+    expect(r).toEqual({ ok: true, fechado: false, esperado: 100, contado: 90, diferenca: -10 });
+  });
+
+  it("não consulta o servidor quando a contagem cega é inválida", async () => {
+    const r = await iniciarFechamentoCego({ contado: -1 });
+
+    expect(r.ok).toBe(false);
+    expect(chamadas).toHaveLength(0);
+  });
+
   it("manda o CONTADO, e nunca o esperado nem a diferenca", async () => {
     await fecharCaixa({ contado: 90 });
 

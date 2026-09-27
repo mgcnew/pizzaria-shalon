@@ -56,21 +56,10 @@ export type AcaoDoPdv =
   | "venda:linha-anterior"
   | "venda:linha-proxima"
   | "venda:salvar"
-  | "venda:receber"
-  | "venda:fechar-recebimento"
   | "venda:fechar-configurador"
-  // ---------------------------------------------------------------- fila
-  | "fila:anterior"
-  | "fila:proximo"
-  | "fila:receber"
-  | "fila:desselecionar"
-  // ---------------------------------------------------------------- abas
-  | "aba:receber"
-  | "aba:caixa"
-  // -------------------------------------------------------- recebimento
-  | "recebimento:dividir"
-  | "recebimento:exato"
-  | "recebimento:confirmar";
+  // --------------------------------------------------------------- caixa
+  | "caixa:reforco"
+  | "caixa:sangria";
 
 /** Só o que da tecla interessa. Desacopla a decisão do `KeyboardEvent`. */
 export type TeclaPressionada = {
@@ -104,20 +93,13 @@ export type ContextoDoPdv = {
    */
   cedendoAVez: boolean;
 
-  aba: "receber" | "caixa";
-
   temItens: boolean;
   /** A MESMA condição que desabilita o botão de salvar. */
   podeSalvar: boolean;
   temResultados: boolean;
   configuradorAberto: boolean;
-  /** Já existe pedido salvo nesta venda, aguardando cobrança. */
-  vendaSalvaSemReceber: boolean;
-  recebimentoDaVendaAberto: boolean;
-
-  temPendentes: boolean;
-  pedidoSelecionado: boolean;
-  recebimentoDoPedidoAberto: boolean;
+  /** Caixa aberto e sessão autorizada a fazer reforço/sangria. */
+  podeMovimentarCaixa: boolean;
 };
 
 /** `+` vem como "+" com shift e como "Add" em teclado numérico; `=` é a mesma tecla. */
@@ -169,28 +151,12 @@ export function decidirAtalho(
   //    deles, e é quem fecha o que está por cima.
   if (ctx.cedendoAVez) return null;
 
-  // 4. `Ctrl+Enter` — o único atalho de dois dedos, e de propósito: confirmar
-  //    dinheiro não pode ser um Enter distraído (§3).
-  //
-  //    Este é o único que age COM foco em campo, porque o operador acabou de
-  //    digitar o valor e confirma sem tirar a mão.
-  if (ctrlKey && key === "Enter" && !shiftKey) {
-    if (ctx.recebimentoDaVendaAberto || ctx.recebimentoDoPedidoAberto) {
-      return "recebimento:confirmar";
-    }
-    return null;
-  }
-
-  // 5. Qualquer outro `Ctrl+…` é do navegador: Ctrl+T, Ctrl+W, Ctrl+N, Ctrl+F…
+  // 4. Atalhos com Ctrl continuam pertencendo ao navegador.
   if (ctrlKey) return null;
 
-  // 6. `Escape` — fecha o mais interno primeiro, um por vez.
+  // 5. `Escape` — fecha o mais interno primeiro, um por vez.
   if (key === "Escape") {
-    if (ctx.recebimentoDaVendaAberto) return "venda:fechar-recebimento";
     if (ctx.configuradorAberto) return "venda:fechar-configurador";
-    if (ctx.recebimentoDoPedidoAberto || ctx.pedidoSelecionado) {
-      return "fila:desselecionar";
-    }
     if (ctx.leituraPreenchida) return "venda:limpar-leitura";
     return null;
   }
@@ -203,19 +169,13 @@ export function decidirAtalho(
     case "F3":
       return "venda:focar-leitura";
     case "F4":
-      return "aba:receber";
+      return ctx.podeMovimentarCaixa ? "caixa:reforco" : null;
     case "F9":
-      return "aba:caixa";
+      return ctx.podeMovimentarCaixa ? "caixa:sangria" : null;
     case "F7":
       // Mesma condição do botão. Sem itens ou sem forma escolhida, o atalho
       // não inventa um caminho que o clique não tem.
       return ctx.podeSalvar ? "venda:salvar" : null;
-    case "F8":
-      // §3: "venda com itens, OU pedido selecionado". A venda tem precedência
-      // porque é o que o operador está montando agora.
-      if (ctx.temItens || ctx.vendaSalvaSemReceber) return "venda:receber";
-      if (ctx.pedidoSelecionado) return "fila:receber";
-      return null;
   }
 
   // 8. `Enter` e `Tab` no campo de leitura.
@@ -235,8 +195,7 @@ export function decidirAtalho(
     if (key === "Tab") return ctx.leituraPreenchida ? "venda:resolver" : null;
   }
 
-  // 9. Setas. No campo de leitura navegam os RESULTADOS; fora dele, e com a aba
-  //    de recebimento à frente, navegam os pendentes.
+  // 9. Setas. No campo de leitura navegam os resultados; fora dele, o carrinho.
   if (key === "ArrowUp" || key === "ArrowDown") {
     const desce = key === "ArrowDown";
 
@@ -253,18 +212,13 @@ export function decidirAtalho(
     if (ctx.temResultados) {
       return desce ? "venda:resultado-proximo" : "venda:resultado-anterior";
     }
-    if (ctx.aba === "receber" && ctx.temPendentes) {
-      return desce ? "fila:proximo" : "fila:anterior";
-    }
     if (ctx.temItens) {
       return desce ? "venda:linha-proxima" : "venda:linha-anterior";
     }
     return null;
   }
 
-  // 10. `Enter` fora do campo: escolhe o resultado em destaque. Na fila e no
-  //     carrinho os itens são `<button>` de verdade — o Enter nativo já age, e
-  //     duplicar aqui dispararia duas vezes.
+  // 10. `Enter` fora do campo escolhe o resultado em destaque.
   if (key === "Enter" && !digitando && ctx.temResultados) {
     return "venda:escolher-resultado";
   }
@@ -273,11 +227,6 @@ export function decidirAtalho(
   //     pertencem a quem digita, e é isto que impede "1/2 calabresa" numa
   //     observação de mexer no pagamento.
   if (digitando) return null;
-
-  if (ctx.recebimentoDaVendaAberto || ctx.recebimentoDoPedidoAberto) {
-    if (key === "/") return "recebimento:dividir";
-    if (key === "*") return "recebimento:exato";
-  }
 
   if (ctx.temItens) {
     if (AUMENTA.includes(key)) return "venda:mais";
@@ -310,16 +259,12 @@ export function teclasAtivas(ctx: ContextoDoPdv): { tecla: string; rotulo: strin
 
   if (age("F2")) faixa.push({ tecla: "F2", rotulo: "nova venda" });
   if (age("F3")) faixa.push({ tecla: "F3", rotulo: "busca" });
-  if (age("F4")) faixa.push({ tecla: "F4", rotulo: "pendentes" });
+  if (age("F4")) faixa.push({ tecla: "F4", rotulo: "reforço" });
   if (age("F7")) faixa.push({ tecla: "F7", rotulo: "salvar" });
-  if (age("F8")) faixa.push({ tecla: "F8", rotulo: "receber" });
-  if (age("F9")) faixa.push({ tecla: "F9", rotulo: "caixa" });
-  if (age("/")) faixa.push({ tecla: "/", rotulo: "dividir" });
-  if (age("*")) faixa.push({ tecla: "*", rotulo: "valor exato" });
+  if (age("F9")) faixa.push({ tecla: "F9", rotulo: "sangria" });
   if (age("+")) faixa.push({ tecla: "+ −", rotulo: "quantidade" });
   if (age("Delete")) faixa.push({ tecla: "Del", rotulo: "remover" });
   if (age("ArrowDown")) faixa.push({ tecla: "↑ ↓", rotulo: "navegar" });
-  if (age("Enter", true)) faixa.push({ tecla: "Ctrl+Enter", rotulo: "confirmar" });
   if (age("Escape")) faixa.push({ tecla: "Esc", rotulo: "voltar" });
 
   return faixa;
