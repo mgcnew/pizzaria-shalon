@@ -45,9 +45,26 @@ export function Comanda({
   const [erro, setErro] = useState<string | null>(null);
   const [motivoFalha, setMotivoFalha] = useState("");
   const [pedindoFalha, setPedindoFalha] = useState(false);
+  const [viaLocalDaComanda, setViaLocalDaComanda] = useState(0);
   const [ocupado, iniciar] = useTransition();
 
-  const comandasEmitidas = impressoes.filter((i) => i.tipo === "comanda").length;
+  /**
+   * Quantas vias de comanda este pedido já tem.
+   *
+   * O `max` com a via local existe porque o rótulo do botão precisa mudar
+   * assim que a primeira via sai — e quem abre a comanda direto do PDV,
+   * logo depois de criar a venda, recebe `impressoes` vazio, porque o
+   * pedido não existia quando a página foi renderizada. Sem isto o botão
+   * continuaria dizendo "Emitir comanda" depois de emitir uma, convidando
+   * a segunda via a ser tratada como se fosse a primeira.
+   *
+   * A via NÃO é contada aqui: ela vem de `registrar_impressao`, que é a
+   * autoridade. Guardamos o número que o servidor devolveu, nada mais.
+   */
+  const comandasEmitidas = Math.max(
+    impressoes.filter((i) => i.tipo === "comanda").length,
+    viaLocalDaComanda,
+  );
 
   function emitir(tipo: "comanda" | "alteracao") {
     setErro(null);
@@ -60,6 +77,7 @@ export function Comanda({
         return;
       }
       setDocumento({ id: r.impressao_id, via: r.via, linhas: r.linhas });
+      if (tipo === "comanda") setViaLocalDaComanda(r.via);
     });
   }
 

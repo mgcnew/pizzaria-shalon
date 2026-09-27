@@ -13,6 +13,7 @@ import type { ItemCatalogoPdv } from "@/application/pdv/tipos";
 import type { ItemDoRascunho } from "@/application/pedidos/tipos";
 import type { FormaDePagamento } from "@/application/checkout/tipos";
 import { Recebimento, type FormaParaRecebimento } from "@/app/(admin)/admin/pedidos/_ui/Recebimento";
+import { Comanda } from "@/app/(admin)/admin/pedidos/_ui/Comanda";
 
 /**
  * Nova venda de balcão — Fase 12, Etapa 6.
@@ -451,6 +452,30 @@ export function NovaVenda({
                 receber</span> até alguém cobrar.
               </p>
             ) : null}
+
+            {/*
+             * COMANDA — Etapa 8, e só o que dá para reutilizar com segurança.
+             *
+             * É o mesmo `Comanda` da tela de pedido, chamando `emitirDocumento`
+             * → `registrar_impressao`. O documento aparece na TELA, e o
+             * transporte gravado é `tela`: não há protocolo de impressora aqui,
+             * e afirmar que saiu no papel seria mentira (A-08).
+             *
+             * `impressoes={[]}` é a verdade para um pedido recém-criado — ele
+             * não tem via nenhuma. A partir da segunda via o banco registra
+             * reimpressão com autor e horário, e o histórico completo fica na
+             * tela do pedido.
+             *
+             * Não existe "comprovante de pagamento": `order_prints_documento`
+             * aceita apenas `comanda` e `alteracao`. Criar um terceiro tipo
+             * seria migration, e não é o escopo desta etapa.
+             */}
+            <div className="mt-3 border-t border-tsb pt-3">
+              <p className="m-0 mb-2 text-[12px] font-semibold uppercase tracking-wide text-tsf opacity-80">
+                Comanda
+              </p>
+              <Comanda key={criado.id} pedidoId={criado.id} impressoes={[]} podeEmitirAlteracao={false} />
+            </div>
           </div>
         ) : null}
 

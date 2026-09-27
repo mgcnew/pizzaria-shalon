@@ -978,14 +978,87 @@ intenção **Pix na maquininha**, salva como **#33766** e recebida em seguida:
 **Fora desta etapa:** comprovante e reimpressão (Etapa 8), operações completas
 de caixa (8), atalhos globais (9).
 
-### Etapa 8 — Aba Caixa e caixa fechado
+### Etapa 8 — Aba Caixa e caixa fechado — CONCLUÍDA em 27/09/2026
 
-- `PainelDoCaixa.tsx` vira a aba *Caixa*;
-- faixa superior com o estado e o botão de abertura.
+- `PainelDoCaixa.tsx` vira a aba *Caixa* — **o mesmo componente** de
+  `/admin/caixa`, sem uma linha de diferença. Não existe um segundo sistema de
+  caixa: existe a mesma tela em dois lugares, e `/admin/caixa` continua sendo a
+  visão administrativa completa, com as sessões anteriores e os lançamentos;
+- faixa superior com o estado e o botão de abertura;
+- as duas abas do PDV ficam **montadas** (`hidden`, não desmontadas), para que
+  um recebimento pela metade ou uma contagem de fechamento já digitada não se
+  perca ao trocar de aba;
+- as nove ações de caixa passaram a invalidar também `/admin/pdv`: sem isso, o
+  operador faria uma sangria e o topo do PDV continuaria mostrando o valor
+  velho.
 
 **Como se testa:** com caixa fechado — busca, carrinho e F7 funcionam; F8 abre
 o painel e **o servidor** recusa com `sem_caixa`; o botão de abrir aparece só
 com `cash.open`. Regressão de todas as operações de caixa da Fase 7.
+
+**RBAC.** O Atendente abria e fechava o caixa mas não fazia suprimento nem
+sangria: `cash.adjust` estava fora do papel. Como ele é o operador normal do
+PDV, a permissão foi concedida a ele (`D-2026-09-26-82`, migration
+`20260926180000`). `cash.reopen` continua **fora** — reabrir o próprio
+fechamento é correção de histórico, não plantão. Nenhuma outra permissão mudou,
+e a assimetria `payments.register` × `finance.view` **permanece registrada como
+pendência, sem correção nesta etapa**.
+
+**Impressão.** O PDV reutiliza o `Comanda` já existente, exibido depois que a
+venda é criada, nos dois caminhos (receber agora e receber depois). O documento
+é renderizado na tela; o transporte físico continua sendo a pendência da POC, e
+nenhum protocolo de impressora foi introduzido. Primeira via exige
+`orders.accept`, da segunda em diante é reimpressão com `orders.reprint` — o
+Atendente tem as duas.
+
+> **Comprovante de pagamento NÃO entra na Etapa 8.** O banco aceita exatamente
+> dois tipos de documento — `comanda` e `alteracao` — e isso é uma constraint
+> (`order_prints_documento`), não uma omissão de tela. Um comprovante de
+> pagamento seria um TERCEIRO tipo, portanto migration, portanto nova decisão.
+> Nada foi criado, e o cenário G5 da suíte trava os dois tipos para que um
+> terceiro não apareça por descuido.
+
+**PI-F12-01 não é corrigida aqui.** Foi medida e continua latente:
+`movimentar_caixa` tem a guarda de saldo, `reverter_pagamento` não tem, e o
+`CHECK` do contado não-negativo existe. A Etapa 8 não a agravou — o PDV apenas
+expõe as mesmas autoridades, e o caminho que produz esperado negativo continua
+sendo o estorno de recebimento em dinheiro.
+
+**Validação operacional real no DEV, 27/09/2026.** Tudo pela interface do
+`/admin/pdv`, na sessão real `2740657f` que estava aberta desde 21/09 com
+esperado R$ 46,00:
+
+| Passo | Resultado medido |
+|---|---|
+| Suprimento R$ 10,00 | movimento `supply`/`in`, esperado 46,00 → **56,00**, auditoria `caixa_supply` com o motivo |
+| Sangria R$ 5,00 | movimento `withdrawal`/`out`, esperado 56,00 → **51,00**, auditoria `caixa_withdrawal`; o motivo é **obrigatório** na sangria e opcional no reforço |
+| Sangria R$ 500,00 | **recusada pelo servidor** — "O valor é maior que o dinheiro esperado em caixa."; zero movimento gravado, esperado e auditoria intactos |
+| Fechamento | esperado autoritativo R$ 51,00 lido antes; contado R$ 51,00; **diferença 0,00**; justificativa não exigida; sessão `closed` |
+| Caixa fechado | o PDV passou imediatamente a "Caixa fechado · abra na aba Caixa para poder receber"; busca e carrinho seguem disponíveis; o painel de recebimento exibe "Não há caixa aberto. Venda normal exige caixa aberto" |
+| Reabertura pelo Atendente | **recusada** — "Você não tem permissão para reabrir o caixa."; a sessão permaneceu `closed` com o contado intacto |
+| Nova abertura | sessão `7d08d092`, `opening_amount` **R$ 20,00**, esperado inicial R$ 20,00, **zero movimentos** — o fundo é coluna da sessão, confirmado fora do teste |
+| Comanda | pedido #33765, via 1, `requested`, transporte `tela`; o botão passou a "Reimprimir comanda (via 2)" **na hora** |
+
+O topo do PDV acompanhou cada operação sem recarregar — é o
+`revalidatePath("/admin/pdv")` das nove ações de caixa.
+
+A comanda ficou em `requested` de propósito: nada foi impresso fisicamente, e
+marcar "saiu no papel" seria afirmar o que não aconteceu.
+
+> **O DEV não tem usuário Atendente.** Existem dois `app_users`, ambos
+> Owner/Admin (um inativo). Por isso os passos de reabertura e de abertura não
+> puderam ser feitos *logado como* Atendente pela interface: as operações foram
+> executadas como Owner/Admin, e o que é específico do Atendente foi provado na
+> autoridade, com um papel que **copia as permissões reais e persistidas** do
+> papel do sistema, em transação revertida. Nenhum usuário foi criado e nenhuma
+> permissão foi concedida para o teste passar. Criar um acesso de Atendente no
+> DEV está registrado como **PI-F12-02** em
+> `06-PENDENCIAS-VALIDACAO-PRODUCAO.md`.
+
+Auditoria de 318 para **323**: exatamente as cinco operações (suprimento,
+sangria, fechamento, abertura, impressão). Os dois pagamentos reais das etapas
+anteriores atravessaram com fingerprint idêntico (`8f7bf19a…`), e os seis
+pedidos continuam os mesmos.
 
 ### Etapa 9 — Atalhos, foco e leitor
 

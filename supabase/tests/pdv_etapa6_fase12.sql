@@ -339,8 +339,12 @@ select pg_temp.checar('E5 criar_pedido nao le cash_sessions', 'false',
 select pg_temp.checar('E6 e nao escreve em payments', 'false',
   (select prosrc ilike '%into public.payments%' from pg_proc
     where proname='criar_pedido' and pronamespace='public'::regnamespace)::text);
+-- O filtro `status = 'open'` NAO e detalhe: o cenario afirma que a venda nao
+-- ABRIU caixa, e desde que a suite passou a FECHAR a sessao em vez de apagar,
+-- a sessao real do DEV continua existindo como linha fechada. Sem o filtro,
+-- este cenario passaria a contar historico e falharia falando de outra coisa.
 select pg_temp.checar('E7 nenhuma sessao de caixa foi aberta pela venda', '0',
-  (select count(*)::text from public.cash_sessions));
+  (select count(*)::text from public.cash_sessions where status = 'open'));
 
 reset role;
 

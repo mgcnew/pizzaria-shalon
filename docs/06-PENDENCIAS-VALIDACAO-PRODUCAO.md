@@ -908,6 +908,42 @@ caixa está completo em todos os caminhos.
 
 ---
 
+## PI-F12-02 — o DEV não tem acesso de Atendente
+
+**Aberta.** Observado em 27/09/2026, na validação operacional da Etapa 8 do PDV.
+
+**O que é.** `app_users` tem duas linhas, ambas com o papel **Owner/Admin** —
+`Marcelo` (ativa) e `Ana Shalon` (inativa). Não existe nenhum acesso com o papel
+**Atendente**, que é justamente o operador para quem o PDV foi desenhado.
+
+**Por que importa.** Tudo o que é específico do Atendente só pode ser provado na
+autoridade — chamando as RPCs com um papel que copia as permissões dele —, nunca
+*logado como* ele pela interface. Foi o que aconteceu na Etapa 8: as operações de
+caixa foram exercidas como Owner/Admin, e a recusa da reabertura foi medida com
+um papel espelho em transação revertida. A medição é válida, porque o espelho é
+uma cópia viva do RBAC persistido e não um papel inventado, mas ela não exercita
+a interface sob as permissões reais do balcão.
+
+**O que ainda não foi verificado com os olhos.** Como o `/admin/pdv` se comporta
+para quem **não** tem `cash.reopen`, `cash.bypass_session` nem `finance.view`:
+o aviso condicional da aba Caixa, o histórico "Recebido de fato" vazio pela
+assimetria `payments.register` × `finance.view`, e quais itens do menu lateral
+aparecem. Nada disso é regra de negócio — a autoridade já está provada —, mas é
+experiência de uso de quem vai passar o dia na tela.
+
+**Por que não foi resolvido junto.** Criar acesso é operação de produto: envolve
+e-mail real, senha e a decisão de qual pessoa da Shalon recebe qual papel.
+Sessões anteriores foram explícitas em não criar usuário para fazer teste passar.
+
+**O que precisa acontecer.** A proprietária criar o acesso do balcão pela tela
+de Equipe, com o papel Atendente, e a validação da experiência ser refeita
+logada como ele. Vale fazer junto da validação de produção.
+
+**Não bloqueia** a Fase 12. Bloqueia dizer que a experiência do Atendente no PDV
+foi vista funcionando.
+
+---
+
 ## PI-F10-01 — remoção no Storage com identidade real dos papéis
 
 **Aberta.** Status: implementado e testado por SQL; **não** exercitado pela

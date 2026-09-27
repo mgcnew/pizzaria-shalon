@@ -73,6 +73,7 @@ export async function abrirCaixa(entrada: unknown): Promise<Resultado> {
   if (error) return falha("abrirCaixa", error);
 
   revalidatePath(ROTA_CAIXA);
+  revalidatePath(ROTA_PDV);
   return resposta(data);
 }
 
@@ -102,6 +103,7 @@ export async function movimentarCaixa(entrada: unknown): Promise<Resultado> {
   if (error) return falha("movimentarCaixa", error);
 
   revalidatePath(ROTA_CAIXA);
+  revalidatePath(ROTA_PDV);
   return resposta(data);
 }
 
@@ -125,6 +127,7 @@ export async function fecharCaixa(entrada: unknown): Promise<Resultado> {
   if (error) return falha("fecharCaixa", error);
 
   revalidatePath(ROTA_CAIXA);
+  revalidatePath(ROTA_PDV);
   return resposta(data);
 }
 
@@ -146,6 +149,7 @@ export async function reabrirCaixa(entrada: unknown): Promise<Resultado> {
   if (error) return falha("reabrirCaixa", error);
 
   revalidatePath(ROTA_CAIXA);
+  revalidatePath(ROTA_PDV);
   return resposta(data);
 }
 
@@ -166,6 +170,7 @@ export async function estornarMovimento(entrada: unknown): Promise<Resultado> {
   if (error) return falha("estornarMovimento", error);
 
   revalidatePath(ROTA_CAIXA);
+  revalidatePath(ROTA_PDV);
   return resposta(data);
 }
 
@@ -304,6 +309,7 @@ export async function registrarLancamento(entrada: unknown): Promise<Resultado> 
 
   revalidatePath(ROTA_FIN);
   revalidatePath(ROTA_CAIXA);
+  revalidatePath(ROTA_PDV);
   return resposta(data);
 }
 
@@ -326,6 +332,7 @@ export async function estornarLancamento(entrada: unknown): Promise<Resultado> {
 
   revalidatePath(ROTA_FIN);
   revalidatePath(ROTA_CAIXA);
+  revalidatePath(ROTA_PDV);
   return resposta(data);
 }
 

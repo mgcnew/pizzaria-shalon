@@ -90,9 +90,18 @@ export function PainelPedidosAReceber({
 }) {
   const router = useRouter();
   const [selecionado, setSelecionado] = useState<string | null>(null);
-  const [pagamento, setPagamento] = useState<PagamentoDoPedido | null>(null);
+  /**
+   * Pagamento POR PEDIDO, e não uma variável só.
+   *
+   * Guardar num mapa faz o valor exibido ser DERIVADO da seleção, em vez de
+   * precisar ser limpo quando ela muda. Some com o `setState` síncrono dentro
+   * do efeito — que o lint reprova com razão: limpar estado no corpo do efeito
+   * gera um render a mais com o dado do pedido ANTERIOR ainda na tela.
+   */
+  const [pagamentos, setPagamentos] = useState<Record<string, PagamentoDoPedido | null>>({});
   const [carregando, iniciar] = useTransition();
   const atual = pedidos.find((p) => p.id === selecionado) ?? null;
+  const pagamento = selecionado === null ? null : (pagamentos[selecionado] ?? null);
 
   /**
    * O pagamento do pedido selecionado, buscado sob demanda.
@@ -103,15 +112,12 @@ export function PainelPedidosAReceber({
    * cliente, e trocar a URL arriscaria perdê-la.
    */
   useEffect(() => {
-    if (selecionado === null) {
-      setPagamento(null);
-      return;
-    }
+    if (selecionado === null) return;
     let vigente = true;
     iniciar(async () => {
       const p = await obterPagamentoDoPedidoNoPdv(selecionado);
       // A resposta de uma seleção anterior não pode sobrescrever a atual.
-      if (vigente) setPagamento(p);
+      if (vigente) setPagamentos((m) => ({ ...m, [selecionado]: p }));
     });
     return () => {
       vigente = false;
@@ -282,6 +288,9 @@ export function PainelPedidosAReceber({
                 aoConcluir={() => {
                   // A fila é dado de servidor: quem a atualiza é o servidor.
                   router.refresh();
+                  // E o pagamento em cache virou passado no mesmo instante:
+                  // mantê-lo mostraria "nada recebido" num pedido já pago.
+                  setPagamentos({});
                   setSelecionado(null);
                 }}
               />

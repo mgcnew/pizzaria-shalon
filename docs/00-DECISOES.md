@@ -2777,6 +2777,69 @@ permaneceu em 1.
 
 ---
 
+## D-2026-09-26-82 — `cash.adjust` para o Atendente; `cash.reopen` continua fora
+
+**Data:** 26/09/2026 · **Fase 12, Etapa 8**
+
+**Decisão.** O papel de sistema **Atendente** passa a ter `cash.adjust`, isto é,
+suprimento e sangria. **`cash.reopen` NÃO é concedida** e permanece exclusiva do
+Owner/Admin. Nenhuma outra permissão muda.
+
+**Motivo.** O Atendente é o operador normal do PDV e do caixa: ele abre a
+sessão, recebe os pedidos e fecha conferindo o dinheiro. Suprir a gaveta com
+troco e mandar sobra para o cofre são atos do plantão, não atos
+administrativos. Sem a permissão, o operador precisava chamar a proprietária
+para cada troca de dinheiro — e a saída prática de um caixa travado no meio do
+plantão é a pior possível: receber sem registrar.
+
+Reabertura de sessão fechada é outra coisa. É correção de histórico, e quem
+fecha não deve poder reabrir o próprio fechamento e refazer a contagem. A
+separação de funções é exatamente o que dá sentido à diferença.
+
+`03 §32` já previa "Sangria/suprimento | Dono/Admin ✓ | Atendente conforme
+permissão" — o seed da Fase 2 resolveu esse "conforme permissão" como *não por
+padrão*. Esta decisão troca o default, não a regra. Para `cash.reopen` o mesmo
+§32 marca **✗ explícito**, e continua valendo.
+
+**A permissão não afrouxa nenhuma guarda.** `movimentar_caixa` segue recusando
+sangria maior que o dinheiro esperado, e a recusa passou a ser de **saldo** em
+vez de permissão — medido nos cenários E10 e E11.
+
+**Onde foi formalizada.**
+`supabase/migrations/20260926180000_atendente_pode_suprir_e_sangrar.sql` ·
+`03-RLS-RBAC-SEGURANCA.md` §6, §16.2, §32 · `09-PDV-FRENTE-DE-CAIXA.md` Etapa 8.
+
+**O que deliberadamente NÃO foi tocado.** `finance.view` — a assimetria
+`payments.register` × `finance.view` continua registrada como pendência.
+`cash.bypass_session`, `finance.reverse` e `cash.reopen` seguem fora do
+Atendente. PI-F12-01 não foi corrigida.
+
+**Impacto no design.** O PDV deixa de ter operação de caixa que o próprio
+operador não pode executar. Os botões de reforço e sangria não mudaram de lugar
+— esconder botão nunca foi a proteção (CLAUDE.md §12) —, e o aviso condicional
+continua no código para qualquer papel personalizado sem `cash.adjust`.
+
+**Verificado no DEV.** Persistida em 27/09/2026, ledger 120 → **121**.
+`rbac_etapa8_fase12.sql`, **18/18**, com o diff conjunto-a-conjunto: o Atendente
+ganhou exatamente `cash.adjust` e não perdeu nenhuma; Owner/Admin com o conjunto
+idêntico ao de antes (`2bda8ccb3e0c1469a697d6c40467143b`, inalterado); a
+concessão auditada pelo trigger `role_permissions_audit`, resolvendo para
+`Atendente` ← `cash.adjust`. `pdv_etapa8_fase12.sql`, **71/71**; regressões das
+Etapas 3 a 7 verdes (153, 118, 69, 50, 83).
+
+A suíte de RBAC reconstrói o estado anterior revogando a permissão dentro da
+própria transação, porque depois da persistência o "antes" não existe mais para
+ser observado — e isso a torna também regressão: `R0` falha no dia em que alguém
+revogar `cash.adjust`, e `R5` falha se alguém conceder `cash.reopen`.
+
+**Exercida de verdade.** Na validação operacional de 27/09/2026 o suprimento e a
+sangria foram feitos pela interface do PDV na sessão real, e a tentativa de
+sangrar acima do saldo foi recusada **por saldo** — a permissão nova não
+afrouxou a guarda. A reabertura pelo Atendente continuou recusada por permissão.
+Detalhes em `09-PDV-FRENTE-DE-CAIXA.md`, Etapa 8.
+
+---
+
 
 
 ---

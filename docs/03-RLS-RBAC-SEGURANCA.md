@@ -238,7 +238,7 @@ Se um funcionário/usuário for desligado:
 | Pagamentos | nenhuma confirmação | registro operacional permitido | gestão | RLS + operação transacional |
 | Pix antecipado | instruções públicas quando habilitado | confirmar se autorizado | confirmar | permissão + auditoria |
 | Clientes | sem listagem | acesso operacional | gestão | RLS |
-| Caixa | nenhum | abrir/operar/fechar conforme permissão | gestão/reabertura | RLS + RPC |
+| Caixa | nenhum | abrir/suprir/sangrar/fechar conforme permissão | gestão/reabertura | RLS + RPC |
 | Financeiro | nenhum | mínimo autorizado | gestão | RLS forte |
 | Funcionários | nenhum | dados operacionais mínimos | gestão | RLS |
 | Salários/financeiro funcionário | nenhum | **negado por padrão** | autorizado | RLS separado |
@@ -688,7 +688,19 @@ Atendente pode receber permissões para:
 - registrar movimentos operacionais;
 - fechar.
 
-Reabrir/corrigir caixa fechado exige `cash.reopen` ou equivalente, normalmente Dono/Admin.
+**Suprimento e sangria** usam `cash.adjust`, **concedida ao Atendente por
+padrão desde 26/09/2026** (D-2026-09-26-82). O Atendente é o operador normal do
+PDV e do caixa: abre a sessão, recebe os pedidos e fecha conferindo o dinheiro.
+Trocar dinheiro e mandar sobra para o cofre são atos do plantão, não atos
+administrativos, e depender da proprietária presente para cada um deles apenas
+empurraria o operador para o caminho errado — receber sem registrar. A guarda de
+saldo continua no servidor: `movimentar_caixa` recusa sangria maior que o
+dinheiro esperado, e a permissão não afrouxa isso.
+
+Reabrir/corrigir caixa fechado exige `cash.reopen`, e ela permanece **fora do
+Atendente padrão**. Aqui a separação de funções é o ponto: quem fecha não deve
+poder reabrir o próprio fechamento e refazer a contagem. É correção de
+histórico, e é do Dono/Admin.
 
 **Registrar o pagamento recebido** é movimento operacional e usa
 `payments.register` — concedida ao Atendente por padrão, porque é ele quem
@@ -1290,7 +1302,7 @@ A matriz abaixo é referência inicial; será congelada antes da implementação
 | Fechar caixa | ✓ | ✓ |
 | Reabrir caixa fechado | ✓ | ✗ |
 | Registrar recebimento sem caixa aberto | ✓ | ✗ |
-| Sangria/suprimento | ✓ | conforme permissão |
+| Sangria/suprimento | ✓ | ✓ (desde D-2026-09-26-82) |
 | Registrar despesa | ✓ | conforme permissão |
 | Estornar financeiro | ✓ | ✗ por padrão |
 | Gerenciar catálogo | ✓ | conforme permissão |
