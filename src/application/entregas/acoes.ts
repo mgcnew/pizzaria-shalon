@@ -20,7 +20,9 @@ import type { Resultado } from "./tipos";
 
 const ROTA_ENTREGAS = "/admin/entregas";
 const ROTA_PEDIDOS = "/admin/pedidos";
-const ROTA_CAIXA = "/admin/caixa";
+// O acerto do motoboy move dinheiro físico para a gaveta, e o PDV é a tela do
+// caixa desde a consolidação PDV × Caixa.
+const ROTA_PDV = "/admin/pdv";
 
 const dinheiro = z
   .number()
@@ -142,7 +144,7 @@ export async function conciliarCorrida(entrada: unknown): Promise<Resultado> {
   if (error) return falha("conciliarCorrida", error);
 
   revalidatePath(ROTA_ENTREGAS);
-  revalidatePath(ROTA_CAIXA);
+  revalidatePath(ROTA_PDV);
   return resposta(data);
 }
 

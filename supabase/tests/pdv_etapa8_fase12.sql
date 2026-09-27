@@ -3,7 +3,8 @@
 --
 -- 09-PDV-FRENTE-DE-CAIXA.md §4.1, §4.3, §4.4 · RN-CAIXA-001..016 · PI-F12-01
 --
--- O PDV passou a mostrar o MESMO `PainelDoCaixa` de `/admin/caixa`, chamando
+-- O PDV passou a mostrar o MESMO `PainelDoCaixa` que existia em `/admin/caixa`
+-- (hoje em `@/ui/caixa/`, e o PDV é a única tela do caixa), chamando
 -- as mesmas autoridades. Esta suíte prova que elas continuam sendo as donas
 -- das regras. A única mudança estrutural da etapa é uma linha de RBAC
 -- (`cash.adjust` para o Atendente), provada em `rbac_etapa8_fase12.sql`.

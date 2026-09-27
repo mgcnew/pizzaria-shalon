@@ -31,7 +31,13 @@ import { getSupabaseRealtimeClient } from "@/infrastructure/supabase/client";
  *
  *  - `orders`   — pedido criado, pago, estornado, cancelado, status. Já estava
  *                 publicada desde a Fase 5 (migration 0053);
- *  - `cash_sessions`  — abertura e fechamento mudam o que a tela PERMITE;
+ *  - `cash_sessions`  — abertura e fechamento mudam o que a tela PERMITE, e
+ *                 desde a consolidação PDV × Caixa também alimentam o histórico
+ *                 de "Sessões anteriores". Ele NÃO tem assinatura própria: o
+ *                 refresh reexecuta a página, `listarSessoes()` roda de novo e a
+ *                 tabela chega pronta do servidor. Um fechamento em outro
+ *                 terminal aparece no histórico sozinho — coisa que a antiga
+ *                 `/admin/caixa`, sem Realtime nenhum, nunca fez;
  *  - `cash_movements` — suprimento, sangria, estorno de movimento e acerto de
  *                 motoboy mudam o esperado SEM passar por `orders`.
  *

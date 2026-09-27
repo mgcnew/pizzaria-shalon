@@ -66,7 +66,8 @@ export function PainelDoCaixa({
    * Enquanto uma operação de caixa está em voo, o assinante do Realtime do PDV
    * adia o refresh: trocar `estado.aberto` no meio de um fechamento faria o
    * ramo inteiro do caixa aberto ser substituído, levando junto o valor já
-   * contado. Fora do PDV não há provedor, e o hook não faz nada.
+   * contado. Sem provedor o hook não faz nada, o que mantém este painel
+   * montável fora do PDV sem efeito colateral.
    */
   useAvisarOperacaoEmVoo(enviando);
 

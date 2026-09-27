@@ -29,7 +29,7 @@ import type {
  *     ou não ter saído da gaveta, e essa é a caixa de seleção "paga pelo
  *     caixa";
  *   · SANGRIA é dinheiro saindo da gaveta para o cofre. Não é gasto, e por
- *     isso não mora aqui: mora em /admin/caixa (RN-CAIXA-008/010).
+ *     isso não mora aqui: mora na aba Caixa do PDV (RN-CAIXA-008/010).
  *
  * E nada desta tela é receita de venda. Venda vive em `payments`, ligada a
  * um pedido. Aqui é o outro livro (03 §17.1).

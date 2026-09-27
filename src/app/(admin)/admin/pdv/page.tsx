@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
-import { obterCaixa, obterResumoDeFechamento } from "@/application/caixa/consultas";
+import {
+  obterCaixa,
+  obterResumoDeFechamento,
+  listarSessoes,
+} from "@/application/caixa/consultas";
 import { listarPedidosAReceber } from "@/application/pdv/consultas";
 import { formasDePagamento } from "@/application/checkout/consultas";
 import { listarBandeiras, listarFormasPagamento } from "@/application/configuracoes/consultas";
@@ -34,22 +38,32 @@ export const metadata: Metadata = { title: "PDV" };
  * bloco F. Fechar o caixa não deixa de haver pedido para cobrar; esconder a
  * fila só faria a casa descobrir a dívida no fechamento seguinte.
  *
- * As duas consultas vão em paralelo porque nenhuma depende da outra — e a do
- * caixa falhando devolve "fechado" em vez de derrubar a página.
+ * As consultas vão em paralelo porque nenhuma depende da outra — e a do caixa
+ * falhando devolve "fechado" em vez de derrubar a página.
+ *
+ * O HISTÓRICO DE SESSÕES ENTROU AQUI na consolidação PDV × Caixa: era a única
+ * coisa que existia só em `/admin/caixa`, e sem ela a rota antiga não poderia
+ * sair sem perda. Agora o PDV é a interface operacional inteira.
  */
 export default async function Page() {
-  const [caixa, fila, formas, sessao, todasAsFormas, bandeiras] = await Promise.all([
+  const [caixa, fila, formas, sessao, todasAsFormas, bandeiras, sessoes] = await Promise.all([
     obterCaixa(),
     listarPedidosAReceber(),
     formasDePagamento("pickup"),
     obterSessaoInterna(),
     listarFormasPagamento(),
     listarBandeiras(),
+    listarSessoes(10),
   ]);
 
   // O resumo só existe com caixa aberto, e é ele que o painel de fechamento
   // usa para mostrar DE ONDE vem o esperado antes de alguém contar a gaveta.
   const resumo = caixa.aberto ? await obterResumoDeFechamento(caixa.sessao_id) : null;
+
+  // SÓ AS FECHADAS. A sessão aberta é o assunto do painel, com o esperado vivo;
+  // ela apareceria aqui com `esperado` nulo, duas linhas para a mesma sessão
+  // dizendo coisas diferentes.
+  const anteriores = sessoes.filter((s) => s.status === "closed");
 
   // As formas do RECEBIMENTO são outra lista, e é de propósito: a intenção é
   // filtrada por modalidade (regra do checkout), enquanto o recebido é o que a
@@ -113,6 +127,7 @@ export default async function Page() {
         resumo={resumo}
         tentativa={randomUUID()}
         podeMovimentar={podeNaUI(sessao, "cash.adjust")}
+        sessoesAnteriores={anteriores}
       />
     </div>
   );

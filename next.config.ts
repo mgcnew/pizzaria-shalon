@@ -13,6 +13,29 @@ const hostDoSupabase = (() => {
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  /**
+   * COMPATIBILIDADE DA ROTA ANTIGA DO CAIXA — consolidação PDV × Caixa.
+   *
+   * 09-PDV-FRENTE-DE-CAIXA.md §4.3 · CLAUDE.md §51
+   *
+   * `/admin/caixa` foi absorvida por `/admin/pdv`, que passou a ser a única
+   * interface operacional de PDV + Caixa. A rota antiga não renderiza mais
+   * nada: existe só para que um favorito ou uma aba esquecida num navegador de
+   * balcão não caiam em 404 no meio do expediente.
+   *
+   * `permanent: false` (307) DE PROPÓSITO. Um 308 fica gravado no navegador e
+   * sobrevive à remoção desta entrada — quem tivesse aberto a rota uma vez
+   * nunca mais conseguiria acessá-la, mesmo depois de a compatibilidade sair.
+   * 307 é revalidado a cada visita, então tirar esta entrada é decisão
+   * reversível, que é o que "temporária" exige.
+   *
+   * Redirects do `next.config` são avaliados ANTES do sistema de arquivos, e é
+   * por isso que `app/(admin)/admin/caixa/` pôde ser removido inteiro: não há
+   * página por baixo competindo com o redirect.
+   */
+  async redirects() {
+    return [{ source: "/admin/caixa", destination: "/admin/pdv", permanent: false }];
+  },
   // O diretório do Claude Design é referência visual, não código da aplicação.
   // Nunca deve ser compilado nem entrar no bundle (CLAUDE.md §7 e §8).
   outputFileTracingExcludes: {

@@ -109,7 +109,7 @@ export function CentralDeAtencao({ dados }: { dados: Dados | null }) {
 
           {caixaDeOntem ? (
             <Link
-              href="/admin/caixa"
+              href="/admin/pdv"
               className="motion-interactive flex items-center justify-between gap-3 rounded-12 border border-border-shalon bg-elev px-[14px] py-3 transition-colors hover:border-brand-orange"
             >
               <span className="flex flex-col gap-[3px]">

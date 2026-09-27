@@ -25,11 +25,17 @@ import type { Resultado } from "./tipos";
  * gerada aqui no servidor não serviria: cada reenvio geraria outra.
  */
 
-const ROTA_CAIXA = "/admin/caixa";
 const ROTA_FIN = "/admin/financeiro";
 const ROTA_PEDIDOS = "/admin/pedidos";
-// A frente de caixa lista os pedidos a receber. Receber ou estornar muda essa
-// lista, e é aqui — na autoridade — que a invalidação pertence.
+/**
+ * O PDV é a frente de caixa INTEIRA desde a consolidação PDV × Caixa: fila de
+ * recebimento, sessão, movimentos e histórico de fechamentos.
+ *
+ * Antes havia duas invalidações em cada ação, uma para `/admin/caixa` e outra
+ * para cá. `/admin/caixa` virou redirect e não renderiza nada, então invalidá-la
+ * seria pedir revalidação de uma rota sem página — silenciosamente inútil.
+ * Ficou uma só, e é aqui — na autoridade — que ela pertence.
+ */
 const ROTA_PDV = "/admin/pdv";
 
 const dinheiro = z
@@ -76,7 +82,6 @@ export async function abrirCaixa(entrada: unknown): Promise<Resultado> {
   });
   if (error) return falha("abrirCaixa", error);
 
-  revalidatePath(ROTA_CAIXA);
   revalidatePath(ROTA_PDV);
   return resposta(data);
 }
@@ -106,7 +111,6 @@ export async function movimentarCaixa(entrada: unknown): Promise<Resultado> {
   });
   if (error) return falha("movimentarCaixa", error);
 
-  revalidatePath(ROTA_CAIXA);
   revalidatePath(ROTA_PDV);
   return resposta(data);
 }
@@ -130,7 +134,6 @@ export async function fecharCaixa(entrada: unknown): Promise<Resultado> {
   });
   if (error) return falha("fecharCaixa", error);
 
-  revalidatePath(ROTA_CAIXA);
   revalidatePath(ROTA_PDV);
   return resposta(data);
 }
@@ -152,7 +155,6 @@ export async function reabrirCaixa(entrada: unknown): Promise<Resultado> {
   });
   if (error) return falha("reabrirCaixa", error);
 
-  revalidatePath(ROTA_CAIXA);
   revalidatePath(ROTA_PDV);
   return resposta(data);
 }
@@ -173,7 +175,6 @@ export async function estornarMovimento(entrada: unknown): Promise<Resultado> {
   });
   if (error) return falha("estornarMovimento", error);
 
-  revalidatePath(ROTA_CAIXA);
   revalidatePath(ROTA_PDV);
   return resposta(data);
 }
@@ -223,7 +224,6 @@ export async function registrarPagamento(entrada: unknown): Promise<Resultado> {
   });
   if (error) return falha("registrarPagamento", error);
 
-  revalidatePath(ROTA_CAIXA);
   revalidatePath(ROTA_PDV);
   revalidatePath(`${ROTA_PEDIDOS}/${v.data.pedido_id}`);
   return resposta(data);
@@ -245,7 +245,6 @@ export async function estornarPagamento(entrada: unknown): Promise<Resultado> {
   });
   if (error) return falha("estornarPagamento", error);
 
-  revalidatePath(ROTA_CAIXA);
   revalidatePath(ROTA_PDV);
   revalidatePath(`${ROTA_PEDIDOS}/${v.data.pedido_id}`);
   return resposta(data);
@@ -312,7 +311,6 @@ export async function registrarLancamento(entrada: unknown): Promise<Resultado> 
   if (error) return falha("registrarLancamento", error);
 
   revalidatePath(ROTA_FIN);
-  revalidatePath(ROTA_CAIXA);
   revalidatePath(ROTA_PDV);
   return resposta(data);
 }
@@ -335,7 +333,6 @@ export async function estornarLancamento(entrada: unknown): Promise<Resultado> {
   if (error) return falha("estornarLancamento", error);
 
   revalidatePath(ROTA_FIN);
-  revalidatePath(ROTA_CAIXA);
   revalidatePath(ROTA_PDV);
   return resposta(data);
 }

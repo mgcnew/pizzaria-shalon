@@ -2,9 +2,10 @@
 
 ## Sistema de Gestão e Pedidos — Pizzaria Shalon
 
-**Versão:** 1.1 — reconciliado em 26/09/2026 (Etapa 5: critério `reversed` e o
-vocabulário de origem × modalidade)
-**Status:** Etapas 1 a 4 implementadas e persistidas no DEV; Etapa 5 em curso
+**Versão:** 1.2 — reconciliado em 27/09/2026 (consolidação PDV × Caixa: o que a
+aba *Caixa* realmente contém, e o fim da rota `/admin/caixa`)
+**Status:** Etapas 1 a 10 implementadas e persistidas no DEV; PDV consolidado
+como única interface operacional de PDV + Caixa
 **Decisão de origem:** `D-2026-09-25-78`
 **Função:** fonte de verdade da implementação do PDV. Arquitetura, fluxos,
 telas, atalhos, regras financeiras, código de barras, concorrência,
@@ -575,9 +576,40 @@ operacional não gateia o recebimento**.
 
 ### 4.3 Aba *Caixa*
 
-Recebe o `PainelDoCaixa.tsx` atual praticamente como está: abertura, reforço,
-sangria, ajuste, fechamento, reabertura, lançamentos financeiros, categorias e
-histórico de sessões. **Nada é descartado.**
+Recebe o `PainelDoCaixa.tsx` **como está**, sem uma linha de diferença:
+abertura e fundo inicial, esperado na gaveta, reforço, sangria, fechamento com
+conferência linha a linha, diferença e justificativa obrigatória, recebimentos
+por forma, extrato de movimentos da sessão e estorno de movimento. Mais o
+**histórico de sessões anteriores**, que entrou na consolidação.
+
+**Reconciliação de 27/09/2026 — este parágrafo prometia mais do que existia.**
+A redação original listava também *reabertura, lançamentos financeiros e
+categorias*, e afirmava que nada seria descartado. Nada foi descartado, mas
+essas três nunca estiveram no `PainelDoCaixa`:
+
+| Prometido em §4.3 | Onde realmente está |
+|---|---|
+| Reabertura de caixa | **em nenhuma tela.** `reabrir_caixa` e a action `reabrirCaixa` existem, `cash.reopen` é do Owner, e não há botão em lugar nenhum. Pendência anterior à consolidação, deliberadamente **não** resolvida por ela |
+| Lançamentos financeiros | `/admin/financeiro` — *Entradas / Despesas* |
+| Categorias financeiras | `/admin/financeiro` |
+| Histórico de sessões | aba *Caixa* do PDV desde a consolidação (antes, só em `/admin/caixa`) |
+
+**A consolidação PDV × Caixa (27/09/2026).** `/admin/caixa` renderizava o mesmo
+`PainelDoCaixa` que a aba, com uma única coisa a mais: a tabela de sessões
+anteriores. Levantamento contra o código e o DEV confirmou que não havia
+funcionalidade, autoridade nem permissão exclusiva ali — mesmas RPCs, mesmas
+policies, mesmo `cash.view`, e a rota não era consultada por nenhuma regra. O
+histórico veio para a aba como `@/ui/caixa/SessoesAnteriores.tsx`, o painel
+mudou para `@/ui/caixa/PainelDoCaixa.tsx` (casa neutra, já que a rota que o
+hospedava saiu), a entrada *Caixa* saiu do menu e `/admin/caixa` virou
+**redirect 307** para `/admin/pdv` — compatibilidade temporária para favoritos
+e abas esquecidas, não uma segunda interface. 307 e não 308 de propósito: um
+permanente fica gravado no navegador e sobreviveria à remoção da entrada.
+
+Ganho colateral: o histórico passou a **atualizar em tempo real**. Ele pega
+carona na assinatura de `cash_sessions` da Etapa 10, sem assinatura própria — um
+fechamento em outro terminal aparece sozinho. A antiga `/admin/caixa` não tinha
+Realtime nenhum e só se atualizava recarregando.
 
 ### 4.4 Caixa fechado
 
@@ -1051,7 +1083,12 @@ de caixa (8), atalhos globais (9).
 - `PainelDoCaixa.tsx` vira a aba *Caixa* — **o mesmo componente** de
   `/admin/caixa`, sem uma linha de diferença. Não existe um segundo sistema de
   caixa: existe a mesma tela em dois lugares, e `/admin/caixa` continua sendo a
-  visão administrativa completa, com as sessões anteriores e os lançamentos;
+  visão administrativa, com as sessões anteriores;
+  > **Corrigido em 27/09/2026.** Esta linha dizia "com as sessões anteriores **e
+  > os lançamentos**". Lançamentos e categorias sempre estiveram em
+  > `/admin/financeiro`, nunca em `/admin/caixa` — a única exclusividade da rota
+  > era o histórico de sessões. A convivência das duas telas terminou na
+  > consolidação PDV × Caixa; ver §4.3;
 - faixa superior com o estado e o botão de abertura;
 - as duas abas do PDV ficam **montadas** (`hidden`, não desmontadas), para que
   um recebimento pela metade ou uma contagem de fechamento já digitada não se

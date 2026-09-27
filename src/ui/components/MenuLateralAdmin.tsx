@@ -11,7 +11,7 @@ const GRUPOS = [
     // QUAIS rotas pertencem ao grupo. Rota fora de todos os grupos simplesmente
     // não aparece na barra — foi o que aconteceu com o PDV quando ele entrou só
     // no MENU_ADMIN.
-    rotas: ["/admin", "/admin/pedidos", "/admin/pdv", "/admin/caixa", "/admin/entregas"],
+    rotas: ["/admin", "/admin/pedidos", "/admin/pdv", "/admin/entregas"],
   },
   {
     titulo: "Cardápio e clientes",
@@ -43,7 +43,7 @@ function IconeMenu({ href }: { href: string }) {
     );
   }
 
-  if (href === "/admin/caixa" || href === "/admin/financeiro") {
+  if (href === "/admin/financeiro") {
     return (
       <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className={classe}>
         <path d="M4 7.5h16v11H4v-11Zm2-3h12v3H6v-3Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />

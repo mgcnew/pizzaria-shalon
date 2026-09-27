@@ -1,10 +1,14 @@
 "use client";
 
-import Link from "next/link";
-import { PainelDoCaixa } from "@/app/(admin)/admin/caixa/_ui/PainelDoCaixa";
+import { PainelDoCaixa } from "@/ui/caixa/PainelDoCaixa";
+import { SessoesAnteriores } from "@/ui/caixa/SessoesAnteriores";
 import { PainelPedidosAReceber } from "./PainelPedidosAReceber";
 import type { FormaParaRecebimento } from "@/app/(admin)/admin/pedidos/_ui/Recebimento";
-import type { EstadoDoCaixa, ResumoDeFechamento } from "@/application/caixa/tipos";
+import type {
+  EstadoDoCaixa,
+  ResumoDeFechamento,
+  SessaoHistorica,
+} from "@/application/caixa/tipos";
 import type { PedidoAReceber } from "@/application/pdv/tipos";
 import type { AreaComTeclado } from "./PdvComTeclado";
 
@@ -18,10 +22,13 @@ import type { AreaComTeclado } from "./PdvComTeclado";
  * árvore e o carrinho poderia ir junto — e perder carrinho montado no balcão
  * é pior do que qualquer ganho de "aba compartilhável".
  *
- * O CAIXA AQUI É O MESMO `PainelDoCaixa` de `/admin/caixa`, sem uma linha de
- * diferença. Não existe um segundo sistema de caixa dentro do PDV: existe a
- * mesma tela, alcançável de onde o operador já está. `/admin/caixa` continua
- * inteira, como visão administrativa (§4.3).
+ * O CAIXA AQUI É O `PainelDoCaixa`, e agora é o ÚNICO lugar onde ele aparece.
+ *
+ * Na Etapa 8 esta aba mostrava o mesmo componente de `/admin/caixa`, e as duas
+ * telas conviviam. A consolidação encerrou a convivência: o painel mudou para
+ * `@/ui/caixa/`, o histórico de sessões — a única coisa que existia só na rota
+ * antiga — veio para cá, e `/admin/caixa` virou redirect. Continua não havendo
+ * um segundo sistema de caixa; agora também não há uma segunda tela (§4.3).
  */
 
 type Aba = "receber" | "caixa";
@@ -34,6 +41,7 @@ export function AreasDoPdv({
   resumo,
   tentativa,
   podeMovimentar,
+  sessoesAnteriores,
   aba,
   aoTrocarAba,
   registrar,
@@ -52,6 +60,11 @@ export function AreasDoPdv({
    * operador descobrir a recusa só depois de contar o dinheiro.
    */
   podeMovimentar: boolean;
+  /**
+   * Sessões já fechadas, mais recentes primeiro. Vazio esconde o cartão —
+   * quem filtra e ordena é o servidor.
+   */
+  sessoesAnteriores: SessaoHistorica[];
   /**
    * A ABA VEM DE FORA desde a Etapa 9.
    *
@@ -123,12 +136,13 @@ export function AreasDoPdv({
 
         <PainelDoCaixa estado={caixa} resumo={resumo} tentativa={tentativa} />
 
+        {/* O histórico fica DEPOIS do painel de propósito: o que o balcão
+            precisa primeiro é a sessão de agora. */}
+        <SessoesAnteriores sessoes={sessoesAnteriores} />
+
         <p className="m-0 text-[12.5px] text-muted">
-          Sessões anteriores, lançamentos financeiros e categorias ficam em{" "}
-          <Link href="/admin/caixa" className="text-ink underline">
-            Caixa
-          </Link>
-          . É a mesma sessão e as mesmas operações — esta é só a porta do balcão.
+          Entradas, despesas e categorias financeiras ficam em{" "}
+          <span className="font-semibold text-ink">Entradas / Despesas</span>.
         </p>
       </div>
     </section>

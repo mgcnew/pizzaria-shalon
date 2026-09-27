@@ -161,8 +161,9 @@ export async function lancarNoFuncionario(entrada: unknown): Promise<Resultado> 
 
   revalidatePath(ROTA_EQUIPE);
   revalidatePath("/admin/entregas");
-  // Adiantamento pela gaveta move dinheiro físico: o caixa precisa saber.
-  if (v.data.pelo_caixa) revalidatePath("/admin/caixa");
+  // Adiantamento pela gaveta move dinheiro físico: o caixa precisa saber, e o
+  // caixa é o PDV desde a consolidação PDV × Caixa.
+  if (v.data.pelo_caixa) revalidatePath("/admin/pdv");
   return resposta(data);
 }
 
@@ -184,7 +185,7 @@ export async function reverterLancamentoFuncionario(entrada: unknown): Promise<R
   if (error) return falha("reverterLancamentoFuncionario", error);
 
   revalidatePath(ROTA_EQUIPE);
-  revalidatePath("/admin/caixa");
+  revalidatePath("/admin/pdv");
   return resposta(data);
 }
 

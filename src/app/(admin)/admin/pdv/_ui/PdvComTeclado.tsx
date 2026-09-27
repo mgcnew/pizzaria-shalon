@@ -15,6 +15,7 @@ import type { FormaParaRecebimento } from "@/app/(admin)/admin/pedidos/_ui/Receb
 import type {
   EstadoDoCaixa,
   ResumoDeFechamento,
+  SessaoHistorica,
 } from "@/application/caixa/tipos";
 import type { FormaDePagamento } from "@/application/checkout/tipos";
 import type { PedidoAReceber } from "@/application/pdv/tipos";
@@ -78,6 +79,7 @@ export function PdvComTeclado({
   resumo,
   tentativa,
   podeMovimentar,
+  sessoesAnteriores,
 }: {
   formas: FormaDePagamento[];
   formasDeRecebimento: FormaParaRecebimento[];
@@ -88,6 +90,7 @@ export function PdvComTeclado({
   resumo: ResumoDeFechamento | null;
   tentativa: string;
   podeMovimentar: boolean;
+  sessoesAnteriores: SessaoHistorica[];
 }) {
   const [aba, setAba] = useState<"receber" | "caixa">("receber");
 
@@ -321,6 +324,7 @@ export function PdvComTeclado({
           resumo={resumo}
           tentativa={tentativa}
           podeMovimentar={podeMovimentar}
+          sessoesAnteriores={sessoesAnteriores}
           aba={aba}
           aoTrocarAba={(a) => {
             setAba(a);

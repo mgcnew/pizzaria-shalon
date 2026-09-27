@@ -12,8 +12,9 @@ export type ItemNav = { nome: string; href: string };
 export const MENU_ADMIN: readonly ItemNav[] = [
   { nome: "Dashboard", href: "/admin" },
   { nome: "Pedidos", href: "/admin/pedidos" },
+  // O PDV é a interface operacional de PDV + Caixa. A entrada "Caixa" existia
+  // apontando para uma segunda tela do mesmo caixa, removida na consolidação.
   { nome: "PDV", href: "/admin/pdv" },
-  { nome: "Caixa", href: "/admin/caixa" },
   { nome: "Entregas", href: "/admin/entregas" },
   { nome: "Produtos", href: "/admin/produtos" },
   { nome: "Clientes", href: "/admin/clientes" },

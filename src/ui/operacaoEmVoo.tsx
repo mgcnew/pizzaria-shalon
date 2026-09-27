@@ -23,9 +23,10 @@ import { createContext, useCallback, useContext, useEffect, useRef } from "react
  * inteira no banco (`for update` + recusa com `ja_pago`), e continuaria valendo
  * se este arquivo não existisse.
  *
- * SEM PROVEDOR, VIRA NADA. `Recebimento` e `PainelDoCaixa` também vivem em
- * `/admin/pedidos` e `/admin/caixa`, onde não há assinante para avisar. Lá o
- * contexto é nulo e o hook não faz coisa alguma.
+ * SEM PROVEDOR, VIRA NADA. `Recebimento` também vive em `/admin/pedidos`, onde
+ * não há assinante para avisar: lá o contexto é nulo e o hook não faz coisa
+ * alguma. `PainelDoCaixa` hoje só existe dentro do PDV — mas o no-op continua
+ * sendo a garantia de que montá-lo em outra tela não quebra nada.
  */
 
 type Registro = {
