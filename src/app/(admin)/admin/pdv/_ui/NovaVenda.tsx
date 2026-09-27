@@ -178,6 +178,29 @@ export function NovaVenda({
   }
 
   /**
+   * A RECUSA DA VENDA RÁPIDA, escrita uma vez só.
+   *
+   * A Nova Venda é balcão rápido: bebida e produto pronto. Pizza e fogazza
+   * entram pela área de Pedidos, que é onde um pedido de produção pertence.
+   *
+   * Quem informa `exige_producao` é o SERVIDOR — `resolver_codigo_de_barras` e
+   * `buscar_catalogo_pdv`, as duas RPCs que só o PDV usa, ambas DEFINER e sob
+   * `catalog.view`. A tela não deduz isso de `product_type` nem de lista
+   * própria (CLAUDE.md §12).
+   *
+   * E é orientação de fluxo, não fronteira: quem insistisse por outro caminho
+   * criaria um pedido de balcão com pizza — que é um pedido VÁLIDO, e que
+   * `requires_production` manda para a produção normalmente. A proteção que
+   * importa está na autoridade, não aqui.
+   */
+  function recusarPorProducao(nome: string) {
+    setEstado({
+      tipo: "aviso",
+      texto: `${nome} exige produção. Crie o pedido pela área de Pedidos.`,
+    });
+  }
+
+  /**
    * Enter no campo: primeiro tenta CÓDIGO, depois cai para a busca (§2.1).
    *
    * A ordem importa. Um código de barras é uma afirmação exata sobre qual item
@@ -208,6 +231,13 @@ export function NovaVenda({
               ? `${r.produto_nome} está inativo no cadastro e não pode ser vendido.`
               : `${r.produto_nome} está indisponível hoje.`,
           });
+          return;
+        }
+
+        // Exige preparo: informa e NÃO adiciona, pelo mesmo caminho de
+        // "inativo" e "indisponível" — item que existe mas não se vende aqui.
+        if (r.exige_producao) {
+          recusarPorProducao(r.produto_nome);
           return;
         }
 
@@ -368,6 +398,12 @@ export function NovaVenda({
           // Indisponível não entra pelo teclado, como não entra pelo clique:
           // quem decide disponibilidade é o banco, e a tela só relata.
           if (escolhido === undefined || !escolhido.ativo || !escolhido.disponivel) return;
+          // A MESMA recusa do clique: o atalho não abre um segundo caminho
+          // para dentro do carrinho.
+          if (escolhido.exige_producao) {
+            recusarPorProducao(escolhido.nome);
+            return;
+          }
           iniciar(async () => {
             await abrirConfigurador(escolhido.slug, null);
           });
@@ -553,7 +589,13 @@ export function NovaVenda({
                        o foco real para cá tiraria o campo de leitura de baixo
                        dos dedos, que é o oposto do que a Etapa 9 quer. */
                     data-emfoco={indice === resultadoEmFoco ? "sim" : undefined}
-                    onClick={() => iniciar(async () => { await abrirConfigurador(p.slug, null); })}
+                    onClick={() => {
+                      if (p.exige_producao) {
+                        recusarPorProducao(p.nome);
+                        return;
+                      }
+                      iniciar(async () => { await abrirConfigurador(p.slug, null); });
+                    }}
                     className={[
                       "flex w-full min-h-touch items-center justify-between gap-3 rounded-11 border-[1.5px] bg-transparent px-2 py-2 text-left",
                       indice === resultadoEmFoco

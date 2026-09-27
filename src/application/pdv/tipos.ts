@@ -58,6 +58,8 @@ export type ResolucaoDeCodigo =
       em_promocao: boolean;
       ativo: boolean;
       disponivel: boolean;
+      /** Exige preparo: a Nova Venda recusa e manda para a área de Pedidos. */
+      exige_producao: boolean;
     }
   | {
       ok: true;
@@ -75,6 +77,8 @@ export type ResolucaoDeCodigo =
       em_promocao: boolean;
       ativo: boolean;
       disponivel: boolean;
+      /** Exige preparo: a Nova Venda recusa e manda para a área de Pedidos. */
+      exige_producao: boolean;
     }
   | {
       ok: true;
@@ -89,6 +93,8 @@ export type ResolucaoDeCodigo =
       tipo: string;
       ativo: boolean;
       disponivel: boolean;
+      /** Exige preparo: a Nova Venda recusa e manda para a área de Pedidos. */
+      exige_producao: boolean;
       /** As variantes ATIVAS, para o configurador abrir sem outra ida ao servidor. */
       variantes: VarianteDoPdv[];
     };
@@ -112,6 +118,14 @@ export type ItemCatalogoPdv = {
   codigo_primario: string | null;
   /** Verdadeiro quando o termo casou um código exato deste item. */
   casou_codigo: boolean;
+  /**
+   * Exige preparo, e por isso NÃO se vende pela Nova Venda do PDV.
+   *
+   * Vem do servidor, de `buscar_catalogo_pdv` — não de uma lista que a tela
+   * montou. A Nova Venda é venda rápida de balcão; pizza e fogazza entram
+   * pela área de Pedidos, que é onde o pedido de produção pertence.
+   */
+  exige_producao: boolean;
 };
 
 /**

@@ -29,6 +29,12 @@ export type ProdutoAdmin = {
   disponivel_hoje: boolean;
   disponivel: boolean;
   destaque: boolean;
+  /**
+   * O produto precisa ser preparado? Default do banco é `true`, e é o
+   * conservador: produto existente continua indo para a produção até alguém
+   * marcá-lo como "Não" no cadastro.
+   */
+  exige_producao: boolean;
   preco_base: number | null;
   preco_min: number | null;
   preco_max: number | null;

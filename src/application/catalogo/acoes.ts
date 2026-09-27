@@ -247,6 +247,11 @@ export async function salvarProduto(
     short_description: String(form.get("descricao") ?? "").trim() || null,
     base_price: preco && preco.ok ? preco.valor : null,
     is_featured: form.get("destaque") === "on",
+    // O campo é enviado SEMPRE pelo formulário (rádio Sim/Não), e não como
+    // checkbox ausente: com checkbox, "não marcado" e "campo não enviado"
+    // chegariam iguais aqui, e um produto novo nasceria sem produção por
+    // omissão — o contrário do default conservador do banco.
+    requires_production: form.get("exige_producao") !== "nao",
     max_quantity_per_order: limite ? Number(limite) : null,
     max_addons: limiteAdicionais ? Number(limiteAdicionais) : null,
     sort_order: Number(form.get("ordem") ?? 0),

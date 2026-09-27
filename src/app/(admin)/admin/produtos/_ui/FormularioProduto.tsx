@@ -110,6 +110,45 @@ export function FormularioProduto({
 
       <Input label="Ordem no cardápio" name="ordem" type="number" min={0} defaultValue={produto?.ordem ?? 0} />
 
+      {/*
+        EXIGE PRODUÇÃO — Sim/Não, e não uma caixa de marcar.
+        Com checkbox, "desmarcado" e "campo não enviado" chegam iguais no
+        servidor, e um produto novo nasceria sem produção por omissão. Rádio
+        manda sempre um valor, então o default conservador do banco continua
+        valendo de ponta a ponta.
+      */}
+      <fieldset className="m-0 border-0 p-0">
+        <legend className="mb-[6px] p-0 text-[14px] font-semibold text-ink">
+          Exige produção
+        </legend>
+        <div className="flex flex-wrap gap-4">
+          {[
+            { valor: "sim", rotulo: "Sim" },
+            { valor: "nao", rotulo: "Não" },
+          ].map((op) => (
+            <label
+              key={op.valor}
+              className="flex min-h-touch cursor-pointer items-center gap-[8px] text-[14px] text-ink"
+            >
+              <input
+                type="radio"
+                name="exige_producao"
+                value={op.valor}
+                defaultChecked={
+                  op.valor === ((produto?.exige_producao ?? true) ? "sim" : "nao")
+                }
+                className="h-5 w-5 accent-[var(--brand-orange)]"
+              />
+              {op.rotulo}
+            </label>
+          ))}
+        </div>
+        <p className="m-0 mt-1 text-[12px] text-muted">
+          Pizza e fogazza: Sim. Bebida e produto pronto: Não. Um pedido só com
+          itens “Não” dispensa a fila de produção — e só ele.
+        </p>
+      </fieldset>
+
       <label className="flex min-h-touch items-center gap-[10px] text-[14px] font-semibold text-ink">
         <input
           type="checkbox"
