@@ -6,7 +6,7 @@ import {
 } from "@/application/caixa/consultas";
 import { listarPedidosAReceber } from "@/application/pdv/consultas";
 import { formasDePagamento } from "@/application/checkout/consultas";
-import { listarBandeiras, listarFormasPagamento } from "@/application/configuracoes/consultas";
+import { formasParaRecebimento } from "@/application/configuracoes/consultas";
 import { obterSessaoInterna, podeNaUI } from "@/application/auth/sessao";
 import { formatBRL } from "@/lib/format";
 import { randomUUID } from "node:crypto";
@@ -46,13 +46,12 @@ export const metadata: Metadata = { title: "PDV" };
  * sair sem perda. Agora o PDV é a interface operacional inteira.
  */
 export default async function Page() {
-  const [caixa, fila, formas, sessao, todasAsFormas, bandeiras, sessoes] = await Promise.all([
+  const [caixa, fila, formas, sessao, formasDeRecebimento, sessoes] = await Promise.all([
     obterCaixa(),
     listarPedidosAReceber(),
     formasDePagamento("pickup"),
     obterSessaoInterna(),
-    listarFormasPagamento(),
-    listarBandeiras(),
+    formasParaRecebimento(),
     listarSessoes(10),
   ]);
 
@@ -65,21 +64,6 @@ export default async function Page() {
   // dizendo coisas diferentes.
   const anteriores = sessoes.filter((s) => s.status === "closed");
 
-  // As formas do RECEBIMENTO são outra lista, e é de propósito: a intenção é
-  // filtrada por modalidade (regra do checkout), enquanto o recebido é o que a
-  // pizzaria aceita hoje, com as bandeiras cadastradas (RN-PGTO-001/006). É a
-  // mesma projeção da tela de pedido — não uma segunda leitura de formas.
-  const formasDeRecebimento = todasAsFormas
-    .filter((f) => f.is_active)
-    .map((f) => ({
-      id: f.id,
-      nome: f.name,
-      familia: f.payment_family,
-      exige_bandeira: f.requires_brand,
-      bandeiras: bandeiras
-        .filter((b) => b.payment_method_id === f.id && b.is_active)
-        .map((b) => ({ id: b.id, nome: b.name })),
-    }));
 
   return (
     <div className="flex flex-col gap-5">

@@ -70,6 +70,44 @@ export async function listarBandeiras(): Promise<BandeiraPagamento[]> {
   return (data ?? []) as BandeiraPagamento[];
 }
 
+/**
+ * As formas que o caixa pode RECEBER, com as bandeiras ativas de cada uma.
+ *
+ * 09-PDV-FRENTE-DE-CAIXA.md §1.3 · RN-PGTO-001/006
+ *
+ * Não confundir com `formasDePagamento(modalidade)` do checkout: aquela é a
+ * INTENÇÃO oferecida ao cliente, filtrada por entrega ou retirada. Esta é o
+ * que a pizzaria aceita de fato no balcão — e o recebido pode diferir do
+ * esperado (CLAUDE.md §24).
+ *
+ * Mora aqui porque três telas precisam da mesma projeção: o PDV, a tela do
+ * pedido e agora a gaveta de cobrança da fila. Montada inline em cada uma,
+ * bastaria alguém esquecer o filtro de `is_active` num lugar para o balcão
+ * oferecer uma forma desativada.
+ */
+export async function formasParaRecebimento(): Promise<
+  {
+    id: string;
+    nome: string;
+    familia: string;
+    exige_bandeira: boolean;
+    bandeiras: { id: string; nome: string }[];
+  }[]
+> {
+  const [formas, bandeiras] = await Promise.all([listarFormasPagamento(), listarBandeiras()]);
+  return formas
+    .filter((f) => f.is_active)
+    .map((f) => ({
+      id: f.id,
+      nome: f.name,
+      familia: f.payment_family,
+      exige_bandeira: f.requires_brand,
+      bandeiras: bandeiras
+        .filter((b) => b.payment_method_id === f.id && b.is_active)
+        .map((b) => ({ id: b.id, nome: b.name })),
+    }));
+}
+
 export async function obterChavePix(): Promise<ChavePix | null> {
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase.from("pix_key_settings").select("*").maybeSingle();

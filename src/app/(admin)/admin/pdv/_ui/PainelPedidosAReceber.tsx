@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Cartao, EmptyState, Aviso, ParDeDados } from "@/ui/patterns";
-import { formatBRL } from "@/lib/format";
+import { formatBRL, formatarEspera } from "@/lib/format";
+import { rotuloDeModalidade, rotuloDeOrigem } from "@/domain/pedidos/estados";
 import { obterPagamentoDoPedidoNoPdv } from "@/application/pdv/acoes";
 import {
   Recebimento,
@@ -62,27 +63,6 @@ const FINANCEIRO: Record<string, { rotulo: string; classe: string }> = {
   pending: { rotulo: "Pendente", classe: "border-border-shalon bg-surface text-ink-2" },
   reversed: { rotulo: "Estornado", classe: "border-twb bg-tw text-twf" },
 };
-
-/** `pickup`/`delivery` é como o cliente recebe. Não existe modalidade `balcao`. */
-const MODALIDADE: Record<string, string> = { pickup: "Retirada", delivery: "Entrega" };
-
-/** `counter` é de onde o pedido veio. Outro eixo, outra coluna (§0.3). */
-const ORIGEM: Record<string, string> = {
-  counter: "Balcão",
-  shalon_link: "Link Shalon",
-  whatsapp: "WhatsApp",
-  phone: "Telefone",
-  ifood: "iFood",
-  other: "Outro",
-};
-
-function idade(minutos: number): string {
-  if (minutos < 1) return "agora";
-  if (minutos < 60) return `${minutos} min`;
-  const h = Math.floor(minutos / 60);
-  const m = minutos % 60;
-  return m === 0 ? `${h} h` : `${h} h ${m} min`;
-}
 
 export function PainelPedidosAReceber({
   pedidos,
@@ -336,7 +316,7 @@ export function PainelPedidosAReceber({
                         {p.cliente_nome ?? "Sem nome"}
                       </span>
                       <span className="text-[12.5px] text-muted">
-                        {ORIGEM[p.origem] ?? p.origem} · {MODALIDADE[p.modalidade] ?? p.modalidade}
+                        {rotuloDeOrigem(p.origem)} · {rotuloDeModalidade(p.modalidade)}
                       </span>
                       <span className="ml-auto font-display text-[15px] font-bold text-ink">
                         {formatBRL(p.total)}
@@ -350,7 +330,7 @@ export function PainelPedidosAReceber({
                       <span className={`rounded-pill border-[1.5px] px-2 py-[2px] font-semibold ${fin.classe}`}>
                         {fin.rotulo}
                       </span>
-                      <span className="text-muted">{idade(p.idade_minutos)}</span>
+                      <span className="text-muted">{formatarEspera(p.idade_minutos)}</span>
                       {p.forma_esperada ? (
                         <span className="text-muted">
                           esperado: {p.forma_esperada}
@@ -376,10 +356,10 @@ export function PainelPedidosAReceber({
           <div className="flex flex-col gap-1">
             <ParDeDados chave="Cliente" valor={atual.cliente_nome ?? "—"} />
             <ParDeDados chave="WhatsApp" valor={atual.cliente_whatsapp ?? "—"} />
-            <ParDeDados chave="Origem" valor={ORIGEM[atual.origem] ?? atual.origem} />
+            <ParDeDados chave="Origem" valor={rotuloDeOrigem(atual.origem)} />
             <ParDeDados
               chave="Modalidade"
-              valor={MODALIDADE[atual.modalidade] ?? atual.modalidade}
+              valor={rotuloDeModalidade(atual.modalidade)}
             />
             <ParDeDados
               chave="Status operacional"
@@ -416,7 +396,7 @@ export function PainelPedidosAReceber({
             />
             <ParDeDados
               chave="Aberto em"
-              valor={`${new Date(atual.criado_em).toLocaleString("pt-BR")} · ${idade(atual.idade_minutos)}`}
+              valor={`${new Date(atual.criado_em).toLocaleString("pt-BR")} · ${formatarEspera(atual.idade_minutos)}`}
             />
           </div>
           {/* ------------------------------------------------ recebimento */}

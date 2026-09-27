@@ -24,3 +24,35 @@ export function maskWhatsApp(raw: string): string {
   if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
 }
+
+/**
+ * Há quanto tempo, em texto de balcão: `agora`, `38 min`, `2 h`, `2 h 15 min`.
+ *
+ * UMA função para as duas telas. O PDV já formatava assim numa `idade()`
+ * privada; a fila de Pedidos precisava do mesmo texto, e duas cópias da mesma
+ * regra de arredondamento divergem no dia em que alguém ajusta uma só.
+ *
+ * Minutos negativos viram `agora`: relógio de servidor e `created_at` podem
+ * discordar por frações de segundo, e "há -1 min" é pior do que impreciso.
+ */
+export function formatarEspera(minutos: number): string {
+  if (!Number.isFinite(minutos) || minutos < 1) return "agora";
+  const inteiros = Math.floor(minutos);
+  if (inteiros < 60) return `${inteiros} min`;
+  const h = Math.floor(inteiros / 60);
+  const m = inteiros % 60;
+  return m === 0 ? `${h} h` : `${h} h ${m} min`;
+}
+
+/**
+ * Minutos decorridos desde um instante ISO, ancorado num "agora" recebido.
+ *
+ * O `agora` VEM DE FORA de propósito: no servidor é o relógio do servidor; no
+ * navegador é um valor que avança sozinho. Nenhum dos dois é lido aqui dentro,
+ * e por isso a função é pura e testável — data fixa entra, número sai.
+ */
+export function minutosDesde(iso: string, agora: number): number {
+  const inicio = new Date(iso).getTime();
+  if (Number.isNaN(inicio)) return 0;
+  return (agora - inicio) / 60_000;
+}

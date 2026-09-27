@@ -178,3 +178,42 @@ export function exigeAtencao(estado: string): boolean {
     estado === "waiting_delivery_approval"
   );
 }
+
+/**
+ * De onde o pedido veio, e como o cliente o recebe — dois eixos, não um.
+ *
+ * 09-PDV-FRENTE-DE-CAIXA.md §0.3 · 02 §19
+ *
+ * `counter` é ORIGEM (entrou pelo balcão); `pickup` é MODALIDADE (o cliente
+ * retira). Um pedido de WhatsApp para retirada tem os dois preenchidos e
+ * diferentes, e é por isso que nunca se colapsa numa coluna só.
+ *
+ * Estes mapas eram privados do PDV e a fila de Pedidos mostrava os valores
+ * CRUS — a tabela dizia "counter · Retirada" para quem opera em português.
+ * Uma tradução só, nas duas telas, pelo mesmo motivo de `formatarEspera`.
+ *
+ * O `?? valor` no fim é deliberado: origem nova vinda do banco aparece como
+ * veio, em vez de virar vazio. Rótulo desconhecido é problema de tradução;
+ * célula em branco é perda de informação.
+ */
+const ORIGENS: Record<string, string> = {
+  counter: "Balcão",
+  shalon_link: "Link Shalon",
+  whatsapp: "WhatsApp",
+  phone: "Telefone",
+  ifood: "iFood",
+  other: "Outro",
+};
+
+const MODALIDADES: Record<string, string> = {
+  pickup: "Retirada",
+  delivery: "Entrega",
+};
+
+export function rotuloDeOrigem(origem: string): string {
+  return ORIGENS[origem] ?? origem;
+}
+
+export function rotuloDeModalidade(modalidade: string): string {
+  return MODALIDADES[modalidade] ?? modalidade;
+}
