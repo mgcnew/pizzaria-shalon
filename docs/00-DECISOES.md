@@ -2840,6 +2840,55 @@ Detalhes em `09-PDV-FRENTE-DE-CAIXA.md`, Etapa 8.
 
 ---
 
+## D-2026-09-27-83 — Realtime do caixa, e a autenticação do socket
+
+**Data:** 27/09/2026 · **Fase 12, Etapa 10**
+
+**Decisão.** `cash_sessions` e `cash_movements` entram na publicação
+`supabase_realtime`. `payments` **não** entra. E a autenticação do Realtime
+passa a usar a sessão do operador, corrigida em infraestrutura compartilhada.
+
+**Por que as duas tabelas de caixa.** Suprimento, sangria, estorno de movimento
+e o **acerto de motoboy** (`conciliar_corrida`) mudam o dinheiro real **sem
+tocar `orders`**. Sem elas publicadas, um PDV seguiria exibindo um esperado
+velho enquanto o outro já mudou a gaveta — dinheiro divergindo entre duas telas
+do mesmo balcão.
+
+**Por que `payments` fica fora.** Medido nos corpos: `registrar_pagamento` e
+`reverter_pagamento` escrevem em `orders` junto. Publicá-la acrescentaria evento
+e refresh sem cobrir lacuna nenhuma; as duas exceções que escrevem `payments`
+sem tocar `orders` são cobertas por `cash_movements`.
+
+**O defeito encontrado, anterior à etapa.** O socket do Realtime assinava como
+`anon`, porque o `subscribe()` do `useEffect` entrava no canal antes de o
+`supabase-js` aplicar o token da sessão. `anon` não tem policy de leitura nas
+três tabelas, então **nenhum evento era entregue desde a Fase 5** — com o canal
+reportando `SUBSCRIBED` e a tela dizendo "Atualizando em tempo real".
+
+**A falha era fechada:** faltou entrega, não sobrou acesso. Nenhum dado vazou.
+
+**Um achado de biblioteca, registrado.** Em `realtime-js` 2.116.0, sem um
+callback `accessToken` configurado, `setAuth(null)` **não limpa**: cai em
+`tokenToSend = this.accessTokenValue` e reenvia o token atual. O próprio
+`SIGNED_OUT` do `supabase-js` chama `setAuth()` e tem o mesmo destino. Por isso
+o handler devolve explicitamente a chave publicável.
+
+**Onde foi formalizada.**
+`supabase/migrations/20260927132532_realtime_do_caixa.sql` (duas linhas,
+só publicação) · `src/infrastructure/supabase/client.ts` ·
+`09-PDV-FRENTE-DE-CAIXA.md`, Etapa 10.
+
+**O que NÃO mudou.** RLS, policies, grants, RPCs, funções financeiras e RBAC
+ficaram idênticos — conferido por contagem antes e depois: 145 policies, 172
+funções, 58 permissões, 427 grants para `anon`.
+
+**Verificado no DEV.** `pdv_etapa10_fase12.sql` **48/48**. Assinatura
+`authenticated` com `sub` do operador; entrega comprovada entre dois terminais;
+e o bloco C provando que, com o evento **ausente**, a segunda cobrança continua
+impossível: `for update`, `ja_pago`, um pagamento, um movimento.
+
+---
+
 
 
 ---

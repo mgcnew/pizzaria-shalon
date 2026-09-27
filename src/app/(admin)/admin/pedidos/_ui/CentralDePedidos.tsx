@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getSupabaseBrowserClient } from "@/infrastructure/supabase/client";
+import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
+import { getSupabaseRealtimeClient } from "@/infrastructure/supabase/client";
 import { exigeAtencao } from "@/domain/pedidos/estados";
 import type { PedidoNaFila } from "@/application/pedidos/tipos";
 import { CartaoPedido } from "./CartaoPedido";
@@ -17,6 +18,13 @@ import { ativarSom, somAtivo, tocarAlerta } from "./AlertaSonoro";
  *
  * A assinatura NÃO é uma porta lateral: o Realtime respeita o RLS, e a
  * policy de `orders` exige `orders.view`. Quem não pode ver, não recebe.
+ *
+ * E é por isso que o cliente vem de `getSupabaseRealtimeClient()`, que espera
+ * a sessão antes de entrar no canal. Até a Etapa 10 esta tela entrava com a
+ * chave `anon`, registrava a assinatura como `anon` — que não tem policy de
+ * leitura em `orders` — e **nunca recebeu um evento**, anunciando "Atualizando
+ * em tempo real" o tempo todo. Correção compartilhada em `client.ts`; aqui não
+ * há mecanismo próprio nenhum.
  *
  * A mensagem do Realtime serve só como GATILHO: ela diz "mudou", e a página
  * recarrega os dados pelo caminho normal, com as mesmas projeções e o mesmo
@@ -40,37 +48,48 @@ export function CentralDePedidos({
   const conhecidos = useRef<Set<string>>(new Set(pedidos.map((p) => p.id)));
 
   useEffect(() => {
-    const supabase = getSupabaseBrowserClient();
+    let vivo = true;
+    let cliente: SupabaseClient | null = null;
+    let canal: RealtimeChannel | null = null;
 
-    const canal = supabase
-      .channel("central-pedidos")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "orders" },
-        (evento) => {
-          const linha = evento.new as { id?: string; status?: string } | null;
-          const novo =
-            evento.eventType === "INSERT" &&
-            typeof linha?.id === "string" &&
-            !conhecidos.current.has(linha.id);
+    void getSupabaseRealtimeClient().then((supabase) => {
+      if (!vivo) return;
+      cliente = supabase;
 
-          if (novo && linha?.id) {
-            conhecidos.current.add(linha.id);
-            if (typeof linha.status === "string" && exigeAtencao(linha.status)) {
-              tocarAlerta();
+      canal = supabase
+        .channel("central-pedidos")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "orders" },
+          (evento) => {
+            const linha = evento.new as { id?: string; status?: string } | null;
+            const novo =
+              evento.eventType === "INSERT" &&
+              typeof linha?.id === "string" &&
+              !conhecidos.current.has(linha.id);
+
+            if (novo && linha?.id) {
+              conhecidos.current.add(linha.id);
+              if (
+                typeof linha.status === "string" &&
+                exigeAtencao(linha.status)
+              ) {
+                tocarAlerta();
+              }
             }
-          }
-          // Recarrega pelo caminho normal. O evento avisa; quem informa é o
-          // servidor.
-          router.refresh();
-        },
-      )
-      .subscribe((estado) => {
-        setConectado(estado === "SUBSCRIBED");
-      });
+            // Recarrega pelo caminho normal. O evento avisa; quem informa é o
+            // servidor.
+            router.refresh();
+          },
+        )
+        .subscribe((estado) => {
+          if (vivo) setConectado(estado === "SUBSCRIBED");
+        });
+    });
 
     return () => {
-      void supabase.removeChannel(canal);
+      vivo = false;
+      if (canal !== null) void cliente?.removeChannel(canal);
     };
   }, [router]);
 

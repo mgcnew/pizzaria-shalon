@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ProvedorDeOperacaoEmVoo } from "@/ui/operacaoEmVoo";
+import { useRealtimeDoPdv } from "./useRealtimeDoPdv";
 import { NovaVenda } from "./NovaVenda";
 import { AreasDoPdv } from "./AreasDoPdv";
 import {
@@ -10,7 +12,10 @@ import {
   type ContextoDoPdv,
 } from "./atalhos";
 import type { FormaParaRecebimento } from "@/app/(admin)/admin/pedidos/_ui/Recebimento";
-import type { EstadoDoCaixa, ResumoDeFechamento } from "@/application/caixa/tipos";
+import type {
+  EstadoDoCaixa,
+  ResumoDeFechamento,
+} from "@/application/caixa/tipos";
 import type { FormaDePagamento } from "@/application/checkout/tipos";
 import type { PedidoAReceber } from "@/application/pdv/tipos";
 
@@ -85,6 +90,16 @@ export function PdvComTeclado({
   podeMovimentar: boolean;
 }) {
   const [aba, setAba] = useState<"receber" | "caixa">("receber");
+
+  /**
+   * O PDV acorda sozinho — Etapa 10.
+   *
+   * O hook assina `orders`, `cash_sessions` e `cash_movements`, agrupa a
+   * rajada e adia o refresh enquanto houver dinheiro em voo. Nada aqui decide
+   * nada: a autoridade continua no banco, e a tela só escolhe a hora de se
+   * atualizar.
+   */
+  const realtime = useRealtimeDoPdv();
   const venda = useRef<AreaComTeclado | null>(null);
   const fila = useRef<AreaComTeclado | null>(null);
 
@@ -110,7 +125,8 @@ export function PdvComTeclado({
     const ativo = document.activeElement;
     return {
       focoEmCampo: ehCampo(ativo),
-      focoNaLeitura: ativo instanceof HTMLElement && ativo.dataset.pdv === "leitura",
+      focoNaLeitura:
+        ativo instanceof HTMLElement && ativo.dataset.pdv === "leitura",
       leituraPreenchida: false,
       cedendoAVez: document.querySelector(SELETOR_POR_CIMA) !== null,
       aba,
@@ -133,33 +149,40 @@ export function PdvComTeclado({
   }, [lerContexto]);
 
   /** Roteia pelo prefixo. `recebimento:` vai para quem tem painel aberto. */
-  const executar = useCallback((acao: AcaoDoPdv, ctx: ContextoDoPdv) => {
-    if (acao === "aba:receber") {
-      setAba("receber");
-      avisar();
-      return;
-    }
-    if (acao === "aba:caixa") {
-      setAba("caixa");
-      avisar();
-      return;
-    }
-    if (acao.startsWith("venda:")) {
-      venda.current?.executar(acao);
-      return;
-    }
-    if (acao.startsWith("fila:")) {
-      // Receber um pendente só faz sentido com a aba dele à frente.
-      if (acao === "fila:receber" || acao === "fila:anterior" || acao === "fila:proximo") {
+  const executar = useCallback(
+    (acao: AcaoDoPdv, ctx: ContextoDoPdv) => {
+      if (acao === "aba:receber") {
         setAba("receber");
+        avisar();
+        return;
       }
-      fila.current?.executar(acao);
-      return;
-    }
-    // `recebimento:*` — a venda tem precedência, a mesma ordem do `Escape`.
-    if (ctx.recebimentoDaVendaAberto) venda.current?.executar(acao);
-    else fila.current?.executar(acao);
-  }, [avisar]);
+      if (acao === "aba:caixa") {
+        setAba("caixa");
+        avisar();
+        return;
+      }
+      if (acao.startsWith("venda:")) {
+        venda.current?.executar(acao);
+        return;
+      }
+      if (acao.startsWith("fila:")) {
+        // Receber um pendente só faz sentido com a aba dele à frente.
+        if (
+          acao === "fila:receber" ||
+          acao === "fila:anterior" ||
+          acao === "fila:proximo"
+        ) {
+          setAba("receber");
+        }
+        fila.current?.executar(acao);
+        return;
+      }
+      // `recebimento:*` — a venda tem precedência, a mesma ordem do `Escape`.
+      if (ctx.recebimentoDaVendaAberto) venda.current?.executar(acao);
+      else fila.current?.executar(acao);
+    },
+    [avisar],
+  );
 
   // ---------------------------------------------------------------- o listener
   useEffect(() => {
@@ -260,57 +283,81 @@ export function PdvComTeclado({
   }, [lerContexto]);
 
   return (
-    <div className="flex flex-col gap-5">
-      <NovaVenda
-        formas={formas}
-        formasDeRecebimento={formasDeRecebimento}
-        caixaAberto={caixa.aberto}
-        autorizado={autorizado}
-        registrar={registrarVenda}
-        aoMudar={avisar}
-      />
+    <ProvedorDeOperacaoEmVoo aoMudar={realtime.aoMudarOperacoes}>
+      <div className="flex flex-col gap-5">
+        {realtime.estado !== "ativo" ? (
+          /*
+           * A TELA DIZ A VERDADE quando não está atualizando sozinha (§37).
+           *
+           * Sem isto, um PDV desconectado pareceria idêntico a um atualizado — e
+           * o operador confiaria numa fila velha. O aviso NÃO bloqueia nada: com
+           * ou sem conexão, receber continua possível e continua seguro, porque
+           * quem recusa a segunda cobrança é `registrar_pagamento`.
+           */
+          <p
+            role="status"
+            className="m-0 rounded-12 border-[1.5px] border-twb bg-tw px-3 py-2 text-[12.5px] font-semibold text-twf"
+          >
+            {realtime.estado === "conectando"
+              ? "Conectando para atualizar em tempo real…"
+              : "Sem atualização automática no momento — a fila e o caixa podem estar alguns segundos atrasados."}
+          </p>
+        ) : null}
 
-      <AreasDoPdv
-        pedidos={pedidos}
-        falhouAFila={falhouAFila}
-        formas={formasDeRecebimento}
-        caixa={caixa}
-        resumo={resumo}
-        tentativa={tentativa}
-        podeMovimentar={podeMovimentar}
-        aba={aba}
-        aoTrocarAba={(a) => {
-          setAba(a);
-          avisar();
-        }}
-        registrar={registrarFila}
-        aoMudar={avisar}
-      />
+        <NovaVenda
+          formas={formas}
+          formasDeRecebimento={formasDeRecebimento}
+          caixaAberto={caixa.aberto}
+          autorizado={autorizado}
+          registrar={registrarVenda}
+          aoMudar={avisar}
+        />
 
-      {/*
-       * A FAIXA DE ATALHOS — §3, último parágrafo: "quem está aprendendo não
-       * precisa decorar".
-       *
-       * Some onde não há teclado. `pointer: coarse` é dedo; abaixo de `lg` é
-       * tablet e celular. Anunciar F7 para quem não tem F7 é ocupar altura da
-       * tela para não informar nada. Quem decide é o CSS, nunca uma medição de
-       * largura em JavaScript (CLAUDE.md §8).
-       */}
-      {faixa.length > 0 ? (
-        <div
-          aria-hidden="true"
-          className="hidden flex-wrap items-center gap-x-4 gap-y-1 rounded-12 border border-border-shalon bg-elev px-3 py-2 lg:flex [@media(pointer:coarse)]:!hidden"
-        >
-          {faixa.map((t) => (
-            <span key={t.tecla} className="flex items-center gap-1.5 text-[12px] text-ink-2">
-              <kbd className="rounded-8 border border-border-shalon bg-surface px-1.5 py-[1px] font-mono text-[11px] font-semibold text-ink">
-                {t.tecla}
-              </kbd>
-              {t.rotulo}
-            </span>
-          ))}
-        </div>
-      ) : null}
-    </div>
+        <AreasDoPdv
+          pedidos={pedidos}
+          falhouAFila={falhouAFila}
+          formas={formasDeRecebimento}
+          caixa={caixa}
+          resumo={resumo}
+          tentativa={tentativa}
+          podeMovimentar={podeMovimentar}
+          aba={aba}
+          aoTrocarAba={(a) => {
+            setAba(a);
+            avisar();
+          }}
+          registrar={registrarFila}
+          aoMudar={avisar}
+        />
+
+        {/*
+         * A FAIXA DE ATALHOS — §3, último parágrafo: "quem está aprendendo não
+         * precisa decorar".
+         *
+         * Some onde não há teclado. `pointer: coarse` é dedo; abaixo de `lg` é
+         * tablet e celular. Anunciar F7 para quem não tem F7 é ocupar altura da
+         * tela para não informar nada. Quem decide é o CSS, nunca uma medição de
+         * largura em JavaScript (CLAUDE.md §8).
+         */}
+        {faixa.length > 0 ? (
+          <div
+            aria-hidden="true"
+            className="hidden flex-wrap items-center gap-x-4 gap-y-1 rounded-12 border border-border-shalon bg-elev px-3 py-2 lg:flex [@media(pointer:coarse)]:!hidden"
+          >
+            {faixa.map((t) => (
+              <span
+                key={t.tecla}
+                className="flex items-center gap-1.5 text-[12px] text-ink-2"
+              >
+                <kbd className="rounded-8 border border-border-shalon bg-surface px-1.5 py-[1px] font-mono text-[11px] font-semibold text-ink">
+                  {t.tecla}
+                </kbd>
+                {t.rotulo}
+              </span>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </ProvedorDeOperacaoEmVoo>
   );
 }

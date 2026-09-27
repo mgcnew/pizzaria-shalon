@@ -185,6 +185,34 @@ describe("a resposta do servidor chega inteira", () => {
     // A mensagem é a do BANCO, não uma reescrita amigável que esconderia a
     // instrução de estornar.
     expect(r.ok === false && r.erro).toContain("estorne o anterior");
+    /*
+     * A BANDEIRA, e não só a mensagem — Etapa 10.
+     *
+     * Este cenário se chamava "chega com a bandeira que a tela usa" desde a
+     * Etapa 7 e afirmava apenas o texto. `resposta()` descartava `ja_pago`, e
+     * o teste passava assim mesmo: o nome dizia uma coisa, a asserção provava
+     * outra. É o que permitia a tela mostrar tarja vermelha de erro para
+     * "outro terminal já recebeu" (09 §9, item 4).
+     */
+    expect(r.ok === false && r.jaPago).toBe(true);
+  });
+
+  it("recusa comum NAO vem marcada como ja_pago", async () => {
+    // A bandeira precisa distinguir; se aparecesse em toda recusa, a tela
+    // mostraria "pago em outro terminal" para um erro de digitação.
+    resposta = {
+      data: { ok: false, erro: "Pedido cancelado ou rejeitado não recebe pagamento." },
+      error: null,
+    };
+
+    const r = await registrarPagamento({
+      pedido_id: PEDIDO,
+      linhas: [{ forma_id: DINHEIRO, valor: 30 }],
+      tentativa: CHAVE,
+    });
+
+    expect(r.ok).toBe(false);
+    expect(r.ok === false && r.jaPago).toBeUndefined();
   });
 
   it("caixa fechado chega como recusa, nao como sucesso silencioso", async () => {

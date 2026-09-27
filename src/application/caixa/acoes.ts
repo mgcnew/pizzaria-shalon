@@ -54,6 +54,10 @@ function resposta(data: unknown): Resultado {
     erro: String(r["erro"] ?? "Não foi possível concluir esta ação."),
     ...(r["exige_justificativa"] ? { exigeJustificativa: true } : {}),
     ...(r["sem_caixa"] ? { semCaixa: true } : {}),
+    // `ja_pago` vinha sendo descartado aqui, e com ele a diferença entre
+    // "deu problema" e "outro terminal já recebeu" — a mesma tarja vermelha
+    // para as duas coisas, no balcão, na frente do cliente (09 §9, item 4).
+    ...(r["ja_pago"] ? { jaPago: true } : {}),
   };
 }
 

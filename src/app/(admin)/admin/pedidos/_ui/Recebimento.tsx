@@ -5,6 +5,7 @@ import { Button, Input, Select, StatusBadge } from "@/ui/components";
 import { Aviso, ParDeDados } from "@/ui/patterns";
 import { formatBRL } from "@/lib/format";
 import { estornarPagamento, registrarPagamento } from "@/application/caixa/acoes";
+import { useAvisarOperacaoEmVoo } from "@/ui/operacaoEmVoo";
 import type { PagamentoDoPedido } from "@/application/caixa/tipos";
 
 /**
@@ -123,6 +124,13 @@ export function Recebimento({
   const [estornando, setEstornando] = useState(false);
   const [enviando, iniciar] = useTransition();
   const chave = useRef(tentativa);
+
+  /*
+   * Avisa o assinante do Realtime enquanto há dinheiro em voo, para que ele
+   * NÃO recarregue a tela no meio do envio (Etapa 10). Fora do PDV não há
+   * provedor, e o hook não faz nada.
+   */
+  useAvisarOperacaoEmVoo(enviando);
 
   const confirmados = (pagamento?.realizado ?? []).filter((p) => p.status === "confirmed");
   const jaPago = confirmados.length > 0;

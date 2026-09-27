@@ -121,8 +121,65 @@ export function PainelPedidosAReceber({
    */
   const [cobrando, setCobrando] = useState(false);
   const comandos = useRef<ComandosDoRecebimento | null>(null);
-  const atual = pedidos.find((p) => p.id === selecionado) ?? null;
+
+  /**
+   * A CHAVE DE IDEMPOTÊNCIA DA COBRANÇA ABERTA, gerada uma vez, no evento que
+   * abre o painel.
+   *
+   * Antes da Etapa 10 isto era `crypto.randomUUID()` escrito no JSX, refeito a
+   * cada render. `Recebimento` captura a prop com `useRef` no mount, então
+   * nada quebrava — mas a proteção morava no componente, não em quem entrega.
+   * Com Realtime recarregando a tela sozinha, render deixou de ser evento
+   * raro, e uma chave que roda no meio de um retry vira SEGUNDO pagamento
+   * (CLAUDE.md §34).
+   *
+   * Nasce ao abrir e morre ao fechar: cobrar o mesmo pedido de novo, depois de
+   * um estorno, precisa de chave nova — senão o servidor responderia "já
+   * existia" para um pagamento que nunca aconteceu.
+   */
+  const [tentativa, setTentativa] = useState<string | null>(null);
+
+  /** Abre a cobrança de um pedido. Único caminho, do clique e do F8. */
+  function abrirCobranca() {
+    setTentativa(crypto.randomUUID());
+    setCobrando(true);
+  }
+  /**
+   * A FOTO DO PEDIDO NO MOMENTO EM QUE FOI SELECIONADO.
+   *
+   * Sem ela, o Realtime produzia a pior versão do cenário de dois terminais:
+   * o colega recebe #123, a fila recarrega, `pedidos` não traz mais o #123,
+   * o cartão e o `Recebimento` DESMONTAM — e as linhas de divisão que o
+   * operador estava digitando somem sem uma palavra, na frente do cliente.
+   *
+   * É estado e não `ref` porque é gravada no MESMO evento que seleciona: ler
+   * ou escrever `ref` durante o render é o que faz um componente não atualizar
+   * quando devia, e o lint reprova com razão.
+   *
+   * Enquanto o pedido está na fila, quem manda é a versão do servidor — a foto
+   * só assume quando ele sai. Preservar o contexto não é deixar cobrar: saindo
+   * da fila, o painel vira o aviso do desfecho (Etapa 10, decisão 2).
+   */
+  const [foto, setFoto] = useState<PedidoAReceber | null>(null);
+  const naFila = pedidos.find((p) => p.id === selecionado) ?? null;
+  const atual = naFila ?? (selecionado === null ? null : foto);
+
+  /**
+   * O pedido selecionado saiu da fila enquanto estava aberto aqui.
+   *
+   * `pedidos_a_receber()` só devolve `pending`/`reversed` fora de
+   * cancelado/rejeitado. Sair da fila, portanto, significa uma de duas coisas:
+   * alguém recebeu, ou alguém cancelou/rejeitou. Estorno não tira da fila —
+   * devolve para ela.
+   */
+  const saiuDaFila = selecionado !== null && naFila === null && atual !== null;
   const pagamento = selecionado === null ? null : (pagamentos[selecionado] ?? null);
+  /**
+   * Houve pagamento confirmado? É o que distingue "pago em outro terminal" de
+   * "cancelado". Sai do MESMO `pagamento_do_pedido` que o painel já lia — sem
+   * consulta nova, sem autoridade nova.
+   */
+  const jaFoiPago = (pagamento?.realizado ?? []).some((p) => p.status === "confirmed");
 
   /**
    * O pagamento do pedido selecionado, buscado sob demanda.
@@ -143,7 +200,11 @@ export function PainelPedidosAReceber({
     return () => {
       vigente = false;
     };
-  }, [selecionado]);
+    // `saiuDaFila` entra nas dependências porque o desfecho precisa ser LIDO
+    // DE NOVO: o pagamento em cache é de quando o pedido foi selecionado, e é
+    // justamente ele que mudou noutro terminal. Sem reler, a tela diria
+    // "cancelado" para um pedido que acabou de ser pago.
+  }, [selecionado, saiuDaFila]);
 
   // ------------------------------------------------------- teclado (Etapa 9)
 
@@ -175,16 +236,27 @@ export function PainelPedidosAReceber({
           // Navegar NÃO abre a cobrança: só move o destaque. Abrir a cada seta
           // remontaria o painel e apagaria o que estivesse digitado nele.
           setSelecionado(escolhido.id);
+          setFoto(escolhido);
           setCobrando(false);
+          setTentativa(null);
           return;
         }
         case "fila:receber":
-          if (selecionado !== null) setCobrando(true);
+          // Só abre o que ainda está na fila: pedido já resolvido noutro
+          // terminal mostra o desfecho, e o F8 não fura isso.
+          if (selecionado !== null && pedidos.some((p) => p.id === selecionado)) {
+            abrirCobranca();
+          }
           return;
         case "fila:desselecionar":
           // Um nível por Escape: primeiro fecha a cobrança, depois solta o item.
-          if (cobrando) setCobrando(false);
-          else setSelecionado(null);
+          if (cobrando) {
+            setCobrando(false);
+            setTentativa(null);
+          } else {
+            setSelecionado(null);
+            setFoto(null);
+          }
           return;
 
         case "recebimento:dividir":
@@ -243,7 +315,9 @@ export function PainelPedidosAReceber({
                     type="button"
                     onClick={() => {
                       setSelecionado(ativo ? null : p.id);
+                      setFoto(ativo ? null : p);
                       setCobrando(false);
+                      setTentativa(null);
                     }}
                     aria-pressed={ativo}
                     className={[
@@ -347,10 +421,54 @@ export function PainelPedidosAReceber({
           </div>
           {/* ------------------------------------------------ recebimento */}
           <div className="mt-3 border-t border-border-shalon pt-3">
-            {!cobrando ? (
+            {saiuDaFila ? (
+              /*
+               * DESFECHO EM OUTRO TERMINAL — Etapa 10, decisão 2.
+               *
+               * O contexto fica: número, cliente, total, tudo onde estava. O
+               * que sai é a possibilidade de cobrar, e sai de vez — nada aqui
+               * é submetível. Não é o Realtime que protege o dinheiro: mesmo
+               * que este aviso nunca aparecesse, `registrar_pagamento` travaria
+               * o pedido e devolveria `ja_pago`. O aviso existe para o operador
+               * não descobrir isso apertando Ctrl+Enter na frente do cliente.
+               */
+              <div
+                role="status"
+                className={
+                  jaFoiPago
+                    ? "rounded-12 border-[1.5px] border-tsb bg-ts px-3 py-3"
+                    : "rounded-12 border-[1.5px] border-twb bg-tw px-3 py-3"
+                }
+              >
+                <p
+                  className={`m-0 text-[14.5px] font-semibold ${jaFoiPago ? "text-tsf" : "text-twf"}`}
+                >
+                  {jaFoiPago
+                    ? "Pago em outro terminal."
+                    : "Este pedido saiu da fila — foi cancelado ou rejeitado."}
+                </p>
+                <p className={`m-0 mt-1 text-[13px] ${jaFoiPago ? "text-tsf" : "text-twf"}`}>
+                  {jaFoiPago
+                    ? "Não há o que cobrar. O histórico completo está na tela do pedido."
+                    : "Pedido cancelado ou rejeitado não recebe pagamento."}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelecionado(null);
+                    setFoto(null);
+                    setCobrando(false);
+                    setTentativa(null);
+                  }}
+                  className="motion-interactive mt-3 min-h-touch cursor-pointer rounded-11 border-[1.5px] border-border-shalon bg-surface px-3 text-[13px] font-semibold text-ink"
+                >
+                  Voltar à fila
+                </button>
+              </div>
+            ) : !cobrando ? (
               <button
                 type="button"
-                onClick={() => setCobrando(true)}
+                onClick={abrirCobranca}
                 className="motion-interactive min-h-touch-cta cursor-pointer rounded-12 border-0 bg-cta px-4 text-[14.5px] font-semibold text-cta-fg"
               >
                 Receber este pedido
@@ -375,7 +493,7 @@ export function PainelPedidosAReceber({
                 pagamento={pagamento}
                 formas={formas}
                 caixaAberto={caixaAberto}
-                tentativa={crypto.randomUUID()}
+                tentativa={tentativa ?? ""}
                 /*
                  * A intenção do checkout vira o ponto de partida do painel
                  * (§1.3). Casamos pelo NOME porque é o que `pagamento_do_pedido`
@@ -392,7 +510,9 @@ export function PainelPedidosAReceber({
                   // mantê-lo mostraria "nada recebido" num pedido já pago.
                   setPagamentos({});
                   setSelecionado(null);
+                  setFoto(null);
                   setCobrando(false);
+                  setTentativa(null);
                 }}
               />
             )}

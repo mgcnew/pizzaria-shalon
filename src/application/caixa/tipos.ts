@@ -157,4 +157,19 @@ export type PagamentoDoPedido = {
 
 export type Resultado =
   | { ok: true; mensagem?: string }
-  | { ok: false; erro: string; exigeJustificativa?: boolean; semCaixa?: boolean };
+  | {
+      ok: false;
+      erro: string;
+      exigeJustificativa?: boolean;
+      semCaixa?: boolean;
+      /**
+       * O pedido JÁ TEM pagamento confirmado — outro terminal recebeu antes.
+       *
+       * Não é erro do operador, e a tela não deve tratar como tal: é a
+       * autoridade dizendo "isto já foi resolvido". `registrar_pagamento`
+       * devolve esta bandeira desde a Fase 7, junto do `for update` que torna
+       * a segunda cobrança impossível; o que faltava era a porta de aplicação
+       * deixá-la passar (09 §9, item 4).
+       */
+      jaPago?: boolean;
+    };

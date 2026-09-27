@@ -84,7 +84,25 @@ export function NovaVenda({
 
   const [erro, setErro] = useState<string | null>(null);
   const [criado, setCriado] = useState<
-    { id: string; numero: number; total: number; formaEsperadaId: string } | null
+    {
+      id: string;
+      numero: number;
+      total: number;
+      formaEsperadaId: string;
+      /**
+       * A chave de idempotência do recebimento desta venda, gerada UMA VEZ,
+       * junto do pedido.
+       *
+       * Antes da Etapa 10 ela era `crypto.randomUUID()` escrito no JSX, e
+       * portanto refeita a cada render. `Recebimento` a captura com `useRef`
+       * no mount, então nada quebrava — mas a proteção morava no componente,
+       * não em quem entrega. Com Realtime recarregando a tela sozinha, render
+       * deixou de ser evento raro: quem um dia lesse a prop direto faria cada
+       * refresh rotacionar a chave, e um retry de rede viraria SEGUNDO
+       * pagamento (CLAUDE.md §34).
+       */
+      tentativa: string;
+    } | null
   >(null);
   const [recebendo, setRecebendo] = useState(false);
   const [ocupado, iniciar] = useTransition();
@@ -270,6 +288,7 @@ export function NovaVenda({
         numero: r.numero,
         total: r.total,
         formaEsperadaId: forma.id,
+        tentativa: crypto.randomUUID(),
       });
       setRecebendo(receberDepois);
       setItens([]);
@@ -635,7 +654,7 @@ export function NovaVenda({
                   pagamento={null}
                   formas={formasDeRecebimento}
                   caixaAberto={caixaAberto}
-                  tentativa={crypto.randomUUID()}
+                  tentativa={criado.tentativa}
                   /*
                    * Aqui não há adivinhação: a forma esperada foi escolhida
                    * nesta mesma tela, segundos atrás. O painel abre nela.

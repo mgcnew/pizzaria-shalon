@@ -1,0 +1,50 @@
+-- =============================================================================
+-- REALTIME DO CAIXA — Fase 12 (PDV), Etapa 10
+--
+-- CLAUDE.md §40, §12 · 03-RLS-RBAC-SEGURANCA.md §16.2
+-- 09-PDV-FRENTE-DE-CAIXA.md §4.1, §4.3 · Decisão: D-2026-09-27-83
+--
+-- DUAS LINHAS. Nenhuma policy, nenhuma permissão, nenhuma função, nenhuma
+-- coluna. A publicação passa a carregar as duas tabelas que já mudam o
+-- dinheiro sem passar por `orders`.
+--
+-- POR QUE AS DUAS, E NÃO SÓ `cash_sessions`.
+--
+-- `cash_sessions` muda o que a tela PERMITE: caixa fechado recusa
+-- recebimento. `cash_movements` muda o que a tela AFIRMA: o esperado em
+-- caixa. Publicar só a primeira deixaria suprimento, sangria, estorno de
+-- movimento e — o caso que ninguém lembra — o **acerto de motoboy**
+-- (`conciliar_corrida`) alterarem o dinheiro real enquanto outro PDV segue
+-- exibindo um esperado velho. Dinheiro divergindo entre duas telas do mesmo
+-- balcão é pior do que não ter realtime nenhum.
+--
+-- POR QUE `payments` FICA DE FORA.
+--
+-- Medido nos corpos das funções: `registrar_pagamento` e `reverter_pagamento`
+-- escrevem em `orders` além de `payments`. Todo pagamento e todo estorno
+-- normais já produzem evento de `orders`, que já está publicada desde a
+-- migration 0053. Publicar `payments` acrescentaria eventos e refresh sem
+-- cobrir nenhuma lacuna — as duas exceções que escrevem `payments` sem tocar
+-- `orders` (`conciliar_corrida` e `transferir_entrega`) são justamente as que
+-- `cash_movements` cobre.
+--
+-- ISTO NÃO ABRE NADA (CLAUDE.md §12).
+--
+-- O Realtime entrega ao assinante o que a policy de `SELECT` lhe entregaria.
+-- As duas tabelas já exigem `cash.view`:
+--
+--   cash_sessions_select  → has_permission('cash.view')
+--   cash_movements_select → has_permission('cash.view')
+--
+-- Quem não pode ler o caixa continua sem receber evento do caixa. A publicação
+-- não é uma porta lateral; é o mesmo corredor, com a mesma fechadura.
+--
+-- E O QUE O ASSINANTE FAZ COM O EVENTO: nada além de recarregar. A carga útil
+-- traz a linha crua e NÃO é exibida — o PDV relê por `caixa_atual()` e
+-- `resumo_do_fechamento()`, sob RLS, como já fazia. Realtime avisa; quem
+-- informa é o servidor. E quem AUTORIZA continua sendo a autoridade: nenhuma
+-- decisão financeira passa a depender de um evento ter chegado.
+-- =============================================================================
+
+alter publication supabase_realtime add table public.cash_sessions;
+alter publication supabase_realtime add table public.cash_movements;

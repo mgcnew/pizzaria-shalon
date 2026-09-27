@@ -1177,16 +1177,72 @@ fila, `F8` abriu a cobrança do pedido selecionado e dois `Esc` fecharam painel 
 seleção, um nível por vez. Digitar `1/2*` no campo "recebido" **não** adicionou
 forma nenhuma. Com o menu do usuário aberto, `F9` não agiu e a faixa ficou vazia.
 
-### Etapa 10 — Concorrência, realtime e reconciliação
+### Etapa 10 — Concorrência, realtime e reconciliação — CONCLUÍDA em 27/09/2026
 
-- realtime de `orders` removendo o pedido da lista ao ser pago;
-- revisão da idempotência ponta a ponta;
-- regressão completa (Vitest e as suítes SQL versionadas);
-- reconciliação documental: `06` se algo ficar pendente de validação real.
+**A INVARIANTE DA ETAPA:** Realtime pode atualizar, avisar, bloquear
+visualmente e recarregar estado. **Nunca autoriza nem decide uma operação
+financeira.**
 
-**Como se testa:** duas sessões simultâneas recebendo o mesmo pedido — a
-segunda recebe `ja_pago` e a tela troca para a visão de pedido pago; clique
-duplo no confirmar gera **um** pagamento.
+#### O defeito que a etapa encontrou, e que é anterior a ela
+
+O Realtime deste projeto **nunca entregou um evento**. O socket assinava como
+`anon`: o `supabase-js` só aplica o token da sessão ao ouvir `INITIAL_SESSION`,
+e isso acontece **depois** que um `subscribe()` de `useEffect` já entrou no
+canal. Quem entra primeiro registra a assinatura com o token daquele instante.
+
+Medido em `realtime.subscription`:
+
+```
+entity=orders  claims_role=anon            sub=null        ← antes
+entity=orders  claims_role=authenticated   sub=28e96e91-…  ← depois
+```
+
+`anon` não tem policy de leitura em `orders` — deny by default — então toda
+linha era filtrada. E o canal reportava `SUBSCRIBED` o tempo todo. A Central de
+Pedidos anunciava "Atualizando em tempo real" desde a Fase 5 sem nunca receber
+nada: a cozinha via lista velha achando que via lista viva.
+
+**A falha era fechada.** `anon` não enxergava nada; faltou entrega, não sobrou
+acesso. Nenhum dado vazou.
+
+**Correção em `infrastructure/supabase/client.ts`**, compartilhada: a Central e
+o PDV usam a mesma. Nenhum cliente novo, nenhuma autenticação própria, nenhuma
+mudança de RLS, policy, grant ou permissão.
+
+#### O segundo defeito, introduzido e corrigido dentro da etapa
+
+Ligar `postgres_changes` a uma tabela **fora da publicação** faz o Realtime
+descartar a assinatura **inteira** do canal — silenciosamente, ainda reportando
+`SUBSCRIBED`. Com as três tabelas num canal só e duas ainda não publicadas,
+`realtime.subscription` ficou vazia e nem `orders` chegava. Corrigido com **um
+canal por tabela**: a falha deixa de ser total.
+
+#### O que foi feito
+
+- publicação: `cash_sessions` e `cash_movements` acrescentadas (`payments` fora
+  — todo pagamento e estorno normais já escrevem `orders`);
+- `ja_pago` propagado até a tela: `resposta()` em `caixa/acoes.ts` descartava a
+  bandeira, e a tarja vermelha de erro era a mesma de um erro de verdade;
+- pedido resolvido em outro terminal **não some**: o contexto fica, o painel é
+  substituído por "Pago em outro terminal" e nada é submetível;
+- agrupamento de ~500 ms, refresh adiado enquanto há dinheiro em voo e enquanto
+  a aba está escondida;
+- chaves de idempotência estabilizadas nos chamadores.
+
+**Provado no DEV com dois terminais:** assinatura `authenticated` com o `sub`
+correto; B cria pedido e A atualiza sem recarregar; Central restaurada pela
+mesma correção; suprimento (R$ 68 → 73), sangria (73 → 70), venda em dinheiro
+(70 → 86), fechamento e abertura, tudo refletindo em A; estorno devolvendo o
+pedido à fila como **"Aceito | Estornado"** — os dois eixos separados;
+cancelamento tirando da fila; renovação de token sem duplicar canal nem
+assinatura; sair da página removendo a assinatura (2 → 1).
+
+**Provado sem depender do Realtime:** `pdv_etapa10_fase12.sql`, bloco C — B
+recebe, A tenta sem saber, e a autoridade recusa com `ja_pago`: **um**
+pagamento, **um** movimento, R$ 30,00 uma vez só.
+
+**Como se testa:** `pdv_etapa10_fase12.sql` — 48 cenários; blocos A/B são a
+matriz de publicação, C/D são a autoridade com o evento ausente.
 
 ### O que fica fora de todas as etapas
 

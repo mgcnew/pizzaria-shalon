@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { Button, Input, StatusBadge, Textarea } from "@/ui/components";
 import { Aviso, Cartao, ParDeDados } from "@/ui/patterns";
+import { useAvisarOperacaoEmVoo } from "@/ui/operacaoEmVoo";
 import { formatBRL } from "@/lib/format";
 import {
   abrirCaixa,
@@ -60,6 +61,14 @@ export function PainelDoCaixa({
   const [erro, setErro] = useState<string | null>(null);
   const [painel, setPainel] = useState<Painel>("nenhum");
   const [enviando, iniciar] = useTransition();
+
+  /*
+   * Enquanto uma operação de caixa está em voo, o assinante do Realtime do PDV
+   * adia o refresh: trocar `estado.aberto` no meio de um fechamento faria o
+   * ramo inteiro do caixa aberto ser substituído, levando junto o valor já
+   * contado. Fora do PDV não há provedor, e o hook não faz nada.
+   */
+  useAvisarOperacaoEmVoo(enviando);
 
   // Uma chave por tentativa: sobrevive a clique duplo e a retry de rede, e
   // muda quando o formulário é reaberto (CLAUDE.md §34).
