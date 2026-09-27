@@ -73,15 +73,18 @@ export default async function Page({
         ))}
       </section>
 
-      <Cartao largura="cheio">
-        <FiltrosDeClientes {...(ausencia ? { ausencia } : {})} {...(cadencia ? { classificacao: cadencia } : {})} />
-      </Cartao>
-
       <Cartao
         titulo={`${lista.total_filtrado} ${lista.total_filtrado === 1 ? "cliente" : "clientes"}`}
         {...(lista.total_filtrado > lista.clientes.length
           ? { descricao: `Mostrando os ${lista.clientes.length} primeiros.` }
           : {})}
+        acao={
+          <FiltrosDeClientes
+            {...(ausencia ? { ausencia } : {})}
+            {...(cadencia ? { classificacao: cadencia } : {})}
+            {...(busca ? { busca } : {})}
+          />
+        }
         largura="cheio"
       >
         {lista.clientes.length === 0 ? (

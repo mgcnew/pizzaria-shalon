@@ -1,14 +1,9 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 
-/**
- * Filtros como links de URL.
- *
- * A AUSÊNCIA É FILTRO OBJETIVO, e é independente da cadência: "há mais de 30
- * dias sem comprar" é um fato, e vale para quem comprou uma, duas ou vinte
- * vezes. Ele não some por o cliente ter pouco histórico — some apenas quem
- * nunca comprou, que não está ausente, está sem histórico (RN-CRM-004).
- */
-
+/** Filtros de ausência e cadência dentro de um painel compacto. */
 const AUSENCIAS = [15, 30, 60, 90];
 
 const CADENCIAS: { valor: string; rotulo: string }[] = [
@@ -22,21 +17,24 @@ const CADENCIAS: { valor: string; rotulo: string }[] = [
 function Chip({
   ativo,
   href,
+  aoEscolher,
   children,
 }: {
   ativo: boolean;
   href: string;
+  aoEscolher: () => void;
   children: React.ReactNode;
 }) {
   return (
     <Link
       href={href}
       aria-current={ativo ? "true" : undefined}
+      onClick={aoEscolher}
       className={[
-        "motion-interactive inline-flex min-h-touch items-center rounded-11 px-[13px] text-[13px] font-semibold transition-colors",
+        "motion-interactive inline-flex min-h-touch items-center justify-center rounded-11 px-3 text-[13px] font-semibold transition-colors",
         ativo
           ? "bg-cta text-cta-fg"
-          : "border-[1.5px] border-border-shalon text-ink hover:border-brand-orange",
+          : "border-[1.5px] border-border-shalon bg-surface text-ink hover:border-brand-orange",
       ].join(" ")}
     >
       {children}
@@ -47,50 +45,140 @@ function Chip({
 export function FiltrosDeClientes({
   ausencia,
   classificacao,
+  busca,
 }: {
   ausencia?: string;
   classificacao?: string;
+  busca?: string;
 }) {
+  const [aberto, setAberto] = useState(false);
+  const raizRef = useRef<HTMLDivElement>(null);
+  const botaoRef = useRef<HTMLButtonElement>(null);
+  const quantidadeAtivos = Number(Boolean(ausencia)) + Number(Boolean(classificacao));
+
   const url = (params: Record<string, string | undefined>) => {
     const p = new URLSearchParams();
-    for (const [k, v] of Object.entries(params)) if (v) p.set(k, v);
-    const q = p.toString();
-    return q ? `/admin/clientes?${q}` : "/admin/clientes";
+    for (const [chave, valor] of Object.entries(params)) if (valor) p.set(chave, valor);
+    const query = p.toString();
+    return query ? `/admin/clientes?${query}` : "/admin/clientes";
   };
 
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[12.5px] font-semibold text-muted">Sem comprar há</span>
-        {AUSENCIAS.map((dias) => (
-          <Chip
-            key={dias}
-            ativo={ausencia === String(dias)}
-            href={url({
-              ausencia: ausencia === String(dias) ? undefined : String(dias),
-              cadencia: classificacao,
-            })}
-          >
-            {dias}+ dias
-          </Chip>
-        ))}
-      </div>
+  useEffect(() => {
+    if (!aberto) return;
 
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[12.5px] font-semibold text-muted">Cadência</span>
-        {CADENCIAS.map((c) => (
-          <Chip
-            key={c.valor}
-            ativo={classificacao === c.valor}
-            href={url({
-              ausencia,
-              cadencia: classificacao === c.valor ? undefined : c.valor,
-            })}
-          >
-            {c.rotulo}
-          </Chip>
-        ))}
-      </div>
+    function fecharAoClicarFora(evento: PointerEvent) {
+      if (!raizRef.current?.contains(evento.target as Node)) setAberto(false);
+    }
+
+    function fecharComEscape(evento: KeyboardEvent) {
+      if (evento.key !== "Escape") return;
+      setAberto(false);
+      botaoRef.current?.focus();
+    }
+
+    document.addEventListener("pointerdown", fecharAoClicarFora);
+    document.addEventListener("keydown", fecharComEscape);
+    return () => {
+      document.removeEventListener("pointerdown", fecharAoClicarFora);
+      document.removeEventListener("keydown", fecharComEscape);
+    };
+  }, [aberto]);
+
+  return (
+    <div ref={raizRef} className="relative">
+      <button
+        ref={botaoRef}
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={aberto}
+        aria-controls="painel-filtros-clientes"
+        onClick={() => setAberto((atual) => !atual)}
+        className={[
+          "motion-interactive inline-flex min-h-touch cursor-pointer items-center gap-2 rounded-11 border-[1.5px] px-3 text-[13px] font-semibold transition-colors",
+          aberto || quantidadeAtivos > 0
+            ? "border-brand-orange bg-elev text-ink"
+            : "border-border-shalon bg-surface text-ink hover:border-brand-orange",
+        ].join(" ")}
+      >
+        <svg aria-hidden="true" viewBox="0 0 24 24" className="h-[17px] w-[17px]" fill="none">
+          <path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+        </svg>
+        Filtros
+        {quantidadeAtivos > 0 ? (
+          <span className="flex h-5 min-w-5 items-center justify-center rounded-pill bg-brand-orange px-1 text-[11px] font-bold text-white">
+            {quantidadeAtivos}
+          </span>
+        ) : null}
+      </button>
+
+      {aberto ? (
+        <div
+          id="painel-filtros-clientes"
+          role="dialog"
+          aria-label="Filtros de clientes"
+          className="motion-popover-in absolute right-0 top-[calc(100%+8px)] z-50 w-[min(380px,calc(100vw-32px))] rounded-14 border border-border-shalon bg-surface p-4 shadow-[0_16px_42px_rgb(30_24_20/0.18)]"
+        >
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div>
+              <p className="m-0 text-[15px] font-bold text-ink">Filtrar clientes</p>
+              <p className="mb-0 mt-0.5 text-[12px] text-muted">Combine ausência e cadência.</p>
+            </div>
+            {quantidadeAtivos > 0 ? (
+              <Link
+                href={url({ busca })}
+                onClick={() => setAberto(false)}
+                className="inline-flex min-h-[34px] items-center text-[12px] font-semibold text-brand-red hover:text-danger"
+              >
+                Limpar
+              </Link>
+            ) : null}
+          </div>
+
+          <fieldset className="m-0 min-w-0 border-0 p-0">
+            <legend className="mb-2 text-[12px] font-bold uppercase tracking-[0.05em] text-muted">
+              Sem comprar há
+            </legend>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {AUSENCIAS.map((dias) => (
+                <Chip
+                  key={dias}
+                  ativo={ausencia === String(dias)}
+                  aoEscolher={() => setAberto(false)}
+                  href={url({
+                    busca,
+                    ausencia: ausencia === String(dias) ? undefined : String(dias),
+                    cadencia: classificacao,
+                  })}
+                >
+                  {dias}+ dias
+                </Chip>
+              ))}
+            </div>
+          </fieldset>
+
+          <fieldset className="m-0 mt-4 min-w-0 border-0 border-t border-border-shalon p-0 pt-4">
+            <legend className="px-2 text-[12px] font-bold uppercase tracking-[0.05em] text-muted">
+              Cadência
+            </legend>
+            <div className="grid grid-cols-2 gap-2">
+              {CADENCIAS.map((cadencia) => (
+                <Chip
+                  key={cadencia.valor}
+                  ativo={classificacao === cadencia.valor}
+                  aoEscolher={() => setAberto(false)}
+                  href={url({
+                    busca,
+                    ausencia,
+                    cadencia: classificacao === cadencia.valor ? undefined : cadencia.valor,
+                  })}
+                >
+                  {cadencia.rotulo}
+                </Chip>
+              ))}
+            </div>
+          </fieldset>
+        </div>
+      ) : null}
     </div>
   );
 }
