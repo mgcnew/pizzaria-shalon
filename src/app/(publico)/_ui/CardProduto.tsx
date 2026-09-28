@@ -1,10 +1,10 @@
 import Image from "next/image";
-import Link from "next/link";
 import { formatBRL } from "@/lib/format";
 import { Badge } from "@/ui/components";
 import { urlDaImagem } from "@/application/publico/consultas";
 import type { ProdutoPublico, ResultadoBusca } from "@/application/publico/tipos";
 import { BotaoFavorito } from "./BotaoFavorito";
+import { LinhaDeCompra } from "./LinhaDeCompra";
 
 /**
  * Card de produto — vertical, com foto grande no topo.
@@ -29,6 +29,11 @@ import { BotaoFavorito } from "./BotaoFavorito";
  * "+" compacto. O link continua abrindo a configuração — pizza tem tamanho,
  * sabores e borda — e o nome completo da ação permanece no rótulo acessível.
  *
+ * MUDOU EM 28/09/2026 (D-2026-09-28-85). O "+" subiu para a linha do preço,
+ * alinhado pela base (ver LinhaDeCompra). Produto sem nenhuma escolha — sem
+ * tamanhos, e que não é pizza nem combo — entra no carrinho com um toque; o
+ * resto continua abrindo a página do produto.
+ *
  * DIFERENÇAS QUE VÊM DO PROTÓTIPO e continuam valendo:
  *  · o selo "Popular" virou "Destaque". São conceitos diferentes: RN-DEST-001
  *    é escolha manual da Shalon, e "Mais pedidos" (RN-POP-001) depende de
@@ -39,6 +44,16 @@ import { BotaoFavorito } from "./BotaoFavorito";
  */
 
 type Item = ProdutoPublico | ResultadoBusca;
+
+/**
+ * Só uma INDICAÇÃO para escolher o botão: a decisão final é do servidor, em
+ * `adicionarRapido`. A busca não informa tamanhos, então ali o "+" sempre
+ * abre o produto.
+ */
+function semEscolhas(p: Item): boolean {
+  if (!("tem_tamanhos" in p)) return false;
+  return !p.tem_tamanhos && p.tipo !== "pizza" && p.tipo !== "combo";
+}
 
 /**
  * O preço em duas partes.
@@ -60,6 +75,33 @@ export async function CardProduto({ produto }: { produto: Item }) {
   const destaque = "destaque" in produto ? produto.destaque : false;
   const imagem = produto.imagem_path ? await urlDaImagem(produto.imagem_path) : null;
   const { prefixo, valor } = preco(produto);
+
+  const precoExibido = (
+    <>
+      {produto.em_promocao && produto.preco_de !== null ? (
+        <span className="block text-[11px] text-muted line-through sm:text-[12.5px]">
+          {formatBRL(produto.preco_de)}
+        </span>
+      ) : prefixo !== null ? (
+        <span className="block text-[10.5px] leading-none text-muted sm:text-[12px]">
+          {prefixo}
+        </span>
+      ) : null}
+      <span className="block whitespace-nowrap text-[13.5px] font-bold tabular-nums text-ink sm:text-[16px]">
+        {valor.startsWith("R$ ") ? (
+          // No celular o "R$" encolhe para o valor dividir a linha com o "+"
+          // (D-2026-09-28-85). O número só perde 1px em telas de 360px, onde
+          // o card fica estreito demais para os dois.
+          <>
+            <span className="mr-[2px] text-[10.5px] sm:mr-[4px] sm:text-[16px]">R$</span>
+            <span className="tracking-[-0.01em] @max-[88px]:text-[12.5px] sm:tracking-normal">{valor.slice(3)}</span>
+          </>
+        ) : (
+          valor
+        )}
+      </span>
+    </>
+  );
 
   return (
     <article
@@ -114,38 +156,25 @@ export async function CardProduto({ produto }: { produto: Item }) {
           </p>
         ) : null}
 
-        <div className="mt-auto pt-[6px]">
-          {produto.em_promocao && produto.preco_de !== null ? (
-            <span className="block text-[11px] text-muted line-through sm:text-[12.5px]">
-              {formatBRL(produto.preco_de)}
-            </span>
-          ) : prefixo !== null ? (
-            <span className="block text-[10.5px] leading-none text-muted sm:text-[12px]">
-              {prefixo}
-            </span>
-          ) : null}
-          <span className="block text-[13.5px] font-bold tabular-nums text-ink sm:text-[16px]">
-            {valor}
-          </span>
-        </div>
-
         {produto.disponivel ? (
-          <Link
-            href={`/produto/${produto.slug}`}
-            aria-label={`Escolher ${produto.nome}`}
-            title={`Escolher ${produto.nome}`}
-            className="mt-2 inline-flex min-h-touch min-w-touch self-end items-center justify-center rounded-pill bg-cta text-[26px] font-semibold leading-none text-cta-fg no-underline"
+          <LinhaDeCompra
+            slug={produto.slug}
+            nome={produto.nome}
+            modo={semEscolhas(produto) ? "rapido" : "configurar"}
           >
-            <span aria-hidden="true">+</span>
-          </Link>
+            {precoExibido}
+          </LinhaDeCompra>
         ) : (
-          // RN-BUSCA-002: continua visível, sem possibilidade de adição.
-          <span
-            aria-disabled="true"
-            className="mt-2 inline-flex min-h-touch cursor-not-allowed items-center justify-center rounded-11 border-[1.5px] border-border-shalon bg-elev px-2 text-[13px] font-semibold text-muted sm:px-[14px] sm:text-[14px]"
-          >
-            Indisponível
-          </span>
+          <>
+            <div className="mt-auto pt-[6px]">{precoExibido}</div>
+            {/* RN-BUSCA-002: continua visível, sem possibilidade de adição. */}
+            <span
+              aria-disabled="true"
+              className="mt-2 inline-flex min-h-touch cursor-not-allowed items-center justify-center rounded-11 border-[1.5px] border-border-shalon bg-elev px-2 text-[13px] font-semibold text-muted sm:px-[14px] sm:text-[14px]"
+            >
+              Indisponível
+            </span>
+          </>
         )}
       </div>
     </article>

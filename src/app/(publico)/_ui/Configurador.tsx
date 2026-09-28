@@ -2,6 +2,7 @@
 
 import { NucleoConfigurador } from "@/ui/configurador/NucleoConfigurador";
 import type { DadosDoConfigurador } from "@/ui/configurador/tipos";
+import { anunciarAdicionado } from "@/ui/publico/avisoAdicionado";
 import { useLoja } from "@/ui/publico/useLoja";
 
 export type { DadosPorTamanho } from "@/ui/configurador/tipos";
@@ -17,6 +18,10 @@ export type { DadosPorTamanho } from "@/ui/configurador/tipos";
  * O que sobra aqui é o que é do público, e só isso: adicionar ao carrinho
  * local e avisar quando a loja está fechada. Nenhum preço é calculado nesta
  * camada — o valor vem do servidor, dentro do núcleo.
+ *
+ * Desde D-2026-09-28-85 a confirmação da adição é o PainelAdicionado do
+ * shell, com "Adicionar mais" e "Ver carrinho"; a frase curta do
+ * núcleo fica desligada aqui para não dizer a mesma coisa duas vezes.
  */
 export function Configurador({
   dados,
@@ -32,7 +37,7 @@ export function Configurador({
       dados={dados}
       ancoragem="fixa"
       rotuloAcao="Adicionar"
-      mensagemSucesso="Adicionado ao carrinho."
+      mensagemSucesso={null}
       aviso={
         lojaAberta ? null : (
           <p className="m-0 text-[12.5px] text-muted">
@@ -40,7 +45,7 @@ export function Configurador({
           </p>
         )
       }
-      aoConfirmar={(item) =>
+      aoConfirmar={(item) => {
         adicionar({
           produtoId: item.produtoId,
           produtoSlug: item.produtoSlug,
@@ -55,8 +60,9 @@ export function Configurador({
           precoUnitario: item.montado.preco_unitario,
           rotulos: item.montado.rotulos,
           limite: item.montado.limite,
-        })
-      }
+        });
+        anunciarAdicionado(item.montado.nome, "produto");
+      }}
     />
   );
 }

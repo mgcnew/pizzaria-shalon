@@ -46,7 +46,8 @@ export function NucleoConfigurador({
   ancoragem?: "fixa" | "embutida";
   aviso?: ReactNode;
   rotuloAcao?: string;
-  mensagemSucesso?: string;
+  /** `null` quando quem envolve confirma a adição de outro jeito (o painel público). */
+  mensagemSucesso?: string | null;
   /**
    * Tamanho já decidido por quem abriu — hoje, o bipe do PDV que resolveu para
    * uma VARIANTE (09 §2.1). Não é atalho de conveniência: o código de barras
@@ -193,7 +194,7 @@ export function NucleoConfigurador({
           {erro}
         </p>
       ) : null}
-      {confirmado && !erro ? (
+      {confirmado && !erro && mensagemSucesso !== null ? (
         <p role="status" className="m-0 text-[13px] font-semibold text-tgf">
           {mensagemSucesso}
         </p>

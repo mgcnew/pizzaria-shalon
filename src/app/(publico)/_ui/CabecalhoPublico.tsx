@@ -6,6 +6,7 @@ import {
   listarHorariosPublicos,
   obterLojaPublica,
 } from "@/application/publico/consultas";
+import { IconeCarrinho } from "./IconeCarrinho";
 import { MenuPublico } from "./MenuPublico";
 
 /**
@@ -16,7 +17,9 @@ import { MenuPublico } from "./MenuPublico";
  * O estado "Aberto agora" deixou de ser placeholder: vem de `loja_aberta()`,
  * que considera horário semanal E fechamento temporário (RN-LOJA-001/002).
  *
- * O botão de menu é acréscimo exigido por 79.8 — ver MenuPublico.
+ * O botão de menu é acréscimo exigido por 79.8 — ver MenuPublico. O ícone do
+ * carrinho entrou em 28/09/2026 no lugar da barra fixa do rodapé
+ * (D-2026-09-28-85) — ver IconeCarrinho.
  */
 
 /** Momento atual no fuso DA LOJA, não no de quem acessa. */
@@ -58,7 +61,7 @@ export async function CabecalhoPublico() {
     : "Loja em configuração";
 
   return (
-    <header className="sticky top-0 z-30 flex items-center gap-[14px] border-b border-border-shalon bg-surface px-4 py-3">
+    <header className="sticky top-0 z-30 flex items-center gap-[10px] sm:gap-[14px] border-b border-border-shalon bg-surface px-4 py-3">
       <Link href="/" aria-label="Pizzaria Shalon — início" className="flex shrink-0 items-center">
         <Image
           src="/marca/logo-shalon.webp"
@@ -74,10 +77,13 @@ export async function CabecalhoPublico() {
         <StatusBadge tom={aberta ? "sucesso" : "neutro"}>
           {aberta ? "Aberto agora" : "Fechado"}
         </StatusBadge>
-        <span className="text-[12px] text-muted">{rotulo}</span>
+        <span className="whitespace-nowrap text-[12px] text-muted">{rotulo}</span>
       </div>
 
-      <MenuPublico />
+      <div className="flex shrink-0 items-center gap-2">
+        <IconeCarrinho />
+        <MenuPublico />
+      </div>
     </header>
   );
 }

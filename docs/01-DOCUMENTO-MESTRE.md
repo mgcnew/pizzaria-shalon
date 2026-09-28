@@ -159,6 +159,17 @@ Não haverá menu inferior permanente.
 
 Quando existirem produtos no carrinho, poderá existir um CTA/barra flutuante de carrinho, pois isso não representa navegação inferior.
 
+> **⚠️ SUPERADO EM 28/09/2026 — D-2026-09-28-85.** Não há barra flutuante de
+> carrinho no rodapé. O carrinho fica no **cabeçalho público**, como ícone
+> sempre visível com contador de itens (o contador só aparece com itens). Cada
+> adição abre um **painel de confirmação** com o item adicionado, o total de
+> itens e o subtotal visto, e duas saídas: **"Adicionar mais"** e **"Ver
+> carrinho"**. Produto **sem escolhas** — sem tamanhos, e que não é pizza nem
+> combo — entra no carrinho **com um toque** no "+" do card, com preço
+> calculado pelo servidor como em qualquer outra adição; os demais continuam
+> abrindo a página do produto (RN-LINK-001). O "+" do card fica na mesma linha
+> do preço.
+
 > **⚠️ SUPERADO PELA V2 — ver §79.3 e §79.6.** Tradicional e Brotinho **não são
 > categorias**: são **tamanhos** configuráveis e reutilizáveis (§79.3, RN-PIZZA-002).
 > As categorias vigentes da V1 são Pizzas Salgadas, Pizzas Doces, Fogazza, Combos

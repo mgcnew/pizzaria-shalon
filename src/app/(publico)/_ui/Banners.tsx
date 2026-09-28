@@ -20,7 +20,13 @@ import { CarrosselBanners } from "./CarrosselBanners";
  * faixa é atalho, não é o único caminho.
  */
 
-/** Faixa de combos colada ao banner. Só aparece quando há combo. */
+/**
+ * Faixa de combos colada ao banner. Só aparece quando há combo.
+ *
+ * MUDOU EM 28/09/2026 (D-2026-09-28-86): fundo vermelho da marca no lugar do
+ * marrom escuro. O subtítulo usa o creme a 90% porque o `dark-ink-2` sobre o
+ * vermelho ficaria abaixo de 4,5:1.
+ */
 function FaixaCombos({ combos }: { combos: ProdutoPublico[] }) {
   if (combos.length === 0) return null;
 
@@ -30,12 +36,12 @@ function FaixaCombos({ combos }: { combos: ProdutoPublico[] }) {
   const slug = combos[0]?.categoria_slug ?? null;
 
   return (
-    <section className="mx-4 mt-3 flex flex-wrap items-center justify-between gap-3 rounded-16 bg-sidebar px-4 py-[14px]">
+    <section className="mx-4 mt-3 flex flex-wrap items-center justify-between gap-3 rounded-16 bg-brand-red px-4 py-[14px]">
       <div className="min-w-0">
         <p className="m-0 font-display text-[17px] font-bold text-dark-ink">
           Combos para compartilhar
         </p>
-        <p className="m-0 text-[13px] text-dark-ink-2">
+        <p className="m-0 text-[13px] text-dark-ink/90">
           {combos.length} {combos.length === 1 ? "opção" : "opções"}
           {menor !== null ? ` · a partir de ${formatBRL(menor)}` : ""}
         </p>

@@ -588,7 +588,7 @@ preferência.
 **Preservado integralmente:** cabeçalho com logo e pílula de situação, hero
 escuro com selo "Tradição desde 1995", busca, categorias horizontais, cards,
 aviso de loja fechada, estados vazios, barra de carrinho que só aparece com
-itens, ausência de navegação inferior, microcopy do meio a meio e da
+itens (superada em D-2026-09-28-85), ausência de navegação inferior, microcopy do meio a meio e da
 observação, tokens, tipografia, raios e animações.
 
 ---
@@ -2940,6 +2940,76 @@ V1 não possui papel separado de cozinha, cada operador escolhe neste navegador
 quais áreas produzem som (atendimento por padrão; produção e entrega opt-in).
 A escolha é salva por usuário; o sino visual continua sujeito às permissões
 do banco e não é substituído por preferências locais.
+
+---
+
+## D-2026-09-28-85 — Carrinho no cabeçalho, confirmação de adição e "+" de um toque
+
+**Data:** 28/09/2026 · **Decisão do responsável pelo produto nesta conversa**
+
+**Decisão.**
+1. **Card do cardápio:** o "+" sobe para a mesma linha do preço, alinhado pela
+   base. No celular o círculo visível tem 28px e o "R$" fica menor que o
+   número; o alvo de toque continua com 44px (CLAUDE.md §38). Onde valor e
+   botão não couberem (preço de três dígitos em tela estreita), o botão desce
+   para a direita.
+2. **Carrinho no cabeçalho:** ícone sempre visível entre a situação da loja e o
+   menu, com contador que só aparece com itens. Vazio, leva ao estado vazio do
+   carrinho.
+3. **Sem barra de carrinho no rodapé:** a barra "Ver carrinho • N itens •
+   subtotal" foi removida.
+4. **Confirmação de adição:** toda adição (página do produto ou card) abre um
+   painel inferior com o item, a quantidade de itens e o subtotal visto, e duas
+   saídas — "Adicionar mais" (volta ao cardápio na mesma posição, ou fecha o
+   painel se já estiver nele) e "Ver carrinho".
+5. **Adicionar com um toque:** produto sem escolhas — sem tamanhos, e que não
+   é pizza nem combo — entra no carrinho direto pelo "+" do card. A decisão de
+   "não tem escolhas" é refeita no servidor com o produto relido do banco; se
+   ele passou a ter escolhas, o "+" abre a página do produto.
+
+**Motivo.** O "+" isolado numa linha própria alongava o card; depois de
+adicionar, o cliente só via uma frase curta e não tinha próximos passos
+claros; a barra fixa ocupava a base da tela o tempo todo.
+
+**Supera:** `01-DOCUMENTO-MESTRE.md` §5 (CTA/barra flutuante de carrinho),
+atualizado com marcador de supersessão; a barra de carrinho listada como
+"preservada integralmente" na reconciliação do cardápio público.
+
+**Não muda.** O preço continua sendo do servidor: o toque único usa a mesma
+`montar_item` do configurador, e o carrinho segue revalidado antes do pedido
+(CLAUDE.md §16, RN-CART). Pizza e combo continuam com página própria
+(RN-LINK-001). Continua não havendo navegação inferior persistente (79.8).
+Limite por pedido: se o item já está no limite, o toque avisa em vez de dizer
+"adicionado".
+
+**Onde foi formalizada:** `01-DOCUMENTO-MESTRE.md` §5;
+`src/app/(publico)/_ui/CardProduto.tsx`, `LinhaDeCompra.tsx`,
+`IconeCarrinho.tsx`, `PainelAdicionado.tsx`; `src/ui/publico/avisoAdicionado.ts`;
+`adicionarRapido` em `src/application/publico/acoes.ts`.
+
+---
+
+## D-2026-09-28-86 — Faixa de combos vermelha e favorito compacto sobre a foto
+
+**Data:** 28/09/2026 · **Decisão do responsável pelo produto nesta conversa**
+
+**Decisão.**
+1. A faixa "Combos para compartilhar", colada ao banner, troca o fundo marrom
+   escuro (`--sidebar`) pelo **vermelho da marca** (`--brand-red`). O título
+   continua em `--dark-ink`; o subtítulo passa a `--dark-ink` a 90% (4,6:1),
+   porque `--dark-ink-2` sobre o vermelho ficaria em 3,5:1. O botão "Ver
+   combos" continua no CTA amarelo, que é fixo no público.
+2. O favorito sobre a foto do card fica **compacto**: círculo visível de
+   30px, translúcido, com estrela desenhada em SVG (o caractere ☆ variava por
+   aparelho). O alvo de toque continua com 44px. Salvo, o círculo fica amarelo
+   com a estrela preenchida. A página do produto usa a mesma estrela no botão
+   "Salvar".
+
+**Motivo.** O vermelho é da identidade da Shalon e destaca a oferta; o
+círculo branco de 44px cobria boa parte da foto num card de ~105px.
+
+**Onde foi formalizada:** `src/app/(publico)/_ui/Banners.tsx`,
+`src/app/(publico)/_ui/BotaoFavorito.tsx`.
 
 ---
 
