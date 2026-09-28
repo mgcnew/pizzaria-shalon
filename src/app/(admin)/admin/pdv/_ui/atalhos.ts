@@ -55,8 +55,7 @@ export type AcaoDoPdv =
   | "venda:remover"
   | "venda:linha-anterior"
   | "venda:linha-proxima"
-  | "venda:salvar"
-  | "venda:fechar-configurador"
+  | "venda:concluir"
   // --------------------------------------------------------------- caixa
   | "caixa:reforco"
   | "caixa:sangria";
@@ -73,8 +72,8 @@ export type TeclaPressionada = {
 /**
  * O estado da tela no instante da tecla.
  *
- * Tudo é booleano e nada é opcional: um contexto com campo faltando seria um
- * atalho decidindo no escuro.
+ * Nada é opcional: um contexto com campo faltando faria o atalho ou a faixa de
+ * resumo decidirem no escuro.
  */
 export type ContextoDoPdv = {
   /**
@@ -97,7 +96,8 @@ export type ContextoDoPdv = {
   /** A MESMA condição que desabilita o botão de salvar. */
   podeSalvar: boolean;
   temResultados: boolean;
-  configuradorAberto: boolean;
+  quantidadeItens: number;
+  totalVenda: number;
   /** Caixa aberto e sessão autorizada a fazer reforço/sangria. */
   podeMovimentarCaixa: boolean;
 };
@@ -156,7 +156,6 @@ export function decidirAtalho(
 
   // 5. `Escape` — fecha o mais interno primeiro, um por vez.
   if (key === "Escape") {
-    if (ctx.configuradorAberto) return "venda:fechar-configurador";
     if (ctx.leituraPreenchida) return "venda:limpar-leitura";
     return null;
   }
@@ -173,19 +172,12 @@ export function decidirAtalho(
     case "F9":
       return ctx.podeMovimentarCaixa ? "caixa:sangria" : null;
     case "F7":
-      // Mesma condição do botão. Sem itens ou sem forma escolhida, o atalho
-      // não inventa um caminho que o clique não tem.
-      return ctx.podeSalvar ? "venda:salvar" : null;
+      return ctx.temItens ? "venda:concluir" : null;
   }
 
   // 8. `Enter` e `Tab` no campo de leitura.
   //
-  //    COM O CONFIGURADOR ABERTO, NENHUM DOS DOIS RESOLVE. O campo ainda tem o
-  //    código que abriu a escolha de tamanho, e resolver de novo reabriria a
-  //    mesma escolha em cima dela. Aqui o Tab volta a ser navegação — que é
-  //    justamente como o operador alcança os tamanhos e o "Adicionar à venda"
-  //    sem tocar no mouse. Para bipar outro item, `Esc` fecha e limpa.
-  if (ctx.focoNaLeitura && !shiftKey && !ctx.configuradorAberto) {
+  if (ctx.focoNaLeitura && !shiftKey) {
     if (key === "Enter") return ctx.leituraPreenchida ? "venda:resolver" : null;
 
     // TAB SÓ EQUIVALE A ENTER COM CONTEÚDO. Vazio, ele navega como sempre —
@@ -260,7 +252,7 @@ export function teclasAtivas(ctx: ContextoDoPdv): { tecla: string; rotulo: strin
   if (age("F2")) faixa.push({ tecla: "F2", rotulo: "nova venda" });
   if (age("F3")) faixa.push({ tecla: "F3", rotulo: "busca" });
   if (age("F4")) faixa.push({ tecla: "F4", rotulo: "reforço" });
-  if (age("F7")) faixa.push({ tecla: "F7", rotulo: "salvar" });
+  if (age("F7")) faixa.push({ tecla: "F7", rotulo: "concluir" });
   if (age("F9")) faixa.push({ tecla: "F9", rotulo: "sangria" });
   if (age("+")) faixa.push({ tecla: "+ −", rotulo: "quantidade" });
   if (age("Delete")) faixa.push({ tecla: "Del", rotulo: "remover" });

@@ -1,18 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { formatBRL } from "@/lib/format";
 import { Select } from "@/ui/components/Select";
-import { NucleoConfigurador } from "@/ui/configurador/NucleoConfigurador";
-import type { DadosDoConfigurador } from "@/ui/configurador/tipos";
-import { carregarConfigurador } from "@/application/publico/acoes";
-import { criarPedidoManual } from "@/application/pedidos/acoes";
-import { resolverCodigo, buscarNoCatalogo } from "@/application/pdv/acoes";
-import type { ItemCatalogoPdv } from "@/application/pdv/tipos";
+import { montarItem } from "@/application/publico/acoes";
+import { finalizarVendaRapida, resolverCodigo, buscarNoCatalogo } from "@/application/pdv/acoes";
+import type { ItemCatalogoPdv, VarianteDoPdv } from "@/application/pdv/tipos";
 import type { ItemDoRascunho } from "@/application/pedidos/tipos";
-import type { FormaDePagamento } from "@/application/checkout/tipos";
-import { Comanda } from "@/app/(admin)/admin/pedidos/_ui/Comanda";
+import type { FormaParaRecebimento } from "@/app/(admin)/admin/pedidos/_ui/Recebimento";
 import type { AreaComTeclado } from "./PdvComTeclado";
 
 /**
@@ -26,31 +21,98 @@ import type { AreaComTeclado } from "./PdvComTeclado";
  *     configurador, e o pedido inteiro é recalculado por `criar_pedido` ao
  *     salvar. O total daqui é SOMA DE CONFERÊNCIA — existe para o operador
  *     olhar, nunca para cobrar (CLAUDE.md §16);
- *  2. não recebe dinheiro. A venda é criada pendente e segue para Pedidos,
- *     que concentra o checkout e impede dois fluxos concorrentes de cobrança;
+ *  2. não conclui item de produção. A venda rápida é criada, recebida e
+ *     encerrada atomicamente; carrinho com preparo pertence a Pedidos;
  *  3. não normaliza código de barras. O que foi lido sobe como veio, com os
  *     zeros à esquerda, e quem normaliza é o banco.
  *
- * E uma que ela faz de propósito: NÃO é um segundo caminho de criação. Salvar
- * chama `criarPedidoManual`, a mesma porta de `/admin/pedidos/novo`, que chama
- * a mesma `criar_pedido` do checkout público.
+ * A conclusão chama uma transação que reutiliza `criar_pedido`,
+ * `registrar_pagamento` e a máquina de estados. Assim não há preço, dinheiro
+ * ou transição decididos no navegador.
  */
+
+function paraNumero(texto: string): number | null {
+  const limpo = texto.replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
+  if (limpo === "") return null;
+  const numero = Number(limpo);
+  return Number.isFinite(numero) ? numero : null;
+}
 
 type Resolucao =
   | { tipo: "nada" }
   | { tipo: "buscando" }
   | { tipo: "aviso"; texto: string }
-  | { tipo: "resultados"; itens: ItemCatalogoPdv[]; termo: string };
+  | { tipo: "resultados"; itens: ItemCatalogoPdv[]; termo: string }
+  | {
+      tipo: "variantes";
+      produto: { id: string; nome: string; slug: string; exige_producao: boolean };
+      variantes: VarianteDoPdv[];
+    };
+
+type OpcaoRapida = {
+  chave: string;
+  produtoId: string;
+  produtoSlug: string;
+  nome: string;
+  detalhe: string;
+  variacaoId: string | null;
+  preco: number | null;
+  ativo: boolean;
+  disponivel: boolean;
+  exigeProducao: boolean;
+};
+
+type VendaConcluida = {
+  id: string;
+  numero: number;
+  total: number;
+  forma: string;
+  recebido: number | null;
+  troco: number | null;
+  itens: ItemDoRascunho[];
+};
+
+function opcoesDoProduto(produto: ItemCatalogoPdv): OpcaoRapida[] {
+  if (produto.variantes.length > 0) {
+    return produto.variantes.map((variante) => ({
+      chave: variante.id,
+      produtoId: produto.id,
+      produtoSlug: produto.slug,
+      nome: `${produto.nome} · ${variante.tamanho_nome}`,
+      detalhe: produto.categoria_nome,
+      variacaoId: variante.id,
+      preco: variante.preco,
+      ativo: produto.ativo,
+      disponivel: produto.disponivel && variante.disponivel,
+      exigeProducao: produto.exige_producao,
+    }));
+  }
+
+  return [{
+    chave: produto.id,
+    produtoId: produto.id,
+    produtoSlug: produto.slug,
+    nome: produto.nome,
+    detalhe: produto.categoria_nome,
+    variacaoId: null,
+    preco: produto.preco,
+    ativo: produto.ativo,
+    disponivel: produto.disponivel,
+    exigeProducao: produto.exige_producao,
+  }];
+}
 
 export function NovaVenda({
   formas,
   autorizado,
+  caixaAberto,
   registrar,
   aoMudar,
 }: {
-  /** Formas ESPERADAS, filtradas por retirada: alimentam a intenção. */
-  formas: FormaDePagamento[];
+  /** Formas efetivamente recebidas pelo caixa. */
+  formas: FormaParaRecebimento[];
   autorizado: boolean;
+  caixaAberto: boolean;
   /** Entrega ao casco o `estado()` e o `executar()` desta área (Etapa 9). */
   registrar: (area: AreaComTeclado | null) => void;
   /** Avisa o casco que a faixa de atalhos precisa ser recalculada. */
@@ -58,21 +120,15 @@ export function NovaVenda({
 }) {
   const [leitura, setLeitura] = useState("");
   const [estado, setEstado] = useState<Resolucao>({ tipo: "nada" });
-  const [dados, setDados] = useState<DadosDoConfigurador | null>(null);
-  const [variacaoInicial, setVariacaoInicial] = useState<string | null>(null);
 
   const [itens, setItens] = useState<ItemDoRascunho[]>([]);
   const [formaId, setFormaId] = useState("");
   const [bandeiraId, setBandeiraId] = useState("");
+  const [recebido, setRecebido] = useState("");
 
   const [erro, setErro] = useState<string | null>(null);
-  const [criado, setCriado] = useState<
-    {
-      id: string;
-      numero: number;
-      total: number;
-    } | null
-  >(null);
+  const [concluindo, setConcluindo] = useState(false);
+  const [criado, setCriado] = useState<VendaConcluida | null>(null);
   const [ocupado, iniciar] = useTransition();
   const campo = useRef<HTMLInputElement>(null);
 
@@ -94,16 +150,41 @@ export function NovaVenda({
   /** O índice válido agora, sempre dentro do carrinho. */
   const linhaAtual = itens.length === 0 ? 0 : Math.min(linhaEmFoco, itens.length - 1);
 
-  const forma = formas.find((f) => f.id === formaId) ?? null;
   // Soma de conferência. O total que vale é o que o servidor devolver.
   const subtotal = itens.reduce((s, i) => s + i.total, 0);
+  const forma = formas.find((f) => f.id === formaId) ?? null;
+  const recebidoNumero = paraNumero(recebido);
+  const pagamentoEmDinheiro = forma?.familia === "cash";
+  const trocoPrevisto = pagamentoEmDinheiro && recebidoNumero !== null
+    ? Math.max(0, recebidoNumero - subtotal)
+    : 0;
+  const quantidadeTotal = itens.reduce((soma, item) => soma + item.quantidade, 0);
+  const opcoesEncontradas: OpcaoRapida[] =
+    estado.tipo === "resultados"
+      ? estado.itens.flatMap(opcoesDoProduto)
+      : estado.tipo === "variantes"
+        ? estado.variantes.map((variante) => ({
+            chave: variante.id,
+            produtoId: estado.produto.id,
+            produtoSlug: estado.produto.slug,
+            nome: `${estado.produto.nome} · ${variante.tamanho_nome}`,
+            detalhe: "Escolha o tamanho",
+            variacaoId: variante.id,
+            preco: variante.preco,
+            ativo: true,
+            disponivel: variante.disponivel,
+            exigeProducao: estado.produto.exige_producao,
+          }))
+        : [];
 
   const podeSalvar =
     !ocupado &&
     autorizado &&
+    caixaAberto &&
     itens.length > 0 &&
     forma !== null &&
-    (!forma.exige_bandeira || bandeiraId !== "");
+    (!forma.exige_bandeira || bandeiraId !== "") &&
+    (!pagamentoEmDinheiro || (recebidoNumero !== null && recebidoNumero >= subtotal));
 
   /**
    * Chave da tentativa: nasce no primeiro envio e sobrevive a clique repetido
@@ -116,8 +197,6 @@ export function NovaVenda({
     setLeitura("");
     setEstado({ tipo: "nada" });
     setResultadoEmFoco(-1);
-    setDados(null);
-    setVariacaoInicial(null);
     campo.current?.focus();
   }
 
@@ -126,19 +205,12 @@ export function NovaVenda({
     setItens([]);
     setErro(null);
     setCriado(null);
+    setConcluindo(false);
+    setFormaId("");
+    setBandeiraId("");
+    setRecebido("");
     tentativa.current = null;
     limparBusca();
-  }
-
-  async function abrirConfigurador(slug: string, variacao: string | null) {
-    const d = await carregarConfigurador(slug);
-    if (d === null) {
-      setEstado({ tipo: "aviso", texto: "Não foi possível abrir este produto." });
-      return;
-    }
-    setVariacaoInicial(variacao);
-    setDados(d);
-    setEstado({ tipo: "nada" });
   }
 
   /**
@@ -162,6 +234,58 @@ export function NovaVenda({
       tipo: "aviso",
       texto: `${nome} exige produção. Crie o pedido pela área de Pedidos.`,
     });
+  }
+
+  async function adicionarRapido(opcao: {
+    produtoId: string;
+    produtoSlug: string;
+    nome: string;
+    variacaoId: string | null;
+  }) {
+    const existente = itens.find(
+      (item) => item.produtoId === opcao.produtoId && item.variacaoId === opcao.variacaoId,
+    );
+    const quantidade = Math.min(99, (existente?.quantidade ?? 0) + 1);
+    const sabores = opcao.variacaoId ? [opcao.variacaoId] : [];
+    const montado = await montarItem({
+      produto_id: opcao.produtoId,
+      variacao_id: opcao.variacaoId,
+      sabores,
+      borda_id: null,
+      adicionais: [],
+      observacao: "",
+      quantidade,
+    });
+
+    if (!montado.ok) {
+      setEstado({ tipo: "aviso", texto: montado.erro });
+      return;
+    }
+
+    const linha = existente?.linha ?? `${opcao.produtoId}|${opcao.variacaoId ?? "-"}|rapido`;
+    const item: ItemDoRascunho = {
+      linha,
+      produtoId: opcao.produtoId,
+      produtoSlug: opcao.produtoSlug,
+      nome: montado.nome,
+      variacaoId: opcao.variacaoId,
+      sabores,
+      bordaId: null,
+      adicionais: [],
+      observacao: "",
+      quantidade: montado.quantidade,
+      precoUnitario: montado.preco_unitario,
+      total: montado.total,
+      rotulos: montado.rotulos,
+    };
+
+    setItens((lista) =>
+      existente
+        ? lista.map((atual) => (atual.linha === existente.linha ? item : atual))
+        : [...lista, item],
+    );
+    setCriado(null);
+    limparBusca();
   }
 
   /**
@@ -205,21 +329,32 @@ export function NovaVenda({
           return;
         }
 
-        // Produto com tamanhos ativos: abre a escolha SEM escolher por ela.
-        // O contrário — pegar o primeiro tamanho — venderia um tamanho que
-        // ninguém pediu, em cima de dinheiro.
+        // Código genérico com mais de uma variação: mostra opções diretas. O
+        // clique seguinte já adiciona; nenhum configurador ou observação entra
+        // no fluxo rápido.
         if (r.precisa_escolher_variante) {
-          await abrirConfigurador(r.produto_slug, null);
+          setResultadoEmFoco(-1);
+          setEstado({
+            tipo: "variantes",
+            produto: {
+              id: r.produto_id,
+              nome: r.produto_nome,
+              slug: r.produto_slug,
+              exige_producao: r.exige_producao,
+            },
+            variantes: r.variantes,
+          });
           return;
         }
 
-        // Variante: o código identifica AQUELE tamanho, e é com ele que abre.
-        // O `alvo` é o discriminante da união — sem ele o compilador nem
-        // deixaria ler `variante_id`, que só existe neste caso.
-        await abrirConfigurador(
-          r.produto_slug,
-          r.alvo === "variante" ? r.variante_id : null,
-        );
+        // Código de variante ou produto simples identifica tudo que a venda
+        // rápida precisa. O servidor ainda valida e precifica antes de entrar.
+        await adicionarRapido({
+          produtoId: r.produto_id,
+          produtoSlug: r.produto_slug,
+          nome: r.produto_nome,
+          variacaoId: r.alvo === "variante" ? r.variante_id : null,
+        });
         return;
       }
 
@@ -239,13 +374,9 @@ export function NovaVenda({
     tentativa.current ??= crypto.randomUUID();
 
     iniciar(async () => {
-      const r = await criarPedidoManual({
+      const itensDaVenda = itens;
+      const r = await finalizarVendaRapida({
         idempotency_key: tentativa.current,
-        origem: "counter",
-        modalidade: "pickup",
-        // Sem bloco `cliente`: venda de balcão não identifica quem comprou
-        // (D-2026-09-26-81). Quem autoriza isso é `criar_pedido`.
-        endereco: null,
         itens: itens.map((i) => ({
           linha: i.linha,
           produto_id: i.produtoId,
@@ -259,8 +390,7 @@ export function NovaVenda({
         pagamento: {
           forma_id: forma.id,
           bandeira_id: forma.exige_bandeira ? bandeiraId : null,
-          precisa_troco: false,
-          troco_para: null,
+          recebido: pagamentoEmDinheiro ? recebidoNumero : null,
         },
       });
 
@@ -277,10 +407,15 @@ export function NovaVenda({
         id: r.pedido_id,
         numero: r.numero,
         total: r.total,
+        forma: r.forma,
+        recebido: r.recebido,
+        troco: r.troco,
+        itens: itensDaVenda,
       });
       setItens([]);
       setFormaId("");
       setBandeiraId("");
+      setRecebido("");
       tentativa.current = null;
       limparBusca();
     });
@@ -297,9 +432,26 @@ export function NovaVenda({
       leituraPreenchida: leitura.trim() !== "",
       temItens: itens.length > 0,
       podeSalvar,
-      temResultados: estado.tipo === "resultados" && estado.itens.length > 0,
-      configuradorAberto: dados !== null,
+      temResultados: opcoesEncontradas.length > 0,
+      quantidadeItens: quantidadeTotal,
+      totalVenda: subtotal,
   });
+
+  function mudarQuantidade(linha: string, delta: number) {
+    setItens((lista) =>
+      lista.map((i) =>
+        i.linha === linha
+          ? {
+              ...i,
+              quantidade: Math.min(99, Math.max(1, i.quantidade + delta)),
+              // O unitário é do servidor; a multiplicação é aritmética de
+              // exibição, e o servidor recalcula tudo ao salvar.
+              total: i.precoUnitario * Math.min(99, Math.max(1, i.quantidade + delta)),
+            }
+          : i,
+      ),
+    );
+  }
 
   /**
    * O EXECUTOR NÃO É MEMOIZADO, e essa é a correção de um defeito real.
@@ -335,8 +487,7 @@ export function NovaVenda({
 
         case "venda:resultado-proximo":
         case "venda:resultado-anterior": {
-          if (estado.tipo !== "resultados") return;
-          const n = estado.itens.length;
+          const n = opcoesEncontradas.length;
           if (n === 0) return;
           const delta = acao === "venda:resultado-proximo" ? 1 : -1;
           setResultadoEmFoco((i) => {
@@ -348,19 +499,18 @@ export function NovaVenda({
           return;
         }
         case "venda:escolher-resultado": {
-          if (estado.tipo !== "resultados") return;
-          const escolhido = estado.itens[resultadoEmFoco === -1 ? 0 : resultadoEmFoco];
+          const escolhido = opcoesEncontradas[resultadoEmFoco === -1 ? 0 : resultadoEmFoco];
           // Indisponível não entra pelo teclado, como não entra pelo clique:
           // quem decide disponibilidade é o banco, e a tela só relata.
           if (escolhido === undefined || !escolhido.ativo || !escolhido.disponivel) return;
           // A MESMA recusa do clique: o atalho não abre um segundo caminho
           // para dentro do carrinho.
-          if (escolhido.exige_producao) {
+          if (escolhido.exigeProducao) {
             recusarPorProducao(escolhido.nome);
             return;
           }
           iniciar(async () => {
-            await abrirConfigurador(escolhido.slug, null);
+            await adicionarRapido(escolhido);
           });
           return;
         }
@@ -386,11 +536,8 @@ export function NovaVenda({
           return;
         }
 
-        case "venda:salvar":
-          salvar();
-          return;
-        case "venda:fechar-configurador":
-          limparBusca();
+        case "venda:concluir":
+          if (itens.length > 0) setConcluindo(true);
           return;
       }
     }
@@ -416,26 +563,12 @@ export function NovaVenda({
   /** A faixa de atalhos do casco precisa saber que algo mudou por aqui. */
   useEffect(() => {
     aoMudar();
-  }, [aoMudar, itens.length, estado.tipo, criado, podeSalvar, leitura]);
+  }, [aoMudar, itens.length, quantidadeTotal, subtotal, estado.tipo, criado, podeSalvar, leitura]);
 
-  function mudarQuantidade(linha: string, delta: number) {
-    setItens((lista) =>
-      lista.map((i) =>
-        i.linha === linha
-          ? {
-              ...i,
-              quantidade: Math.min(99, Math.max(1, i.quantidade + delta)),
-              // O unitário é do servidor; a multiplicação é aritmética de
-              // exibição, e o servidor recalcula tudo ao salvar.
-              total: i.precoUnitario * Math.min(99, Math.max(1, i.quantidade + delta)),
-            }
-          : i,
-      ),
-    );
-  }
+  const fecharConclusao = useCallback(() => setConcluindo(false), []);
 
   return (
-    <div className="grid items-start gap-4 lg:grid-cols-[minmax(300px,1fr)_minmax(340px,1fr)]">
+    <div>
       {/* ------------------------------------------------ busca e leitor */}
       <section className="rounded-16 border border-border-shalon bg-surface p-4">
         <div className="flex items-center justify-between gap-2">
@@ -481,6 +614,83 @@ export function NovaVenda({
           caixa procura pelo nome.
         </p>
 
+        {itens.length > 0 ? (
+          <div className="mt-4 overflow-hidden rounded-12 border border-border-shalon">
+            <div className="hidden grid-cols-[minmax(0,1fr)_120px_110px_44px] gap-3 bg-elev px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-muted lg:grid">
+              <span>Produto</span>
+              <span className="text-center">Quantidade</span>
+              <span className="text-right">Total</span>
+              <span className="sr-only">Ações</span>
+            </div>
+            <ul className="m-0 list-none p-0">
+              {itens.map((item, indice) => (
+                <li
+                  key={item.linha}
+                  className={[
+                    "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border-shalon px-3 py-2.5 last:border-b-0 lg:grid-cols-[minmax(0,1fr)_120px_110px_44px]",
+                    indice === linhaAtual && itens.length > 1 ? "bg-elev/70" : "bg-surface",
+                  ].join(" ")}
+                >
+                  <div className="min-w-0">
+                    <p className="m-0 truncate text-[14px] font-semibold text-ink">{item.nome}</p>
+                    {item.rotulos.length > 0 ? (
+                      <p className="m-0 truncate text-[12px] text-muted">{item.rotulos.join(" · ")}</p>
+                    ) : null}
+                    <p className="m-0 text-[12px] text-ink-2 lg:hidden">
+                      {formatBRL(item.precoUnitario)} cada
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-1 lg:justify-center">
+                    <button
+                      type="button"
+                      aria-label={`Diminuir ${item.nome}`}
+                      onClick={() => mudarQuantidade(item.linha, -1)}
+                      className="flex size-8 cursor-pointer items-center justify-center rounded-9 border border-border-shalon bg-surface text-[15px] font-bold text-ink"
+                    >
+                      −
+                    </button>
+                    <span className="min-w-[2ch] text-center text-[13px] font-bold tabular-nums text-ink">
+                      {item.quantidade}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label={`Aumentar ${item.nome}`}
+                      onClick={() => mudarQuantidade(item.linha, 1)}
+                      className="flex size-8 cursor-pointer items-center justify-center rounded-9 border border-border-shalon bg-surface text-[15px] font-bold text-ink"
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  <strong className="col-start-1 text-[14px] tabular-nums text-ink lg:col-start-auto lg:text-right">
+                    {formatBRL(item.total)}
+                  </strong>
+                  <button
+                    type="button"
+                    aria-label={`Remover ${item.nome}`}
+                    title="Remover"
+                    onClick={() => setItens((lista) => lista.filter((atual) => atual.linha !== item.linha))}
+                    className="col-start-2 row-start-2 flex size-8 cursor-pointer items-center justify-center justify-self-end rounded-9 border-0 bg-transparent text-[18px] text-danger lg:col-start-auto lg:row-start-auto"
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="flex items-center justify-between gap-3 border-t border-border-shalon bg-elev px-3 py-2.5">
+              <span className="text-[12.5px] font-semibold text-ink-2">
+                {quantidadeTotal} {quantidadeTotal === 1 ? "item" : "itens"}
+              </span>
+              <strong className="font-display text-[18px] tabular-nums text-ink">{formatBRL(subtotal)}</strong>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-4 rounded-12 border border-dashed border-border-shalon bg-elev/50 px-3 py-4 text-center">
+            <p className="m-0 text-[13px] text-muted">Os produtos adicionados aparecerão aqui.</p>
+          </div>
+        )}
+
         {estado.tipo === "buscando" ? (
           <p className="m-0 mt-3 text-[13px] text-muted">Procurando…</p>
         ) : null}
@@ -494,48 +704,48 @@ export function NovaVenda({
           </p>
         ) : null}
 
-        {estado.tipo === "resultados" ? (
-          estado.itens.length === 0 ? (
+        {estado.tipo === "resultados" || estado.tipo === "variantes" ? (
+          opcoesEncontradas.length === 0 ? (
             <p className="m-0 mt-3 text-[13px] text-ink-2">
-              Nada encontrado para “{estado.termo}”.
+              {estado.tipo === "resultados" ? `Nada encontrado para “${estado.termo}”.` : "Nenhum tamanho disponível."}
             </p>
           ) : (
             <ul className="m-0 mt-3 list-none p-0">
-              {estado.itens.map((p, indice) => (
-                <li key={p.id}>
+              {opcoesEncontradas.map((opcao, indice) => (
+                <li key={opcao.chave}>
                   <button
                     type="button"
-                    disabled={!p.disponivel || !p.ativo}
+                    disabled={ocupado || !opcao.disponivel || !opcao.ativo}
                     /* O destaque do teclado é VISUAL e não é foco do DOM: mover
                        o foco real para cá tiraria o campo de leitura de baixo
                        dos dedos, que é o oposto do que a Etapa 9 quer. */
                     data-emfoco={indice === resultadoEmFoco ? "sim" : undefined}
                     onClick={() => {
-                      if (p.exige_producao) {
-                        recusarPorProducao(p.nome);
+                      if (opcao.exigeProducao) {
+                        recusarPorProducao(opcao.nome);
                         return;
                       }
-                      iniciar(async () => { await abrirConfigurador(p.slug, null); });
+                      iniciar(async () => { await adicionarRapido(opcao); });
                     }}
                     className={[
                       "flex w-full min-h-touch items-center justify-between gap-3 rounded-11 border-[1.5px] bg-transparent px-2 py-2 text-left",
                       indice === resultadoEmFoco
                         ? "border-cta bg-elev"
                         : "border-transparent",
-                      p.disponivel && p.ativo
+                      opcao.disponivel && opcao.ativo
                         ? "cursor-pointer hover:bg-elev"
                         : "cursor-not-allowed opacity-60",
                     ].join(" ")}
                   >
                     <span className="min-w-0">
                       <span className="block text-[14.5px] font-semibold text-ink">
-                        {p.nome}
-                        {!p.ativo ? " · inativo" : !p.disponivel ? " · indisponível hoje" : ""}
+                        {opcao.nome}
+                        {!opcao.ativo ? " · inativo" : !opcao.disponivel ? " · indisponível hoje" : ""}
                       </span>
-                      <span className="block text-[12.5px] text-ink-2">{p.categoria_nome}</span>
+                      <span className="block text-[12.5px] text-ink-2">{opcao.detalhe}</span>
                     </span>
                     <span className="whitespace-nowrap text-[14px] tabular-nums text-ink-2">
-                      {p.preco !== null ? formatBRL(p.preco) : "—"}
+                      {opcao.preco !== null ? formatBRL(opcao.preco) : "—"}
                     </span>
                   </button>
                 </li>
@@ -544,106 +754,37 @@ export function NovaVenda({
           )
         ) : null}
 
-        {dados !== null ? (
-          <div className="mt-3 rounded-12 border border-border-shalon bg-elev p-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <h3 className="m-0 text-[15px] font-bold text-ink">{dados.produto.nome}</h3>
-              <button
-                type="button"
-                onClick={limparBusca}
-                className="min-h-touch cursor-pointer rounded-11 border-[1.5px] border-border-shalon bg-surface px-3 text-[13px] font-semibold text-ink"
-              >
-                Cancelar
-              </button>
-            </div>
-
-            <NucleoConfigurador
-              dados={dados}
-              ancoragem="embutida"
-              variacaoInicial={variacaoInicial}
-              rotuloAcao="Adicionar à venda"
-              mensagemSucesso="Item adicionado."
-              aoConfirmar={(item) => {
-                setItens((lista) => [
-                  ...lista,
-                  {
-                    linha: `${item.produtoId}|${item.escolhas.variacaoId ?? "-"}|${[...item.saboresCompletos].sort().join("+")}|${item.escolhas.bordaId ?? "-"}|${[...item.escolhas.adicionais].sort().join("+")}|${item.escolhas.observacao.trim().toLowerCase()}|${Date.now()}`,
-                    produtoId: item.produtoId,
-                    produtoSlug: item.produtoSlug,
-                    nome: item.montado.nome,
-                    variacaoId: item.escolhas.variacaoId,
-                    sabores: item.saboresCompletos,
-                    bordaId: item.escolhas.bordaId,
-                    adicionais: item.escolhas.adicionais,
-                    observacao: item.escolhas.observacao,
-                    quantidade: item.escolhas.quantidade,
-                    precoUnitario: item.montado.preco_unitario,
-                    total: item.montado.total,
-                    rotulos: item.montado.rotulos,
-                  },
-                ]);
-                setCriado(null);
-                limparBusca();
-              }}
-            />
-          </div>
-        ) : null}
       </section>
 
-      {/* -------------------------------------------------- venda atual */}
-      <section className="rounded-16 border border-border-shalon bg-surface p-4">
+      {/* A conferência só ocupa a tela quando a venda está pronta para revisão. */}
+      {concluindo ? (
+        <ModalVendaAtual aoFechar={fecharConclusao}>
+      <section>
         <h2 className="m-0 mb-3 text-[15px] font-bold text-ink">Venda atual</h2>
 
         {criado !== null ? (
           <div className="mb-3 rounded-12 border border-tsb bg-ts p-3">
             <p role="status" className="m-0 text-[14px] font-semibold text-tsf">
-              Pedido #{criado.numero} salvo · {formatBRL(criado.total)}
+              Venda #{criado.numero} concluída · {formatBRL(criado.total)}
             </p>
 
             <p className="m-0 mt-1 text-[12.5px] text-ink-2">
-              A venda foi enviada para Pedidos, onde o pagamento pode ser concluído.
+              Pagamento em {criado.forma} confirmado no PDV.
             </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Link
-                href="/admin/pedidos"
-                className="motion-interactive inline-flex min-h-touch items-center rounded-11 border-0 bg-cta px-4 text-[13.5px] font-semibold text-cta-fg no-underline"
-              >
-                Ir para Pedidos
-              </Link>
-              <button
-                type="button"
-                onClick={() => setCriado(null)}
-                className="min-h-touch cursor-pointer rounded-11 border-[1.5px] border-border-shalon bg-surface px-4 text-[13.5px] font-semibold text-ink"
-              >
-                Iniciar outra venda
-              </button>
-            </div>
-
-            {/*
-             * COMANDA — Etapa 8, e só o que dá para reutilizar com segurança.
-             *
-             * É o mesmo `Comanda` da tela de pedido, chamando `emitirDocumento`
-             * → `registrar_impressao`. O documento aparece na TELA, e o
-             * transporte gravado é `tela`: não há protocolo de impressora aqui,
-             * e afirmar que saiu no papel seria mentira (A-08).
-             *
-             * `impressoes={[]}` é a verdade para um pedido recém-criado — ele
-             * não tem via nenhuma. A partir da segunda via o banco registra
-             * reimpressão com autor e horário, e o histórico completo fica na
-             * tela do pedido.
-             *
-             * Não existe "comprovante de pagamento": `order_prints_documento`
-             * aceita apenas `comanda` e `alteracao`. Criar um terceiro tipo
-             * seria migration, e não é o escopo desta etapa.
-             */}
+            {criado.recebido !== null ? (
+              <div className="mt-2 grid grid-cols-2 gap-2 rounded-10 bg-surface px-3 py-2 text-[13px]">
+                <span className="text-muted">Recebido</span>
+                <strong className="text-right tabular-nums text-ink">{formatBRL(criado.recebido)}</strong>
+                <span className="text-muted">Troco</span>
+                <strong className="text-right tabular-nums text-ink">{formatBRL(criado.troco ?? 0)}</strong>
+              </div>
+            ) : null}
             <div className="mt-3 border-t border-tsb pt-3">
-              <p className="m-0 mb-2 text-[12px] font-semibold uppercase tracking-wide text-tsf opacity-80">
-                Comanda
-              </p>
-              <Comanda key={criado.id} pedidoId={criado.id} impressoes={[]} podeEmitirAlteracao={false} />
+              <CupomVenda58 venda={criado} aoNovaVenda={novaVenda} />
             </div>
           </div>
-        ) : null}
+        ) : (
+          <>
 
         {itens.length === 0 ? (
           <p className="m-0 text-[13.5px] text-ink-2">
@@ -674,10 +815,6 @@ export function NovaVenda({
                     {r}
                   </p>
                 ))}
-                {i.observacao ? (
-                  <p className="m-0 text-[12.5px] italic text-twf">“{i.observacao}”</p>
-                ) : null}
-
                 <div className="mt-1 flex items-center gap-2">
                   <button
                     type="button"
@@ -713,7 +850,7 @@ export function NovaVenda({
 
         <div className="mt-3 flex items-baseline justify-between border-t border-border-shalon pt-3">
           <span className="text-[13.5px] text-ink-2">
-            {itens.length} {itens.length === 1 ? "item" : "itens"}
+            {quantidadeTotal} {quantidadeTotal === 1 ? "item" : "itens"}
           </span>
           <span className="font-display text-[24px] font-extrabold tabular-nums text-ink">
             {formatBRL(subtotal)}
@@ -724,16 +861,15 @@ export function NovaVenda({
         </p>
 
         <div className="mt-3 flex flex-col gap-2">
-          {/* A forma ESPERADA, não a recebida (§24). `criar_pedido` exige uma
-              forma disponível, e é ela que a fila de recebimento vai exibir. */}
           <Select
-            label="Forma de pagamento esperada"
+            label="Forma de pagamento"
             value={formaId}
             onChange={(e) => {
               setFormaId(e.target.value);
               setBandeiraId("");
+              setRecebido("");
             }}
-            hint="Só a intenção. O recebimento acontece depois, no caixa."
+            hint="O recebimento será registrado e a venda será encerrada agora."
           >
             <option value="">Escolha…</option>
             {formas.map((f) => (
@@ -767,6 +903,34 @@ export function NovaVenda({
               </Select>
             )
           ) : null}
+
+          {pagamentoEmDinheiro ? (
+            <div>
+              <label htmlFor="valor-recebido-pdv" className="mb-1 block text-[13px] font-semibold text-ink">
+                Valor recebido
+              </label>
+              <input
+                id="valor-recebido-pdv"
+                type="text"
+                inputMode="decimal"
+                autoComplete="off"
+                value={recebido}
+                onChange={(e) => setRecebido(e.target.value)}
+                placeholder={subtotal.toFixed(2).replace(".", ",")}
+                className="min-h-touch-cta w-full rounded-11 border-[1.5px] border-border-shalon bg-surface px-3 text-[15px] text-ink focus:border-brand-orange focus:outline-none"
+              />
+              {recebidoNumero !== null && recebidoNumero >= subtotal ? (
+                <div className="mt-2 flex items-center justify-between rounded-10 bg-tg px-3 py-2 text-[13px] text-tgf">
+                  <span>Troco</span>
+                  <strong className="tabular-nums">{formatBRL(trocoPrevisto)}</strong>
+                </div>
+              ) : recebido !== "" ? (
+                <p className="m-0 mt-1 text-[12px] font-semibold text-danger">
+                  O valor recebido precisa cobrir o total da venda.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         {erro !== null ? (
@@ -781,66 +945,200 @@ export function NovaVenda({
         <button
           type="button"
           disabled={!podeSalvar}
-          /* `() => salvar()` e não `salvar`: como handler, o React passaria o
-             evento no lugar de `receberDepois`, e um objeto é verdadeiro. */
           onClick={() => salvar()}
           className="motion-interactive mt-3 flex min-h-[52px] w-full cursor-pointer items-center justify-center rounded-13 border-0 bg-cta text-[16px] font-semibold text-cta-fg transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:bg-tn disabled:text-muted disabled:opacity-100"
         >
-          {ocupado ? "Salvando…" : "Enviar para Pedidos"}
+          {ocupado ? "Concluindo…" : `Receber e concluir · ${formatBRL(subtotal)}`}
         </button>
 
         <p className="m-0 mt-2 text-[12px] text-muted">
-          A venda entra como pedido de balcão para retirada. O pagamento é
-          concluído na tela de Pedidos.
+          Esta venda não exige produção e será encerrada no PDV. Ela permanece
+          registrada apenas no histórico e no fechamento financeiro.
         </p>
+
+        {!caixaAberto ? (
+          <p role="status" className="m-0 mt-2 rounded-10 border border-twb bg-tw px-3 py-2 text-[12.5px] font-semibold text-twf">
+            Abra o caixa para receber e concluir a venda.
+          </p>
+        ) : null}
 
         {!autorizado ? (
           <p
             role="status"
             className="m-0 mt-2 rounded-10 border border-tdb bg-td px-3 py-2 text-[12.5px] font-semibold text-tdf"
           >
-            Seu acesso não inclui lançar pedidos.
+            Seu acesso não inclui criar, receber e concluir vendas no PDV.
           </p>
         ) : null}
+          </>
+        )}
       </section>
-
-      {/*
-       * BARRA FIXA DO MOBILE — §4.5.
-       *
-       * Abaixo de `lg` as áreas empilham, e o total sai da tela junto com o
-       * botão de salvar: quem está com um tablet no salão perde de vista
-       * exatamente os dois números que precisa. A barra traz os dois de volta.
-       *
-       * Só aparece com carrinho montado — barra fixa vazia é altura roubada —,
-       * e `lg:hidden` porque no desktop o total já está visível ao lado. Quem
-       * decide o ponto de corte é o CSS, nunca uma medição em JavaScript
-       * (CLAUDE.md §8).
-       *
-       * `pb-[env(safe-area-inset-bottom)]` mantém o botão acima da barra de
-       * gestos do iOS, senão o alvo de 44px fica por baixo dela (§38).
-       */}
-      {itens.length > 0 ? (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border-shalon bg-surface px-4 pb-[env(safe-area-inset-bottom)] pt-2 shadow-[0_-4px_18px_rgb(41_37_36/0.10)] lg:hidden">
-          <div className="flex items-center gap-3">
-            <div className="min-w-0">
-              <p className="m-0 text-[12px] text-ink-2">
-                {itens.length} {itens.length === 1 ? "item" : "itens"}
-              </p>
-              <p className="m-0 font-display text-[20px] font-extrabold tabular-nums leading-tight text-ink">
-                {formatBRL(subtotal)}
-              </p>
-            </div>
-            <button
-              type="button"
-              disabled={!podeSalvar}
-              onClick={() => salvar()}
-              className="motion-interactive ml-auto min-h-touch-cta shrink-0 cursor-pointer rounded-12 border-0 bg-cta px-5 text-[15px] font-semibold text-cta-fg disabled:cursor-not-allowed disabled:bg-tn disabled:text-muted"
-            >
-              {ocupado ? "Salvando…" : "Salvar"}
-            </button>
-          </div>
-        </div>
+        </ModalVendaAtual>
       ) : null}
+    </div>
+  );
+}
+
+function CupomVenda58({
+  venda,
+  aoNovaVenda,
+}: {
+  venda: VendaConcluida;
+  aoNovaVenda: () => void;
+}) {
+  const [emitir, setEmitir] = useState<boolean | null>(null);
+  const quantidade = venda.itens.reduce((soma, item) => soma + item.quantidade, 0);
+
+  if (emitir === null) {
+    return (
+      <div>
+        <p className="m-0 text-[13.5px] font-semibold text-ink">Deseja emitir o cupom 58 mm?</p>
+        <p className="m-0 mt-1 text-[12px] text-muted">
+          Comprovante da venda, sem valor fiscal. NFC-e/SAT exige integração fiscal própria.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setEmitir(true)}
+            className="min-h-touch cursor-pointer rounded-11 border-0 bg-cta px-4 text-[13.5px] font-semibold text-cta-fg"
+          >
+            Sim, preparar cupom
+          </button>
+          <button
+            type="button"
+            onClick={() => setEmitir(false)}
+            className="min-h-touch cursor-pointer rounded-11 border border-border-shalon bg-surface px-4 text-[13.5px] font-semibold text-ink"
+          >
+            Não emitir
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!emitir) {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="m-0 text-[12.5px] text-muted">Cupom não solicitado.</p>
+        <button
+          type="button"
+          onClick={aoNovaVenda}
+          className="min-h-touch cursor-pointer rounded-11 border-0 bg-cta px-4 text-[13.5px] font-semibold text-cta-fg"
+        >
+          Nova venda
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <p className="m-0 mb-2 text-[12px] font-semibold uppercase tracking-wide text-ink-2">
+        Prévia do cupom 58 mm
+      </p>
+      <div id="cupom-venda-pdv" className="mx-auto w-full max-w-[58mm] bg-white p-[3mm] font-mono text-[10px] leading-[1.35] text-black">
+        <p className="m-0 text-center text-[12px] font-bold">PIZZARIA SHALON</p>
+        <p className="m-0 text-center">COMPROVANTE NAO FISCAL</p>
+        <p className="my-2 border-y border-dashed border-black py-1">VENDA #{venda.numero}</p>
+        {venda.itens.map((item) => (
+          <div key={item.linha} className="mb-1 grid grid-cols-[1fr_auto] gap-2">
+            <span>{item.quantidade}x {item.nome}</span>
+            <span>{formatBRL(item.total)}</span>
+          </div>
+        ))}
+        <div className="mt-2 border-t border-dashed border-black pt-1">
+          <p className="m-0 flex justify-between"><span>{quantidade} item(ns)</span><strong>{formatBRL(venda.total)}</strong></p>
+          <p className="m-0 flex justify-between"><span>Pagamento</span><span>{venda.forma}</span></p>
+          {venda.recebido !== null ? <p className="m-0 flex justify-between"><span>Recebido</span><span>{formatBRL(venda.recebido)}</span></p> : null}
+          {venda.troco !== null ? <p className="m-0 flex justify-between"><span>Troco</span><span>{formatBRL(venda.troco)}</span></p> : null}
+        </div>
+        <p className="mb-0 mt-3 text-center">Obrigado pela preferencia!</p>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2 print:hidden">
+        <button
+          type="button"
+          onClick={() => window.print()}
+          className="min-h-touch cursor-pointer rounded-11 border-0 bg-cta px-4 text-[13.5px] font-semibold text-cta-fg"
+        >
+          Imprimir em 58 mm
+        </button>
+        <button
+          type="button"
+          onClick={aoNovaVenda}
+          className="min-h-touch cursor-pointer rounded-11 border border-border-shalon bg-surface px-4 text-[13.5px] font-semibold text-ink"
+        >
+          Nova venda
+        </button>
+      </div>
+      <style>{`
+        @media print {
+          @page { size: 58mm auto; margin: 0; }
+          body * { visibility: hidden !important; }
+          #cupom-venda-pdv, #cupom-venda-pdv * { visibility: visible !important; }
+          #cupom-venda-pdv {
+            position: absolute !important;
+            inset: 0 auto auto 0 !important;
+            width: 58mm !important;
+            max-width: 58mm !important;
+            margin: 0 !important;
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function ModalVendaAtual({ aoFechar, children }: { aoFechar: () => void; children: ReactNode }) {
+  const painel = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const anterior = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    painel.current?.focus();
+
+    function aoTeclar(evento: KeyboardEvent) {
+      if (evento.key === "Escape") aoFechar();
+    }
+
+    document.addEventListener("keydown", aoTeclar);
+    return () => {
+      document.removeEventListener("keydown", aoTeclar);
+      document.body.style.overflow = overflow;
+      anterior?.focus();
+    };
+  }, [aoFechar]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[80] flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-4"
+      onMouseDown={(evento) => {
+        if (evento.target === evento.currentTarget) aoFechar();
+      }}
+    >
+      <div
+        ref={painel}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="titulo-venda-atual"
+        tabIndex={-1}
+        className="max-h-[94dvh] w-full overflow-y-auto rounded-t-20 border border-border-shalon bg-surface p-5 shadow-2xl outline-none sm:max-w-[680px] sm:rounded-20"
+      >
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 id="titulo-venda-atual" className="m-0 font-display text-[19px] font-bold text-ink">
+            Concluir venda
+          </h2>
+          <button
+            type="button"
+            aria-label="Fechar conferência da venda"
+            onClick={aoFechar}
+            className="flex size-10 cursor-pointer items-center justify-center rounded-full border border-border-shalon bg-elev text-[20px] text-ink"
+          >
+            ×
+          </button>
+        </div>
+        {children}
+      </div>
     </div>
   );
 }

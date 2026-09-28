@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { obterCaixa } from "@/application/caixa/consultas";
-import { formasDePagamento } from "@/application/checkout/consultas";
+import { formasParaRecebimento } from "@/application/configuracoes/consultas";
 import { obterSessaoInterna, podeNaUI } from "@/application/auth/sessao";
 import { randomUUID } from "node:crypto";
 import { PdvComTeclado } from "./_ui/PdvComTeclado";
@@ -30,18 +30,18 @@ export const metadata: Metadata = { title: "PDV" };
 export default async function Page() {
   const [caixa, formas, sessao] = await Promise.all([
     obterCaixa(),
-    formasDePagamento("pickup"),
+    formasParaRecebimento(),
     obterSessaoInterna(),
   ]);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex min-h-[calc(100dvh-111px)] flex-col gap-5">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="m-0 font-display text-[24px] font-bold text-ink">PDV</h1>
           <p className="m-0 mt-1 text-[13.5px] text-muted">
             Venda rápida de balcão para bebidas e produtos prontos. Itens que
-            exigem produção e pagamentos são tratados em Pedidos.
+            exigem preparo continuam no fluxo de Pedidos.
           </p>
         </div>
 
@@ -59,7 +59,11 @@ export default async function Page() {
 
       <PdvComTeclado
         formas={formas}
-        autorizado={podeNaUI(sessao, "orders.create_manual")}
+        autorizado={
+          podeNaUI(sessao, "orders.create_manual") &&
+          podeNaUI(sessao, "payments.register") &&
+          podeNaUI(sessao, "orders.accept")
+        }
         caixa={caixa.aberto
           ? { aberto: true, aberta_por: caixa.aberta_por }
           : { aberto: false }}

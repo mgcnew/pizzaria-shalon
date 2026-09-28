@@ -1,5 +1,10 @@
 "use server";
 
+import { randomBytes } from "node:crypto";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
+import { logger } from "@/lib/logger";
 import { buscarCatalogoPdv, resolverCodigoDeBarras } from "./consultas";
 import { obterPagamentoDoPedido } from "@/application/caixa/consultas";
 import type { PagamentoDoPedido } from "@/application/caixa/tipos";
@@ -34,6 +39,97 @@ export async function resolverCodigo(codigo: unknown): Promise<ResolucaoDeCodigo
 export async function buscarNoCatalogo(termo: unknown): Promise<ItemCatalogoPdv[]> {
   if (typeof termo !== "string" || termo.trim().length === 0 || termo.length > 120) return [];
   return buscarCatalogoPdv(termo);
+}
+
+const vendaRapidaSchema = z.object({
+  idempotency_key: z.string().uuid(),
+  itens: z.array(z.object({
+    linha: z.string().min(1).max(120),
+    produto_id: z.string().uuid(),
+    variacao_id: z.string().uuid().nullish(),
+    sabores: z.array(z.string().uuid()).max(4),
+    borda_id: z.string().uuid().nullish(),
+    adicionais: z.array(z.string().uuid()).max(20),
+    observacao: z.string().max(300),
+    quantidade: z.number().int().min(1).max(99),
+  })).min(1).max(60),
+  pagamento: z.object({
+    forma_id: z.string().uuid(),
+    bandeira_id: z.string().uuid().nullish(),
+    recebido: z.number().finite().nonnegative().nullish(),
+  }),
+});
+
+export type ResultadoVendaRapida =
+  | {
+      ok: true;
+      pedido_id: string;
+      numero: number;
+      total: number;
+      forma: string;
+      recebido: number | null;
+      troco: number | null;
+    }
+  | { ok: false; erro: string; sem_caixa?: boolean };
+
+/** Cria, recebe e encerra uma venda sem produção na mesma transação. */
+export async function finalizarVendaRapida(entrada: unknown): Promise<ResultadoVendaRapida> {
+  const validado = vendaRapidaSchema.safeParse(entrada);
+  if (!validado.success) return { ok: false, erro: "Confira os itens e o pagamento da venda." };
+
+  const dados = validado.data;
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("finalizar_venda_rapida_pdv", {
+    p_pedido: {
+      idempotency_key: dados.idempotency_key,
+      tracking_token: randomBytes(32).toString("hex"),
+      origem: "counter",
+      modalidade: "pickup",
+      cliente: {},
+      endereco: null,
+      rota: null,
+      itens: dados.itens,
+      pagamento: {
+        forma_id: dados.pagamento.forma_id,
+        bandeira_id: dados.pagamento.bandeira_id ?? null,
+        precisa_troco: dados.pagamento.recebido != null,
+        troco_para: dados.pagamento.recebido ?? null,
+      },
+      observacao_geral: null,
+    },
+    p_pagamento: {
+      forma_id: dados.pagamento.forma_id,
+      bandeira_id: dados.pagamento.bandeira_id ?? null,
+      recebido: dados.pagamento.recebido ?? null,
+    },
+  });
+
+  if (error) {
+    logger.error("pdv:finalizarVendaRapida", { code: (error as { code?: string }).code });
+    return { ok: false, erro: "Não foi possível concluir a venda agora. Tente novamente." };
+  }
+
+  const resposta = (data ?? {}) as Record<string, unknown>;
+  if (!resposta["ok"]) {
+    return {
+      ok: false,
+      erro: String(resposta["erro"] ?? "Não foi possível concluir a venda."),
+      ...(resposta["sem_caixa"] ? { sem_caixa: true } : {}),
+    };
+  }
+
+  revalidatePath("/admin/pdv");
+  revalidatePath("/admin/pedidos");
+  revalidatePath("/admin/financeiro");
+  return {
+    ok: true,
+    pedido_id: String(resposta["pedido_id"]),
+    numero: Number(resposta["numero"]),
+    total: Number(resposta["total"]),
+    forma: String(resposta["forma"] ?? "Pagamento"),
+    recebido: resposta["recebido"] == null ? null : Number(resposta["recebido"]),
+    troco: resposta["troco"] == null ? null : Number(resposta["troco"]),
+  };
 }
 
 /**

@@ -15,7 +15,7 @@ import {
   type AcaoDoPdv,
   type ContextoDoPdv,
 } from "./atalhos";
-import type { FormaDePagamento } from "@/application/checkout/tipos";
+import type { FormaParaRecebimento } from "@/app/(admin)/admin/pedidos/_ui/Recebimento";
 
 /**
  * O TECLADO DO PDV — Fase 12, Etapa 9.
@@ -73,7 +73,7 @@ export function PdvComTeclado({
   tentativa,
   podeMovimentar,
 }: {
-  formas: FormaDePagamento[];
+  formas: FormaParaRecebimento[];
   autorizado: boolean;
   caixa: EstadoVisivelDoCaixa;
   tentativa: string;
@@ -100,6 +100,8 @@ export function PdvComTeclado({
    * de manipuladores de evento e dos efeitos dos painéis: nunca no render.
    */
   const [faixa, setFaixa] = useState<{ tecla: string; rotulo: string }[]>([]);
+  const [quantidadeItens, setQuantidadeItens] = useState(0);
+  const [totalVenda, setTotalVenda] = useState(0);
 
   const registrarVenda = useCallback((a: AreaComTeclado | null) => {
     venda.current = a;
@@ -120,14 +122,18 @@ export function PdvComTeclado({
       temItens: false,
       podeSalvar: false,
       temResultados: false,
-      configuradorAberto: false,
+      quantidadeItens: 0,
+      totalVenda: 0,
       podeMovimentarCaixa: caixa.aberto && podeMovimentar,
       ...venda.current?.estado(),
     };
   }, [caixa.aberto, podeMovimentar]);
 
   const avisar = useCallback(() => {
-    setFaixa(teclasAtivas(lerContexto()));
+    const contexto = lerContexto();
+    setFaixa(teclasAtivas(contexto));
+    setQuantidadeItens(contexto.quantidadeItens);
+    setTotalVenda(contexto.totalVenda);
   }, [lerContexto]);
 
   /** Roteia pelo prefixo para a venda ou para as operações da gaveta. */
@@ -226,9 +232,6 @@ export function PdvComTeclado({
       if (ehCampo(document.activeElement)) return;
       if (document.querySelector(SELETOR_POR_CIMA) !== null) return;
 
-      const ctx = lerContexto();
-      if (ctx.configuradorAberto) return;
-
       venda.current?.executar("venda:focar-leitura");
       ultima = Date.now();
     }, 5_000);
@@ -241,7 +244,7 @@ export function PdvComTeclado({
 
   return (
     <ProvedorDeOperacaoEmVoo aoMudar={realtime.aoMudarOperacoes}>
-      <div className="flex flex-col gap-5">
+      <div className="flex min-h-0 flex-1 flex-col gap-5">
         {realtime.estado !== "ativo" ? (
           /*
            * A TELA DIZ A VERDADE quando não está atualizando sozinha (§37).
@@ -264,11 +267,12 @@ export function PdvComTeclado({
         <NovaVenda
           formas={formas}
           autorizado={autorizado}
+          caixaAberto={caixa.aberto}
           registrar={registrarVenda}
           aoMudar={avisar}
         />
 
-        <div className="flex flex-col gap-2 lg:sticky lg:bottom-3 lg:z-20">
+        <div className="mt-auto flex flex-col gap-2 pt-2">
           {/*
          * A FAIXA DE ATALHOS — §3, último parágrafo: "quem está aprendendo não
          * precisa decorar".
@@ -297,8 +301,9 @@ export function PdvComTeclado({
           <PainelDoCaixa
             estado={caixa}
             tentativa={tentativa}
-            podeMovimentar={podeMovimentar}
             aoRegistrarComandos={registrarCaixa}
+            venda={{ quantidade: quantidadeItens, total: totalVenda }}
+            aoConcluirVenda={() => executar("venda:concluir")}
           />
         </div>
       </div>

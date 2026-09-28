@@ -15,7 +15,8 @@ const PARADO: ContextoDoPdv = {
   temItens: false,
   podeSalvar: false,
   temResultados: false,
-  configuradorAberto: false,
+  quantidadeItens: 0,
+  totalVenda: 0,
   podeMovimentarCaixa: true,
 };
 
@@ -55,32 +56,24 @@ describe("atalhos globais do PDV", () => {
       .not.toContain("F4");
   });
 
-  it("F7 salva somente quando o botão também está habilitado", () => {
-    expect(decidir("F7", { temItens: true, podeSalvar: true })).toBe("venda:salvar");
-    expect(decidir("F7", { temItens: true })).toBeNull();
+  it("F7 abre a conclusão quando existe item, mesmo antes de escolher pagamento", () => {
+    expect(decidir("F7", { temItens: true })).toBe("venda:concluir");
+    expect(decidir("F7")).toBeNull();
   });
 });
 
-describe("busca e configurador", () => {
+describe("busca rápida", () => {
   it("Enter e Tab resolvem uma leitura preenchida", () => {
     const ctx = { focoEmCampo: true, focoNaLeitura: true, leituraPreenchida: true };
     expect(decidir("Enter", ctx)).toBe("venda:resolver");
     expect(decidir("Tab", ctx)).toBe("venda:resolver");
   });
 
-  it("não prende Tab vazio nem reabre busca sob o configurador", () => {
+  it("não prende Tab vazio", () => {
     expect(decidir("Tab", { focoEmCampo: true, focoNaLeitura: true })).toBeNull();
-    expect(decidir("Enter", {
-      focoEmCampo: true,
-      focoNaLeitura: true,
-      leituraPreenchida: true,
-      configuradorAberto: true,
-    })).toBeNull();
   });
 
-  it("Escape fecha o configurador antes de limpar a leitura", () => {
-    expect(decidir("Escape", { configuradorAberto: true, leituraPreenchida: true }))
-      .toBe("venda:fechar-configurador");
+  it("Escape limpa a leitura", () => {
     expect(decidir("Escape", { leituraPreenchida: true })).toBe("venda:limpar-leitura");
   });
 

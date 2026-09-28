@@ -35,13 +35,15 @@ function paraNumero(texto: string): number | null {
 export function PainelDoCaixa({
   estado,
   tentativa,
-  podeMovimentar,
   aoRegistrarComandos,
+  venda,
+  aoConcluirVenda,
 }: {
   estado: EstadoVisivelDoCaixa;
   tentativa: string;
-  podeMovimentar: boolean;
   aoRegistrarComandos?: (comandos: ComandosDoCaixa | null) => void;
+  venda: { quantidade: number; total: number };
+  aoConcluirVenda: () => void;
 }) {
   const [operacao, setOperacao] = useState<Operacao>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -90,43 +92,43 @@ export function PainelDoCaixa({
                   ? `Aberto por ${estado.aberta_por ?? "—"}`
                   : "Abra para iniciar as operações da gaveta"}
               </span>
+              {estado.aberto ? (
+                <button
+                  type="button"
+                  onClick={() => abrir("fechar")}
+                  className="ml-1 min-h-8 cursor-pointer rounded-9 border border-border-shalon bg-transparent px-2.5 text-[12px] font-semibold text-muted transition-colors hover:border-danger hover:text-danger"
+                >
+                  Fechar caixa
+                </button>
+              ) : null}
             </div>
           </div>
 
           {estado.aberto ? (
             <div className="flex flex-1 flex-wrap justify-end gap-2 sm:flex-none">
               <Button
-                variante="secundario"
                 tamanho="sm"
-                disabled={!podeMovimentar}
-                onClick={() => abrir("reforco")}
+                disabled={venda.quantidade === 0}
+                onClick={aoConcluirVenda}
+                className="sm:mr-1"
               >
-                <Kbd>F4</Kbd> Reforço
-              </Button>
-              <Button
-                variante="secundario"
-                tamanho="sm"
-                disabled={!podeMovimentar}
-                onClick={() => abrir("sangria")}
-              >
-                <Kbd>F9</Kbd> Sangria
-              </Button>
-              <Button tamanho="sm" onClick={() => abrir("fechar")}>
-                Fechar caixa
+                Concluir venda
+                {venda.quantidade > 0 ? ` · ${venda.quantidade} · ${formatBRL(venda.total)}` : ""}
               </Button>
             </div>
           ) : (
-            <Button tamanho="sm" onClick={() => abrir("abrir")}>
-              Abrir caixa
-            </Button>
+            <div className="flex flex-1 flex-wrap justify-end gap-2 sm:flex-none">
+              <Button tamanho="sm" disabled={venda.quantidade === 0} onClick={aoConcluirVenda}>
+                Concluir venda
+                {venda.quantidade > 0 ? ` · ${venda.quantidade} · ${formatBRL(venda.total)}` : ""}
+              </Button>
+              <Button tamanho="sm" variante="secundario" onClick={() => abrir("abrir")}>
+                Abrir caixa
+              </Button>
+            </div>
           )}
         </div>
 
-        {estado.aberto && !podeMovimentar ? (
-          <p className="m-0 mt-2 text-[12px] text-muted">
-            Seu acesso não permite reforço ou sangria.
-          </p>
-        ) : null}
       </section>
 
       {operacao !== null ? (
@@ -175,14 +177,6 @@ export function PainelDoCaixa({
         </ModalDeCaixa>
       ) : null}
     </>
-  );
-}
-
-function Kbd({ children }: { children: string }) {
-  return (
-    <kbd className="rounded-6 border border-border-shalon bg-elev px-1.5 py-px font-mono text-[10px] font-semibold text-ink">
-      {children}
-    </kbd>
   );
 }
 
