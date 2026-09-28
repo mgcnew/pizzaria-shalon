@@ -12,7 +12,6 @@ import { GavetaDeCobranca } from "./GavetaDeCobranca";
 import { ProvedorDeOperacaoEmVoo } from "@/ui/operacaoEmVoo";
 import type { FormaParaRecebimento } from "./Recebimento";
 import type { PedidoAReceber } from "@/application/pdv/tipos";
-import { ativarSom, somAtivo, tocarAlerta } from "./AlertaSonoro";
 
 /**
  * Central de pedidos.
@@ -57,7 +56,6 @@ export function CentralDePedidos({
   podeReceber: boolean;
 }) {
   const router = useRouter();
-  const [comSom, setComSom] = useState(false);
   const [conectado, setConectado] = useState(false);
   /**
    * O pedido em cobrança e a chave da tentativa, criados JUNTOS no clique.
@@ -107,10 +105,6 @@ export function CentralDePedidos({
     [atualizar],
   );
 
-  // Quais pedidos já estavam aqui: o alerta é para o que CHEGA, não para o
-  // que já estava na tela quando ela abriu.
-  const conhecidos = useRef<Set<string>>(new Set(pedidos.map((p) => p.id)));
-
   useEffect(() => {
     let vivo = true;
     let cliente: SupabaseClient | null = null;
@@ -125,22 +119,7 @@ export function CentralDePedidos({
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "orders" },
-          (evento) => {
-            const linha = evento.new as { id?: string; status?: string } | null;
-            const novo =
-              evento.eventType === "INSERT" &&
-              typeof linha?.id === "string" &&
-              !conhecidos.current.has(linha.id);
-
-            if (novo && linha?.id) {
-              conhecidos.current.add(linha.id);
-              if (
-                typeof linha.status === "string" &&
-                exigeAtencao(linha.status)
-              ) {
-                tocarAlerta();
-              }
-            }
+          () => {
             // Recarrega pelo caminho normal. O evento avisa; quem informa é o
             // servidor — e o guarda decide a HORA, nunca o quê.
             atualizar();
@@ -200,15 +179,6 @@ export function CentralDePedidos({
               : "Reconectando… a lista pode estar alguns segundos atrasada."}
           </p>
 
-          {/* O navegador exige um gesto antes de tocar qualquer som. Enquanto
-            ele não vier, a tela diz a verdade: o som está desligado. */}
-          <button
-            type="button"
-            onClick={() => setComSom(ativarSom() && somAtivo())}
-            className="min-h-touch cursor-pointer rounded-11 border-[1.5px] border-border-shalon bg-surface px-[14px] text-[13px] font-semibold text-ink"
-          >
-            {comSom ? "Som ligado" : "Ativar som de pedido novo"}
-          </button>
         </div>
 
         {pedidos.length === 0 ? (

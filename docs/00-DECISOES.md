@@ -2893,6 +2893,42 @@ impossível: `for update`, `ja_pago`, um pagamento, um movimento.
 
 ---
 
+## D-2026-09-28-84 — PWA administrativo e notificações de pedidos
+
+**Data:** 28/09/2026 · **Decisão do responsável pelo produto nesta conversa**
+
+**Decisão.** O painel administrativo passa a ter uma instalação PWA própria,
+um sino global e alertas persistentes de novos pedidos com som opcional após
+interação do operador. O Web Push poderá avisar fora da página após permissão
+do navegador; SMS e WhatsApp automáticos continuam fora do escopo.
+
+**Supera:** a proibição de push na V1 em `01-DOCUMENTO-MESTRE.md` §79.23,
+atualizada nesta decisão. Instalação do PWA não é requisito para receber
+alertas no desktop compatível; no iOS/iPadOS o Web Push exige a instalação
+na Tela de Início.
+
+**Limites.** Nenhum dado operacional privado é cacheado pelo service worker;
+o modo offline mostra apenas um aviso estático. Realtime informa que houve
+evento, mas a lista exibida vem de projeção autenticada com RLS. Áudio nunca
+é declarado ativo antes de `AudioContext.resume()` completar.
+
+**Onde foi formalizada:** `public/admin.webmanifest`, `public/sw-admin.js`,
+`src/ui/notificacoes/`, `supabase/migrations/20260928120000_notificacoes_administrativas.sql`.
+
+**Estado desta entrega.** PWA instalável, sino persistente e som na aba aberta
+estão implementados; o Web Push com o navegador fechado ainda depende de
+assinatura, credenciais VAPID e envio no servidor. A migration também precisa
+ser aplicada antes de o sino receber pedidos reais.
+
+**Preferência de som.** A escolha do operador fica salva neste navegador por
+usuário interno, inclusive depois de sair e entrar de novo. Como o navegador
+restringe áudio automático, a primeira interação com o painel após o retorno
+retoma o som; não há reprodução antes desse gesto. Pedidos feitos pelo link
+público geram o alerta no administrativo, mas clientes não recebem o sino ou
+esse som administrativo.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.

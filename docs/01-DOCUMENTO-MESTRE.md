@@ -1902,7 +1902,7 @@ Dashboard deve funcionar como **central de atenção operacional**, não coleç�
 
 Limites de tempo para alertas são configuráveis, não hardcoded.
 
-Novos pedidos geram **alerta visual e sonoro dentro do administrativo**. Não implementar push/SMS/WhatsApp automático na V1.
+Novos pedidos geram **alerta visual e sonoro dentro do administrativo**. Decisão posterior, em 28/09/2026: o painel administrativo também terá notificações Web Push opcionais para operadores que autorizarem o navegador, precedidas da base PWA instalável. SMS e WhatsApp automáticos continuam fora da V1. Push não substitui a lista interna nem altera a autoridade dos pedidos.
 
 ## 79.24 Relatórios
 

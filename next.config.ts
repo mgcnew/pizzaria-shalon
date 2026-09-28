@@ -13,6 +13,12 @@ const hostDoSupabase = (() => {
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  async headers() {
+    return [{
+      source: "/sw-admin.js",
+      headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }],
+    }];
+  },
   /**
    * COMPATIBILIDADE DA ROTA ANTIGA DO CAIXA — consolidação PDV × Caixa.
    *

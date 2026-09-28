@@ -1,14 +1,24 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { DrawerAdmin } from "@/ui/components/DrawerAdmin";
 import { MenuLateralAdmin } from "@/ui/components/MenuLateralAdmin";
 import { MenuUsuarioAdmin } from "@/ui/components/MenuUsuarioAdmin";
 import { SeletorDeTema } from "@/ui/components/SeletorDeTema";
+import { RegistrarPwaAdmin } from "@/ui/components/RegistrarPwaAdmin";
+import { SinoNotificacoesAdmin } from "@/ui/notificacoes/SinoNotificacoesAdmin";
+import { listarNotificacoes } from "@/application/notificacoes/acoes";
 import { COOKIE_TEMA, temaDoCookie } from "@/ui/tema";
 import { obterSessaoInterna } from "@/application/auth/sessao";
 import { sair } from "@/app/(auth)/admin/login/actions";
+
+export const metadata: Metadata = {
+  manifest: "/admin.webmanifest",
+  appleWebApp: { capable: true, title: "Shalon Admin", statusBarStyle: "default" },
+  icons: { apple: [{ url: "/pwa-icon/180", sizes: "180x180", type: "image/png" }] },
+};
 
 /**
  * Shell administrativo — sidebar + cabeçalho do design aprovado.
@@ -39,9 +49,13 @@ export default async function LayoutAdmin({
   if (!sessao) redirect("/admin/login");
 
   const temaAtual = temaDoCookie((await cookies()).get(COOKIE_TEMA)?.value);
+  const notificacoes = sessao.permissoes.includes("orders.view")
+    ? await listarNotificacoes()
+    : null;
 
   return (
     <div data-acento="vermelho" className="flex min-h-screen bg-bg">
+      <RegistrarPwaAdmin />
       <aside
         aria-label="Navegação principal do administrativo"
         className="sticky top-0 hidden h-screen w-sidebar shrink-0 flex-col overflow-hidden border-r border-admin-nav-border bg-admin-nav-bg shadow-[4px_0_18px_rgb(41_37_36/0.06)] lg:flex"
@@ -73,6 +87,7 @@ export default async function LayoutAdmin({
             />
           </Link>
           <SeletorDeTema atual={temaAtual} />
+          {notificacoes ? <SinoNotificacoesAdmin key={sessao.appUserId} iniciais={notificacoes} appUserId={sessao.appUserId} /> : null}
           <MenuUsuarioAdmin nome={sessao.nome} papeis={sessao.papeis} acaoSair={sair} />
         </header>
 
