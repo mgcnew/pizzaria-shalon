@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { StatusBadge } from "@/ui/components";
 import { formatBRL, formatarEspera, minutosDesde } from "@/lib/format";
@@ -7,6 +8,7 @@ import { rotuloDeModalidade, rotuloDeOrigem, rotuloInterno } from "@/domain/pedi
 import type { PedidoNaFila } from "@/application/pedidos/tipos";
 import type { PedidoAReceber } from "@/application/pdv/tipos";
 import { AcoesDoPedido } from "./AcoesDoPedido";
+import { InfoProducaoPedido } from "./InfoProducaoPedido";
 import { ESTILO_RECEBER } from "./estiloDasAcoes";
 
 /**
@@ -102,7 +104,7 @@ export function TabelaPedidos({
             <th scope="col" className="px-3 py-2.5 font-bold">Pedido</th>
             <th scope="col" className="px-3 py-2.5 font-bold">Cliente</th>
             <th scope="col" className="px-3 py-2.5 font-bold">Canal</th>
-            <th scope="col" className="px-3 py-2.5 text-right font-bold">Itens</th>
+            <th scope="col" className="px-3 py-2.5 text-center font-bold">Comanda</th>
             <th scope="col" className="px-3 py-2.5 text-right font-bold">Total</th>
             <th scope="col" className="px-3 py-2.5 font-bold">Pagamento</th>
             <th scope="col" className="px-3 py-2.5 font-bold">Situação</th>
@@ -146,9 +148,12 @@ export function TabelaPedidos({
                 </td>
 
                 <td className="px-3 py-3">
-                  <span className="font-display text-[15px] font-extrabold text-ink">
-                    #{p.numero}
-                  </span>
+                  <div className="flex items-center gap-1.5 whitespace-nowrap">
+                    <span className="font-display text-[15px] font-extrabold text-ink">
+                      #{p.numero}
+                    </span>
+                    <InfoProducaoPedido pedidoId={p.id} numero={p.numero} />
+                  </div>
                 </td>
 
                 <td className="max-w-[220px] px-3 py-3">
@@ -172,8 +177,17 @@ export function TabelaPedidos({
                   {rotuloDeModalidade(p.modalidade)}
                 </td>
 
-                <td className="px-3 py-3 text-right tabular-nums text-ink-2">
-                  {p.itens}
+                <td className="px-3 py-3 text-center">
+                  <Link
+                    href={`/admin/pedidos?${aberto ? "" : "aba=encerrados&"}modal=comanda&pedido=${p.id}`}
+                    aria-label={`Abrir emissão de comanda do pedido #${p.numero}`}
+                    title="Emitir comanda"
+                    className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-10 border border-border-shalon bg-surface text-ink-2 no-underline transition-colors hover:border-brand-orange hover:bg-elev hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-orange"
+                  >
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-[18px] w-[18px]">
+                      <path d="M7 8V3h10v5M7 17H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M7 14h10v7H7v-7ZM17 11h.01" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </Link>
                 </td>
 
                 <td className="px-3 py-3 text-right font-display text-[15px] font-extrabold tabular-nums text-ink">
@@ -237,10 +251,6 @@ export function TabelaPedidos({
                           {
                             rotulo: "Ver detalhes",
                             href: `/admin/pedidos?${aberto ? "" : "aba=encerrados&"}modal=detalhes&pedido=${p.id}`,
-                          },
-                          {
-                            rotulo: "Emitir comanda",
-                            href: `/admin/pedidos?${aberto ? "" : "aba=encerrados&"}modal=comanda&pedido=${p.id}`,
                           },
                         ]}
                       />

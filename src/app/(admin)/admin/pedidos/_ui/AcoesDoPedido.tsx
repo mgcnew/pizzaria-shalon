@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { executarComando } from "@/application/pedidos/acoes";
 import type { AcaoDoPedido } from "@/application/pedidos/tipos";
+import { usePopoverFixo } from "@/ui/hooks/usePopoverFixo";
 import { estiloDoComando } from "./estiloDasAcoes";
 
 /**
@@ -57,7 +59,27 @@ export function AcoesDoPedido({
   const [erro, setErro] = useState<string | null>(null);
   const [menuAberto, setMenuAberto] = useState(false);
   const [executando, iniciar] = useTransition();
+  const menuId = useId();
   const caixaDoMenu = useRef<HTMLDivElement | null>(null);
+  const conteudoDoMenu = useRef<HTMLDivElement | null>(null);
+
+  const primaria =
+    modo === "linha" && comPrimaria ? (acoes.find((a) => !a.destrutivo) ?? null) : null;
+  const noMenu = modo === "linha" ? acoes.filter((a) => a !== primaria) : [];
+  const posicaoMenu = usePopoverFixo(
+    caixaDoMenu,
+    menuAberto,
+    220,
+    (noMenu.length + itensAdicionais.length) * 44 + 12,
+  );
+  const menuPosicionado = posicaoMenu !== null;
+
+  useEffect(() => {
+    if (menuAberto && menuPosicionado) {
+      conteudoDoMenu.current?.querySelector<HTMLElement>("[role='menuitem']")?.focus();
+    }
+  // Só no instante em que o portal aparece, não em cada reposicionamento.
+  }, [menuAberto, menuPosicionado]);
 
   /*
    * Fecha o menu ao clicar fora ou apertar Escape. Sem isto, um menu aberto
@@ -67,10 +89,14 @@ export function AcoesDoPedido({
   useEffect(() => {
     if (!menuAberto) return;
     const aoClicar = (e: MouseEvent) => {
-      if (!caixaDoMenu.current?.contains(e.target as Node)) setMenuAberto(false);
+      if (!caixaDoMenu.current?.contains(e.target as Node) &&
+          !conteudoDoMenu.current?.contains(e.target as Node)) setMenuAberto(false);
     };
     const aoTeclar = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuAberto(false);
+      if (e.key === "Escape") {
+        setMenuAberto(false);
+        caixaDoMenu.current?.querySelector("button")?.focus();
+      }
     };
     document.addEventListener("pointerdown", aoClicar);
     document.addEventListener("keydown", aoTeclar);
@@ -107,16 +133,12 @@ export function AcoesDoPedido({
     disparar(acao);
   }
 
-  if (acoes.length === 0 && itensAdicionais.length === 0 && erro === null) return null;
-
   /*
    * A PRIMÁRIA é a primeira não destrutiva, na ordem que o banco definiu
    * (`order_commands.sort_order`). Não é escolha desta tela: se amanhã um
    * comando novo entrar antes, ele vira a primária sozinho.
    */
-  const primaria =
-    modo === "linha" && comPrimaria ? (acoes.find((a) => !a.destrutivo) ?? null) : null;
-  const noMenu = modo === "linha" ? acoes.filter((a) => a !== primaria) : [];
+  if (acoes.length === 0 && itensAdicionais.length === 0 && erro === null) return null;
 
   const classeBotao = (acao: AcaoDoPedido) =>
     [
@@ -153,6 +175,7 @@ export function AcoesDoPedido({
                 disabled={executando}
                 aria-haspopup="menu"
                 aria-expanded={menuAberto}
+                aria-controls={menuAberto ? menuId : undefined}
                 aria-label="Mais ações"
                 title="Mais ações"
                 onClick={() => setMenuAberto((v) => !v)}
@@ -161,10 +184,22 @@ export function AcoesDoPedido({
                 ⋯
               </button>
 
-              {menuAberto ? (
+              {menuAberto && posicaoMenu ? createPortal(
                 <div
+                  id={menuId}
+                  ref={conteudoDoMenu}
                   role="menu"
-                  className="motion-popover-in absolute right-0 top-[calc(100%+4px)] z-30 flex min-w-[210px] flex-col overflow-hidden rounded-12 border border-border-shalon bg-surface shadow-[0_8px_24px_rgb(41_37_36/0.16)]"
+                  style={posicaoMenu}
+                  onKeyDown={(evento) => {
+                    if (evento.key !== "ArrowDown" && evento.key !== "ArrowUp") return;
+                    const itens = [...(conteudoDoMenu.current?.querySelectorAll<HTMLElement>("[role='menuitem']:not([disabled])") ?? [])];
+                    if (!itens.length) return;
+                    evento.preventDefault();
+                    const atual = itens.indexOf(document.activeElement as HTMLElement);
+                    const deslocamento = evento.key === "ArrowDown" ? 1 : -1;
+                    itens[(atual + deslocamento + itens.length) % itens.length]?.focus();
+                  }}
+                  className="motion-popover-in fixed z-[80] flex w-[min(220px,calc(100vw-16px))] flex-col overflow-y-auto rounded-12 border border-border-shalon bg-surface shadow-[0_8px_24px_rgb(41_37_36/0.16)]"
                 >
                   {itensAdicionais.map((item) => (
                     <Link
@@ -196,7 +231,7 @@ export function AcoesDoPedido({
                       {acao.rotulo}
                     </button>
                   ))}
-                </div>
+                </div>, document.body,
               ) : null}
             </div>
           ) : null}
