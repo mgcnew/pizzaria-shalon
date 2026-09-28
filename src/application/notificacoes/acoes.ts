@@ -4,10 +4,11 @@ import { z } from "zod";
 import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
 import { logger } from "@/lib/logger";
 import { obterSessaoInterna, podeNaUI } from "@/application/auth/sessao";
+import type { TipoAlerta } from "@/domain/notificacoes/alertas";
 
 export type NotificacaoAdministrativa = {
   id: string;
-  kind: "new_order";
+  kind: TipoAlerta;
   order_id: string;
   order_number: number;
   created_at: string;

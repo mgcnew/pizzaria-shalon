@@ -2927,6 +2927,20 @@ retoma o som; não há reprodução antes desse gesto. Pedidos feitos pelo link
 público geram o alerta no administrativo, mas clientes não recebem o sino ou
 esse som administrativo.
 
+**Toque personalizado.** Em 28/09/2026, o responsável forneceu o arquivo
+`notificação.mpeg` para o alerta de pedido novo. O painel usa uma cópia MP3
+com volume reduzido em 5 dB; o toque sintetizado continua como reserva se o
+arquivo não carregar.
+
+**Alertas por tarefa.** O responsável confirmou que o toque deve ocorrer só
+quando uma etapa cria trabalho para outra pessoa/equipe. O sino passa a listar
+pedido novo, produção a iniciar, pedido pronto para retirada/despacho e falha
+na entrega. Mudanças intermediárias ou encerramento não geram alerta. Como a
+V1 não possui papel separado de cozinha, cada operador escolhe neste navegador
+quais áreas produzem som (atendimento por padrão; produção e entrega opt-in).
+A escolha é salva por usuário; o sino visual continua sujeito às permissões
+do banco e não é substituído por preferências locais.
+
 ---
 
 # Como registrar uma nova decisão

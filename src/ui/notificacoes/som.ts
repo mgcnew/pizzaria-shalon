@@ -3,6 +3,23 @@
 /** Áudio compartilhado pelo shell; a permissão vem de um gesto explícito. */
 let contexto: AudioContext | null = null;
 let ultimoToque = 0;
+let amostra: AudioBuffer | null = null;
+let carregamento: Promise<void> | null = null;
+
+function carregarAmostra(audioContext: AudioContext): Promise<void> {
+  carregamento ??= fetch("/sons/notificacao-pedido.mp3")
+    .then((resposta) => {
+      if (!resposta.ok) throw new Error("Áudio indisponível");
+      return resposta.arrayBuffer();
+    })
+    .then((dados) => audioContext.decodeAudioData(dados))
+    .then((decodificada) => { amostra = decodificada; })
+    .catch(() => {
+      // Falha de rede/codec não tira o alerta: o toque sintetizado é reserva.
+      carregamento = null;
+    });
+  return carregamento;
+}
 
 export async function ativarSom(): Promise<boolean> {
   if (typeof window === "undefined") return false;
@@ -12,6 +29,7 @@ export async function ativarSom(): Promise<boolean> {
     if (!Construtor) return false;
     contexto ??= new Construtor();
     await contexto.resume();
+    if (contexto.state === "running") await carregarAmostra(contexto);
     return contexto.state === "running";
   } catch {
     return false;
@@ -33,6 +51,15 @@ export function tocarAlerta(): void {
   ultimoToque = agora;
 
   try {
+    if (amostra) {
+      const fonte = contexto.createBufferSource();
+      fonte.buffer = amostra;
+      fonte.connect(contexto.destination);
+      fonte.start();
+      return;
+    }
+
+    // Reserva caso o arquivo não seja carregado ou decodificado pelo navegador.
     const inicio = contexto.currentTime;
     for (const [indice, frequencia] of [880, 1170].entries()) {
       const oscilador = contexto.createOscillator();

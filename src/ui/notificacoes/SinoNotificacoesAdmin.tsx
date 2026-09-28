@@ -11,6 +11,12 @@ import {
   type ResumoNotificacoes,
 } from "@/application/notificacoes/acoes";
 import { ativarSom, desativarSom, somAtivo, tocarAlerta } from "./som";
+import {
+  AREAS_ALERTA,
+  definirAlerta,
+  lerAreasSalvas,
+  type AreaAlerta,
+} from "@/domain/notificacoes/alertas";
 
 const CHAVE_ULTIMO_SOM = "shalon-admin-ultimo-alerta-sonoro";
 
@@ -23,6 +29,15 @@ function preferenciaSalva(chave: string): boolean {
   }
 }
 
+function areasSalvas(chave: string): AreaAlerta[] {
+  if (typeof window === "undefined") return ["atendimento"];
+  try {
+    return lerAreasSalvas(localStorage.getItem(chave));
+  } catch {
+    return ["atendimento"];
+  }
+}
+
 export function SinoNotificacoesAdmin({
   iniciais,
   appUserId,
@@ -32,15 +47,18 @@ export function SinoNotificacoesAdmin({
 }) {
   const router = useRouter();
   const chaveSom = `shalon-admin-som:${appUserId}`;
+  const chaveAreas = `shalon-admin-areas-sonoras:${appUserId}`;
   const [resumo, setResumo] = useState(iniciais);
   const [aberto, setAberto] = useState(false);
   const [somPreferido, setSomPreferido] = useState(() => preferenciaSalva(chaveSom));
   const [somLigado, setSomLigado] = useState(false);
+  const [areasSonoras, setAreasSonoras] = useState<AreaAlerta[]>(() => areasSalvas(chaveAreas));
   const [conectado, setConectado] = useState(false);
   const [abrindoPedido, setAbrindoPedido] = useState<string | null>(null);
   const raiz = useRef<HTMLDivElement>(null);
   const botao = useRef<HTMLButtonElement>(null);
   const somPreferidoAtual = useRef(somPreferido);
+  const areasSonorasAtuais = useRef(areasSonoras);
 
   const naoLidas = resumo.unread_count;
 
@@ -100,6 +118,19 @@ export function SinoNotificacoesAdmin({
     if (ativo) tocarAlerta();
   }
 
+  function alternarArea(area: AreaAlerta) {
+    const proximas = areasSonorasAtuais.current.includes(area)
+      ? areasSonorasAtuais.current.filter((atual) => atual !== area)
+      : [...areasSonorasAtuais.current, area];
+    areasSonorasAtuais.current = proximas;
+    setAreasSonoras(proximas);
+    try {
+      localStorage.setItem(chaveAreas, JSON.stringify(proximas));
+    } catch {
+      // A seleção continua válida até fechar esta aba.
+    }
+  }
+
   useEffect(() => {
     let vivo = true;
     let cliente: SupabaseClient | null = null;
@@ -126,7 +157,9 @@ export function SinoNotificacoesAdmin({
           const id = (evento.new as { id?: unknown }).id;
           void atualizar().then((novas) => {
             const nova = novas?.items.find((item) => item.id === id);
-            if (!vivo || !nova || nova.resolved || !somAtivo() || document.visibilityState !== "visible") return;
+            if (!vivo || !nova || nova.resolved || !somAtivo() ||
+                !areasSonorasAtuais.current.includes(definirAlerta(nova.kind).area) ||
+                document.visibilityState !== "visible") return;
             // Em duas abas da mesma estação, apenas a primeira toca.
             try {
               if (localStorage.getItem(CHAVE_ULTIMO_SOM) !== nova.id) {
@@ -252,6 +285,28 @@ export function SinoNotificacoesAdmin({
             </p>
           ) : null}
 
+          <fieldset className="m-0 border-0 border-b border-border-shalon px-4 py-3">
+            <legend className="mb-1.5 px-0 text-[11px] font-semibold text-muted">Som para</legend>
+            <div className="flex flex-wrap gap-x-4 gap-y-2">
+              {AREAS_ALERTA.map((area) => (
+                <label key={area.id} className="flex min-h-[32px] cursor-pointer items-center gap-1.5 text-[12px] text-ink">
+                  <input
+                    type="checkbox"
+                    checked={areasSonoras.includes(area.id)}
+                    onChange={() => alternarArea(area.id)}
+                    className="accent-brand-red"
+                  />
+                  {area.nome}
+                </label>
+              ))}
+            </div>
+            <p className="m-0 mt-1.5 text-[11px] text-muted">
+              {somPreferido
+                ? "A lista visual mostra todas as tarefas que você pode atender."
+                : "Ative o som acima para ouvir as áreas selecionadas."}
+            </p>
+          </fieldset>
+
           <div className="scrollbar-subtle max-h-[min(420px,65vh)] overflow-y-auto p-2">
             {resumo.items.length === 0 ? (
               <p className="m-0 px-3 py-6 text-center text-[13px] text-muted">Nenhuma notificação por enquanto.</p>
@@ -265,7 +320,7 @@ export function SinoNotificacoesAdmin({
               >
                 <span aria-hidden="true" className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${!notificacao.read && !notificacao.resolved ? "bg-brand-red" : "bg-border-shalon"}`} />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[13px] font-semibold text-ink">Novo pedido #{notificacao.order_number}</span>
+                  <span className="block text-[13px] font-semibold text-ink">{definirAlerta(notificacao.kind).titulo} #{notificacao.order_number}</span>
                   <span className="block text-[11px] text-muted">
                     {notificacao.resolved ? "Resolvido · " : ""}
                     {new Date(notificacao.created_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" })}
