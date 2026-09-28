@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { executarComando } from "@/application/pedidos/acoes";
 import type { AcaoDoPedido } from "@/application/pedidos/tipos";
+import { estiloDoComando } from "./estiloDasAcoes";
 
 /**
  * Os comandos da máquina de estados, como botões.
@@ -117,11 +118,11 @@ export function AcoesDoPedido({
     modo === "linha" && comPrimaria ? (acoes.find((a) => !a.destrutivo) ?? null) : null;
   const noMenu = modo === "linha" ? acoes.filter((a) => a !== primaria) : [];
 
-  const classeBotao = (destrutivo: boolean) =>
+  const classeBotao = (acao: AcaoDoPedido) =>
     [
-      "min-h-touch cursor-pointer rounded-11 border-[1.5px] font-semibold disabled:cursor-not-allowed disabled:opacity-60",
-      compacto ? "px-3 text-[13px]" : "px-4 text-[14px]",
-      destrutivo ? "border-tdb bg-td text-tdf" : "border-transparent bg-cta text-cta-fg",
+      "min-h-touch cursor-pointer whitespace-nowrap rounded-10 border bg-transparent font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-orange disabled:cursor-not-allowed disabled:opacity-60 lg:min-h-10",
+      compacto ? "px-2.5 text-[12px]" : "px-3 text-[13px]",
+      estiloDoComando(acao.comando, acao.destrutivo),
     ].join(" ");
 
   return (
@@ -133,7 +134,7 @@ export function AcoesDoPedido({
               type="button"
               disabled={executando}
               onClick={() => aoEscolher(primaria)}
-              className={`${classeBotao(false)} whitespace-nowrap`}
+              className={classeBotao(primaria)}
             >
               {primaria.rotulo}
             </button>
@@ -208,7 +209,7 @@ export function AcoesDoPedido({
               type="button"
               disabled={executando}
               onClick={() => aoEscolher(acao)}
-              className={classeBotao(acao.destrutivo)}
+              className={classeBotao(acao)}
             >
               {acao.rotulo}
             </button>

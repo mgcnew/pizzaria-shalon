@@ -175,3 +175,22 @@ export type PedidoAReceber = {
   troco_para: number | null;
   troco_esperado: number | null;
 };
+
+/** Venda que já passou pelo caixa, qualquer que seja sua origem operacional. */
+export type VendaNoHistoricoDoPdv = {
+  pedido_id: string;
+  numero: number;
+  origem: string;
+  cliente: string | null;
+  modalidade: string;
+  status_pedido: string;
+  situacao_pagamento: "confirmed" | "reversed" | string;
+  exige_producao: boolean;
+  total_pedido: number;
+  valor_pago: number;
+  formas: string;
+  criado_em: string;
+  pago_em: string;
+  estornado_em: string | null;
+  pode_estornar: boolean;
+};

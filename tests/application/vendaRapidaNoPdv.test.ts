@@ -15,7 +15,7 @@ vi.mock("@/application/caixa/consultas", () => ({
   obterPagamentoDoPedido: vi.fn(),
 }));
 
-const { finalizarVendaRapida } = await import("@/application/pdv/acoes");
+const { finalizarVendaRapida, listarHistoricoDeVendas } = await import("@/application/pdv/acoes");
 
 const entrada = {
   idempotency_key: "00000000-0000-4000-8000-000000000001",
@@ -96,6 +96,36 @@ describe("venda rápida concluída no PDV", () => {
 
   it("não chama o banco com pagamento incompleto", async () => {
     const resultado = await finalizarVendaRapida({ ...entrada, pagamento: { forma_id: "x" } });
+
+    expect(resultado.ok).toBe(false);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+});
+
+describe("histórico unificado de vendas", () => {
+  it("carrega pagamentos de qualquer origem pela projeção do banco", async () => {
+    rpc.mockResolvedValue({
+      data: {
+        ok: true,
+        vendas: [{
+          pedido_id: "33333333-3333-4333-8333-333333333333",
+          numero: 321,
+          origem: "whatsapp",
+          situacao_pagamento: "confirmed",
+          valor_pago: 32,
+        }],
+      },
+      error: null,
+    });
+
+    const resultado = await listarHistoricoDeVendas(150);
+
+    expect(resultado.ok && resultado.vendas).toHaveLength(1);
+    expect(rpc).toHaveBeenCalledWith("historico_vendas_pdv", { p_limite: 150 });
+  });
+
+  it("recusa limite inválido antes de consultar", async () => {
+    const resultado = await listarHistoricoDeVendas(500);
 
     expect(resultado.ok).toBe(false);
     expect(rpc).not.toHaveBeenCalled();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { Button, Input, StatusBadge, Textarea } from "@/ui/components";
 import { Aviso, ParDeDados } from "@/ui/patterns";
 import { useAvisarOperacaoEmVoo } from "@/ui/operacaoEmVoo";
@@ -11,6 +11,8 @@ import {
   iniciarFechamentoCego,
   movimentarCaixa,
 } from "@/application/caixa/acoes";
+import type { ResumoDeFechamento } from "@/application/caixa/tipos";
+import { HistoricoDeVendas } from "./HistoricoDeVendas";
 
 type Operacao = "abrir" | "reforco" | "sangria" | "fechar" | null;
 
@@ -38,17 +40,23 @@ export function PainelDoCaixa({
   aoRegistrarComandos,
   venda,
   aoConcluirVenda,
+  podeEstornar,
 }: {
   estado: EstadoVisivelDoCaixa;
   tentativa: string;
   aoRegistrarComandos?: (comandos: ComandosDoCaixa | null) => void;
   venda: { quantidade: number; total: number };
   aoConcluirVenda: () => void;
+  podeEstornar: boolean;
 }) {
   const [operacao, setOperacao] = useState<Operacao>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, iniciar] = useTransition();
   const chave = useRef(tentativa);
+  // Precisa ser estável: focar um campo recalcula a faixa de atalhos do PDV e
+  // renderiza este painel novamente. Uma função inline faria o efeito do modal
+  // rodar de novo e devolver o foco ao contêiner, roubando-o do input.
+  const fecharOperacao = useCallback(() => setOperacao(null), []);
 
   function abrir(proxima: Exclude<Operacao, null>) {
     setErro(null);
@@ -106,6 +114,7 @@ export function PainelDoCaixa({
 
           {estado.aberto ? (
             <div className="flex flex-1 flex-wrap justify-end gap-2 sm:flex-none">
+              <HistoricoDeVendas podeEstornar={podeEstornar} />
               <Button
                 tamanho="sm"
                 disabled={venda.quantidade === 0}
@@ -118,6 +127,7 @@ export function PainelDoCaixa({
             </div>
           ) : (
             <div className="flex flex-1 flex-wrap justify-end gap-2 sm:flex-none">
+              <HistoricoDeVendas podeEstornar={podeEstornar} />
               <Button tamanho="sm" disabled={venda.quantidade === 0} onClick={aoConcluirVenda}>
                 Concluir venda
                 {venda.quantidade > 0 ? ` · ${venda.quantidade} · ${formatBRL(venda.total)}` : ""}
@@ -132,13 +142,13 @@ export function PainelDoCaixa({
       </section>
 
       {operacao !== null ? (
-        <ModalDeCaixa titulo={tituloDaOperacao(operacao)} aoFechar={() => setOperacao(null)}>
+        <ModalDeCaixa titulo={tituloDaOperacao(operacao)} aoFechar={fecharOperacao}>
           {operacao === "abrir" ? (
             <FormularioDeAbertura
               enviando={enviando}
               erro={erro}
               aoConfirmar={(fundo) => executar(() => abrirCaixa({ fundo }))}
-              aoCancelar={() => setOperacao(null)}
+              aoCancelar={fecharOperacao}
             />
           ) : null}
 
@@ -147,7 +157,7 @@ export function PainelDoCaixa({
               tipo={operacao}
               enviando={enviando}
               erro={erro}
-              aoCancelar={() => setOperacao(null)}
+              aoCancelar={fecharOperacao}
               aoConfirmar={(valor, motivo) =>
                 executar(() =>
                   movimentarCaixa({
@@ -163,15 +173,9 @@ export function PainelDoCaixa({
 
           {operacao === "fechar" ? (
             <FormularioDeFechamento
-              enviando={enviando}
               erroExterno={erro}
               aoErro={setErro}
-              aoCancelar={() => setOperacao(null)}
-              aoConfirmar={(contado, justificativa) =>
-                executar(() =>
-                  fecharCaixa({ contado, ...(justificativa ? { justificativa } : {}) }),
-                )
-              }
+              aoCancelar={fecharOperacao}
             />
           ) : null}
         </ModalDeCaixa>
@@ -280,18 +284,22 @@ function FormularioDeMovimento({ tipo, enviando, erro, aoConfirmar, aoCancelar }
   );
 }
 
-function FormularioDeFechamento({ enviando, erroExterno, aoErro, aoCancelar, aoConfirmar }: {
-  enviando: boolean; erroExterno: string | null; aoErro: (erro: string | null) => void;
-  aoCancelar: () => void; aoConfirmar: (contado: number, justificativa: string) => void;
+type ConferenciaDoFechamento = {
+  fechado: boolean;
+  esperado: number;
+  contado: number;
+  diferenca: number;
+  resumo: ResumoDeFechamento | null;
+};
+
+function FormularioDeFechamento({ erroExterno, aoErro, aoCancelar }: {
+  erroExterno: string | null; aoErro: (erro: string | null) => void;
+  aoCancelar: () => void;
 }) {
   const [contadoTexto, setContadoTexto] = useState("");
-  const [conferencia, setConferencia] = useState<{
-    fechado: boolean;
-    esperado: number;
-    contado: number;
-    diferenca: number;
-  } | null>(null);
+  const [conferencia, setConferencia] = useState<ConferenciaDoFechamento | null>(null);
   const [conferindo, iniciarConferencia] = useTransition();
+  useAvisarOperacaoEmVoo(conferindo);
   const contado = paraNumero(contadoTexto);
   const diferenca = conferencia?.diferenca ?? null;
   const precisaJustificar = diferenca !== null && diferenca !== 0;
@@ -306,11 +314,13 @@ function FormularioDeFechamento({ enviando, erroExterno, aoErro, aoCancelar, aoC
           iniciarConferencia(async () => {
             const resultado = await iniciarFechamentoCego({ contado });
             if (!resultado.ok) return aoErro(resultado.erro);
+            if (resultado.resumo === null) aoErro("Não foi possível carregar os totais por forma. A contagem foi registrada.");
             setConferencia({
               fechado: resultado.fechado,
               esperado: resultado.esperado,
               contado: resultado.contado,
               diferenca: resultado.diferenca,
+              resumo: resultado.resumo,
             });
           });
         }}
@@ -332,14 +342,23 @@ function FormularioDeFechamento({ enviando, erroExterno, aoErro, aoCancelar, aoC
   return (
     <form className="flex flex-col gap-4" action={(dados) => {
       if (contado === null || contado < 0) return;
-      aoConfirmar(contado, String(dados.get("justificativa") ?? "").trim());
+      const justificativa = String(dados.get("justificativa") ?? "").trim();
+      aoErro(null);
+      iniciarConferencia(async () => {
+        const resultado = await fecharCaixa({
+          contado,
+          ...(justificativa ? { justificativa } : {}),
+        });
+        if (!resultado.ok) return aoErro(resultado.erro);
+        if (resultado.resumo === null) aoErro("Caixa fechado, mas não foi possível carregar os totais por forma.");
+        setConferencia((anterior) => anterior === null ? anterior : {
+          ...anterior,
+          fechado: true,
+          resumo: resultado.resumo ?? anterior.resumo,
+        });
+      });
     }}>
-      <div className="rounded-12 border border-border-shalon bg-elev p-3">
-        <p className="m-0 mb-2 text-[12px] font-bold uppercase tracking-wide text-muted">Resultado da conferência</p>
-        <ParDeDados chave="Valor contado" valor={formatBRL(conferencia.contado)} />
-        <ParDeDados chave="Valor esperado" valor={formatBRL(conferencia.esperado)} />
-        <ParDeDados chave="Diferença" valor={<strong className={diferenca === 0 ? "text-tgf" : "text-tdf"}>{formatBRL(diferenca ?? 0)}</strong>} />
-      </div>
+      <ResumoVisualDoFechamento conferencia={conferencia} />
       {conferencia.fechado ? (
         <p className="m-0 rounded-12 border border-tsb bg-ts p-3 text-[13.5px] font-semibold text-tsf">Contagem correta. O caixa foi fechado com sucesso.</p>
       ) : (
@@ -349,13 +368,109 @@ function FormularioDeFechamento({ enviando, erroExterno, aoErro, aoCancelar, aoC
       {precisaJustificar ? <Textarea name="justificativa" label="Justificativa da diferença" rows={3} required autoFocus /> : null}
       <div className="flex flex-wrap gap-2">
         {conferencia.fechado ? (
-          <Button type="button" onClick={aoCancelar}>Concluir</Button>
+          <>
+            <Button type="button" onClick={aoCancelar}>Concluir</Button>
+            {conferencia.resumo ? (
+              <Button type="button" variante="secundario" onClick={() => window.print()}>
+                Imprimir fechamento
+              </Button>
+            ) : null}
+          </>
         ) : (
-          <Button type="submit" disabled={enviando}>{enviando ? "Fechando…" : "Fechar com justificativa"}</Button>
+          <Button type="submit" disabled={conferindo}>{conferindo ? "Fechando…" : "Fechar com justificativa"}</Button>
         )}
         {!conferencia.fechado ? <Button type="button" variante="fantasma" onClick={aoCancelar}>Cancelar</Button> : null}
       </div>
     </form>
+  );
+}
+
+function ResumoVisualDoFechamento({
+  conferencia,
+}: {
+  conferencia: ConferenciaDoFechamento;
+}) {
+  const resumo = conferencia.resumo;
+  return (
+    <div id="resumo-impressao-fechamento" className="flex flex-col gap-3 bg-surface print:p-[3mm]">
+      <div className="hidden text-center font-mono text-[11px] text-black print:block">
+        <p className="m-0 text-[13px] font-bold">PIZZARIA SHALON</p>
+        <p className="m-0">FECHAMENTO DE CAIXA</p>
+        {resumo ? <p className="m-0">Data {new Date(`${resumo.data_operacional}T12:00:00`).toLocaleDateString("pt-BR")}</p> : null}
+      </div>
+
+      <div className="rounded-12 border border-border-shalon bg-elev p-3 print:rounded-none print:border-x-0 print:bg-white">
+        <p className="m-0 mb-2 text-[12px] font-bold uppercase tracking-wide text-muted print:text-black">
+          Dinheiro da gaveta
+        </p>
+        <ParDeDados chave="Valor contado" valor={formatBRL(conferencia.contado)} />
+        <ParDeDados chave="Valor esperado" valor={formatBRL(conferencia.esperado)} />
+        <ParDeDados
+          chave="Diferença"
+          valor={
+            <strong className={conferencia.diferenca === 0 ? "text-tgf print:text-black" : "text-tdf print:text-black"}>
+              {formatBRL(conferencia.diferenca)}
+            </strong>
+          }
+        />
+      </div>
+
+      {resumo ? (
+        <>
+          <div className="rounded-12 border border-border-shalon p-3 print:rounded-none print:border-x-0">
+            <p className="m-0 mb-2 text-[12px] font-bold uppercase tracking-wide text-muted print:text-black">
+              Recebimentos por forma
+            </p>
+            {resumo.recebimentos_por_metodo.length > 0 ? (
+              resumo.recebimentos_por_metodo.map((recebimento) => (
+                <ParDeDados
+                  key={`${recebimento.metodo}-${recebimento.familia}`}
+                  chave={recebimento.metodo}
+                  valor={formatBRL(recebimento.total)}
+                />
+              ))
+            ) : (
+              <p className="m-0 text-[13px] text-muted print:text-black">Nenhum recebimento nesta sessão.</p>
+            )}
+          </div>
+
+          <div className="rounded-12 border border-border-shalon p-3 print:rounded-none print:border-x-0">
+            <p className="m-0 mb-2 text-[12px] font-bold uppercase tracking-wide text-muted print:text-black">
+              Movimentos da sessão
+            </p>
+            <ParDeDados chave="Fundo inicial" valor={formatBRL(resumo.fundo_inicial)} />
+            <ParDeDados chave="Reforços" valor={formatBRL(resumo.reforcos)} />
+            <ParDeDados chave="Sangrias" valor={formatBRL(resumo.sangrias)} />
+            <ParDeDados chave="Despesas pelo caixa" valor={formatBRL(resumo.despesas_pelo_caixa)} />
+            <ParDeDados chave="Entradas pelo caixa" valor={formatBRL(resumo.entradas_pelo_caixa)} />
+            <ParDeDados chave="Estornos" valor={formatBRL(resumo.estornos)} />
+          </div>
+
+          {resumo.dinheiro_fora_da_gaveta > 0 ? (
+            <p className="m-0 rounded-12 border border-twb bg-tw p-3 text-[13px] font-semibold text-twf print:rounded-none print:border-x-0 print:bg-white print:text-black">
+              Dinheiro fora da gaveta: {formatBRL(resumo.dinheiro_fora_da_gaveta)}
+            </p>
+          ) : null}
+        </>
+      ) : null}
+
+      <style>{`
+        @media print {
+          @page { size: auto; margin: 3mm; }
+          body * { visibility: hidden !important; }
+          #resumo-impressao-fechamento,
+          #resumo-impressao-fechamento * { visibility: visible !important; }
+          #resumo-impressao-fechamento {
+            position: absolute !important;
+            inset: 0 auto auto 0 !important;
+            width: 58mm !important;
+            color: #000 !important;
+            font-family: ui-monospace, monospace !important;
+            font-size: 11px !important;
+          }
+        }
+      `}</style>
+    </div>
   );
 }
 

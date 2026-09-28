@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
 import { logger } from "@/lib/logger";
-import type { Resultado } from "./tipos";
+import { obterResumoDeFechamento } from "./consultas";
+import type { ResumoDeFechamento, Resultado } from "./tipos";
 
 /**
  * Operações de caixa, pagamento realizado e financeiro.
@@ -127,6 +128,7 @@ export type ResultadoDoFechamentoCego =
       esperado: number;
       contado: number;
       diferenca: number;
+      resumo: ResumoDeFechamento | null;
     }
   | { ok: false; erro: string };
 
@@ -166,17 +168,23 @@ export async function iniciarFechamentoCego(
   }
 
   if (resultado["ok"]) revalidatePath(ROTA_PDV);
+  const resumo = await obterResumoDeFechamento(
+    typeof resultado["sessao_id"] === "string"
+      ? resultado["sessao_id"] as string
+      : undefined,
+  );
   return {
     ok: true,
     fechado: Boolean(resultado["ok"]),
     esperado: resultado["esperado"] as number,
     contado: resultado["contado"] as number,
     diferenca: resultado["diferenca"] as number,
+    resumo,
   };
 }
 
 /** RN-CAIXA-011/012: o esperado é do servidor; a pessoa informa o contado. */
-export async function fecharCaixa(entrada: unknown): Promise<Resultado> {
+export async function fecharCaixa(entrada: unknown): Promise<Resultado & { resumo?: ResumoDeFechamento | null }> {
   const v = fecharSchema.safeParse(entrada);
   if (!v.success) return { ok: false, erro: "Informe o valor contado na gaveta." };
 
@@ -189,8 +197,18 @@ export async function fecharCaixa(entrada: unknown): Promise<Resultado> {
   });
   if (error) return falha("fecharCaixa", error);
 
+  const resultado = resposta(data);
+  if (!resultado.ok) return resultado;
+
   revalidatePath(ROTA_PDV);
-  return resposta(data);
+  const bruto = (data ?? {}) as Record<string, unknown>;
+  const resumo = await obterResumoDeFechamento(
+    typeof bruto["sessao_id"] === "string" ? bruto["sessao_id"] as string : undefined,
+  );
+  return {
+    ok: true,
+    resumo,
+  };
 }
 
 const reabrirSchema = z.object({

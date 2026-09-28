@@ -4,6 +4,7 @@ import { rotuloDeModalidade, rotuloDeOrigem, rotuloInterno } from "@/domain/pedi
 import type { PedidoNaFila } from "@/application/pedidos/tipos";
 import type { PedidoAReceber } from "@/application/pdv/tipos";
 import { AcoesDoPedido } from "./AcoesDoPedido";
+import { ESTILO_RECEBER } from "./estiloDasAcoes";
 
 /**
  * Um pedido na fila.
@@ -108,7 +109,7 @@ export function CartaoPedido({
           <button
             type="button"
             onClick={() => aoCobrar(cobravel)}
-            className="min-h-touch-cta w-full cursor-pointer rounded-11 border-0 bg-cta px-4 text-[14px] font-semibold text-cta-fg"
+            className={`min-h-touch w-full cursor-pointer rounded-10 border bg-transparent px-3 text-[13px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-orange ${ESTILO_RECEBER}`}
           >
             Receber {formatBRL(cobravel.total)}
           </button>

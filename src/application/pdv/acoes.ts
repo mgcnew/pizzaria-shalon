@@ -8,7 +8,7 @@ import { logger } from "@/lib/logger";
 import { buscarCatalogoPdv, resolverCodigoDeBarras } from "./consultas";
 import { obterPagamentoDoPedido } from "@/application/caixa/consultas";
 import type { PagamentoDoPedido } from "@/application/caixa/tipos";
-import type { ItemCatalogoPdv, ResolucaoDeCodigo } from "./tipos";
+import type { ItemCatalogoPdv, ResolucaoDeCodigo, VendaNoHistoricoDoPdv } from "./tipos";
 
 /**
  * A superfície do PDV chamável pela tela — Fase 12, Etapa 6.
@@ -130,6 +130,33 @@ export async function finalizarVendaRapida(entrada: unknown): Promise<ResultadoV
     recebido: resposta["recebido"] == null ? null : Number(resposta["recebido"]),
     troco: resposta["troco"] == null ? null : Number(resposta["troco"]),
   };
+}
+
+export type ResultadoHistoricoDeVendas =
+  | { ok: true; vendas: VendaNoHistoricoDoPdv[] }
+  | { ok: false; erro: string };
+
+/** Carregamento tardio: o histórico só cruza a rede quando o operador o abre. */
+export async function listarHistoricoDeVendas(
+  limite: unknown = 100,
+): Promise<ResultadoHistoricoDeVendas> {
+  const validado = z.number().int().min(1).max(300).safeParse(limite);
+  if (!validado.success) return { ok: false, erro: "Limite de consulta inválido." };
+
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("historico_vendas_pdv", {
+    p_limite: validado.data,
+  });
+  if (error) {
+    logger.error("pdv:listarHistoricoDeVendas", { code: (error as { code?: string }).code });
+    return { ok: false, erro: "Não foi possível carregar o histórico agora." };
+  }
+
+  const resposta = (data ?? {}) as Record<string, unknown>;
+  if (!resposta["ok"]) {
+    return { ok: false, erro: String(resposta["erro"] ?? "Não foi possível consultar as vendas.") };
+  }
+  return { ok: true, vendas: (resposta["vendas"] ?? []) as VendaNoHistoricoDoPdv[] };
 }
 
 /**

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { Button, Input, Select, StatusBadge } from "@/ui/components";
 import { Aviso, ParDeDados } from "@/ui/patterns";
 import { formatBRL } from "@/lib/format";
@@ -146,6 +147,14 @@ export function Recebimento({
    * qual dos dois erros ele cometeu, em vez de só "não fecha" (§4.1).
    */
   const falta = Math.round((total - somado) * 100) / 100;
+  const valoresValidos = linhas.every((linha) => {
+    const valor = paraNumero(linha.valor);
+    const recebido = paraNumero(linha.recebido);
+    const forma = formas.find((f) => f.id === linha.forma_id);
+    return valor !== null && valor > 0 && Boolean(forma) &&
+      (forma?.familia !== "cash" || recebido === null || recebido >= valor);
+  });
+  const podeRegistrar = caixaAberto && fecha && valoresValidos && !enviando;
 
   const formatarValor = (n: number) => n.toFixed(2).replace(".", ",");
 
@@ -212,7 +221,7 @@ export function Recebimento({
   }, [aoRegistrarComandos, dividir, exato, confirmar]);
 
   function atualizar(i: number, campo: keyof Linha, valor: string | boolean) {
-    setLinhas(linhas.map((l, j) => (j === i ? { ...l, [campo]: valor } : l)));
+    setLinhas((atuais) => atuais.map((l, j) => (j === i ? { ...l, [campo]: valor } : l)));
   }
 
   function executar(acao: () => Promise<{ ok: boolean; erro?: string }>) {
@@ -299,6 +308,7 @@ export function Recebimento({
           ref={formulario}
           className="flex flex-col gap-3 border-t border-border-shalon pt-3"
           action={() => {
+            if (!podeRegistrar) return;
             const montadas = linhas.map((l) => {
               const forma = formas.find((f) => f.id === l.forma_id);
               const recebido = paraNumero(l.recebido);
@@ -321,22 +331,29 @@ export function Recebimento({
         >
           {!caixaAberto ? (
             <p className="m-0 rounded-10 bg-tw px-3 py-2 text-[13px] font-semibold text-twf">
-              Não há caixa aberto. Venda normal exige caixa aberto — abra o caixa antes de
-              registrar o recebimento.
+              Caixa fechado. O troco pode ser conferido aqui, mas o recebimento só pode ser registrado após abrir o caixa no{" "}
+              <Link href="/admin/pdv" className="underline underline-offset-2">PDV</Link>.
             </p>
           ) : null}
 
           {linhas.map((linha, i) => {
             const forma = formas.find((f) => f.id === linha.forma_id);
+            const valorDaLinha = paraNumero(linha.valor) ?? 0;
+            const recebidoEmMaos = paraNumero(linha.recebido);
+            const diferencaEmCentavos = recebidoEmMaos === null
+              ? null
+              : Math.round((recebidoEmMaos - valorDaLinha) * 100);
             return (
               <div key={i} className="flex flex-col gap-2 rounded-12 bg-elev p-3">
                 <div className="grid gap-2 sm:grid-cols-2">
                   <Select
+                    id={`forma-recebimento-${i}`}
                     label={linhas.length > 1 ? `Forma ${i + 1}` : "Forma"}
                     value={linha.forma_id}
                     onChange={(e) => {
-                      atualizar(i, "forma_id", e.target.value);
-                      atualizar(i, "bandeira_id", "");
+                      setLinhas((atuais) => atuais.map((atual, j) =>
+                        j === i ? { ...atual, forma_id: e.target.value, bandeira_id: "", recebido: "" } : atual,
+                      ));
                     }}
                   >
                     {formas.map((f) => (
@@ -345,16 +362,25 @@ export function Recebimento({
                       </option>
                     ))}
                   </Select>
-                  <Input
-                    label="Valor"
-                    inputMode="decimal"
-                    value={linha.valor}
-                    onChange={(e) => atualizar(i, "valor", e.target.value)}
-                  />
+                  {linhas.length > 1 ? (
+                    <Input
+                      id={`valor-recebimento-${i}`}
+                      label="Valor desta forma"
+                      inputMode="decimal"
+                      value={linha.valor}
+                      onChange={(e) => atualizar(i, "valor", e.target.value)}
+                    />
+                  ) : (
+                    <div className="rounded-12 border border-border-shalon bg-surface px-3 py-2">
+                      <span className="block text-[12px] font-semibold text-muted">Valor da venda</span>
+                      <strong className="font-display text-[20px] tabular-nums text-ink">{formatBRL(total)}</strong>
+                    </div>
+                  )}
                 </div>
 
                 {forma?.exige_bandeira ? (
                   <Select
+                    id={`bandeira-recebimento-${i}`}
                     label="Bandeira"
                     value={linha.bandeira_id}
                     onChange={(e) => atualizar(i, "bandeira_id", e.target.value)}
@@ -371,12 +397,25 @@ export function Recebimento({
                 {forma?.familia === "cash" ? (
                   <>
                     <Input
-                      label="Recebido em mãos (opcional)"
+                      id={`dinheiro-entregue-${i}`}
+                      label="Dinheiro entregue pelo cliente"
                       inputMode="decimal"
-                      placeholder="para calcular o troco"
+                      placeholder={`Ex.: ${formatBRL(valorDaLinha)}`}
+                      hint="Deixe em branco se o cliente pagou o valor exato."
                       value={linha.recebido}
                       onChange={(e) => atualizar(i, "recebido", e.target.value)}
                     />
+                    {diferencaEmCentavos !== null ? (
+                      <p role="status" className={`m-0 rounded-10 px-3 py-2 text-[13px] font-semibold ${
+                        diferencaEmCentavos < 0
+                          ? "bg-td text-tdf"
+                          : "bg-tg text-tgf"
+                      }`}>
+                        {diferencaEmCentavos < 0
+                          ? `Valor entregue menor que o devido: faltam ${formatBRL(-diferencaEmCentavos / 100)}`
+                          : `Troco a devolver: ${formatBRL(diferencaEmCentavos / 100)}`}
+                      </p>
+                    ) : null}
                     <label className="flex items-center gap-[10px] text-[13px] text-ink">
                       <input
                         type="checkbox"
@@ -393,7 +432,13 @@ export function Recebimento({
                   <Button
                     variante="fantasma"
                     tamanho="sm"
-                    onClick={() => setLinhas(linhas.filter((_, j) => j !== i))}
+                    onClick={() => setLinhas((atuais) => {
+                      const restantes = atuais.filter((_, j) => j !== i);
+                      const unica = restantes[0];
+                      return restantes.length === 1 && unica
+                        ? [{ ...unica, valor: totalTexto }]
+                        : restantes;
+                    })}
                   >
                     Remover esta forma
                   </Button>
@@ -407,7 +452,7 @@ export function Recebimento({
             <Button variante="secundario" tamanho="sm" onClick={dividir}>
               Dividir em outra forma
             </Button>
-            <span className="flex flex-wrap items-baseline gap-x-2 text-[13.5px]">
+            {linhas.length > 1 ? <span className="flex flex-wrap items-baseline gap-x-2 text-[13.5px]">
               <span className="text-ink-2">
                 Somado <span className="font-semibold tabular-nums text-ink">{formatBRL(somado)}</span>
               </span>
@@ -420,11 +465,11 @@ export function Recebimento({
                   SOBRA {formatBRL(Math.abs(falta))}
                 </span>
               )}
-            </span>
+            </span> : null}
           </div>
 
-          <Button type="submit" disabled={enviando}>
-            {enviando ? "Registrando…" : `Registrar ${formatBRL(somado)} recebidos`}
+          <Button type="submit" disabled={!podeRegistrar}>
+            {enviando ? "Registrando…" : `Registrar pagamento de ${formatBRL(total)}`}
           </Button>
         </form>
       ) : (

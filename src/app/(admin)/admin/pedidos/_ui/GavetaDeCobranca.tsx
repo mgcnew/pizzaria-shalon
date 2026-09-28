@@ -137,21 +137,6 @@ export function GavetaDeCobranca({
         </header>
 
         <div className="flex flex-col gap-3 p-4">
-          {/*
-           * O CAIXA FECHADO NÃO ESCONDE A GAVETA (§4.4). A recusa é do
-           * servidor — `registrar_pagamento` exige sessão aberta e diz
-           * `sem_caixa`. A tela só antecipa o que vai acontecer, para o
-           * operador não descobrir depois de contar o dinheiro.
-           */}
-          {!caixaAberto ? (
-            <p
-              role="status"
-              className="m-0 rounded-12 border border-twb bg-tw px-3 py-2 text-[13px] font-semibold text-twf"
-            >
-              Caixa fechado — abra o caixa no PDV antes de receber.
-            </p>
-          ) : null}
-
           {carregando && pagamento === null ? (
             <p className="m-0 text-[13.5px] text-muted">Carregando o pagamento…</p>
           ) : jaFoiPago ? (

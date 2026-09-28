@@ -72,12 +72,14 @@ export function PdvComTeclado({
   caixa,
   tentativa,
   podeMovimentar,
+  podeEstornar,
 }: {
   formas: FormaParaRecebimento[];
   autorizado: boolean;
   caixa: EstadoVisivelDoCaixa;
   tentativa: string;
   podeMovimentar: boolean;
+  podeEstornar: boolean;
 }) {
   /**
    * O PDV acorda sozinho — Etapa 10.
@@ -304,6 +306,7 @@ export function PdvComTeclado({
             aoRegistrarComandos={registrarCaixa}
             venda={{ quantidade: quantidadeItens, total: totalVenda }}
             aoConcluirVenda={() => executar("venda:concluir")}
+            podeEstornar={podeEstornar}
           />
         </div>
       </div>

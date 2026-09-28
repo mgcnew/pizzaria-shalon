@@ -34,9 +34,12 @@ vi.mock("@/infrastructure/supabase/server", () => ({
 
 vi.mock("next/cache", () => ({ revalidatePath: () => {} }));
 
-const { abrirCaixa, movimentarCaixa, fecharCaixa, iniciarFechamentoCego } = await import(
-  "@/application/caixa/acoes"
-);
+const {
+  abrirCaixa,
+  movimentarCaixa,
+  fecharCaixa,
+  iniciarFechamentoCego,
+} = await import("@/application/caixa/acoes");
 
 const CHAVE = "55555555-5555-4555-8555-555555555555";
 
@@ -135,6 +138,8 @@ describe("fechamento", () => {
 
     expect(enviado()).toEqual({ contado: 90, justificativa: null });
     expect(r).toMatchObject({ ok: true, fechado: true, esperado: 90, diferenca: 0 });
+    // Primeiro envia a contagem; a action só então busca os totais por forma.
+    expect(chamadas.map((c) => c.nome)).toEqual(["fechar_caixa", "resumo_do_fechamento"]);
   });
 
   it("com diferença mantém a contagem e só então devolve a conferência", async () => {
@@ -152,7 +157,7 @@ describe("fechamento", () => {
 
     const r = await iniciarFechamentoCego({ contado: 90 });
 
-    expect(r).toEqual({ ok: true, fechado: false, esperado: 100, contado: 90, diferenca: -10 });
+    expect(r).toEqual({ ok: true, fechado: false, esperado: 100, contado: 90, diferenca: -10, resumo: null });
   });
 
   it("não consulta o servidor quando a contagem cega é inválida", async () => {
@@ -212,5 +217,42 @@ describe("fechamento", () => {
     const r = await fecharCaixa({ contado: 90 });
     expect(r.ok).toBe(false);
     expect(r.ok === false && r.erro.length > 0).toBe(true);
+  });
+
+  it("carrega as modalidades somente depois da contagem cega", async () => {
+    resposta = {
+      data: {
+        ok: true, esperado: 90, contado: 90, diferenca: 0,
+        sessao_id: "66666666-6666-4666-8666-666666666666",
+        status: "closed",
+        data_operacional: "2026-09-28",
+        aberta_em: "2026-09-28T10:00:00Z",
+        fechada_em: "2026-09-28T20:00:00Z",
+        fundo_inicial: 50,
+        recebimentos_por_metodo: [
+          { metodo: "Crédito", familia: "card", total: 120 },
+          { metodo: "Pix", familia: "pix", total: 80 },
+        ],
+        recebido_em_dinheiro: 40,
+        reforcos: 0,
+        sangrias: 0,
+        despesas_pelo_caixa: 0,
+        entradas_pelo_caixa: 0,
+        estornos: 0,
+        esperado_em_dinheiro: 90,
+        justificativa: null,
+        dinheiro_fora_da_gaveta: 0,
+        correcoes: [],
+      },
+      error: null,
+    };
+
+    const r = await iniciarFechamentoCego({ contado: 90 });
+
+    expect(chamadas[1]).toEqual({
+      nome: "resumo_do_fechamento",
+      args: { p_sessao: "66666666-6666-4666-8666-666666666666" },
+    });
+    expect(r.ok && r.resumo?.recebimentos_por_metodo).toHaveLength(2);
   });
 });

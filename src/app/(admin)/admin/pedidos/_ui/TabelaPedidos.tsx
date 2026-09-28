@@ -7,6 +7,7 @@ import { rotuloDeModalidade, rotuloDeOrigem, rotuloInterno } from "@/domain/pedi
 import type { PedidoNaFila } from "@/application/pedidos/tipos";
 import type { PedidoAReceber } from "@/application/pdv/tipos";
 import { AcoesDoPedido } from "./AcoesDoPedido";
+import { ESTILO_RECEBER } from "./estiloDasAcoes";
 
 /**
  * A fila em tabela — desktop.
@@ -221,7 +222,7 @@ export function TabelaPedidos({
                         <button
                           type="button"
                           onClick={() => aoCobrar(cobravel)}
-                          className="min-h-touch cursor-pointer whitespace-nowrap rounded-11 border-0 bg-cta px-3 text-[13px] font-semibold text-cta-fg"
+                          className={`min-h-10 cursor-pointer whitespace-nowrap rounded-10 border bg-transparent px-2.5 text-[12px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-orange ${ESTILO_RECEBER}`}
                         >
                           Receber {formatBRL(cobravel.total)}
                         </button>
