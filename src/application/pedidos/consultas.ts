@@ -2,15 +2,16 @@ import "server-only";
 import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
 import { logger } from "@/lib/logger";
 import { formatarEspera, minutosDesde } from "@/lib/format";
-import type { PedidoAdministrativo, PedidoNaFila } from "./tipos";
+import type { JanelaDeEncerrados, PedidoAdministrativo, PedidoNaFila } from "./tipos";
 
 /**
  * Leitura da operação interna.
  *
- * Nenhuma destas funções decide autorização: as projeções são SECURITY
- * INVOKER, então o RLS de `orders` — que exige `orders.view` — continua
- * valendo dentro delas. Quem não tem a permissão recebe lista vazia, e não
- * uma lista escondida pela interface (CLAUDE.md §12).
+ * Nenhuma destas funções decide autorização: quem decide é o banco. As
+ * projeções INVOKER ficam sob o RLS de `orders`, que exige `orders.view`; as
+ * DEFINER da fila (`fila_de_pedidos`, `pedidos_encerrados`) carregam a mesma
+ * guarda no corpo (0131, D-2026-09-29-92). Quem não tem a permissão recebe
+ * lista vazia, e não uma lista escondida pela interface (CLAUDE.md §12).
  */
 
 export async function listarFila(encerrados = false): Promise<PedidoNaFila[]> {
@@ -22,6 +23,47 @@ export async function listarFila(encerrados = false): Promise<PedidoNaFila[]> {
     return [];
   }
   return (data ?? []) as PedidoNaFila[];
+}
+
+/**
+ * A aba Encerrados, por janela (D-2026-09-29-93).
+ *
+ * Com caixa aberto, os encerrados desde a abertura; sem caixa, os do dia de
+ * calendário. `diasAnteriores` recua a janela até o começo daquele dia. Quem
+ * escolhe a janela é o banco, no fuso da loja; aqui só se repassa o pedido
+ * de "mais dias", já saturado.
+ */
+export async function listarEncerrados(diasAnteriores = 0): Promise<JanelaDeEncerrados> {
+  const vazia: JanelaDeEncerrados = {
+    desde: null,
+    origem: "dia",
+    diasAnteriores: 0,
+    haMais: false,
+    pedidos: [],
+  };
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("pedidos_encerrados", {
+    p_dias_anteriores: diasAnteriores,
+  });
+
+  if (error || !data) {
+    logger.error("pedidos:listarEncerrados", { code: (error as { code?: string } | null)?.code });
+    return vazia;
+  }
+  const r = data as {
+    desde: string;
+    origem: "caixa" | "dia";
+    dias_anteriores: number;
+    ha_mais: boolean;
+    pedidos: PedidoNaFila[];
+  };
+  return {
+    desde: r.desde,
+    origem: r.origem,
+    diasAnteriores: r.dias_anteriores,
+    haMais: r.ha_mais,
+    pedidos: r.pedidos ?? [],
+  };
 }
 
 /**

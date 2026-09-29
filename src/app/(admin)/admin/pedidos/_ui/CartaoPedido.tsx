@@ -19,6 +19,7 @@ export function CartaoPedido({
   espera,
   cobravel,
   aoCobrar,
+  consultaDaAba,
 }: {
   pedido: PedidoNaFila;
   hora: string;
@@ -36,6 +37,12 @@ export function CartaoPedido({
    */
   cobravel?: PedidoAReceber | null;
   aoCobrar?: (pedido: PedidoAReceber) => void;
+  /**
+   * O começo da query dos links de modal ("aba=encerrados&dias=7&"), para que
+   * abrir e fechar um pedido não descarte os dias já carregados. Omitido, vale
+   * o padrão da aba.
+   */
+  consultaDaAba?: string;
 }) {
   const estado = rotuloInterno(pedido.status);
 
@@ -123,11 +130,11 @@ export function CartaoPedido({
           itensAdicionais={[
             {
               rotulo: "Ver detalhes",
-              href: `/admin/pedidos?${pedido.encerrado ? "aba=encerrados&" : ""}modal=detalhes&pedido=${pedido.id}`,
+              href: `/admin/pedidos?${consultaDaAba ?? (pedido.encerrado ? "aba=encerrados&" : "")}modal=detalhes&pedido=${pedido.id}`,
             },
             {
               rotulo: "Emitir comanda",
-              href: `/admin/pedidos?${pedido.encerrado ? "aba=encerrados&" : ""}modal=comanda&pedido=${pedido.id}`,
+              href: `/admin/pedidos?${consultaDaAba ?? (pedido.encerrado ? "aba=encerrados&" : "")}modal=comanda&pedido=${pedido.id}`,
             },
           ]}
         />

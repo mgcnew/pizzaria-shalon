@@ -58,6 +58,7 @@ export function TabelaPedidos({
   cobraveis,
   podeReceber,
   aoCobrar,
+  consultaDaAba,
 }: {
   pedidos: PedidoNaFila[];
   /** Hora de criação já formatada no fuso da loja, por id. */
@@ -76,6 +77,12 @@ export function TabelaPedidos({
   cobraveis?: Record<string, PedidoAReceber>;
   podeReceber?: boolean;
   aoCobrar?: (pedido: PedidoAReceber) => void;
+  /**
+   * O começo da query dos links de modal ("aba=encerrados&dias=7&"), para que
+   * abrir e fechar um pedido não descarte os dias já carregados. Omitido, vale
+   * o padrão da aba.
+   */
+  consultaDaAba?: string;
 }) {
   /*
    * `null` até o primeiro tique: enquanto for nulo, vale o texto do servidor.
@@ -90,6 +97,7 @@ export function TabelaPedidos({
   }, []);
 
   const aberto = modo === "aberto";
+  const consulta = consultaDaAba ?? (aberto ? "" : "aba=encerrados&");
 
   return (
     /* A tabela rola DENTRO de si. Sem isto, uma observação longa faria a
@@ -144,7 +152,7 @@ export function TabelaPedidos({
                       </span>
                     </>
                   ) : (
-                    <span className="tabular-nums text-ink-2">{hora[p.id] ?? ""}</span>
+                    <span className="whitespace-nowrap tabular-nums text-ink-2">{hora[p.id] ?? ""}</span>
                   )}
                 </td>
 
@@ -180,7 +188,7 @@ export function TabelaPedidos({
 
                 <td className="px-3 py-3 text-center">
                   <Link
-                    href={`/admin/pedidos?${aberto ? "" : "aba=encerrados&"}modal=comanda&pedido=${p.id}`}
+                    href={`/admin/pedidos?${consulta}modal=comanda&pedido=${p.id}`}
                     aria-label={`Abrir emissão de comanda do pedido #${p.numero}`}
                     title="Emitir comanda"
                     className="relative inline-flex min-h-10 min-w-10 items-center justify-center rounded-10 border border-border-shalon bg-surface text-ink-2 no-underline transition-colors hover:border-brand-orange hover:bg-elev hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-orange"
@@ -252,7 +260,7 @@ export function TabelaPedidos({
                         itensAdicionais={[
                           {
                             rotulo: "Ver detalhes",
-                            href: `/admin/pedidos?${aberto ? "" : "aba=encerrados&"}modal=detalhes&pedido=${p.id}`,
+                            href: `/admin/pedidos?${consulta}modal=detalhes&pedido=${p.id}`,
                           },
                         ]}
                       />

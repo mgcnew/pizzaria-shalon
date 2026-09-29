@@ -18,6 +18,18 @@ export type AcaoDoPedido = {
   destrutivo: boolean;
 };
 
+/** A aba Encerrados: a janela que o banco escolheu e os pedidos dentro dela. */
+export type JanelaDeEncerrados = {
+  /** Início da janela; `null` quando a consulta falhou. */
+  desde: string | null;
+  /** "caixa": desde a abertura do caixa aberto. "dia": começo de um dia de calendário. */
+  origem: "caixa" | "dia";
+  diasAnteriores: number;
+  /** Há pedido encerrado antes do início da janela. */
+  haMais: boolean;
+  pedidos: PedidoNaFila[];
+};
+
 export type PedidoNaFila = {
   id: string;
   numero: number;

@@ -4,7 +4,14 @@ import { Abas, type Aba } from "@/ui/patterns";
 import { obterSessaoInterna, podeNaUI } from "@/application/auth/sessao";
 import { obterLojaPublica } from "@/application/publico/consultas";
 import { formasDePagamento } from "@/application/checkout/consultas";
-import { esperaDaFila, listarFila, obterPedido } from "@/application/pedidos/consultas";
+import { esperaDaFila, listarEncerrados, listarFila, obterPedido } from "@/application/pedidos/consultas";
+import {
+  descreverJanela,
+  diasDaUrl,
+  horarioDosEncerrados,
+} from "@/application/pedidos/janelaDeEncerrados";
+import type { JanelaDeEncerrados, PedidoNaFila } from "@/application/pedidos/tipos";
+import { IndicadorDeNavegacao } from "@/ui/components/IndicadorDeNavegacao";
 import { listarPedidosAReceber } from "@/application/pdv/consultas";
 import { formasParaRecebimento } from "@/application/configuracoes/consultas";
 import { obterCaixa } from "@/application/caixa/consultas";
@@ -15,6 +22,9 @@ import { ModalNovoPedido } from "./_ui/ModalNovoPedido";
 import { ModalPedido } from "./_ui/ModalPedido";
 
 export const metadata: Metadata = { title: "Pedidos" };
+
+/** Quantos dias cada "Carregar dias anteriores" acrescenta (D-2026-09-29-93). */
+const PASSO_DE_DIAS = 7;
 
 const ABAS: readonly Aba[] = [
   { nome: "Em aberto", valor: "abertos" },
@@ -34,15 +44,34 @@ const ABAS: readonly Aba[] = [
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ aba?: string; novo?: string; modal?: string; pedido?: string }>;
+  searchParams: Promise<{
+    aba?: string;
+    dias?: string;
+    novo?: string;
+    modal?: string;
+    pedido?: string;
+  }>;
 }) {
-  const { aba, novo, modal, pedido: pedidoId } = await searchParams;
+  const { aba, dias, novo, modal, pedido: pedidoId } = await searchParams;
   const encerrados = aba === "encerrados";
+  const diasAnteriores = encerrados ? diasDaUrl(dias) : 0;
+  // O começo da query da aba, repetido nos links de modal e no fechamento:
+  // abrir um pedido não pode descartar os dias já carregados.
+  const consultaDaAba = encerrados
+    ? `aba=encerrados&${diasAnteriores > 0 ? `dias=${diasAnteriores}&` : ""}`
+    : "";
+
+  // Encerrados vêm por janela (desde a abertura do caixa, ou o dia), e não
+  // mais a história inteira; em aberto, a fila de sempre.
+  const consultaDaFila: Promise<{ janela: JanelaDeEncerrados | null; pedidos: PedidoNaFila[] }> =
+    encerrados
+      ? listarEncerrados(diasAnteriores).then((janela) => ({ janela, pedidos: janela.pedidos }))
+      : listarFila(false).then((pedidos) => ({ janela: null, pedidos }));
   const tipoModal = modal === "detalhes" || modal === "comanda" ? modal : null;
 
-  const [sessao, pedidos, loja, aReceber, formasDeRecebimento, caixa, pedidoModal] = await Promise.all([
+  const [sessao, { janela, pedidos }, loja, aReceber, formasDeRecebimento, caixa, pedidoModal] = await Promise.all([
     obterSessaoInterna(),
-    listarFila(encerrados),
+    consultaDaFila,
     obterLojaPublica(),
     // A MESMA autoridade que monta a fila do PDV decide quem está devendo
     // aqui. Nada de um segundo critério de "quem é cobrável".
@@ -68,9 +97,9 @@ export default async function Page({
     hour: "2-digit",
     minute: "2-digit",
   });
-  const hora = Object.fromEntries(
-    pedidos.map((p) => [p.id, formatador.format(new Date(p.criado_em))]),
-  );
+  const hora = encerrados
+    ? horarioDosEncerrados(pedidos, fuso)
+    : Object.fromEntries(pedidos.map((p) => [p.id, formatador.format(new Date(p.criado_em))]));
 
   // A espera nasce no relógio do SERVIDOR, na camada de aplicação. Este é o
   // valor do primeiro render; a tabela reancora nele e depois avança sozinha.
@@ -110,32 +139,79 @@ export default async function Page({
 
       <Abas abas={ABAS} atual={encerrados ? "encerrados" : "abertos"} parametro="aba" base="/admin/pedidos" />
 
-      {encerrados ? (
-        pedidos.length === 0 ? (
-          <div className="rounded-18 border border-dashed border-border-shalon bg-elev px-5 py-[44px] text-center">
-            <p className="m-0 font-display text-[19px] font-bold text-ink">
-              Nenhum pedido encerrado ainda
-            </p>
-          </div>
-        ) : (
-          <>
-            {/* ENCERRADOS MANTÉM O MAIS NOVO EM CIMA. Esta lista é consulta,
-                não operação: quem abre aqui procura o que acabou de acontecer.
-                É a ordem que a RPC já devolve, e por isso não se mexe nela. */}
-            <TabelaPedidos
-              pedidos={pedidos}
-              hora={hora}
-              espera={espera}
-              modo="encerrado"
-              rotulo="Pedidos encerrados, do mais recente para o mais antigo"
-            />
-            <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(320px,1fr))] lg:hidden">
-              {pedidos.map((p) => (
-                <CartaoPedido key={p.id} pedido={p} hora={hora[p.id] ?? ""} />
-              ))}
+      {encerrados && janela && janela.desde === null ? (
+        // Falha na consulta não vira "nenhum pedido": diz que não carregou.
+        <div className="rounded-18 border border-dashed border-border-shalon bg-elev px-5 py-[44px] text-center">
+          <p className="m-0 font-display text-[19px] font-bold text-ink">
+            {descreverJanela(janela, fuso)}
+          </p>
+          <Link
+            href={`/admin/pedidos?${consultaDaAba.slice(0, -1)}`}
+            className="relative mt-3 inline-flex min-h-touch items-center rounded-11 border-[1.5px] border-border-shalon bg-surface px-[14px] text-[13.5px] font-semibold text-ink no-underline hover:border-brand-orange"
+          >
+            Tentar de novo
+            <IndicadorDeNavegacao forma="traco" />
+          </Link>
+        </div>
+      ) : encerrados && janela ? (
+        <>
+          <p className="m-0 text-[13px] text-muted">{descreverJanela(janela, fuso)}</p>
+
+          {pedidos.length === 0 ? (
+            <div className="rounded-18 border border-dashed border-border-shalon bg-elev px-5 py-[44px] text-center">
+              <p className="m-0 font-display text-[19px] font-bold text-ink">
+                {janela.origem === "caixa" && janela.diasAnteriores === 0
+                  ? "Nenhum pedido encerrado desde a abertura do caixa"
+                  : janela.diasAnteriores === 0
+                    ? "Nenhum pedido encerrado hoje"
+                    : "Nenhum pedido encerrado nesse período"}
+              </p>
             </div>
-          </>
-        )
+          ) : (
+            <>
+              {/* ENCERRADOS MANTÉM O MAIS NOVO EM CIMA. Esta lista é consulta,
+                  não operação: quem abre aqui procura o que acabou de acontecer.
+                  É a ordem que a RPC já devolve, e por isso não se mexe nela. */}
+              <TabelaPedidos
+                pedidos={pedidos}
+                hora={hora}
+                espera={espera}
+                modo="encerrado"
+                rotulo="Pedidos encerrados, do mais recente para o mais antigo"
+                consultaDaAba={consultaDaAba}
+              />
+              <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(320px,1fr))] lg:hidden">
+                {pedidos.map((p) => (
+                  <CartaoPedido
+                    key={p.id}
+                    pedido={p}
+                    hora={hora[p.id] ?? ""}
+                    consultaDaAba={consultaDaAba}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+
+          {janela.haMais ? (
+            <div className="flex justify-center">
+              {/* `scroll={false}`: os dias novos entram embaixo, e a tela fica
+                  onde a pessoa estava, em vez de voltar ao topo. */}
+              <Link
+                href={`/admin/pedidos?aba=encerrados&dias=${janela.diasAnteriores + PASSO_DE_DIAS}`}
+                scroll={false}
+                className="motion-interactive relative inline-flex min-h-touch items-center rounded-11 border-[1.5px] border-border-shalon bg-surface px-[14px] text-[13.5px] font-semibold text-ink no-underline transition-colors hover:border-brand-orange"
+              >
+                Carregar dias anteriores
+                <IndicadorDeNavegacao forma="traco" />
+              </Link>
+            </div>
+          ) : pedidos.length > 0 ? (
+            <p className="m-0 text-center text-[12.5px] text-muted">
+              Não há pedidos encerrados mais antigos.
+            </p>
+          ) : null}
+        </>
       ) : (
         <CentralDePedidos
           pedidos={pedidos}
@@ -159,7 +235,7 @@ export default async function Page({
           pedido={pedidoModal}
           tipo={tipoModal}
           fuso={fuso}
-          fecharEm={encerrados ? "/admin/pedidos?aba=encerrados" : "/admin/pedidos"}
+          fecharEm={`/admin/pedidos${consultaDaAba ? `?${consultaDaAba.slice(0, -1)}` : ""}`}
         />
       ) : null}
     </div>

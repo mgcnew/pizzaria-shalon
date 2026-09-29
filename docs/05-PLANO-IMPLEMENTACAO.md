@@ -903,6 +903,9 @@ executada, e leitura de lock não é corrida concorrente.
 — `fila_de_pedidos(true)` de 38.689 ms para 592 ms — sem introduzir paginação.
 Quantos pedidos encerrados a tela deve mostrar, e com que navegação, é decisão
 futura de produto, não de hardening.
+> **Decidido em 29/09/2026 (D-2026-09-29-93):** a aba abre desde a abertura
+> do caixa aberto, ou no dia de calendário sem caixa, e "Carregar dias
+> anteriores" recua 7 dias por vez (migration 0132, `pedidos_encerrados`).
 
 **Projeto Supabase descartável de replay.** O projeto usado para replay de
 migrations não é DEV nem produção, e não deve ser confundido com nenhum dos

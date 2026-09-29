@@ -3312,6 +3312,64 @@ negativo.
 
 ---
 
+## D-2026-09-29-93 — Aba Encerrados por janela (Etapa 6 do plano de desempenho)
+
+**Data:** 29/09/2026 · **Decisão do responsável pelo produto nesta conversa**
+
+**Contexto.** A aba Encerrados trazia todo pedido encerrado desde sempre. Com
+~40 pedidos por dia, são ~1.200 por mês. A Fase 10 mediu 7.600 em 592 ms no
+banco, mas a tela ainda mandava todos ao navegador e desenhava cada um duas
+vezes (tabela e cartões). A 0108 e o 05 §14.8 deixaram "quantos mostrar"
+como decisão de produto.
+
+**Decisão.**
+1. **Com caixa aberto**, a aba mostra os encerrados feitos desde a abertura
+   do caixa. É o expediente de verdade, que atravessa a meia-noite
+   (CLAUDE.md §25). Com mais de uma registradora aberta, vale a abertura mais
+   antiga.
+2. **Sem caixa aberto**, mostra os do dia de calendário, no fuso da loja.
+3. **"Carregar dias anteriores"** recua a janela 7 dias por vez, até o começo
+   de um dia de calendário. A janela nunca encolhe: com um caixa esquecido
+   aberto há dez dias, recuar 7 não corta a abertura. A tela mantém a posição
+   da rolagem ao carregar.
+4. O critério é o `created_at` do pedido, o mesmo da ordenação da lista,
+   atendido pelo índice `orders_status_criado`.
+
+**Registrado na conversa.** A primeira descrição dessa opção dizia "dia
+operacional, inclui a madrugada", regra que o sistema não tem. Antes de
+implementar, a pergunta foi refeita, e a escolha foi a abertura do caixa.
+
+**Implementação.** Migration 0132 com `pedidos_encerrados(p_dias_anteriores)`.
+É DEFINER com a mesma guarda de `orders.view` da 0131 e devolve a janela
+(`desde`, `origem`, `ha_mais`) junto com os pedidos. A função lê só o
+instante de abertura do caixa, sem nenhum valor, por cima do RLS de
+`cash_sessions`. A aplicação chama a função nova; `fila_de_pedidos(true)`
+continua existindo e protegida.
+
+Três ajustes de apresentação, necessários à janela:
+- uma frase acima da lista diz qual janela está na tela;
+- pedido de outro dia mostra data e hora, em vez de só a hora;
+- abrir e fechar um pedido preserva os dias carregados.
+
+Falha na consulta mostra "Não foi possível carregar", com "Tentar de novo",
+em vez de "nenhum pedido".
+
+**Como foi verificado.** Suíte `pedidos_encerrados_janela.sql` no DEV, em
+transação: 18 de 18, mais os dois cenários de exclusão e `ha_mais`
+verdadeiro. Com a janela de hoje, 0 pedidos na lista e 16 anteriores, com
+`ha_mais` verdadeiro. Mais 9 testes unitários de URL e apresentação. Sem
+login não foi possível ver a aba com dados; o estado de falha foi conferido
+na tela.
+
+**Onde foi formalizada:**
+`supabase/migrations/20260929130000_pedidos_encerrados_por_janela.sql`;
+`supabase/tests/pedidos_encerrados_janela.sql`;
+`src/application/pedidos/janelaDeEncerrados.ts`,
+`src/application/pedidos/consultas.ts` (`listarEncerrados`);
+`src/app/(admin)/admin/pedidos/page.tsx`; `05-PLANO-IMPLEMENTACAO.md` §14.8.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.

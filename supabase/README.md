@@ -112,7 +112,12 @@ privilégio e acesso horizontal.
 
 `tests/fila_de_pedidos_permissao.sql` — 12 cenários: a fila da central só
 responde a quem tem `orders.view`, mesmo sendo `SECURITY DEFINER`
-(D-2026-09-29-92). Roda em transação e termina em `ROLLBACK`: não
+(D-2026-09-29-92).
+
+`tests/pedidos_encerrados_janela.sql` — 20 cenários da janela da aba
+Encerrados: abertura do caixa, dia de calendário, recuo por dias sem encolher,
+saturação do parâmetro, lista igual à contagem independente sob RLS e a mesma
+guarda de `orders.view` (D-2026-09-29-93). Roda em transação e termina em `ROLLBACK`: não
 persiste nada.
 
 Executar colando o conteúdo no SQL Editor do projeto, ou via conector. O
