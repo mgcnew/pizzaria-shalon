@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useFecharAoNavegar } from "@/ui/hooks/useFecharAoNavegar";
 import { MenuLateralAdmin } from "./MenuLateralAdmin";
 
 /**
@@ -17,9 +18,13 @@ import { MenuLateralAdmin } from "./MenuLateralAdmin";
  *
  * Fase 1: navegação apenas. Sem badge de contagem, sem permissões, sem troca
  * de perfil — tudo isso depende de RBAC (Fase 2).
+ *
+ * A gaveta fecha quando a navegação conclui, não no toque: até lá, o item
+ * escolhido mostra o indicador de carregamento (`useFecharAoNavegar`).
  */
 export function DrawerAdmin() {
   const [aberto, setAberto] = useState(false);
+  const aoClicarEmLink = useFecharAoNavegar(() => setAberto(false));
 
   return (
     <>
@@ -57,7 +62,7 @@ export function DrawerAdmin() {
               </button>
             </div>
 
-            <MenuLateralAdmin aoNavegar={() => setAberto(false)} />
+            <MenuLateralAdmin aoClicarEmLink={aoClicarEmLink} />
           </nav>
         </div>
       ) : null}

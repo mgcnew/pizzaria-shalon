@@ -36,7 +36,11 @@ As classes ficam em `src/app/globals.css`:
 - `motion-popover-in`: dropdown e painel flutuante;
 - `motion-modal-in`: conteúdo central de modal;
 - `motion-tab-in`: conteúdo recém-selecionado de uma aba;
-- `motion-drawer-left-in` e `motion-drawer-right-in`: painéis laterais.
+- `motion-drawer-left-in` e `motion-drawer-right-in`: painéis laterais;
+- `indicador-navegacao`: marca de navegação pendente. Não usar direto: os
+  componentes são `IndicadorDeNavegacao` (dentro de um `<Link>`) e
+  `MarcaDeEspera` (espera que não vem de link), em
+  `src/ui/components/IndicadorDeNavegacao.tsx`.
 
 Use essas classes em vez de repetir valores arbitrários do Tailwind.
 
@@ -102,6 +106,28 @@ formulário não podem perder estado ao trocar de aba.
 Não aplicar fade global. Rotas dinâmicas usam `loading.tsx` e skeletons leves,
 pois feedback de carregamento é mais honesto que esconder latência.
 
+**Toda rota do administrativo tem o seu `loading.tsx`**, com o skeleton no
+formato real da tela, montado com as peças de
+`src/app/(admin)/admin/_ui/Esqueletos.tsx`. O título é texto de verdade; o
+resto são blocos do `Skeleton` do design. O arquivo faz duas coisas: mostra a
+tela nova no clique e faz o Next pré-carregar a rota dinâmica até o skeleton.
+Sem ele, o clique espera a página inteira sem retorno. Um `loading.tsx` só
+cobre as rotas abaixo da pasta dele, e quem não tem o seu herda o da pasta de
+cima. Por isso rota nova, inclusive de detalhe, nasce com o seu. O de
+`admin/loading.tsx` é o do Dashboard (D-2026-09-29-87).
+
+**Navegação que muda só a query não mostra `loading.tsx`.** É o caso de aba,
+filtro, período e modal aberto por query (detalhes e comanda do pedido,
+ferramentas do cardápio). O Next mantém a tela anterior até o servidor
+responder. O link clicado leva `IndicadorDeNavegacao`: ponto, traço ou
+moldura laranja, sempre renderizado e só com opacidade variando, que aparece
+se a espera passar de 120 ms e pulsa no ritmo do skeleton.
+
+**Painel que se fecha ao escolher um link fecha quando a URL muda**, não no
+clique. Vale para a gaveta do celular, o popover de filtro e o menu de ações
+(`useFecharAoNavegar`). Fechando no clique, o indicador sumia junto, e a tela
+antiga ficava parada sem sinal nenhum.
+
 O shell administrativo permanece montado entre páginas. Fluxos de novo pedido,
 novo produto e edição de produto usam rotas canônicas com interceptação e slot
 paralelo: em navegação SPA, somente o modal é carregado; em acesso direto, a
@@ -147,5 +173,7 @@ indicador semântico.
 8. Consultas independentes estão paralelas e consultas idênticas da mesma
    renderização estão deduplicadas?
 9. A rota modal funciona por acesso direto, voltar/avançar e navegação mobile?
+10. Rota nova do administrativo tem `loading.tsx` próprio? Link que muda só a
+    query tem `IndicadorDeNavegacao`?
 
 Se alguma resposta for “não”, a alteração precisa ser revista antes do commit.

@@ -121,6 +121,27 @@
   .motion-drawer-left-in {
     animation: shalonDrawerLeftIn var(--shalon-motion-slow) var(--shalon-ease-standard) both;
   }
+
+  /*
+   * Navegação pendente (`IndicadorDeNavegacao`, via useLinkStatus).
+   *
+   * O elemento existe sempre e só muda de opacidade: aparecer não desloca
+   * nada (07 §4). Espera o tempo rápido antes de surgir, para que a navegação
+   * já pré-carregada, que troca de tela em poucas dezenas de ms, não pisque;
+   * depois entra em fade e pulsa no mesmo ritmo do skeleton do design.
+   * Com movimento reduzido, a regra global zera as durações e o indicador
+   * fica aceso, parado.
+   */
+  .indicador-navegacao {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .indicador-navegacao[data-pendente] {
+    animation:
+      shalonFadeIn var(--shalon-motion-base) ease-out var(--shalon-motion-fast) both,
+      shalonPulse 1.4s ease-in-out calc(var(--shalon-motion-fast) + var(--shalon-motion-base)) infinite;
+  }
 }
 
 @keyframes shalonDrawerIn {

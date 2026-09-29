@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { StatusBadge } from "@/ui/components";
+import { IndicadorDeNavegacao } from "@/ui/components/IndicadorDeNavegacao";
 import { formatBRL, formatarEspera, minutosDesde } from "@/lib/format";
 import { rotuloDeModalidade, rotuloDeOrigem, rotuloInterno } from "@/domain/pedidos/estados";
 import type { PedidoNaFila } from "@/application/pedidos/tipos";
@@ -182,11 +183,12 @@ export function TabelaPedidos({
                     href={`/admin/pedidos?${aberto ? "" : "aba=encerrados&"}modal=comanda&pedido=${p.id}`}
                     aria-label={`Abrir emissão de comanda do pedido #${p.numero}`}
                     title="Emitir comanda"
-                    className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-10 border border-border-shalon bg-surface text-ink-2 no-underline transition-colors hover:border-brand-orange hover:bg-elev hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-orange"
+                    className="relative inline-flex min-h-10 min-w-10 items-center justify-center rounded-10 border border-border-shalon bg-surface text-ink-2 no-underline transition-colors hover:border-brand-orange hover:bg-elev hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-orange"
                   >
                     <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-[18px] w-[18px]">
                       <path d="M7 8V3h10v5M7 17H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M7 14h10v7H7v-7ZM17 11h.01" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
+                    <IndicadorDeNavegacao forma="moldura" />
                   </Link>
                 </td>
 

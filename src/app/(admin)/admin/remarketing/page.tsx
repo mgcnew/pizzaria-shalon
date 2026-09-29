@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { IndicadorDeNavegacao } from "@/ui/components/IndicadorDeNavegacao";
 import { obterSessaoInterna, podeNaUI } from "@/application/auth/sessao";
 import {
   listarCandidatos,
@@ -63,13 +64,14 @@ export default async function Page({
               href={`/admin/remarketing?ausencia=${d}`}
               aria-current={d === dias ? "true" : undefined}
               className={[
-                "motion-interactive inline-flex min-h-touch items-center rounded-11 px-[13px] text-[13px] font-semibold transition-colors",
+                "motion-interactive relative inline-flex min-h-touch items-center rounded-11 px-[13px] text-[13px] font-semibold transition-colors",
                 d === dias
                   ? "bg-cta text-cta-fg"
                   : "border-[1.5px] border-border-shalon text-ink hover:border-brand-orange",
               ].join(" ")}
             >
               {d}+ dias
+              <IndicadorDeNavegacao forma="traco" tom={d === dias ? "texto" : "marca"} />
             </Link>
           ))}
         </div>

@@ -2,8 +2,19 @@
 
 import Form from "next/form";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { SelectMenu } from "@/ui/components";
+import { IndicadorDeNavegacao, MarcaDeEspera } from "@/ui/components/IndicadorDeNavegacao";
+import { useFecharAoNavegar } from "@/ui/hooks/useFecharAoNavegar";
+
+/** O endereço que o `next/form` vai montar: os campos, na ordem do DOM. */
+function destinoDoFormulario(formulario: HTMLFormElement) {
+  const parametros = new URLSearchParams();
+  for (const [nome, valor] of new FormData(formulario)) {
+    if (typeof valor === "string") parametros.append(nome, valor);
+  }
+  return `${new URL(formulario.action).pathname}?${parametros.toString()}`;
+}
 
 type CategoriaFiltro = { id: string; nome: string };
 
@@ -19,6 +30,16 @@ export function FiltrosProdutos({
   categorias: readonly CategoriaFiltro[];
 }) {
   const [aberto, setAberto] = useState(false);
+  /**
+   * Busca e filtros mudam só a query: não há skeleton de rota, e o `next/form`
+   * navega com `router.push`, fora do alcance de `useFormStatus`. Por isso a
+   * espera é estado local, que termina quando a URL muda.
+   */
+  const [aplicando, setAplicando] = useState(false);
+  const aoClicarEmLink = useFecharAoNavegar(() => {
+    setAberto(false);
+    setAplicando(false);
+  });
   const [categoriaSelecionada, setCategoriaSelecionada] = useState(categoria);
   const [situacaoSelecionada, setSituacaoSelecionada] = useState(situacao);
   const filtrosRef = useRef<HTMLDivElement>(null);
@@ -49,12 +70,21 @@ export function FiltrosProdutos({
   return (
     <Form
       action="/admin/produtos"
-      onSubmit={() => setAberto(false)}
+      onSubmit={(evento: FormEvent<HTMLFormElement>) => {
+        // Enviar o que já está na tela não muda a URL e, portanto, nunca
+        // encerraria a espera.
+        if (destinoDoFormulario(evento.currentTarget) === `${location.pathname}${location.search}`) {
+          setAberto(false);
+          return;
+        }
+        setAplicando(true);
+      }}
       className="mb-[14px] flex items-center gap-[10px]"
     >
       <input type="hidden" name="aba" value="produtos" />
 
-      <div className="motion-interactive flex min-h-[48px] min-w-0 flex-1 items-center gap-[10px] rounded-12 border-[1.5px] border-border-shalon bg-surface px-[14px] transition-colors focus-within:border-brand-orange">
+      <div className="motion-interactive relative flex min-h-[48px] min-w-0 flex-1 items-center gap-[10px] rounded-12 border-[1.5px] border-border-shalon bg-surface px-[14px] transition-colors focus-within:border-brand-orange">
+        <MarcaDeEspera pendente={aplicando} forma="traco" />
         <svg
           aria-hidden="true"
           viewBox="0 0 24 24"
@@ -131,10 +161,11 @@ export function FiltrosProdutos({
               {quantidadeAtivos > 0 ? (
                 <Link
                   href={hrefLimpar}
-                  onClick={() => setAberto(false)}
-                  className="motion-interactive inline-flex min-h-[34px] items-center px-1 text-[12px] font-semibold text-brand-red transition-colors hover:text-danger"
+                  onClick={aoClicarEmLink}
+                  className="motion-interactive relative inline-flex min-h-[34px] items-center px-1 text-[12px] font-semibold text-brand-red transition-colors hover:text-danger"
                 >
                   Limpar
+                  <IndicadorDeNavegacao forma="traco" className="!inset-x-1 !bottom-1" />
                 </Link>
               ) : null}
             </div>
@@ -169,9 +200,11 @@ export function FiltrosProdutos({
 
             <button
               type="submit"
-              className="motion-interactive mt-4 inline-flex min-h-touch w-full cursor-pointer items-center justify-center rounded-11 bg-cta px-4 text-[14px] font-bold text-cta-fg transition-opacity hover:opacity-90"
+              aria-busy={aplicando || undefined}
+              className="motion-interactive relative mt-4 inline-flex min-h-touch w-full cursor-pointer items-center justify-center rounded-11 bg-cta px-4 text-[14px] font-bold text-cta-fg transition-opacity hover:opacity-90"
             >
               Aplicar filtros
+              <MarcaDeEspera pendente={aplicando} forma="traco" tom="texto" />
             </button>
         </div>
       </div>

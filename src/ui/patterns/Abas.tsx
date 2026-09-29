@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { IndicadorDeNavegacao } from "@/ui/components/IndicadorDeNavegacao";
 
 /**
  * Abas em pílula com rolagem horizontal — o mesmo padrão do design aprovado
@@ -8,6 +9,10 @@ import Link from "next/link";
  * DIFERENÇA DELIBERADA: no protótipo a aba era estado de JavaScript. Aqui é
  * um link com parâmetro na URL — a página continua sendo Server Component, a
  * aba fica compartilhável e o botão "voltar" do navegador funciona (PI-004).
+ *
+ * Trocar só a query não mostra o `loading.tsx` da rota: o Next mantém a aba
+ * anterior na tela até o servidor responder. O traço pulsante na base da aba
+ * clicada é o retorno visual dessa espera.
  */
 
 export type Aba = { nome: string; valor: string };
@@ -38,7 +43,7 @@ export function Abas({
             role="tab"
             aria-selected={ativa}
             className={[
-              "inline-flex min-h-[42px] shrink-0 items-center rounded-pill border-[1.5px] px-[14px]",
+              "relative inline-flex min-h-[42px] shrink-0 items-center rounded-pill border-[1.5px] px-[14px]",
               "text-[13.5px] font-semibold",
               ativa
                 ? "border-cta bg-cta text-cta-fg"
@@ -46,6 +51,7 @@ export function Abas({
             ].join(" ")}
           >
             {aba.nome}
+            <IndicadorDeNavegacao forma="traco" tom={ativa ? "texto" : "marca"} />
           </Link>
         );
       })}

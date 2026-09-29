@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { IndicadorDeNavegacao } from "@/ui/components/IndicadorDeNavegacao";
 import type { ChaveDePeriodo } from "@/application/analitico/tipos";
 
 /**
@@ -42,13 +43,14 @@ export function SeletorDePeriodo({
             href={`${base}?${parametros.toString()}`}
             aria-current={ativo ? "page" : undefined}
             className={[
-              "motion-interactive inline-flex min-h-touch items-center rounded-11 px-[14px] text-[13.5px] font-semibold transition-colors",
+              "motion-interactive relative inline-flex min-h-touch items-center rounded-11 px-[14px] text-[13.5px] font-semibold transition-colors",
               ativo
                 ? "bg-cta text-cta-fg"
                 : "border-[1.5px] border-border-shalon text-ink hover:border-brand-orange",
             ].join(" ")}
           >
             {p.rotulo}
+            <IndicadorDeNavegacao forma="traco" tom={ativo ? "texto" : "marca"} />
           </Link>
         );
       })}

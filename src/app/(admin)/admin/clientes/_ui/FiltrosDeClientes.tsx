@@ -1,9 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { IndicadorDeNavegacao } from "@/ui/components/IndicadorDeNavegacao";
+import { useFecharAoNavegar } from "@/ui/hooks/useFecharAoNavegar";
 
-/** Filtros de ausência e cadência dentro de um painel compacto. */
+/**
+ * Filtros de ausência e cadência dentro de um painel compacto.
+ *
+ * O painel fecha quando a lista filtrada chega, não no clique: até lá, o chip
+ * escolhido mostra o indicador de carregamento (`useFecharAoNavegar`).
+ */
 const AUSENCIAS = [15, 30, 60, 90];
 
 const CADENCIAS: { valor: string; rotulo: string }[] = [
@@ -22,7 +29,7 @@ function Chip({
 }: {
   ativo: boolean;
   href: string;
-  aoEscolher: () => void;
+  aoEscolher: (evento: MouseEvent<HTMLAnchorElement>) => void;
   children: React.ReactNode;
 }) {
   return (
@@ -31,13 +38,14 @@ function Chip({
       aria-current={ativo ? "true" : undefined}
       onClick={aoEscolher}
       className={[
-        "motion-interactive inline-flex min-h-touch items-center justify-center rounded-11 px-3 text-[13px] font-semibold transition-colors",
+        "motion-interactive relative inline-flex min-h-touch items-center justify-center rounded-11 px-3 text-[13px] font-semibold transition-colors",
         ativo
           ? "bg-cta text-cta-fg"
           : "border-[1.5px] border-border-shalon bg-surface text-ink hover:border-brand-orange",
       ].join(" ")}
     >
       {children}
+      <IndicadorDeNavegacao forma="traco" tom={ativo ? "texto" : "marca"} />
     </Link>
   );
 }
@@ -52,6 +60,7 @@ export function FiltrosDeClientes({
   busca?: string;
 }) {
   const [aberto, setAberto] = useState(false);
+  const aoClicarEmLink = useFecharAoNavegar(() => setAberto(false));
   const raizRef = useRef<HTMLDivElement>(null);
   const botaoRef = useRef<HTMLButtonElement>(null);
   const quantidadeAtivos = Number(Boolean(ausencia)) + Number(Boolean(classificacao));
@@ -126,10 +135,11 @@ export function FiltrosDeClientes({
             {quantidadeAtivos > 0 ? (
               <Link
                 href={url({ busca })}
-                onClick={() => setAberto(false)}
-                className="inline-flex min-h-[34px] items-center text-[12px] font-semibold text-brand-red hover:text-danger"
+                onClick={aoClicarEmLink}
+                className="relative inline-flex min-h-[34px] items-center text-[12px] font-semibold text-brand-red hover:text-danger"
               >
                 Limpar
+                <IndicadorDeNavegacao forma="traco" className="!inset-x-0 !bottom-1" />
               </Link>
             ) : null}
           </div>
@@ -143,7 +153,7 @@ export function FiltrosDeClientes({
                 <Chip
                   key={dias}
                   ativo={ausencia === String(dias)}
-                  aoEscolher={() => setAberto(false)}
+                  aoEscolher={aoClicarEmLink}
                   href={url({
                     busca,
                     ausencia: ausencia === String(dias) ? undefined : String(dias),
@@ -165,7 +175,7 @@ export function FiltrosDeClientes({
                 <Chip
                   key={cadencia.valor}
                   ativo={classificacao === cadencia.valor}
-                  aoEscolher={() => setAberto(false)}
+                  aoEscolher={aoClicarEmLink}
                   href={url({
                     busca,
                     ausencia,

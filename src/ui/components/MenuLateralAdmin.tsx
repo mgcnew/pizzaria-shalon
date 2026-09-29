@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { MouseEvent } from "react";
 import { MENU_ADMIN } from "@/ui/navegacao";
+import { IndicadorDeNavegacao } from "./IndicadorDeNavegacao";
 
 const GRUPOS = [
   {
@@ -116,7 +118,11 @@ function IconeMenu({ href }: { href: string }) {
   );
 }
 
-export function MenuLateralAdmin({ aoNavegar }: { aoNavegar?: () => void }) {
+export function MenuLateralAdmin({
+  aoClicarEmLink,
+}: {
+  aoClicarEmLink?: (evento: MouseEvent<HTMLAnchorElement>) => void;
+}) {
   const pathname = usePathname();
 
   return (
@@ -137,7 +143,7 @@ export function MenuLateralAdmin({ aoNavegar }: { aoNavegar?: () => void }) {
                 <Link
                   key={item.href}
                   href={item.href}
-                  {...(aoNavegar ? { onClick: aoNavegar } : {})}
+                  {...(aoClicarEmLink ? { onClick: aoClicarEmLink } : {})}
                   aria-current={ativo ? "page" : undefined}
                   className={[
                     "motion-interactive group flex min-h-touch items-center gap-2.5 rounded-10 border-l-[3px] px-2.5 py-2 text-[13.5px] transition-colors [@media(max-height:720px)]:py-1.5",
@@ -157,6 +163,7 @@ export function MenuLateralAdmin({ aoNavegar }: { aoNavegar?: () => void }) {
                     <IconeMenu href={item.href} />
                   </span>
                   <span className="min-w-0 flex-1 leading-[1.2]">{item.nome}</span>
+                  <IndicadorDeNavegacao />
                 </Link>
               );
             })}

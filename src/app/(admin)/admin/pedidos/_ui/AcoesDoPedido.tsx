@@ -5,6 +5,8 @@ import { createPortal } from "react-dom";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { executarComando } from "@/application/pedidos/acoes";
 import type { AcaoDoPedido } from "@/application/pedidos/tipos";
+import { IndicadorDeNavegacao } from "@/ui/components/IndicadorDeNavegacao";
+import { useFecharAoNavegar } from "@/ui/hooks/useFecharAoNavegar";
 import { usePopoverFixo } from "@/ui/hooks/usePopoverFixo";
 import { estiloDoComando } from "./estiloDasAcoes";
 
@@ -58,6 +60,9 @@ export function AcoesDoPedido({
   const [motivo, setMotivo] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [menuAberto, setMenuAberto] = useState(false);
+  // "Ver detalhes" e "Emitir comanda" abrem modal por query, sem skeleton de
+  // rota: o menu fica aberto, com o item pulsando, até o modal chegar.
+  const aoClicarEmLink = useFecharAoNavegar(() => setMenuAberto(false));
   const [executando, iniciar] = useTransition();
   const menuId = useId();
   const caixaDoMenu = useRef<HTMLDivElement | null>(null);
@@ -206,10 +211,11 @@ export function AcoesDoPedido({
                       key={item.href}
                       href={item.href}
                       role="menuitem"
-                      onClick={() => setMenuAberto(false)}
-                      className="flex min-h-touch items-center border-0 bg-transparent px-3 text-[13.5px] font-semibold text-ink no-underline hover:bg-elev"
+                      onClick={aoClicarEmLink}
+                      className="flex min-h-touch items-center justify-between gap-3 border-0 bg-transparent px-3 text-[13.5px] font-semibold text-ink no-underline hover:bg-elev"
                     >
                       {item.rotulo}
+                      <IndicadorDeNavegacao />
                     </Link>
                   ))}
                   {itensAdicionais.length > 0 && noMenu.length > 0 ? (

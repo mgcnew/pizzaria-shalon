@@ -3013,6 +3013,73 @@ círculo branco de 44px cobria boa parte da foto num card de ~105px.
 
 ---
 
+## D-2026-09-29-87 — Desempenho percebido do painel, Etapa 1: skeleton por rota e indicador de navegação
+
+**Data:** 29/09/2026 · **Plano de desempenho aprovado pelo responsável pelo
+produto ("sigamos"), etapas 1 a 3, uma por vez. Esta é a Etapa 1.**
+
+**Contexto.** A auditoria de desempenho do painel (28–29/09) encontrou como
+causa principal da lentidão percebida o fato de o clique no menu não dar
+retorno nenhum até a página nova chegar inteira. O único `loading.tsx` ficava
+em `(admin)/`, acima do segmento `admin` que nunca muda entre seções, e o Next
+só mostra o fallback de uma fronteira nova. Pior: sem `loading.tsx`, rota
+dinâmica nem é pré-carregada.
+
+**Decisão.**
+1. **Toda rota do administrativo tem `loading.tsx`**, no formato real da
+   tela: 18 arquivos, das seções às páginas de detalhe e de acesso direto. As
+   peças comuns ficam em `src/app/(admin)/admin/_ui/Esqueletos.tsx`. O título
+   da tela é texto real; o resto usa o `Skeleton` do design.
+2. **`admin/loading.tsx` é o skeleton do Dashboard.** Por estar na pasta
+   `admin/`, ele também é o limite das seções filhas. Foi verificado que isso
+   não gera dois skeletons em sequência nem vaza para o slot `@modal` (ver
+   "Como foi verificado").
+3. **Indicador de navegação pendente** (`IndicadorDeNavegacao`, com
+   `useLinkStatus`) nos links que mudam só a query, onde o Next mantém a tela
+   antiga sem skeleton: abas (`Abas`), período (`SeletorDePeriodo`), chips de
+   Remarketing, Relatórios e filtros de Clientes, ferramentas do cardápio e,
+   na fila de pedidos, "Ver detalhes" e o botão de comanda. Também no menu
+   lateral e na gaveta, para rede lenta. Aparece só se a espera passar de
+   120 ms e pulsa no ritmo do skeleton. Sobre o CTA vermelho, usa a cor do
+   texto.
+4. **Painéis que fecham ao escolher um link passam a fechar quando a URL
+   muda** (`useFecharAoNavegar`): gaveta do celular, filtros de Clientes,
+   menu de ferramentas do cardápio e menu "⋯" do pedido. Antes fechavam no
+   clique e levavam o indicador junto.
+5. **Filtro de Produtos (`next/form`)**: o `next/form` navega com
+   `router.push`, fora do alcance de `useFormStatus`. A espera é estado local
+   (`MarcaDeEspera`), encerrado quando a URL muda. Enviar o mesmo endereço
+   não liga a espera.
+
+**Como foi verificado.** Num app mínimo com Next 16.3.5 em modo produção,
+com a mesma estrutura de rotas (grupo com layout que lê `cookies()`, slot
+`@modal` com catch-all e rota interceptada) e páginas atrasadas em 1,5 s:
+- troca de seção mostra o skeleton da seção em 20–60 ms, também quando o
+  clique vem antes de o pré-carregamento terminar;
+- o skeleton de `admin/` não aparece antes do da seção nem dentro do modal;
+- o detalhe mostra o seu skeleton, não o da lista;
+- troca de query mantém a tela antiga, e `useLinkStatus` fica pendente a
+  espera inteira;
+- pré-carregar uma seção custa 2 requisições curtas e não reexecuta o layout
+  do painel no servidor.
+
+Os projetos Supabase de dev e de produção assinam o JWT com chave
+assimétrica (ES256, conferido no JWKS público). O `getClaims` do middleware
+valida a sessão localmente, sem ida ao Auth, inclusive nas requisições de
+pré-carregamento.
+
+**Não muda.** Nenhum dado é posto em cache. O tempo real, as permissões e as
+consultas das páginas continuam iguais. Não há fade global de página.
+
+**Onde foi formalizada:** `07-MOVIMENTO-E-DESEMPENHO.md` §3, §5 ("Navegação
+entre páginas") e §8; `src/app/(admin)/admin/**/loading.tsx`;
+`src/app/(admin)/admin/_ui/Esqueletos.tsx`;
+`src/ui/components/IndicadorDeNavegacao.tsx`;
+`src/ui/hooks/useFecharAoNavegar.ts`; classe `indicador-navegacao` em
+`src/app/globals.css`.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.

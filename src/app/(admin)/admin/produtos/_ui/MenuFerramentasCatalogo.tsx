@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { IndicadorDeNavegacao } from "@/ui/components/IndicadorDeNavegacao";
+import { useFecharAoNavegar } from "@/ui/hooks/useFecharAoNavegar";
 
 type Ferramenta = { nome: string; valor: string };
 
@@ -13,6 +15,9 @@ export function MenuFerramentasCatalogo({
   atual?: string | undefined;
 }) {
   const [aberto, setAberto] = useState(false);
+  // A ferramenta abre por query (?aba=), sem skeleton de rota: o menu fica
+  // aberto, com o item escolhido pulsando, até o modal chegar.
+  const aoClicarEmLink = useFecharAoNavegar(() => setAberto(false));
   const raizRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -77,15 +82,16 @@ export function MenuFerramentasCatalogo({
                   key={ferramenta.valor}
                   href={`/admin/produtos?aba=${ferramenta.valor}`}
                   role="menuitem"
-                  onClick={() => setAberto(false)}
+                  onClick={aoClicarEmLink}
                   className={[
-                    "motion-interactive flex min-h-touch items-center rounded-10 px-3 text-[13px] font-semibold transition-colors",
+                    "motion-interactive relative flex min-h-touch items-center rounded-10 px-3 text-[13px] font-semibold transition-colors",
                     ativa
                       ? "bg-cta text-cta-fg"
                       : "text-ink-2 hover:bg-tn hover:text-ink",
                   ].join(" ")}
                 >
                   {ferramenta.nome}
+                  <IndicadorDeNavegacao forma="traco" tom={ativa ? "texto" : "marca"} />
                 </Link>
               );
             })}

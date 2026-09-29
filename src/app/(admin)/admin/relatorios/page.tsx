@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { IndicadorDeNavegacao } from "@/ui/components/IndicadorDeNavegacao";
 import { listarRelatorios, obterRelatorio } from "@/application/relatorios/consultas";
 import { formatarCelula } from "@/application/relatorios/formato";
 import type { ChaveDePeriodo } from "@/application/analitico/tipos";
@@ -87,13 +88,14 @@ export default async function Page({
               href={`/admin/relatorios?tipo=${r.tipo}&periodo=${chave}`}
               aria-current={r.tipo === escolhido ? "true" : undefined}
               className={[
-                "motion-interactive inline-flex min-h-touch items-center rounded-11 px-[13px] text-[13px] font-semibold transition-colors",
+                "motion-interactive relative inline-flex min-h-touch items-center rounded-11 px-[13px] text-[13px] font-semibold transition-colors",
                 r.tipo === escolhido
                   ? "bg-cta text-cta-fg"
                   : "border-[1.5px] border-border-shalon text-ink hover:border-brand-orange",
               ].join(" ")}
             >
               {r.titulo}
+              <IndicadorDeNavegacao forma="traco" tom={r.tipo === escolhido ? "texto" : "marca"} />
             </Link>
           ))}
         </div>
