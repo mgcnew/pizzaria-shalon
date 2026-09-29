@@ -156,6 +156,12 @@ indicador semântico.
   secundário, como a lista do sino de notificações, entra em `<Suspense>` com
   espaço reservado do mesmo tamanho. Assim, cabeçalho e menu não esperam por
   ele (D-2026-09-29-88).
+- Tela com parte operacional e relatório pesado mostra a parte operacional
+  primeiro. As consultas começam juntas, e cada bloco pesado espera a sua
+  dentro de `<Suspense>`, com skeleton de mesma forma. O `key` do `<Suspense>`
+  inclui o parâmetro que muda o bloco (período, tipo): assim, a troca mostra o
+  skeleton na hora em vez de manter o dado antigo (D-2026-09-29-90).
+- Tela com abas busca só os dados da aba visível.
 - Tela que recarrega por evento de Realtime usa `useRecargaAgrupada`: uma
   recarga por janela de eventos, adiada durante operação financeira e com a
   aba oculta. Não chamar `router.refresh()` direto no evento (D-2026-09-29-89).

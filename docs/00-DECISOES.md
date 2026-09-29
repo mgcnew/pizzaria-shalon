@@ -3165,6 +3165,47 @@ Realtime: a garantia contra cobrança dupla continua no banco.
 
 ---
 
+## D-2026-09-29-90 — Desempenho percebido do painel, Etapa 4: telas por partes
+
+**Data:** 29/09/2026 · **Etapa 4 do plano ("sigamos com a etapa 4")**
+
+**Decisão.**
+1. **Dashboard:** as quatro consultas começam juntas, mas a página só espera
+   a Central de Atenção, que é a parte que pede ação (RN-DASH-001). Resumo,
+   ranking e movimento do período chegam cada um no seu `<Suspense>`, com o
+   mesmo skeleton do `loading.tsx` (`_ui/EsqueletosDoDashboard.tsx`). O
+   rótulo do período no cabeçalho também chega à parte.
+2. **Troca de período mostra skeleton na hora:** o `key` de cada `<Suspense>`
+   inclui o período. Sem ele, o Next manteria os números do período anterior
+   até o relatório mais lento chegar.
+3. **Relatórios:** com o tipo na URL, o relatório é consultado junto com o
+   catálogo, e não depois dele. O catálogo continua decidindo: tipo fora da
+   lista do usuário tem a resposta antecipada descartada, e o banco a
+   recusaria de qualquer forma. A tabela chega num bloco com skeleton, com
+   `key` por tipo e período.
+4. **Equipe:** cada aba busca só o que mostra. Movimentações usa 2 consultas,
+   Equipe 2 e Histórico financeiro 3, em vez das 6 de toda visita. O painel
+   continua recebendo todas as listas, vazias quando a aba não as usa;
+   nenhum estado dele nasce delas.
+
+**Como foi verificado.** Numa rota temporária, já removida, que renderizava
+as páginas reais sem sessão:
+- o HTML transmitido tem as quatro fronteiras do Dashboard, com os skeletons
+  primeiro;
+- os logs mostram as consultas partindo juntas;
+- a aba de movimentações não consulta equipe nem papéis;
+- com um atraso temporário no ranking, a troca de período atualizou a tela
+  em ~300 ms, com skeleton só no bloco lento até ele chegar.
+
+**Não muda.** Nenhum dado em cache. As consultas, as permissões e o RLS
+continuam os mesmos, e a ordem da página também.
+
+**Onde foi formalizada:** `07-MOVIMENTO-E-DESEMPENHO.md` §7;
+`src/app/(admin)/admin/page.tsx`, `loading.tsx`,
+`_ui/EsqueletosDoDashboard.tsx`; `relatorios/page.tsx`; `equipe/page.tsx`.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.

@@ -38,18 +38,30 @@ export default async function Page({
 
   const podeGerirEquipe = podeNaUI(sessao, "employees.manage");
 
+  /*
+   * CADA ABA BUSCA SÓ O QUE MOSTRA (D-2026-09-29-90).
+   *
+   * Eram seis consultas em toda visita, qualquer que fosse a aba, e trocar de
+   * aba repetia as seis. O painel monta as três seções e exibe só a da aba;
+   * as outras recebem listas vazias, e nenhum estado dele nasce dessas listas.
+   * A aba efetiva segue a mesma regra do painel: "livro" sem a permissão
+   * financeira cai em movimentações.
+   */
+  const abaEfetiva =
+    aba === "equipe" ? "equipe" : aba === "livro" && podeVerFinanceiro ? "livro" : "movimentos";
+  const nenhum = <T,>(valor: T) => Promise.resolve(valor);
+
   const [funcionarios, equipe, papeis, movimentos, historico, caixa] = await Promise.all([
-    listarFuncionarios(),
-    listarEquipe(),
+    abaEfetiva === "equipe" ? nenhum([]) : listarFuncionarios(),
+    abaEfetiva === "equipe" ? listarEquipe() : nenhum([]),
     // A lista já vem marcando o que ESTE usuário pode conceder (RN-RBAC-005).
-    podeGerirEquipe ? listarPapeis() : Promise.resolve([]),
-    listarMovimentos({ limite: 100 }),
+    abaEfetiva === "equipe" && podeGerirEquipe ? listarPapeis() : nenhum([]),
+    abaEfetiva === "movimentos" ? listarMovimentos({ limite: 100 }) : nenhum([]),
     // Só busca o livro se houver permissão E alguém escolhido. Sem permissão
     // a projeção já voltaria vazia, mas não se pede o que não se pode ver.
-    podeVerFinanceiro && funcionario
-      ? obterHistorico(funcionario)
-      : Promise.resolve(null),
-    obterCaixa(),
+    abaEfetiva === "livro" && funcionario ? obterHistorico(funcionario) : nenhum(null),
+    // O caixa só decide o "pela gaveta" do adiantamento, no livro.
+    abaEfetiva === "livro" ? obterCaixa() : nenhum({ aberto: false as const }),
   ]);
 
   return (

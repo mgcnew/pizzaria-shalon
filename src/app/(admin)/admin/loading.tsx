@@ -1,13 +1,15 @@
-import { Skeleton } from "@/ui/patterns";
 import {
   BlocosCarregando,
   CabecalhoCarregando,
   CartaoCarregando,
-  IndicadoresCarregando,
-  LinhasCarregando,
   PilulasCarregando,
   TelaCarregando,
 } from "./_ui/Esqueletos";
+import {
+  MovimentoCarregando,
+  RankingCarregando,
+  ResumoCarregando,
+} from "./_ui/EsqueletosDoDashboard";
 
 /**
  * Skeleton do Dashboard.
@@ -18,6 +20,9 @@ import {
  * com a mesma estrutura de rotas (slot `@modal`, interceptação, layout com
  * `cookies()`): a troca de seção mostra direto o skeleton da seção, sem passar
  * por este, e ele não vaza para dentro do slot do modal. Ver D-2026-09-29-87.
+ *
+ * Fica na tela só até a Central de Atenção chegar. Os blocos de relatório
+ * seguem com os MESMOS skeletons dentro da página (D-2026-09-29-90).
  */
 export default function Loading() {
   return (
@@ -31,30 +36,9 @@ export default function Loading() {
         <BlocosCarregando quantidade={3} />
       </CartaoCarregando>
 
-      <IndicadoresCarregando
-        quantidade={4}
-        className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
-      />
-
-      <CartaoCarregando>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {[0, 1, 2].map((i) => (
-            <div key={i}>
-              <Skeleton className="h-3 w-[70%]" delay={i * 0.04} />
-              <Skeleton className="mt-2 h-5 w-[40%]" delay={i * 0.04 + 0.04} />
-            </div>
-          ))}
-        </div>
-      </CartaoCarregando>
-
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <CartaoCarregando>
-          <LinhasCarregando quantidade={4} />
-        </CartaoCarregando>
-        <CartaoCarregando descricao>
-          <LinhasCarregando quantidade={4} />
-        </CartaoCarregando>
-      </div>
+      <ResumoCarregando />
+      <RankingCarregando />
+      <MovimentoCarregando />
     </TelaCarregando>
   );
 }
