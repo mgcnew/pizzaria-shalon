@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
-import { getSupabaseRealtimeClient } from "@/infrastructure/supabase/client";
+import { carregarClienteRealtime } from "@/infrastructure/supabase/realtimeSobDemanda";
 import {
   listarNotificacoes,
   marcarNotificacaoLida,
@@ -146,7 +146,7 @@ export function SinoNotificacoesAdmin({
       }
     }
 
-    void getSupabaseRealtimeClient().then((supabase) => {
+    void carregarClienteRealtime().then((supabase) => {
       if (!vivo) return;
       cliente = supabase;
       canal = supabase

@@ -3206,6 +3206,65 @@ continuam os mesmos, e a ordem da página também.
 
 ---
 
+## D-2026-09-29-91 — Desempenho do painel: Etapa 5 descartada; Etapa 7 refeita pela medição
+
+**Data:** 29/09/2026 · **Decisão do responsável pelo produto nesta conversa
+("pula a etapa 5, sigamos com a etapa 7")**
+
+**Etapa 5 (cache de configuração) — descartada.** A análise feita antes de
+implementar mostrou:
+- **ganho quase nulo:** as leituras de configuração do painel já rodam em
+  paralelo com consultas maiores, e a tela espera a mais lenta;
+- **risco de dado velho:** `loja_publica` traz "aberta agora", que depende do
+  horário, e os prazos atuais, que mudam no expediente. As formas de
+  pagamento dependem do Pix por chave ligado. Mudança feita fora da tela de
+  Configurações deixaria o balcão com dado antigo;
+- **custo técnico:** sem Cache Components só existe `unstable_cache`, já
+  substituído no Next 16, e o cache não poderia usar a sessão do usuário.
+
+Nenhum cache de dado foi introduzido no painel.
+
+**Etapa 7 (carregamento sob demanda) — medida antes de mexer.** O plano
+previa carregar sob demanda os modais pesados. A medição do build de produção
+(JavaScript de entrada de cada tela, via manifesto de referências de cliente)
+mostrou outro culpado:
+- o exclusivo de cada tela é pequeno: 23 KB gzip em Pedidos, a maior, com os
+  modais incluídos;
+- o comum a todas as telas pesava 88 KB gzip, e 66 KB disso eram o
+  `supabase-js`. Ele entrava estático porque o sino (em todas as telas), a
+  Central de Pedidos e o PDV importavam o cliente do Realtime diretamente.
+
+**Decisão.**
+1. O cliente do Realtime passa a ser carregado por `import()`
+   (`carregarClienteRealtime`, em
+   `src/infrastructure/supabase/realtimeSobDemanda.ts`), só quando a tela
+   liga o canal, depois de aparecer. O `getSupabaseRealtimeClient`, que lê a
+   sessão antes de entrar no canal, continua o mesmo.
+2. **Os modais continuam no pacote da tela.** A economia seria de poucos KB,
+   que o navegador guarda em cache depois da primeira visita. Em troca, o
+   primeiro clique em Cobrar, Comanda ou Detalhes esperaria um download no
+   meio do atendimento.
+
+**Resultado medido (JavaScript de entrada, gzip):**
+
+| Tela | Antes | Depois |
+|---|---:|---:|
+| Pedidos | 108 KB | 42 KB |
+| PDV | 101 KB | 35 KB |
+| Produtos | 93 KB | 27 KB |
+| Dashboard | 86 KB | 20 KB |
+
+Em execução, o chunk do cliente chegou separado, depois da página, e o canal
+de teste ficou `SUBSCRIBED` em ~350 ms após a montagem (modo dev).
+
+**Onde foi formalizada:** `07-MOVIMENTO-E-DESEMPENHO.md` §7;
+`src/infrastructure/supabase/realtimeSobDemanda.ts`;
+`src/ui/notificacoes/SinoNotificacoesAdmin.tsx`;
+`src/app/(admin)/admin/pdv/_ui/useRealtimeDoPdv.ts`;
+`src/app/(admin)/admin/pedidos/_ui/CentralDePedidos.tsx`.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.

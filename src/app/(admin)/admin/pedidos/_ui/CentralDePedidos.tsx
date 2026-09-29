@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
-import { getSupabaseRealtimeClient } from "@/infrastructure/supabase/client";
+import { carregarClienteRealtime } from "@/infrastructure/supabase/realtimeSobDemanda";
 import { exigeAtencao } from "@/domain/pedidos/estados";
 import type { PedidoNaFila } from "@/application/pedidos/tipos";
 import { CartaoPedido } from "./CartaoPedido";
@@ -24,7 +24,8 @@ import type { PedidoAReceber } from "@/application/pdv/tipos";
  * A assinatura NÃO é uma porta lateral: o Realtime respeita o RLS, e a
  * policy de `orders` exige `orders.view`. Quem não pode ver, não recebe.
  *
- * E é por isso que o cliente vem de `getSupabaseRealtimeClient()`, que espera
+ * E é por isso que o cliente vem de `carregarClienteRealtime()`, que carrega
+ * o `supabase-js` sob demanda e usa `getSupabaseRealtimeClient()`, que espera
  * a sessão antes de entrar no canal. Até a Etapa 10 esta tela entrava com a
  * chave `anon`, registrava a assinatura como `anon` — que não tem policy de
  * leitura em `orders` — e **nunca recebeu um evento**, anunciando "Atualizando
@@ -99,7 +100,7 @@ export function CentralDePedidos({
     /** Já esteve ligado uma vez: um novo SUBSCRIBED é reconexão. */
     let jaLigou = false;
 
-    void getSupabaseRealtimeClient().then((supabase) => {
+    void carregarClienteRealtime().then((supabase) => {
       if (!vivo) return;
       cliente = supabase;
 

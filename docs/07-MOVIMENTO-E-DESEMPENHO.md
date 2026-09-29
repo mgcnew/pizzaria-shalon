@@ -162,6 +162,14 @@ indicador semântico.
   inclui o parâmetro que muda o bloco (período, tipo): assim, a troca mostra o
   skeleton na hora em vez de manter o dado antigo (D-2026-09-29-90).
 - Tela com abas busca só os dados da aba visível.
+- Pacote pesado usado só depois que a tela aparece entra por `import()`, não
+  por importação estática. É o caso do `supabase-js` no navegador, que serve
+  só ao Realtime: usar `carregarClienteRealtime` e não importar
+  `@/infrastructure/supabase/client` direto em componente do painel
+  (D-2026-09-29-91).
+- Modal usado no meio do atendimento (cobrança, comanda, detalhes) continua
+  no pacote da tela. Carregar sob demanda economizaria poucos KB e atrasaria
+  o clique que abre o modal (D-2026-09-29-91).
 - Tela que recarrega por evento de Realtime usa `useRecargaAgrupada`: uma
   recarga por janela de eventos, adiada durante operação financeira e com a
   aba oculta. Não chamar `router.refresh()` direto no evento (D-2026-09-29-89).

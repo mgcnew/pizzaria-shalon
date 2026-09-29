@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
-import { getSupabaseRealtimeClient } from "@/infrastructure/supabase/client";
+import { carregarClienteRealtime } from "@/infrastructure/supabase/realtimeSobDemanda";
 import { useRecargaAgrupada } from "@/ui/hooks/useRecargaAgrupada";
 
 /**
@@ -96,7 +96,7 @@ export function useRealtimeDoPdv(): RealtimeDoPdv {
      * nasça como `authenticated`: quem entra antes do token registra `anon` e
      * não recebe mais nada, para sempre (ver `client.ts`).
      */
-    void getSupabaseRealtimeClient().then((supabase) => {
+    void carregarClienteRealtime().then((supabase) => {
       if (!vivo) return;
       cliente = supabase;
 
