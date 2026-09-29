@@ -184,6 +184,13 @@ Regras:
 
 - funções usadas por RLS devem ter `search_path` seguro;
 - `SECURITY DEFINER` somente quando necessário e revisado;
+- função `SECURITY DEFINER` que lê dado interno passa por cima do RLS, então
+  **carrega no próprio corpo a mesma permissão das policies** que ela
+  contorna (por exemplo `(select public.has_permission('orders.view'))`) e
+  ganha teste negativo com usuário desativado, com conta de login sem usuário
+  interno e com papel sem a permissão. Recriar uma função com
+  `create or replace` pode trocar INVOKER por DEFINER sem que nada avise:
+  quem recria confere o modo e a guarda (D-2026-09-29-92);
 - não aceitar `user_id` arbitrário do cliente como prova de identidade;
 - identidade interna deriva de `auth.uid()`.
 

@@ -3265,6 +3265,53 @@ de teste ficou `SUBSCRIBED` em ~350 ms após a montagem (modo dev).
 
 ---
 
+## D-2026-09-29-92 — A fila de pedidos volta a exigir `orders.view` (defeito de segurança)
+
+**Data:** 29/09/2026 · **Encontrado durante a Etapa 6 do plano de
+desempenho. Aplicação em dev e produção autorizada pelo responsável nesta
+conversa.**
+
+**O defeito.** A migration 0108 (23/09, Fase 10, otimização da aba
+Encerrados) recriou `fila_de_pedidos` como `SECURITY DEFINER`. Até ali ela era
+INVOKER, sob o RLS, e o próprio comentário dizia "sem orders.view não retorna
+nada". Como DEFINER e sem nenhuma checagem no corpo, a função passou a
+entregar a fila a qualquer sessão `authenticated`. Medido no DEV, a suíte
+nova antes da correção reprovou 4 de 12 cenários:
+- usuário interno desativado recebe 16 pedidos encerrados (o RLS dele mostra 0);
+- conta de login sem usuário interno recebe os mesmos 16;
+- papel ativo sem `orders.view` recebe os mesmos 16;
+- a guarda não existe no corpo da função.
+
+Os pedidos saíam com nome do cliente, total e forma de pagamento. `anon`
+nunca executou a função. A produção ainda não tem contas nem pedidos, então
+**não houve exposição de dado real**.
+
+**Correção (migration 0131).** A função continua DEFINER, porque as policies
+de pedido avaliam `has_permission` linha a linha e isso anularia o ganho da
+0108. A mesma regra das policies entra no corpo como
+`(select public.has_permission('orders.view'))`, avaliada uma vez por
+chamada. A regra de acesso fica idêntica à do RLS. Com a correção aplicada
+na transação, a suíte passa 12 de 12, e a dona continua vendo exatamente o
+que o RLS mostra.
+
+**Varredura.** Todas as funções `SECURITY DEFINER` executáveis por
+`authenticated` foram conferidas. As que não têm guarda de permissão no corpo
+são auxiliares que só devolvem configuração (`dia_da_loja`, `fuso_da_loja`,
+`limite_de_alerta`, `periodo_analitico`, `is_internal_user`) ou projeções
+públicas do cardápio. `fila_de_pedidos` era a única que expunha dado
+interno.
+
+**Regra nova:** `03-RLS-RBAC-SEGURANCA.md` §4. Função DEFINER que lê dado
+interno carrega no corpo a permissão das policies que contorna, e tem teste
+negativo.
+
+**Onde foi formalizada:**
+`supabase/migrations/20260929120000_fila_de_pedidos_exige_orders_view.sql`;
+`supabase/tests/fila_de_pedidos_permissao.sql`; `03-RLS-RBAC-SEGURANCA.md`;
+`supabase/README.md`.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.

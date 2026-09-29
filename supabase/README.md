@@ -108,7 +108,11 @@ migration vazia foi criada para esconder a diferença.
 ## Testes de autorização
 
 `tests/rls_fase2.sql` — 48 cenários positivos e negativos, incluindo escalada de
-privilégio e acesso horizontal. Roda em transação e termina em `ROLLBACK`: não
+privilégio e acesso horizontal.
+
+`tests/fila_de_pedidos_permissao.sql` — 12 cenários: a fila da central só
+responde a quem tem `orders.view`, mesmo sendo `SECURITY DEFINER`
+(D-2026-09-29-92). Roda em transação e termina em `ROLLBACK`: não
 persiste nada.
 
 Executar colando o conteúdo no SQL Editor do projeto, ou via conector. O
