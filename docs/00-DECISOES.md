@@ -3370,6 +3370,66 @@ na tela.
 
 ---
 
+## D-2026-09-29-94 — Auditoria escrita em frases
+
+**Data:** 29/09/2026 · **Pedido do responsável pelo produto ("ajuste a
+linguagem da auditoria, não fica claro")**
+
+**Problema.** A seção Auditoria mostrava o código técnico e a tabela
+("pedido_cancelar · orders"), e embaixo o motivo ou um genérico "Ação de
+usuário". Não dizia qual pedido, quem agiu nem o que mudou. A hora saía de
+`toLocaleString` sem fuso, e no servidor da Vercel (UTC) apareceria 3 h
+adiantada.
+
+**Decisão.**
+1. **Título em frase**, com o número do pedido quando o registro é de
+   pedido: "Pedido #1042 cancelado", "Comanda do pedido #1042 reimpressa",
+   "Configurações da loja alteradas", "Caixa aberto".
+2. **Linha de detalhe:** quem agiu ("Por Rafaela", ou "Registrado
+   automaticamente pelo sistema"), a mudança de status com os rótulos da fila
+   ("Em produção → Cancelado") e o motivo ("Motivo: teste"). Lançamento
+   financeiro usa "Descrição", que é o que o campo guarda ali. Sem motivo,
+   nada é inventado no lugar.
+3. **Hora no fuso da loja.**
+4. **Cobertura:** os códigos gravados pelas migrations (comandos do pedido,
+   impressão, pagamento, caixa, financeiro, entregas, equipe, acessos,
+   códigos de barras, clientes e o gatilho genérico de configuração, com o
+   particípio concordando com o nome). Código fora do mapa aparece legível,
+   nunca some.
+
+**Dados.** A consulta passa a trazer o nome de quem agiu (embed do
+funcionário, sob RLS) e só o `status` de antes e depois. O restante de
+`before_data`/`after_data` não é lido. O número do pedido vem de uma segunda
+leitura em `orders`, sob o RLS dela. Nada muda no que é gravado, nem na
+regra de acesso (`audit.view`).
+
+**Onde foi formalizada:**
+`src/application/configuracoes/descricaoDaAuditoria.ts` (com teste);
+`listarAuditoria` em `src/application/configuracoes/consultas.ts`;
+`src/app/(admin)/admin/configuracoes/_ui/SecaoAuditoria.tsx`.
+
+---
+
+## D-2026-09-29-95 — Menu do cliente com as cores do menu do painel
+
+**Data:** 29/09/2026 · **Pedido do responsável pelo produto ("esse menu
+precisa seguir a cor do menu do painel; essa cor marrom pesa")**
+
+**Decisão.** A gaveta "Seu cardápio" (Meus pedidos, Histórico, Favoritos)
+troca o degradê marrom escuro pelos tokens do menu do painel
+(`admin-nav-*`):
+- superfície clara e borda suave;
+- título em cor de tinta e rótulo "Seu cardápio" no laranja do item ativo;
+- ícones laranja sobre fundo claro;
+- item da página atual no amarelo-claro com borda laranja.
+
+No tema escuro, o menu acompanha o painel escuro (grafite neutro). Estrutura,
+textos, alvos de toque e comportamento de dialog não mudam.
+
+**Onde foi formalizada:** `src/app/(publico)/_ui/MenuPublico.tsx`.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.

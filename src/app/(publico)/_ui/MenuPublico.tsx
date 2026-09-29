@@ -49,8 +49,13 @@ const ITENS: ItemMenu[] = [
 ];
 
 /**
- * Navegação pública exigida pelo Documento Mestre §79.8. O painel mantém a
- * paleta quente da Shalon e implementa o comportamento acessível de dialog.
+ * Navegação pública exigida pelo Documento Mestre §79.8, com o comportamento
+ * acessível de dialog.
+ *
+ * As cores são as do menu do painel administrativo (tokens `admin-nav-*`):
+ * superfície clara, borda suave, ícone laranja e item ativo no amarelo-claro.
+ * Assim o menu segue o tema claro/escuro do sistema. O marrom escuro que
+ * estava aqui pesava sobre o cardápio claro (D-2026-09-29-95).
  */
 export function MenuPublico() {
   const [aberto, setAberto] = useState(false);
@@ -135,14 +140,14 @@ export function MenuPublico() {
           <aside
             ref={painelRef}
             id="menu-publico"
-            className="motion-drawer-right-in flex h-full w-[min(88vw,340px)] shrink-0 flex-col overflow-y-auto rounded-l-22 border-l border-white/10 bg-[linear-gradient(160deg,#30241d_0%,#211813_100%)] px-4 pb-5 pt-4 shadow-[-16px_0_40px_rgb(0_0_0/0.22)]"
+            className="motion-drawer-right-in flex h-full w-[min(88vw,340px)] shrink-0 flex-col overflow-y-auto rounded-l-22 border-l border-admin-nav-border bg-admin-nav-bg px-4 pb-5 pt-4 shadow-[-16px_0_40px_rgb(41_37_36/0.14)]"
           >
-            <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-4 pl-1">
+            <div className="flex items-center justify-between gap-4 border-b border-admin-nav-border pb-4 pl-1">
               <div>
-                <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-yellow">
+                <p className="m-0 text-[11px] font-semibold uppercase tracking-[0.12em] text-admin-nav-active-fg">
                   Seu cardápio
                 </p>
-                <h2 id="menu-publico-titulo" className="mb-0 mt-1 font-display text-[20px] font-extrabold text-dark-ink">
+                <h2 id="menu-publico-titulo" className="mb-0 mt-1 font-display text-[20px] font-extrabold text-admin-nav-text">
                   Pizzaria Shalon
                 </h2>
               </div>
@@ -151,7 +156,7 @@ export function MenuPublico() {
                 type="button"
                 onClick={() => setAberto(false)}
                 aria-label="Fechar menu"
-                className="motion-interactive flex min-h-touch min-w-touch cursor-pointer items-center justify-center rounded-12 border border-white/15 bg-white/[0.06] text-dark-ink transition-colors hover:border-white/25 hover:bg-white/[0.12]"
+                className="motion-interactive flex min-h-touch min-w-touch cursor-pointer items-center justify-center rounded-12 border border-admin-nav-border bg-admin-nav-icon text-admin-nav-text transition-colors hover:border-brand-orange"
               >
                 <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-5 w-5">
                   <path d="m7 7 10 10M17 7 7 17" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
@@ -172,25 +177,27 @@ export function MenuPublico() {
                     className={[
                       "motion-interactive group flex min-h-[66px] items-center gap-3 rounded-14 border px-3 py-[10px] transition-colors",
                       ativo
-                        ? "border-brand-yellow/55 bg-brand-yellow/[0.13]"
-                        : "border-white/[0.08] bg-white/[0.045] hover:border-white/15 hover:bg-white/[0.09]",
+                        ? "border-brand-orange bg-admin-nav-active"
+                        : "border-admin-nav-border bg-surface hover:border-brand-orange hover:bg-admin-nav-icon",
                     ].join(" ")}
                   >
                     <span
                       className={[
                         "flex h-10 w-10 shrink-0 items-center justify-center rounded-12",
-                        ativo ? "bg-brand-yellow text-ink" : "bg-white/[0.09] text-brand-yellow",
+                        ativo
+                          ? "bg-surface text-admin-nav-active-fg shadow-sm"
+                          : "bg-admin-nav-icon text-admin-nav-active-fg",
                       ].join(" ")}
                     >
                       {item.icone}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[14px] font-bold text-dark-ink">{item.nome}</span>
-                      <span className="mt-0.5 block text-[11px] leading-[1.35] text-dark-muted">
+                      <span className="block text-[14px] font-bold text-admin-nav-text">{item.nome}</span>
+                      <span className="mt-0.5 block text-[11px] leading-[1.35] text-admin-nav-muted">
                         {item.descricao}
                       </span>
                     </span>
-                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="motion-interactive h-4 w-4 shrink-0 text-dark-muted transition-transform group-hover:translate-x-0.5">
+                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="motion-interactive h-4 w-4 shrink-0 text-admin-nav-muted transition-transform group-hover:translate-x-0.5">
                       <path d="m9 6 6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </Link>
@@ -198,8 +205,8 @@ export function MenuPublico() {
               })}
             </nav>
 
-            <div className="mt-auto rounded-14 border border-white/[0.08] bg-black/10 px-4 py-3">
-              <p className="m-0 text-[12px] leading-[1.55] text-dark-muted">
+            <div className="mt-auto rounded-14 border border-admin-nav-border bg-admin-nav-icon px-4 py-3">
+              <p className="m-0 text-[12px] leading-[1.55] text-admin-nav-muted">
                 Seus favoritos e pedidos ficam salvos somente neste aparelho. Não é necessário criar conta.
               </p>
             </div>
