@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
-import type { SessaoInterna } from "./permissoes";
+import { montarSessaoInterna, type LinhaDeUsuarioInterno, type SessaoInterna } from "./permissoes";
 
 /**
  * Caso de uso: identidade e permissões da sessão interna.
@@ -26,48 +26,23 @@ export const obterSessaoInterna = cache(async (): Promise<SessaoInterna | null> 
   const authUserId = claimsData?.claims.sub;
   if (typeof authUserId !== "string") return null;
 
-  // O RLS já limita o que volta: sem usuário interno ativo, não vem nada.
+  // Usuário, papéis e permissões numa só ida ao banco: o PostgREST embute as
+  // tabelas e aplica o RLS de cada uma, como nas duas consultas em fila que
+  // havia antes. Sem usuário interno ativo, não vem nada. A dica
+  // `!user_roles_app_user_id_fkey` é obrigatória: `user_roles` também aponta
+  // para `app_users` por `assigned_by`, e sem ela o PostgREST recusa o embed
+  // por ambiguidade (PGRST201).
   const { data: appUser } = await supabase
     .from("app_users")
-    .select("id, employee_id, employees(full_name)")
+    .select(
+      "id, employee_id, employees(full_name), user_roles!user_roles_app_user_id_fkey(roles(name, role_permissions(permissions(code))))",
+    )
     .eq("auth_user_id", authUserId)
     .maybeSingle();
 
   if (!appUser) return null;
 
-  const { data: vinculos } = await supabase
-    .from("user_roles")
-    .select("roles(name, role_permissions(permissions(code)))")
-    .eq("app_user_id", appUser.id);
-
-  const papeis: string[] = [];
-  const permissoes = new Set<string>();
-
-  type Vinculo = {
-    roles: {
-      name: string;
-      role_permissions: { permissions: { code: string } | null }[] | null;
-    } | null;
-  };
-
-  for (const v of (vinculos ?? []) as unknown as Vinculo[]) {
-    if (!v.roles) continue;
-    papeis.push(v.roles.name);
-    for (const rp of v.roles.role_permissions ?? []) {
-      if (rp.permissions) permissoes.add(rp.permissions.code);
-    }
-  }
-
-  const employee = (appUser as unknown as { employees: { full_name: string } | null })
-    .employees;
-
-  return {
-    appUserId: appUser.id as string,
-    employeeId: appUser.employee_id as string,
-    nome: employee?.full_name ?? "",
-    papeis,
-    permissoes: [...permissoes].sort(),
-  };
+  return montarSessaoInterna(appUser as unknown as LinhaDeUsuarioInterno);
 });
 
 export type { SessaoInterna };

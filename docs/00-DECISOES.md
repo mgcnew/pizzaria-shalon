@@ -3080,6 +3080,49 @@ entre páginas") e §8; `src/app/(admin)/admin/**/loading.tsx`;
 
 ---
 
+## D-2026-09-29-88 — Desempenho percebido do painel, Etapa 2: cabeçalho sem espera
+
+**Data:** 29/09/2026 · **Etapa 2 do plano aprovado ("sigamos com a etapa 2")**
+
+**Decisão.**
+1. **O sino de notificações sai do caminho do cabeçalho.** O layout do
+   painel esperava a lista de notificações depois da sessão; agora ela chega
+   por streaming dentro de `<Suspense>`, com um skeleton de 44×44 px no lugar
+   do botão. Em `router.refresh()` o sino já exibido continua na tela. Se a
+   lista falhar, o sino abre vazio em vez de derrubar o painel; a consulta de
+   reserva de 60 s e o Realtime o preenchem depois.
+2. **Sessão e permissões numa só consulta.** `obterSessaoInterna` fazia
+   `app_users` e depois `user_roles` (com papéis e permissões), em fila. Agora
+   é uma consulta ao `app_users` com as tabelas embutidas pelo PostgREST. A
+   dica `user_roles!user_roles_app_user_id_fkey` é obrigatória, porque
+   `user_roles` também referencia `app_users` por `assigned_by`.
+   A montagem da sessão virou a função pura `montarSessaoInterna`, com testes.
+
+**Por que sem migration.** O plano previa uma função no banco. O embed do
+PostgREST dá o mesmo ganho, uma ida ao banco em vez de duas, sem objeto novo
+no banco e sem mudar o RLS: cada tabela embutida continua filtrada pela
+própria política, como antes.
+
+**Como foi verificado.** A consulta foi aceita pelo PostgREST do projeto de
+dev (sem a dica, ele recusa por ambiguidade, PGRST201). No banco de dev, com
+o JWT de cada usuário interno simulado sob `authenticated`, o Owner/Admin
+ativo obteve as mesmas 39 permissões pelos dois caminhos. O usuário inativo
+não enxerga nem o próprio `app_users` nem vínculos, e a sessão continua nula.
+
+**`getClaims`.** Não faz ida ao Auth: dev e produção usam ES256, e o JWKS
+fica em cache global por 10 minutos no `auth-js` (ver D-2026-09-29-87).
+
+**Não muda.** Nenhum cache de permissão entre requisições (`React.cache`
+continua restrito à renderização corrente). O sino segue com as mesmas
+permissões, Realtime e consulta de reserva.
+
+**Onde foi formalizada:** `07-MOVIMENTO-E-DESEMPENHO.md` §7;
+`src/app/(admin)/layout.tsx` (`SinoDoPainel`);
+`src/application/auth/sessao.ts`; `montarSessaoInterna` em
+`src/application/auth/permissoes.ts`; `tests/application/sessao.test.ts`.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.

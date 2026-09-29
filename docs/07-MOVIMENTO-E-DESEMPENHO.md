@@ -152,6 +152,10 @@ indicador semântico.
 - Imagens visíveis usam `next/image`, dimensões ou `fill` e `sizes` adequado.
 - Leituras independentes devem começar juntas com `Promise.all`; não criar
   cascatas apenas por conveniência de escrita.
+- O layout compartilhado só espera o que decide o acesso (a sessão). Dado
+  secundário, como a lista do sino de notificações, entra em `<Suspense>` com
+  espaço reservado do mesmo tamanho. Assim, cabeçalho e menu não esperam por
+  ele (D-2026-09-29-88).
 - `React.cache` pode deduplicar sessão e consultas idênticas somente dentro da
   renderização corrente. Não usar cache persistente para pedidos, caixa,
   disponibilidade ou permissões.

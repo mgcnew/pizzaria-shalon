@@ -2,17 +2,21 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
+import { Suspense } from "react";
 import { DrawerAdmin } from "@/ui/components/DrawerAdmin";
 import { MenuLateralAdmin } from "@/ui/components/MenuLateralAdmin";
 import { MenuUsuarioAdmin } from "@/ui/components/MenuUsuarioAdmin";
 import { SeletorDeTema } from "@/ui/components/SeletorDeTema";
 import { RegistrarPwaAdmin } from "@/ui/components/RegistrarPwaAdmin";
 import { SinoNotificacoesAdmin } from "@/ui/notificacoes/SinoNotificacoesAdmin";
-import { listarNotificacoes } from "@/application/notificacoes/acoes";
+import { listarNotificacoes, type ResumoNotificacoes } from "@/application/notificacoes/acoes";
 import { COOKIE_TEMA, temaDoCookie } from "@/ui/tema";
 import { obterSessaoInterna } from "@/application/auth/sessao";
 import { sair } from "@/app/(auth)/admin/login/actions";
+import { podeNaUI } from "@/application/auth/permissoes";
+import { Skeleton } from "@/ui/patterns";
+import { logger } from "@/lib/logger";
 
 export const metadata: Metadata = {
   manifest: "/admin.webmanifest",
@@ -49,9 +53,6 @@ export default async function LayoutAdmin({
   if (!sessao) redirect("/admin/login");
 
   const temaAtual = temaDoCookie((await cookies()).get(COOKIE_TEMA)?.value);
-  const notificacoes = sessao.permissoes.includes("orders.view")
-    ? await listarNotificacoes()
-    : null;
 
   return (
     <div data-acento="vermelho" className="flex min-h-screen bg-bg">
@@ -87,7 +88,11 @@ export default async function LayoutAdmin({
             />
           </Link>
           <SeletorDeTema atual={temaAtual} />
-          {notificacoes ? <SinoNotificacoesAdmin key={sessao.appUserId} iniciais={notificacoes} appUserId={sessao.appUserId} /> : null}
+          {podeNaUI(sessao, "orders.view") ? (
+            <Suspense fallback={<Skeleton className="min-h-touch min-w-touch shrink-0 rounded-12" />}>
+              <SinoDoPainel key={sessao.appUserId} appUserId={sessao.appUserId} />
+            </Suspense>
+          ) : null}
           <MenuUsuarioAdmin nome={sessao.nome} papeis={sessao.papeis} acaoSair={sair} />
         </header>
 
@@ -95,4 +100,27 @@ export default async function LayoutAdmin({
       </div>
     </div>
   );
+}
+
+/**
+ * O sino chega por streaming, fora do caminho do cabeçalho.
+ *
+ * Antes, o layout esperava a lista de notificações depois da sessão, e a
+ * primeira tela do painel só aparecia com as duas consultas prontas, uma
+ * atrás da outra. Agora cabeçalho e menu saem com a sessão, e o sino entra
+ * no espaço reservado para ele. Em `router.refresh()` o Suspense já exibido
+ * mantém o sino na tela: não há piscada.
+ *
+ * Falha ao listar não derruba o painel. O sino abre vazio, e a consulta de
+ * reserva a cada 60 s e o Realtime o preenchem quando o banco responder.
+ */
+async function SinoDoPainel({ appUserId }: { appUserId: string }) {
+  let iniciais: ResumoNotificacoes = { items: [], unread_count: 0 };
+  try {
+    iniciais = await listarNotificacoes();
+  } catch (erro) {
+    unstable_rethrow(erro);
+    logger.error("notificacoes:sino", { erro: erro instanceof Error ? erro.name : "desconhecido" });
+  }
+  return <SinoNotificacoesAdmin iniciais={iniciais} appUserId={appUserId} />;
 }
