@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseRealtimeClient } from "@/infrastructure/supabase/client";
+import { useRecargaAgrupada } from "@/ui/hooks/useRecargaAgrupada";
 
 /**
  * O PDV ACORDANDO SOZINHO — Fase 12, Etapa 10.
@@ -79,55 +79,11 @@ export type RealtimeDoPdv = {
 };
 
 export function useRealtimeDoPdv(): RealtimeDoPdv {
-  const router = useRouter();
   const [estado, setEstado] = useState<EstadoDoRealtime>("conectando");
-
-  /** Quantas operações financeiras estão em voo. Zero libera o refresh. */
-  const emVoo = useRef(0);
-  /** Houve evento que ainda não virou refresh. */
-  const pendente = useRef(false);
-  const timer = useRef<number | null>(null);
-
-  /**
-   * Executa o refresh se puder; senão deixa marcado.
-   *
-   * Duas razões para adiar, e as duas são do operador, não do sistema:
-   * uma operação em voo (trocar as props no meio do envio desmonta painel e
-   * leva o que foi digitado) e a aba oculta (refresh em aba de fundo é sete
-   * consultas gastas para ninguém ver).
-   */
-  const tentarAgora = useCallback(() => {
-    if (!pendente.current) return;
-    if (emVoo.current > 0) return;
-    if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
-    pendente.current = false;
-    router.refresh();
-  }, [router]);
-
-  /**
-   * Agrupa a rajada. Um pedido público que nasce e muda de status em segundos
-   * gera vários eventos; o PDV recarrega SETE consultas por vez. Sem janela,
-   * cada evento pagaria esse preço — e o eco da própria ação (a action já faz
-   * `revalidatePath`) pagaria de novo.
-   */
-  const agendar = useCallback(() => {
-    pendente.current = true;
-    if (timer.current !== null) window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => {
-      timer.current = null;
-      tentarAgora();
-    }, AGRUPAR_MS);
-  }, [tentarAgora]);
-
-  /** Chamado pelo provedor quando alguém começa ou termina de escrever dinheiro. */
-  const aoMudarOperacoes = useCallback(
-    (quantas: number) => {
-      emVoo.current = quantas;
-      // Terminou a última: aplica agora o que ficou esperando.
-      if (quantas === 0) tentarAgora();
-    },
-    [tentarAgora],
-  );
+  // Agrupar, esperar operação em voo e pausar com a aba oculta: o núcleo foi
+  // extraído daqui para `useRecargaAgrupada`, que a Central de Pedidos também
+  // usa (D-2026-09-29-89).
+  const { agendar, aoMudarOperacoes } = useRecargaAgrupada(AGRUPAR_MS);
 
   useEffect(() => {
     let vivo = true;
@@ -166,25 +122,13 @@ export function useRealtimeDoPdv(): RealtimeDoPdv {
       }
     });
 
-    /*
-     * A ABA VOLTOU. Enquanto escondida o refresh fica represado, e o navegador
-     * pode até ter dormido a conexão: ao voltar, aplica o que ficou. Se nada
-     * ficou, `tentarAgora` não faz nada — é `pendente` que manda.
-     */
-    const aoVoltar = () => {
-      if (document.visibilityState === "visible") tentarAgora();
-    };
-    document.addEventListener("visibilitychange", aoVoltar);
-
     return () => {
       // Sem isto, navegar e voltar deixa canal órfão acumulando no singleton —
       // e com `reactStrictMode` o efeito monta duas vezes já no primeiro load.
       vivo = false;
-      if (timer.current !== null) window.clearTimeout(timer.current);
-      document.removeEventListener("visibilitychange", aoVoltar);
       for (const canal of canais) void cliente?.removeChannel(canal);
     };
-  }, [agendar, tentarAgora]);
+  }, [agendar]);
 
   return { estado, aoMudarOperacoes };
 }

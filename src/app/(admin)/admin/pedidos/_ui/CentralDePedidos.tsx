@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseRealtimeClient } from "@/infrastructure/supabase/client";
@@ -10,6 +10,7 @@ import { CartaoPedido } from "./CartaoPedido";
 import { TabelaPedidos } from "./TabelaPedidos";
 import { GavetaDeCobranca } from "./GavetaDeCobranca";
 import { ProvedorDeOperacaoEmVoo } from "@/ui/operacaoEmVoo";
+import { useRecargaAgrupada } from "@/ui/hooks/useRecargaAgrupada";
 import type { FormaParaRecebimento } from "./Recebimento";
 import type { PedidoAReceber } from "@/application/pdv/tipos";
 
@@ -35,6 +36,9 @@ import type { PedidoAReceber } from "@/application/pdv/tipos";
  * RLS. Nada da carga útil do evento é exibido direto, porque ela traz a
  * linha crua — incluindo o telefone completo do cliente.
  */
+/** Janela de agrupamento dos eventos de `orders` (D-2026-09-29-89). */
+const AGRUPAR_MS = 1000;
+
 export function CentralDePedidos({
   pedidos,
   hora,
@@ -74,41 +78,26 @@ export function CentralDePedidos({
   }, []);
 
   /**
-   * O REFRESH ESPERA O DINHEIRO — mesma guarda da Etapa 10 no PDV.
+   * QUANDO RECARREGAR — o mesmo núcleo do PDV (`useRecargaAgrupada`).
    *
-   * Esta tela recarrega a cada evento de `orders`. Com a gaveta de cobrança
-   * aberta, um refresh no meio do envio trocaria as props e desmontaria o
-   * painel levando junto as linhas de divisão já digitadas. Enquanto houver
-   * operação em voo o refresh fica PENDENTE, e é aplicado assim que terminar.
+   * Cada refresh desta tela reexecuta a página inteira. Antes, cada evento de
+   * `orders` disparava um na hora: um pedido que muda de status três vezes em
+   * poucos segundos pagava três vezes, e a aba escondida recarregava para
+   * ninguém ver. Agora os eventos de uma janela de 1 s viram um refresh só, a
+   * aba oculta represa o refresh até voltar, e a gaveta de cobrança aberta
+   * continua segurando o refresh até o dinheiro terminar de ser registrado.
    *
    * Isto é conforto de interface, nunca autoridade: a garantia contra cobrança
-   * dupla continua inteira no banco (`for update` + recusa com `ja_pago`), e
-   * continuaria valendo se estas linhas não existissem.
+   * dupla continua inteira no banco (`for update` + recusa com `ja_pago`).
    */
-  const emVoo = useRef(0);
-  const pendente = useRef(false);
-
-  const atualizar = useCallback(() => {
-    if (emVoo.current > 0) {
-      pendente.current = true;
-      return;
-    }
-    pendente.current = false;
-    router.refresh();
-  }, [router]);
-
-  const aoMudarOperacoes = useCallback(
-    (quantas: number) => {
-      emVoo.current = quantas;
-      if (quantas === 0 && pendente.current) atualizar();
-    },
-    [atualizar],
-  );
+  const { agendar, aoMudarOperacoes } = useRecargaAgrupada(AGRUPAR_MS);
 
   useEffect(() => {
     let vivo = true;
     let cliente: SupabaseClient | null = null;
     let canal: RealtimeChannel | null = null;
+    /** Já esteve ligado uma vez: um novo SUBSCRIBED é reconexão. */
+    let jaLigou = false;
 
     void getSupabaseRealtimeClient().then((supabase) => {
       if (!vivo) return;
@@ -116,17 +105,17 @@ export function CentralDePedidos({
 
       canal = supabase
         .channel("central-pedidos")
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "orders" },
-          () => {
-            // Recarrega pelo caminho normal. O evento avisa; quem informa é o
-            // servidor — e o guarda decide a HORA, nunca o quê.
-            atualizar();
-          },
-        )
+        // O evento avisa; quem informa é o servidor.
+        .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, agendar)
         .subscribe((estado) => {
-          if (vivo) setConectado(estado === "SUBSCRIBED");
+          if (!vivo) return;
+          const ligado = estado === "SUBSCRIBED";
+          setConectado(ligado);
+          // O Realtime não reenvia o que aconteceu enquanto a conexão estava
+          // caída, o que é comum no celular com a tela apagada. Ao religar,
+          // relê a fila para não seguir mostrando a de antes da queda.
+          if (ligado && jaLigou) agendar();
+          if (ligado) jaLigou = true;
         });
     });
 
@@ -134,7 +123,7 @@ export function CentralDePedidos({
       vivo = false;
       if (canal !== null) void cliente?.removeChannel(canal);
     };
-  }, [atualizar]);
+  }, [agendar]);
 
   /*
    * MAIS ANTIGO EM CIMA — e é o contrário do que a RPC devolve.
@@ -273,8 +262,10 @@ export function CentralDePedidos({
           aoFechar={() => setCobrando(null)}
           aoConcluir={() => {
             setCobrando(null);
-            // A fila é dado de servidor: quem a atualiza é o servidor.
-            atualizar();
+            // A fila é dado de servidor: quem a atualiza é o servidor. Na hora,
+            // sem a janela de agrupamento: é a resposta à ação do próprio
+            // operador, que está olhando para a linha que acabou de receber.
+            router.refresh();
           }}
         />
       </div>

@@ -1264,6 +1264,10 @@ canal por tabela**: a falha deixa de ser total.
   substituído por "Pago em outro terminal" e nada é submetível;
 - agrupamento de ~500 ms, refresh adiado enquanto há dinheiro em voo e enquanto
   a aba está escondida;
+  > Desde D-2026-09-29-89, esse núcleo vive em `criarAgendadorDeRecarga`
+  > (`src/ui/agendadorDeRecarga.ts`, com teste) e é usado também pela Central de
+  > Pedidos. A janela passou a contar do primeiro evento, e não do último, para
+  > que uma sequência contínua de eventos não adie o refresh indefinidamente.
 - chaves de idempotência estabilizadas nos chamadores.
 
 **Provado no DEV com dois terminais:** assinatura `authenticated` com o `sub`

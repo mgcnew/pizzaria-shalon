@@ -3123,6 +3123,48 @@ permissões, Realtime e consulta de reserva.
 
 ---
 
+## D-2026-09-29-89 — Desempenho percebido do painel, Etapa 3: tempo real da Central sem recarga repetida
+
+**Data:** 29/09/2026 · **Etapa 3 do plano aprovado ("sigamos com a etapa 3")**
+
+**Contexto.** A Central de Pedidos chamava `router.refresh()` a cada evento de
+`orders`, na hora. Cada refresh reexecuta a página inteira. Um pedido que muda
+de status três vezes em poucos segundos pagava três vezes, e a aba escondida
+continuava recarregando. O PDV já resolvia isso desde a Fase 12, Etapa 10.
+
+**Decisão.**
+1. O núcleo do PDV foi extraído para `criarAgendadorDeRecarga` (puro, com
+   teste), ligado ao React por `useRecargaAgrupada`. PDV e Central usam o
+   mesmo agendador; cada um mantém os próprios canais.
+2. **Janela contada do primeiro evento.** No PDV ela reiniciava a cada evento.
+   Com eventos contínuos, a tela nunca recarregaria. Agora o refresh sai no
+   máximo uma janela depois do primeiro evento, e os eventos dentro dela vão
+   junto.
+3. **Janelas:** PDV continua com 500 ms; Central com 1 s, dentro do previsto
+   no plano (1 a 2 s). O sino de notificações, que avisa com som, não passa
+   por esta janela.
+4. **Central com aba oculta:** o refresh fica represado e sai uma vez quando
+   a aba volta. A guarda de cobrança em andamento continua.
+5. **Central relê a fila ao reconectar.** O Realtime não reenvia eventos
+   perdidos durante uma queda de conexão, comum no celular com a tela
+   apagada. Quando o canal volta a `SUBSCRIBED` depois de já ter estado
+   ligado, a fila é relida.
+6. Depois de concluir uma cobrança na própria Central, o refresh continua
+   imediato, sem janela: é a resposta à ação do operador.
+
+**Não muda.** O evento continua sendo só gatilho. A carga útil não é lida, e
+quem informa é o servidor, sob RLS. Nenhuma operação financeira depende do
+Realtime: a garantia contra cobrança dupla continua no banco.
+
+**Onde foi formalizada:** `07-MOVIMENTO-E-DESEMPENHO.md` §7;
+`09-PDV-FRENTE-DE-CAIXA.md` (nota na Etapa 10); `src/ui/agendadorDeRecarga.ts`;
+`src/ui/hooks/useRecargaAgrupada.ts`;
+`src/app/(admin)/admin/pdv/_ui/useRealtimeDoPdv.ts`;
+`src/app/(admin)/admin/pedidos/_ui/CentralDePedidos.tsx`;
+`tests/ui/agendadorDeRecarga.test.ts`.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.
