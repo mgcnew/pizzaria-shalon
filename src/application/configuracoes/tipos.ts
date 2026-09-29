@@ -92,8 +92,16 @@ export type RegistroAuditoria = {
   created_at: string;
   action: string;
   entity_type: string;
+  entity_id: string | null;
   actor_type: string;
   reason: string | null;
+  /** Só `status` de antes e depois: o resto do antes/depois não sai do banco. */
+  status_antes: string | null;
+  status_depois: string | null;
+  /** Nome de quem agiu; nulo quando o RLS não mostra o funcionário. */
+  ator: string | null;
+  /** Número do pedido, quando o registro é de um pedido. */
+  numero_pedido: number | null;
 };
 
 /**

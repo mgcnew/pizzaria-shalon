@@ -131,13 +131,49 @@ export async function listarLimitesDeAlerta(): Promise<LimiteAlerta[]> {
  */
 export async function listarAuditoria(limite = 40): Promise<RegistroAuditoria[]> {
   const supabase = await getSupabaseServerClient();
+  // Para a tela dizer quem fez o quê (D-2026-09-29-94): o nome de quem agiu,
+  // embutido pelo funcionário do registro, e SÓ o `status` de antes e depois.
+  // O restante de `before_data`/`after_data` pode ter dado sensível e não é
+  // lido aqui.
   const { data, error } = await supabase
     .from("audit_logs")
-    .select("id, created_at, action, entity_type, actor_type, reason")
+    .select(
+      "id, created_at, action, entity_type, entity_id, actor_type, reason, status_antes:before_data->>status, status_depois:after_data->>status, funcionario:employees!audit_logs_actor_employee_id_fkey(full_name)",
+    )
     .order("created_at", { ascending: false })
     .limit(limite);
   if (error) throw error;
-  return (data ?? []) as RegistroAuditoria[];
+
+  type Linha = Omit<RegistroAuditoria, "ator" | "numero_pedido"> & {
+    funcionario: { full_name: string } | null;
+  };
+  const linhas = (data ?? []) as unknown as Linha[];
+
+  // O número do pedido vem numa segunda leitura, sob o RLS de `orders`:
+  // `entity_id` é genérico e não tem chave estrangeira para embutir.
+  const idsDePedido = [
+    ...new Set(
+      linhas
+        .filter((l) => l.entity_type === "orders" && l.entity_id)
+        .map((l) => l.entity_id as string),
+    ),
+  ];
+  const numeros = new Map<string, number>();
+  if (idsDePedido.length > 0) {
+    const { data: pedidos } = await supabase
+      .from("orders")
+      .select("id, order_number")
+      .in("id", idsDePedido);
+    for (const p of (pedidos ?? []) as { id: string; order_number: number }[]) {
+      numeros.set(p.id, p.order_number);
+    }
+  }
+
+  return linhas.map(({ funcionario, ...l }) => ({
+    ...l,
+    ator: funcionario?.full_name ?? null,
+    numero_pedido: l.entity_id ? (numeros.get(l.entity_id) ?? null) : null,
+  }));
 }
 
 /** Aberta ou fechada agora — derivado pelo banco (RN-LOJA-001/002). */

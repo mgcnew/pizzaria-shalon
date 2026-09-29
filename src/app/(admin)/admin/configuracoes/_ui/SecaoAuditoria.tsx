@@ -1,5 +1,7 @@
 import { Cartao, EmptyState } from "@/ui/patterns";
 import { listarAuditoria } from "@/application/configuracoes/consultas";
+import { descreverAuditoria } from "@/application/configuracoes/descricaoDaAuditoria";
+import { obterLojaPublica } from "@/application/publico/consultas";
 
 /**
  * "Auditoria" — seção do design aprovado, com o mesmo aviso: registro de
@@ -8,6 +10,11 @@ import { listarAuditoria } from "@/application/configuracoes/consultas";
  *
  * A leitura exige `audit.view`. Sem a permissão, o RLS devolve lista vazia —
  * e a tela diz isso, em vez de fingir que não houve movimento.
+ *
+ * Cada registro aparece como frase ("Pedido #123 cancelado"), com quem fez,
+ * a mudança de status e o motivo, e não como código técnico
+ * (D-2026-09-29-94). A hora sai no fuso da loja: no servidor da Vercel o
+ * relógio é UTC, e sem o fuso a auditoria mostraria 3 h a mais.
  */
 export async function SecaoAuditoria({ podeVer }: { podeVer: boolean }) {
   if (!podeVer) {
@@ -20,7 +27,15 @@ export async function SecaoAuditoria({ podeVer }: { podeVer: boolean }) {
     );
   }
 
-  const registros = await listarAuditoria();
+  const [registros, loja] = await Promise.all([listarAuditoria(), obterLojaPublica()]);
+  const quando = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: loja?.fuso ?? "America/Sao_Paulo",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
   return (
     <Cartao
@@ -34,21 +49,20 @@ export async function SecaoAuditoria({ podeVer }: { podeVer: boolean }) {
           descricao="Alterações de configuração crítica e de permissões aparecem aqui."
         />
       ) : (
-        registros.map((r) => (
-          <div key={r.id} className="border-b border-border-shalon py-[11px] last:border-b-0">
-            <div className="flex flex-wrap justify-between gap-[10px]">
-              <span className="text-[14px] font-semibold text-ink">
-                {r.action} · {r.entity_type}
-              </span>
-              <span className="text-[12.5px] text-muted">
-                {new Date(r.created_at).toLocaleString("pt-BR")}
-              </span>
+        registros.map((r) => {
+          const { titulo, detalhe } = descreverAuditoria(r);
+          return (
+            <div key={r.id} className="border-b border-border-shalon py-[11px] last:border-b-0">
+              <div className="flex flex-wrap justify-between gap-[10px]">
+                <span className="text-[14px] font-semibold text-ink">{titulo}</span>
+                <time dateTime={r.created_at} className="text-[12.5px] text-muted">
+                  {quando.format(new Date(r.created_at))}
+                </time>
+              </div>
+              <p className="mt-[3px] text-[13px] text-ink-2">{detalhe}</p>
             </div>
-            <p className="mt-[3px] text-[13px] text-ink-2">
-              {r.reason ?? (r.actor_type === "system" ? "Registro do sistema" : "Ação de usuário")}
-            </p>
-          </div>
-        ))
+          );
+        })
       )}
     </Cartao>
   );
