@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { usePopoverFixo } from "@/ui/hooks/usePopoverFixo";
 
 export type OpcaoSelectMenu = {
   valor: string;
@@ -18,6 +20,11 @@ export type OpcaoSelectMenu = {
  *  - NÃO CONTROLADA, com `name` + `valorInicial`, para formulários de server
  *    action. O valor vai num campo com `name`, e volta ao inicial quando o
  *    formulário é reiniciado (o React 19 reinicia depois da action).
+ *
+ * A lista abre num PORTAL com posição fixa, acima de tudo (inclusive dos
+ * modais): dentro do contêiner ela era recortada pelo scroll ou coberta pelo
+ * bloco seguinte quando uma animação criava contexto de empilhamento.
+ * Falta espaço embaixo? Abre para cima.
  *
  * `placeholder` é o texto quando nada está escolhido — o valor enviado fica
  * vazio, como no `<option value="" disabled>`. Com `required`, o navegador
@@ -52,6 +59,8 @@ export function SelectMenu({
   const hintId = hint ? `${botaoId}-hint` : undefined;
   const raizRef = useRef<HTMLDivElement>(null);
   const botaoRef = useRef<HTMLButtonElement>(null);
+  const listaRef = useRef<HTMLDivElement>(null);
+  const [larguraDaLista, setLarguraDaLista] = useState(0);
   const busca = useRef({ texto: "", ate: 0 });
 
   const controlada = valor !== undefined;
@@ -80,7 +89,8 @@ export function SelectMenu({
     if (!aberto) return;
 
     function fecharAoClicarFora(evento: MouseEvent) {
-      if (!raizRef.current?.contains(evento.target as Node)) setAberto(false);
+      const alvo = evento.target as Node;
+      if (!raizRef.current?.contains(alvo) && !listaRef.current?.contains(alvo)) setAberto(false);
     }
 
     function fecharComEscape(evento: KeyboardEvent) {
@@ -103,7 +113,16 @@ export function SelectMenu({
     document.getElementById(`${botaoId}-opcao-${indiceAtivo}`)?.scrollIntoView({ block: "nearest" });
   }, [aberto, indiceAtivo, botaoId]);
 
+  const posicao = usePopoverFixo(
+    botaoRef,
+    aberto,
+    larguraDaLista,
+    Math.min(280, opcoes.length * 44 + 12),
+    "inicio",
+  );
+
   function abrir() {
+    setLarguraDaLista(botaoRef.current?.getBoundingClientRect().width ?? 0);
     setIndiceAtivo(Math.max(0, indiceSelecionado));
     setAberto(true);
   }
@@ -237,12 +256,22 @@ export function SelectMenu({
         </svg>
       </button>
 
-      {aberto ? (
+      {aberto && posicao ? createPortal(
         <div
+          ref={listaRef}
           id={listaId}
           role="listbox"
           aria-labelledby={`${botaoId}-label`}
-          className="motion-popover-in scrollbar-subtle absolute left-0 right-0 top-[calc(100%+6px)] z-50 max-h-[280px] overflow-y-auto rounded-12 border border-border-shalon bg-surface p-1.5 shadow-[0_16px_42px_rgb(30_24_20/0.22)]"
+          style={{
+            top: posicao.top,
+            left: posicao.left,
+            width: larguraDaLista,
+            maxHeight: Math.min(280, posicao.maxHeight),
+          }}
+          // O foco fica no botão: clicar na lista (ou na barra de rolagem)
+          // não pode fechá-la por perda de foco.
+          onMouseDown={(evento) => evento.preventDefault()}
+          className="motion-popover-in scrollbar-subtle fixed z-[100] overflow-y-auto rounded-12 border border-border-shalon bg-surface p-1.5 shadow-[0_16px_42px_rgb(30_24_20/0.22)]"
         >
           {opcoes.length === 0 ? (
             <p className="m-0 px-3 py-2.5 text-[13px] text-muted">Nenhuma opção.</p>
@@ -292,7 +321,8 @@ export function SelectMenu({
               </div>
             );
           })}
-        </div>
+        </div>,
+        document.body,
       ) : null}
 
       {hint ? (
