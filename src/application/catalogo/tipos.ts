@@ -135,6 +135,20 @@ export type EscolhaDeSabor = {
   tamanho_fogazza_id: string | null;
 };
 
+/** Um sabor de pizza na montagem do card de fogazza (RN-FOG-003). */
+export type SaborParaFogazza = {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  ativo: boolean;
+  /** Menor preço da pizza (tamanho de pizza ou preço único), só referência. */
+  preco_pizza: number | null;
+  /** O preço de fogazza gravado, mesmo quando o sabor está fora. */
+  preco_fogazza: number | null;
+  /** Está à venda como fogazza. */
+  entra: boolean;
+};
+
 export type Borda = {
   id: string;
   name: string;

@@ -253,38 +253,63 @@ export async function copiarPrecosDeAdicionais(
 const TIPOS = ["pizza", "fogazza", "drink", "combo", "other"] as const;
 
 /**
- * RN-FOG-003: o card de entrada de fogazza diz de qual categoria vêm os
- * sabores e em qual tamanho de fogazza eles são vendidos. Os dois vêm juntos;
- * deixar os dois em branco volta o produto a ser uma fogazza comum.
+ * Monta o card de fogazza (RN-FOG-003, D-2026-09-30-102): a categoria de
+ * onde vêm os sabores e, na mesma operação, quais sabores entram e por
+ * quanto. O banco garante o tamanho de fogazza (cria "Fogazza" se não houver)
+ * e grava o preço no próprio sabor — `montar_fogazza`, atômica e auditada.
+ *
+ * A lista de sabores do formulário é a da categoria que estava salva quando
+ * a tela abriu (`categoria_da_lista`). Se a pessoa trocou a categoria, a
+ * lista é de outra categoria e não vale: salva-se só a troca, e a tela volta
+ * com os sabores da categoria nova.
  */
-export async function salvarEscolhaDeSabor(
+export async function montarFogazza(
   _estado: EstadoFormulario,
   form: FormData,
 ): Promise<EstadoFormulario> {
   const produtoId = String(form.get("produto_id") ?? "");
   const categoria = String(form.get("categoria_sabores_id") ?? "");
-  const tamanho = String(form.get("tamanho_fogazza_id") ?? "");
+  const categoriaDaLista = String(form.get("categoria_da_lista") ?? "");
   if (!produtoId) return { erro: "Produto não informado." };
-  if (Boolean(categoria) !== Boolean(tamanho)) {
-    return { erro: "Escolha a categoria dos sabores e o tamanho de fogazza juntos." };
+
+  const sabores: { produto_id: string; preco: number | null }[] = [];
+  if (categoria && categoria === categoriaDaLista) {
+    for (const id of form.getAll("sabor").map(String)) {
+      const nome = String(form.get(`nome_${id}`) ?? "sabor");
+      if (form.get(`entra_${id}`) !== "on") {
+        sabores.push({ produto_id: id, preco: null });
+        continue;
+      }
+      const preco = lerValorOpcionalBR(String(form.get(`preco_${id}`) ?? ""));
+      if (!preco) return { erro: `Informe o preço de fogazza de ${nome}.` };
+      if (!preco.ok) return { erro: `${nome}: ${preco.erro}` };
+      if (preco.valor <= 0) return { erro: `O preço de ${nome} precisa ser maior que zero.` };
+      sabores.push({ produto_id: id, preco: preco.valor });
+    }
   }
 
   const supabase = await getSupabaseServerClient();
   try {
-    const { error, count } = await supabase
-      .from("products")
-      .update(
-        { flavor_category_id: categoria || null, flavor_size_id: tamanho || null },
-        { count: "exact" },
-      )
-      .eq("id", produtoId);
+    const { data, error } = await supabase.rpc("montar_fogazza", {
+      p_card_id: produtoId,
+      p_categoria_id: categoria || null,
+      p_sabores: sabores,
+    });
     if (error) throw error;
-    const semLinha = conferirLinhas(count);
-    if (semLinha) return semLinha;
-    revalidatePath(`${ROTA}/${produtoId}`);
-    return ok(categoria ? "Sabores da fogazza salvos." : "Escolha de sabores removida.");
+    revalidatePath(ROTA, "layout");
+
+    const r = data as { fogazza_comum?: boolean; tamanho_criado?: boolean; entram?: number };
+    if (r?.fogazza_comum) return ok("Voltou a ser fogazza comum, com preço próprio.");
+    if (categoria !== categoriaDaLista) {
+      return ok("Categoria salva. Agora marque os sabores que entram e o preço de cada um.");
+    }
+    const entram = Number(r?.entram ?? 0);
+    return ok(
+      `${entram} ${entram === 1 ? "sabor à venda" : "sabores à venda"} como fogazza.` +
+        (r?.tamanho_criado ? " O tamanho “Fogazza” foi criado." : ""),
+    );
   } catch (erro) {
-    return falha("salvarEscolhaDeSabor", erro);
+    return falha("montarFogazza", erro);
   }
 }
 

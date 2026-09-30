@@ -13,6 +13,7 @@ import type {
   PromocaoAdmin,
   Tamanho,
   EscolhaDeSabor,
+  SaborParaFogazza,
   VariacaoAdmin,
 } from "./tipos";
 
@@ -160,6 +161,66 @@ export async function obterEscolhaDeSabor(produtoId: string): Promise<EscolhaDeS
     categoria_sabores_id: linha?.flavor_category_id ?? null,
     tamanho_fogazza_id: linha?.flavor_size_id ?? null,
   };
+}
+
+/**
+ * Os sabores de pizza de uma categoria, para montar o card de fogazza
+ * (RN-FOG-003): quem já entra na fogazza, por quanto, e o preço da pizza como
+ * referência. O preço de fogazza é a variação do sabor no tamanho de fogazza;
+ * variação desativada conta como "não entra", com o último preço guardado
+ * para facilitar a volta.
+ */
+export async function listarSaboresParaFogazza(
+  categoriaId: string,
+  tamanhoFogazzaId: string | null,
+): Promise<SaborParaFogazza[]> {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select(
+      "id, name, short_description, base_price, is_active, sort_order, product_variants(price, is_active, size_id, pizza_sizes(sold_as))",
+    )
+    .eq("category_id", categoriaId)
+    .eq("product_type", "pizza")
+    .order("sort_order")
+    .order("name");
+  if (error) throw error;
+
+  type Linha = {
+    id: string;
+    name: string;
+    short_description: string | null;
+    base_price: number | null;
+    is_active: boolean;
+    product_variants: {
+      price: number;
+      is_active: boolean;
+      size_id: string;
+      pizza_sizes: { sold_as: string } | null;
+    }[];
+  };
+
+  return ((data ?? []) as unknown as Linha[]).map((p) => {
+    const dePizza = p.product_variants.filter((v) => v.pizza_sizes?.sold_as === "pizza");
+    const fogazza = tamanhoFogazzaId
+      ? p.product_variants.find((v) => v.size_id === tamanhoFogazzaId) ?? null
+      : null;
+    const precosPizza = dePizza.map((v) => Number(v.price));
+    return {
+      id: p.id,
+      nome: p.name,
+      descricao: p.short_description,
+      ativo: p.is_active,
+      preco_pizza:
+        precosPizza.length > 0
+          ? Math.min(...precosPizza)
+          : p.base_price === null
+            ? null
+            : Number(p.base_price),
+      preco_fogazza: fogazza ? Number(fogazza.price) : null,
+      entra: fogazza?.is_active ?? false,
+    };
+  });
 }
 
 export async function obterProduto(id: string): Promise<ProdutoAdmin | null> {

@@ -3691,6 +3691,35 @@ disponibilidade do cardápio. No painel, as listas do ranking usam `chave`.
 
 ---
 
+## D-2026-09-30-102 — A fogazza se monta no card
+
+**Data:** 30/09/2026 · **Decisão do responsável pelo produto nesta conversa**
+
+**O achado (uso real no dev).** Montar a fogazza exigia três passos em três
+telas (criar o tamanho de fogazza, ligar o card à categoria, dar o preço em
+cada sabor). No caminho, a tela deixou o card "Fogazza doce" receber o
+tamanho Tradicional, de pizza — e ele virou pizza: 8 fatias, meio a meio,
+borda.
+
+**Decisão.**
+1. Fogazza não tem tamanho (RN-FOG-009): o banco recusa tamanho em produto
+   do tipo fogazza e recusa virar fogazza um produto com tamanhos; a aba
+   Tamanhos some para a fogazza.
+2. A aba Sabores do card monta tudo (RN-FOG-003): categoria de pizza, lista
+   de todos os sabores dela com "entra" e preço, salvos numa operação só
+   (`montar_fogazza`, atômica, com `catalog.manage` e auditada). Cria o
+   tamanho "Fogazza" se não houver. O preço continua no sabor; quem sai tem
+   o preço desativado, não apagado.
+3. O card do dev que tinha recebido tamanho de pizza foi corrigido (a
+   variação já tinha sido removida pela tela).
+
+**Onde foi formalizada:** `04-REGRAS-NEGOCIO.md` RN-FOG-003 e RN-FOG-009;
+`supabase/migrations/20260930120000_fogazza_montada_no_card.sql`;
+`supabase/tests/fogazza_montagem.sql`; `produtos/_ui/EdicaoProduto.tsx` e
+`ListaSaboresDaFogazza.tsx`.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.

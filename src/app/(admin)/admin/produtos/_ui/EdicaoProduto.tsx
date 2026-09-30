@@ -9,6 +9,7 @@ import {
   lerCodigosDeBarras,
   listarCategorias,
   listarTamanhos,
+  listarSaboresParaFogazza,
   listarVariacoes,
   obterEscolhaDeSabor,
   obterProduto,
@@ -17,8 +18,8 @@ import {
   alternarAtivoProduto,
   alternarDisponibilidadeProduto,
   alternarDisponibilidadeVariacao,
+  montarFogazza,
   removerVariacao,
-  salvarEscolhaDeSabor,
   salvarVariacao,
 } from "@/application/catalogo/acoes";
 import { substituirImagemDoProduto, urlPublica } from "@/application/midia/imagem";
@@ -28,6 +29,7 @@ import { FormularioAcao } from "./FormularioAcao";
 import { FormularioProduto } from "./FormularioProduto";
 import { PainelCodigosDeBarras } from "./PainelCodigosDeBarras";
 import { ModalFerramentaCatalogo } from "./ModalFerramentaCatalogo";
+import { ListaSaboresDaFogazza } from "./ListaSaboresDaFogazza";
 
 export async function EdicaoProduto({
   id,
@@ -57,8 +59,16 @@ export async function EdicaoProduto({
   const escolhaDeSabor =
     produto.tipo === "fogazza" ? await obterEscolhaDeSabor(produto.id) : null;
   const ehCardDeFogazza = Boolean(escolhaDeSabor?.categoria_sabores_id);
-  // O card de entrada não tem tamanho próprio: o preço é o de cada sabor.
-  const usaTamanho = produto.tipo !== "combo" && !ehCardDeFogazza;
+  // RN-FOG-009: fogazza não tem tamanho. A comum tem preço próprio, e o card
+  // vende os sabores — nenhuma das duas mostra a aba Tamanhos.
+  const usaTamanho = produto.tipo !== "combo" && produto.tipo !== "fogazza";
+  const saboresParaFogazza =
+    escolhaDeSabor?.categoria_sabores_id
+      ? await listarSaboresParaFogazza(
+          escolhaDeSabor.categoria_sabores_id,
+          escolhaDeSabor.tamanho_fogazza_id,
+        )
+      : [];
   // O tamanho de fogazza só existe em sabor de pizza (RN-FOG-002); o banco
   // recusaria, a tela nem oferece.
   const tamanhosDisponiveis = tamanhos.filter(
@@ -67,7 +77,6 @@ export async function EdicaoProduto({
       !variacoes.some((v) => v.tamanho_id === t.id) &&
       (t.sold_as === "pizza" || produto.tipo === "pizza"),
   );
-  const tamanhosDeFogazza = tamanhos.filter((t) => t.is_active && t.sold_as === "fogazza");
   const imagemUrl = produto.imagem_path ? await urlPublica(produto.imagem_path) : null;
 
   // Uma leitura para o produto e uma por variante. São poucas — o catálogo da
@@ -288,25 +297,27 @@ export async function EdicaoProduto({
     </div>
   );
 
+  const categoriaDosSabores = escolhaDeSabor?.categoria_sabores_id ?? "";
   const saboresDaFogazza =
     escolhaDeSabor !== null ? (
       <Cartao
         titulo="Sabores da fogazza"
-        descricao="Este card lista os sabores de uma categoria de pizza, cada um com o seu preço de fogazza. O preço de fogazza de cada sabor é cadastrado no próprio sabor, na aba Tamanhos."
+        descricao="Escolha de qual categoria de pizza vêm os sabores e marque quais entram, com o preço de fogazza de cada um. O preço fica guardado no próprio sabor. Em branco, é uma fogazza comum, com preço próprio."
         largura="cheio"
       >
-        {tamanhosDeFogazza.length === 0 ? (
-          <p className="m-0 text-[13.5px] text-ink-2">
-            Crie antes um tamanho “vendido como Fogazza” em Configurar cardápio → Tamanhos.
-          </p>
-        ) : podeGerenciar ? (
-          <FormularioAcao acao={salvarEscolhaDeSabor} rotulo="Salvar sabores da fogazza">
+        {podeGerenciar ? (
+          <FormularioAcao acao={montarFogazza} rotulo="Salvar sabores da fogazza">
             <input type="hidden" name="produto_id" value={produto.id} />
+            <input type="hidden" name="categoria_da_lista" value={categoriaDosSabores} />
             <Select
               label="Sabores de"
               name="categoria_sabores_id"
-              defaultValue={escolhaDeSabor.categoria_sabores_id ?? ""}
-              hint="Em branco nos dois campos: volta a ser uma fogazza comum, com preço próprio."
+              defaultValue={categoriaDosSabores}
+              hint={
+                categoriaDosSabores
+                  ? "Ao trocar a categoria, salve para ver os sabores dela."
+                  : "Escolha a categoria e salve para ver a lista de sabores."
+              }
             >
               <option value="">Nenhuma (fogazza comum)</option>
               {categorias.map((c) => (
@@ -315,25 +326,14 @@ export async function EdicaoProduto({
                 </option>
               ))}
             </Select>
-            <Select
-              label="Tamanho de fogazza"
-              name="tamanho_fogazza_id"
-              defaultValue={escolhaDeSabor.tamanho_fogazza_id ?? ""}
-            >
-              <option value="">Nenhum</option>
-              {tamanhosDeFogazza.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </Select>
+            {categoriaDosSabores ? (
+              <ListaSaboresDaFogazza sabores={saboresParaFogazza} podeGerenciar={podeGerenciar} />
+            ) : null}
           </FormularioAcao>
+        ) : ehCardDeFogazza ? (
+          <ListaSaboresDaFogazza sabores={saboresParaFogazza} podeGerenciar={false} />
         ) : (
-          <p className="m-0 text-[13.5px] text-ink-2">
-            {ehCardDeFogazza
-              ? `Sabores de ${categorias.find((c) => c.id === escolhaDeSabor.categoria_sabores_id)?.name ?? "—"}.`
-              : "Fogazza comum, com preço próprio."}
-          </p>
+          <p className="m-0 text-[13.5px] text-ink-2">Fogazza comum, com preço próprio.</p>
         )}
       </Cartao>
     ) : null;

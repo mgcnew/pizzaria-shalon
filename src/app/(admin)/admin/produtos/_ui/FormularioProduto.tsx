@@ -42,7 +42,7 @@ export function FormularioProduto({
         name="tipo"
         required
         defaultValue={produto?.tipo ?? "pizza"}
-        hint="Bebida não recebe tamanho, meio a meio nem borda. Fogazza por sabor: crie o produto do tipo Fogazza e, depois de salvar, escolha de onde vêm os sabores na aba Sabores."
+        hint="Bebida não recebe tamanho, meio a meio nem borda. Fogazza não tem tamanho. Fogazza por sabor: crie o produto do tipo Fogazza e, depois de salvar, na aba Sabores escolha a categoria de pizza e marque os sabores que entram, com o preço de cada um."
       >
         {TIPOS_PRODUTO.map((t) => (
           <option key={t.valor} value={t.valor}>

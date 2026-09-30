@@ -210,6 +210,12 @@ configurador de sempre e o tamanho fixo; o link dela é compartilhável e é
 para ela que o "Editar" do carrinho volta. O balcão ("Novo pedido") segue o
 mesmo caminho: card, sabor, configurador. *(D-2026-09-29-99.)*
 
+O card se monta na própria tela dele: escolhe-se a categoria de pizza e
+marcam-se os sabores que entram, com o preço de fogazza de cada um, numa
+operação só. O preço fica guardado no sabor. Se ainda não houver tamanho de
+fogazza, ele é criado ("Fogazza"). Sabor que sai da fogazza tem o preço
+desativado, não apagado. *(D-2026-09-30-102.)*
+
 ### RN-FOG-004 — Um sabor, sem borda
 Fogazza tem exatamente um sabor: não existe meio a meio. Fogazza não tem
 borda.
@@ -238,6 +244,11 @@ Pausar o card — ou a categoria dele — pausa as fogazzas que ele oferece, sem
 afetar as pizzas. O servidor aplica a regra em toda montagem de item
 (cardápio, carrinho, checkout e balcão), não só na tela.
 *(D-2026-09-29-99.)*
+
+### RN-FOG-009 — Fogazza não tem tamanho
+Produto do tipo fogazza nunca recebe tamanho: a fogazza comum tem preço
+próprio, e o card de entrada vende os sabores. Um produto com tamanhos não
+vira fogazza. O servidor recusa as duas coisas. *(D-2026-09-30-102.)*
 
 ### RN-FOG-008 — Fogazza nos relatórios
 Nos relatórios e no ranking do painel, a fogazza de cada sabor é linha
