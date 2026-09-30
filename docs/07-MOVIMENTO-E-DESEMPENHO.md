@@ -116,6 +116,10 @@ cobre as rotas abaixo da pasta dele, e quem não tem o seu herda o da pasta de
 cima. Por isso rota nova, inclusive de detalhe, nasce com o seu. O de
 `admin/loading.tsx` é o do Dashboard (D-2026-09-29-87).
 
+**O cardápio público segue a mesma regra** (D-2026-09-29-96): cada página
+tem o seu `loading.tsx`, com peças em `src/app/(publico)/_ui/Esqueletos.tsx`.
+O skeleton do grupo `(publico)/loading.tsx` é o da página inicial.
+
 **Navegação que muda só a query não mostra `loading.tsx`.** É o caso de aba,
 filtro, período e modal aberto por query (detalhes e comanda do pedido,
 ferramentas do cardápio). O Next mantém a tela anterior até o servidor
@@ -150,6 +154,8 @@ indicador semântico.
 - Carrosséis podem usar temporizador, devem pausar durante interação e respeitar
   movimento reduzido.
 - Imagens visíveis usam `next/image`, dimensões ou `fill` e `sizes` adequado.
+  O `sizes` descreve a largura REAL do elemento em cada faixa da grade: pedir
+  50vw para um card de 1/3 de tela baixa ~2,5x os pixels (D-2026-09-29-96).
 - Leituras independentes devem começar juntas com `Promise.all`; não criar
   cascatas apenas por conveniência de escrita.
 - O layout compartilhado só espera o que decide o acesso (a sessão). Dado

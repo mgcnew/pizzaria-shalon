@@ -116,7 +116,11 @@ export async function CardProduto({ produto }: { produto: Item }) {
             src={imagem}
             alt={produto.nome}
             fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            // A largura real do card na grade: 3 colunas no celular, 4 a partir
+            // de 768 px, 5 a partir de 1024 px, num contêiner de até 1120 px.
+            // Pedir 50vw no celular baixava cada foto com ~2,5x os pixels que
+            // o card mostra (D-2026-09-29-96).
+            sizes="(max-width: 767px) 34vw, (max-width: 1023px) 25vw, (max-width: 1120px) 20vw, 224px"
             className="object-cover"
           />
         ) : (

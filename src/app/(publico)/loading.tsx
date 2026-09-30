@@ -1,22 +1,32 @@
-import { Skeleton, SkeletonCard } from "@/ui/patterns";
+import { Skeleton } from "@/ui/patterns";
+import { GradeCarregando, TelaPublicaCarregando } from "./_ui/Esqueletos";
 
+/**
+ * Skeleton do cardápio: busca, banner, chips de categoria e a primeira grade.
+ *
+ * Por estar na pasta do grupo, este arquivo também é o limite das páginas
+ * filhas; cada uma tem o seu `loading.tsx`, que é o que aparece ao navegar
+ * (D-2026-09-29-87, medido no painel com a mesma estrutura).
+ */
 export default function LoadingPublico() {
   return (
-    <div role="status" aria-live="polite" className="motion-tab-in flex flex-col gap-4 px-4 py-5">
-      <span className="sr-only">Carregando cardápio</span>
-      <Skeleton className="h-[50px] w-full rounded-12" />
-      <Skeleton className="h-[240px] w-full rounded-20" delay={0.08} />
-      <div className="flex gap-4 overflow-hidden py-1">
-        {[0, 1, 2, 3].map((item) => (
-          <Skeleton key={item} className="h-[74px] w-[74px] shrink-0 rounded-pill" delay={item * 0.05} />
+    <TelaPublicaCarregando nome="o cardápio">
+      <div className="px-4 pt-4">
+        <Skeleton className="h-[50px] w-full rounded-10" />
+      </div>
+      <Skeleton className="mx-4 mt-4 aspect-[2/1] rounded-20" delay={0.04} />
+      <div className="flex gap-4 overflow-hidden px-4 pb-2 pt-5">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <div key={i} className="flex w-[74px] shrink-0 flex-col items-center gap-2">
+            <Skeleton className="h-[74px] w-[74px] rounded-full" delay={0.06 + i * 0.04} />
+            <Skeleton className="h-3 w-12" delay={0.08 + i * 0.04} />
+          </div>
         ))}
       </div>
-      <div className="rounded-16 border border-border-shalon bg-surface p-3">
-        <SkeletonCard />
-      </div>
-      <div className="rounded-16 border border-border-shalon bg-surface p-3">
-        <SkeletonCard />
-      </div>
-    </div>
+      <section className="px-4 pt-6">
+        <Skeleton className="mb-3 h-6 w-52" delay={0.1} />
+        <GradeCarregando quantidade={6} />
+      </section>
+    </TelaPublicaCarregando>
   );
 }

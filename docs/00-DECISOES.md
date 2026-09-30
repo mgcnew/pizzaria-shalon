@@ -3430,6 +3430,49 @@ textos, alvos de toque e comportamento de dialog não mudam.
 
 ---
 
+## D-2026-09-29-96 — Desempenho do cardápio público: skeleton por página, fotos no tamanho certo, sem consulta em fila
+
+**Data:** 29/09/2026 · **Aprovado pelo responsável pelo produto ("sigamos
+com os itens 1, 2 e 3")**
+
+**Análise que veio antes** (build de produção, catálogo do DEV). A página
+inicial tem 64 cards, transfere 26 KB gzip de HTML, tem 23 KB gzip de JS e
+44 imagens, 42 delas lazy. Nesse volume, **lista virtual e carregamento sob
+demanda não compensam**. Eles quebrariam a busca do navegador (Ctrl+F), a
+indexação, os leitores de tela e a navegação por categoria, por um ganho de
+poucos KB. Os gargalos reais eram outros três.
+
+**Decisão.**
+1. **Skeleton por página.** Havia um único `loading.tsx` no grupo, que não
+   aparece ao navegar entre páginas, e as rotas dinâmicas não eram
+   pré-carregadas. Tocar numa pizza mantinha o cardápio parado até a página
+   chegar inteira. Agora início, categoria, produto, carrinho, checkout, meus
+   pedidos, histórico, favoritos e acompanhamento têm cada um o seu, no
+   formato real. O do início passou de lista para a grade de cards.
+2. **Foto do card no tamanho do card.** O `sizes` pedia 50vw no celular para
+   um card de 1/3 da tela. Agora descreve as colunas reais: 34vw, 25vw, 20vw
+   e 224 px.
+3. **"Mais pedidos" junto com as outras consultas**, em vez de depois delas.
+   Na busca, nem é pedido.
+
+**Medido** (build de produção, 375 px):
+- tocar num produto mostra o skeleton do produto em 37 ms (a página chega em
+  ~730 ms); categoria, início e carrinho mostram o próprio skeleton em 20 a
+  40 ms;
+- em tela 2x, a foto do card caiu de 384 px para 256 px, cerca de 55% menos
+  pixels;
+- a página inicial completa caiu de ~0,20 s para ~0,15 s.
+
+**Não muda.** Nenhum cache do cardápio: preço, promoção e disponibilidade
+continuam lidos a cada acesso, pelo mesmo motivo da Etapa 5 descartada
+(D-2026-09-29-91).
+
+**Onde foi formalizada:** `07-MOVIMENTO-E-DESEMPENHO.md` §5 e §7;
+`src/app/(publico)/**/loading.tsx`; `src/app/(publico)/_ui/Esqueletos.tsx`;
+`src/app/(publico)/_ui/CardProduto.tsx`; `src/app/(publico)/page.tsx`.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.

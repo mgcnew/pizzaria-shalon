@@ -52,10 +52,14 @@ export default async function Home({
   const params = await searchParams;
   const termo = typeof params["q"] === "string" ? params["q"] : "";
 
-  const [loja, categorias, cardapio] = await Promise.all([
+  // "Mais pedidos" começa junto com o resto (D-2026-09-29-96). Esperava as
+  // outras três para só então ir ao banco, somando uma ida inteira a cada
+  // abertura do cardápio. Na busca ele não é usado, e nem é pedido.
+  const [loja, categorias, cardapio, maisPedidos] = await Promise.all([
     obterLojaPublica(),
     listarCategoriasPublicas(),
     listarCardapio(),
+    termo === "" ? listarMaisPedidos() : Promise.resolve([]),
   ]);
 
   // Catálogo ainda vazio: estado próprio, não uma tela quebrada.
@@ -116,7 +120,6 @@ export default async function Home({
 
   // RN-POP: o ranking é do servidor. Lista vazia é resposta legítima e
   // significa "ainda não há base", não "falhou".
-  const maisPedidos = await listarMaisPedidos();
 
   const destaques = cardapio.filter((p) => p.destaque && p.disponivel);
   const emPromocao = cardapio.filter((p) => p.em_promocao && p.disponivel);
