@@ -298,6 +298,9 @@ export async function EdicaoProduto({
   );
 
   const categoriaDosSabores = escolhaDeSabor?.categoria_sabores_id ?? "";
+  const assinaturaDosSabores = saboresParaFogazza
+    .map((s) => `${s.id}:${s.entra ? 1 : 0}:${s.preco_fogazza ?? ""}`)
+    .join("|");
   const saboresDaFogazza =
     escolhaDeSabor !== null ? (
       <Cartao
@@ -327,7 +330,13 @@ export async function EdicaoProduto({
               ))}
             </Select>
             {categoriaDosSabores ? (
-              <ListaSaboresDaFogazza sabores={saboresParaFogazza} podeGerenciar={podeGerenciar} />
+              // O React limpa o formulário depois do envio; a chave muda com o
+              // que o servidor gravou e remonta a lista no estado salvo.
+              <ListaSaboresDaFogazza
+                key={assinaturaDosSabores}
+                sabores={saboresParaFogazza}
+                podeGerenciar={podeGerenciar}
+              />
             ) : null}
           </FormularioAcao>
         ) : ehCardDeFogazza ? (
