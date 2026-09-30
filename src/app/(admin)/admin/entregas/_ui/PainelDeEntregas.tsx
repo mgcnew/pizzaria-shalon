@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { Badge, Button, Input, Select, Textarea } from "@/ui/components";
+import { Badge, Button, Input, SelectMenu, Textarea } from "@/ui/components";
 import { Aviso, Cartao, EmptyState, LinhaLista, ParDeDados } from "@/ui/patterns";
 import { formatBRL } from "@/lib/format";
 import {
@@ -164,22 +164,21 @@ export function PainelDeEntregas({
               </div>
 
               <div className="flex items-center gap-2">
-                <Select
+                <SelectMenu
                   label={`Motoboy para o pedido ${p.numero}`}
                   labelOculto
-                  value={motoboyEscolhido[p.pedido_id] ?? ""}
-                  onChange={(e) =>
-                    setMotoboyEscolhido((m) => ({ ...m, [p.pedido_id]: e.target.value }))
+                  valor={motoboyEscolhido[p.pedido_id] ?? ""}
+                  aoMudar={(valor) =>
+                    setMotoboyEscolhido((m) => ({ ...m, [p.pedido_id]: valor }))
                   }
-                >
-                  <option value="">Escolha o motoboy</option>
-                  {central.motoboys.map((m) => (
-                    <option key={m.funcionario_id} value={m.funcionario_id}>
-                      {m.nome}
-                      {m.ocupado ? " (já em rota)" : ""}
-                    </option>
-                  ))}
-                </Select>
+                  opcoes={[
+                    { valor: "", texto: "Escolha o motoboy" },
+                    ...central.motoboys.map((m) => ({
+                      valor: m.funcionario_id,
+                      texto: `${m.nome}${m.ocupado ? " (já em rota)" : ""}`,
+                    })),
+                  ]}
+                />
                 <Button
                   variante="primario"
                   disabled={enviando || !motoboyEscolhido[p.pedido_id]}
@@ -365,21 +364,20 @@ export function PainelDeEntregas({
                 permanece no histórico, e o dinheiro que já recebeu continua sendo dele para
                 prestar contas.
               </p>
-              <Select
+              <SelectMenu
                 label="Quem vai assumir"
-                value={destino}
-                onChange={(e) => setDestino(e.target.value)}
-              >
-                <option value="">Escolha o motoboy</option>
-                {central.motoboys
-                  .filter((m) => m.funcionario_id !== corrida.motoboy_id)
-                  .map((m) => (
-                    <option key={m.funcionario_id} value={m.funcionario_id}>
-                      {m.nome}
-                      {m.ocupado ? " (já em rota)" : ""}
-                    </option>
-                  ))}
-              </Select>
+                valor={destino}
+                aoMudar={setDestino}
+                opcoes={[
+                  { valor: "", texto: "Escolha o motoboy" },
+                  ...central.motoboys
+                    .filter((m) => m.funcionario_id !== corrida.motoboy_id)
+                    .map((m) => ({
+                      valor: m.funcionario_id,
+                      texto: `${m.nome}${m.ocupado ? " (já em rota)" : ""}`,
+                    })),
+                ]}
+              />
               <Textarea
                 label="Por que a entrega está mudando de mão?"
                 hint="Fica no histórico das duas corridas."

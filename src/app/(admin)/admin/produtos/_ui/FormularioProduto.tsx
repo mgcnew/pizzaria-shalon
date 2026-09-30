@@ -1,4 +1,4 @@
-import { Input, Select, Textarea } from "@/ui/components";
+import { Input, SelectMenu, Textarea } from "@/ui/components";
 import { Cartao } from "@/ui/patterns";
 import { salvarProduto } from "@/application/catalogo/acoes";
 import { TIPOS_PRODUTO, type Categoria, type ProdutoAdmin } from "@/application/catalogo/tipos";
@@ -37,19 +37,14 @@ export function FormularioProduto({
     <FormularioAcao acao={salvarProduto} rotulo={novo ? "Criar produto" : "Salvar alterações"}>
       {produto ? <input type="hidden" name="id" value={produto.id} /> : null}
 
-      <Select
+      <SelectMenu
         label="Tipo de produto"
         name="tipo"
         required
-        defaultValue={produto?.tipo ?? "pizza"}
+        valorInicial={produto?.tipo ?? "pizza"}
         hint="Bebida não recebe tamanho, meio a meio nem borda. Fogazza não tem tamanho. Fogazza por sabor: crie o produto do tipo Fogazza e, depois de salvar, na aba Sabores escolha a categoria de pizza e marque os sabores que entram, com o preço de cada um."
-      >
-        {TIPOS_PRODUTO.map((t) => (
-          <option key={t.valor} value={t.valor}>
-            {t.rotulo}
-          </option>
-        ))}
-      </Select>
+        opcoes={TIPOS_PRODUTO.map((t) => ({ valor: t.valor, texto: t.rotulo }))}
+      />
 
       <Input
         label="Nome do produto"
@@ -65,22 +60,17 @@ export function FormularioProduto({
         defaultValue={produto?.descricao ?? ""}
       />
 
-      <Select
+      <SelectMenu
         label="Categoria"
         name="categoria_id"
         required
-        defaultValue={produto?.categoria_id ?? ""}
-      >
-        <option value="" disabled>
-          Escolha a categoria
-        </option>
-        {categorias.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-            {c.is_active ? "" : " (inativa)"}
-          </option>
-        ))}
-      </Select>
+        placeholder="Escolha a categoria"
+        valorInicial={produto?.categoria_id ?? ""}
+        opcoes={categorias.map((c) => ({
+          valor: c.id,
+          texto: `${c.name}${c.is_active ? "" : " (inativa)"}`,
+        }))}
+      />
 
       <Input
         label="Preço próprio"

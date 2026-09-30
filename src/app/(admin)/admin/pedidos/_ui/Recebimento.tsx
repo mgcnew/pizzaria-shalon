@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { Button, Input, Select, StatusBadge } from "@/ui/components";
+import { Button, Input, SelectMenu, StatusBadge } from "@/ui/components";
 import { Aviso, ParDeDados } from "@/ui/patterns";
 import { formatBRL } from "@/lib/format";
 import { estornarPagamento, registrarPagamento } from "@/application/caixa/acoes";
@@ -346,22 +346,16 @@ export function Recebimento({
             return (
               <div key={i} className="flex flex-col gap-2 rounded-12 bg-elev p-3">
                 <div className="grid gap-2 sm:grid-cols-2">
-                  <Select
-                    id={`forma-recebimento-${i}`}
+                  <SelectMenu
                     label={linhas.length > 1 ? `Forma ${i + 1}` : "Forma"}
-                    value={linha.forma_id}
-                    onChange={(e) => {
+                    valor={linha.forma_id}
+                    aoMudar={(valor) => {
                       setLinhas((atuais) => atuais.map((atual, j) =>
-                        j === i ? { ...atual, forma_id: e.target.value, bandeira_id: "", recebido: "" } : atual,
+                        j === i ? { ...atual, forma_id: valor, bandeira_id: "", recebido: "" } : atual,
                       ));
                     }}
-                  >
-                    {formas.map((f) => (
-                      <option key={f.id} value={f.id}>
-                        {f.nome}
-                      </option>
-                    ))}
-                  </Select>
+                    opcoes={formas.map((f) => ({ valor: f.id, texto: f.nome }))}
+                  />
                   {linhas.length > 1 ? (
                     <Input
                       id={`valor-recebimento-${i}`}
@@ -379,19 +373,15 @@ export function Recebimento({
                 </div>
 
                 {forma?.exige_bandeira ? (
-                  <Select
-                    id={`bandeira-recebimento-${i}`}
+                  <SelectMenu
                     label="Bandeira"
-                    value={linha.bandeira_id}
-                    onChange={(e) => atualizar(i, "bandeira_id", e.target.value)}
-                  >
-                    <option value="">Selecione</option>
-                    {forma.bandeiras.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.nome}
-                      </option>
-                    ))}
-                  </Select>
+                    valor={linha.bandeira_id}
+                    aoMudar={(valor) => atualizar(i, "bandeira_id", valor)}
+                    opcoes={[
+                      { valor: "", texto: "Selecione" },
+                      ...forma.bandeiras.map((b) => ({ valor: b.id, texto: b.nome })),
+                    ]}
+                  />
                 ) : null}
 
                 {forma?.familia === "cash" ? (

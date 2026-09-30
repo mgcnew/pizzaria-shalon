@@ -1,5 +1,5 @@
 import { formatBRL } from "@/lib/format";
-import { StatusBadge, Input, Select } from "@/ui/components";
+import { StatusBadge, Input, SelectMenu } from "@/ui/components";
 import { Cartao, EmptyState } from "@/ui/patterns";
 import {
   listarPromocoes,
@@ -155,29 +155,26 @@ export async function PainelPromocoes({ podeGerenciar }: { podeGerenciar: boolea
         <FormularioAcao acao={salvarPromocao} rotulo="Criar promoção">
           <Input label="Nome" name="nome" required placeholder="Ex.: Terça da Calabresa" />
 
-          <Select label="Item em promoção" name="alvo" required defaultValue="">
-            <option value="" disabled>
-              Escolha o item
-            </option>
-            {variacoesPorProduto.map(({ produto, variacoes }) => (
-              <optgroup key={produto.id} label={produto.nome}>
-                {variacoes.map((v) => (
-                  <option key={v.id} value={`variant:${v.id}`}>
-                    {produto.nome} · {v.tamanho_nome} ({formatBRL(v.preco)})
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-            {comPrecoProprio.length > 0 ? (
-              <optgroup label="Preço próprio (bebida, fogazza, combo, pizza de preço único)">
-                {comPrecoProprio.map((p) => (
-                  <option key={p.id} value={`product:${p.id}`}>
-                    {p.nome} ({p.preco_base === null ? "—" : formatBRL(p.preco_base)})
-                  </option>
-                ))}
-              </optgroup>
-            ) : null}
-          </Select>
+          <SelectMenu
+            label="Item em promoção"
+            name="alvo"
+            required
+            placeholder="Escolha o item"
+            opcoes={[
+              ...variacoesPorProduto.flatMap(({ produto, variacoes }) =>
+                variacoes.map((v) => ({
+                  valor: `variant:${v.id}`,
+                  texto: `${produto.nome} · ${v.tamanho_nome} (${formatBRL(v.preco)})`,
+                  grupo: produto.nome,
+                })),
+              ),
+              ...comPrecoProprio.map((p) => ({
+                valor: `product:${p.id}`,
+                texto: `${p.nome} (${p.preco_base === null ? "—" : formatBRL(p.preco_base)})`,
+                grupo: "Preço próprio (bebida, fogazza, combo, pizza de preço único)",
+              })),
+            ]}
+          />
 
           <Input
             label="Preço promocional"

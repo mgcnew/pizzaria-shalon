@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Input } from "@/ui/components/Input";
-import { Select } from "@/ui/components/Select";
+import { SelectMenu } from "@/ui/components/SelectMenu";
 import { Textarea } from "@/ui/components/Textarea";
 import { formatBRL } from "@/lib/format";
 import { paraRevalidacao } from "@/domain/carrinho/carrinho";
@@ -491,36 +491,30 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
               </p>
             ) : (
               <>
-                <Select
+                <SelectMenu
                   label="Forma de pagamento"
-                  value={formaId}
-                  onChange={(e) => {
-                    setFormaId(e.target.value);
+                  valor={formaId}
+                  aoMudar={(valor) => {
+                    setFormaId(valor);
                     setBandeiraId("");
                     setPrecisaTroco(false);
                   }}
-                >
-                  <option value="">Escolha…</option>
-                  {formas.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.nome}
-                    </option>
-                  ))}
-                </Select>
+                  opcoes={[
+                    { valor: "", texto: "Escolha…" },
+                    ...formas.map((f) => ({ valor: f.id, texto: f.nome })),
+                  ]}
+                />
 
                 {forma?.exige_bandeira ? (
-                  <Select
+                  <SelectMenu
                     label="Bandeira"
-                    value={bandeiraId}
-                    onChange={(e) => setBandeiraId(e.target.value)}
-                  >
-                    <option value="">Escolha…</option>
-                    {forma.bandeiras.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.nome}
-                      </option>
-                    ))}
-                  </Select>
+                    valor={bandeiraId}
+                    aoMudar={setBandeiraId}
+                    opcoes={[
+                      { valor: "", texto: "Escolha…" },
+                      ...forma.bandeiras.map((b) => ({ valor: b.id, texto: b.nome })),
+                    ]}
+                  />
                 ) : null}
 
                 {forma?.permite_troco ? (

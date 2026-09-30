@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { formatBRL } from "@/lib/format";
-import { StatusBadge, Input, Select } from "@/ui/components";
+import { StatusBadge, Input, SelectMenu } from "@/ui/components";
 import { Cartao, EmptyState, LinhaLista } from "@/ui/patterns";
 import {
   listarCombos,
@@ -135,32 +135,28 @@ export async function PainelCombos({ podeGerenciar }: { podeGerenciar: boolean }
                   variante="secundario"
                 >
                   <input type="hidden" name="combo_id" value={combo.id} />
-                  <Select label="Item" name="produto_id" required defaultValue="">
-                    <option value="" disabled>
-                      Escolha o produto
-                    </option>
-                    {candidatos.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.nome}
-                      </option>
-                    ))}
-                  </Select>
-                  <Select
+                  <SelectMenu
+                    label="Item"
+                    name="produto_id"
+                    required
+                    placeholder="Escolha o produto"
+                    opcoes={candidatos.map((p) => ({ valor: p.id, texto: p.nome }))}
+                  />
+                  <SelectMenu
                     label="Tamanho (obrigatório para pizza)"
                     name="variacao_id"
-                    defaultValue=""
                     hint="Pizza dentro de combo é exata: sem tamanho definido, o cliente poderia escolher — e a V1 não permite."
-                  >
-                    <option value="">Sem tamanho (produto simples)</option>
-                    {[...variacoesPorProduto.entries()].flatMap(([produtoId, variacoes]) => {
-                      const produto = candidatos.find((p) => p.id === produtoId);
-                      return variacoes.map((v) => (
-                        <option key={v.id} value={v.id}>
-                          {produto?.nome} · {v.tamanho_nome}
-                        </option>
-                      ));
-                    })}
-                  </Select>
+                    opcoes={[
+                      { valor: "", texto: "Sem tamanho (produto simples)" },
+                      ...[...variacoesPorProduto.entries()].flatMap(([produtoId, variacoes]) => {
+                        const produto = candidatos.find((p) => p.id === produtoId);
+                        return variacoes.map((v) => ({
+                          valor: v.id,
+                          texto: `${produto?.nome ?? ""} · ${v.tamanho_nome}`,
+                        }));
+                      }),
+                    ]}
+                  />
                   <Input
                     label="Quantidade"
                     name="quantidade"

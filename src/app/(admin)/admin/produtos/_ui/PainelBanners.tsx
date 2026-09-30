@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { StatusBadge, Input, Select } from "@/ui/components";
+import { StatusBadge, Input, SelectMenu } from "@/ui/components";
 import { Cartao, EmptyState, LinhaLista } from "@/ui/patterns";
 import {
   listarBanners,
@@ -126,48 +126,35 @@ export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean 
           </p>
         ) : (
           <FormularioAcao acao={salvarBanner} rotulo="Criar banner">
-            <Select label="Imagem" name="imagem_id" required defaultValue="">
-              <option value="" disabled>
-                Escolha a imagem
-              </option>
-              {imagens.map((i) => (
-                <option key={i.id} value={i.id}>
-                  {i.original_filename ?? i.storage_path} ({i.width}×{i.height})
-                </option>
-              ))}
-            </Select>
+            <SelectMenu
+              label="Imagem"
+              name="imagem_id"
+              required
+              placeholder="Escolha a imagem"
+              opcoes={imagens.map((i) => ({
+                valor: i.id,
+                texto: `${i.original_filename ?? i.storage_path} (${i.width}×${i.height})`,
+              }))}
+            />
             <Input label="Título (opcional)" name="titulo" />
             <Input label="Texto (opcional)" name="corpo" />
 
-            <Select label="Destino" name="destino" defaultValue="none">
-              <option value="none">Sem destino</option>
-              <option value="external">Link externo</option>
-              <optgroup label="Produto">
-                {produtos
+            <SelectMenu
+              label="Destino"
+              name="destino"
+              valorInicial="none"
+              opcoes={[
+                { valor: "none", texto: "Sem destino" },
+                { valor: "external", texto: "Link externo" },
+                ...produtos
                   .filter((p) => p.ativo)
-                  .map((p) => (
-                    <option key={p.id} value={`product:${p.id}`}>
-                      {p.nome}
-                    </option>
-                  ))}
-              </optgroup>
-              <optgroup label="Categoria">
-                {categorias
+                  .map((p) => ({ valor: `product:${p.id}`, texto: p.nome, grupo: "Produto" })),
+                ...categorias
                   .filter((c) => c.is_active)
-                  .map((c) => (
-                    <option key={c.id} value={`category:${c.id}`}>
-                      {c.name}
-                    </option>
-                  ))}
-              </optgroup>
-              <optgroup label="Promoção">
-                {promocoes.map((p) => (
-                  <option key={p.id} value={`promotion:${p.id}`}>
-                    {p.nome}
-                  </option>
-                ))}
-              </optgroup>
-            </Select>
+                  .map((c) => ({ valor: `category:${c.id}`, texto: c.name, grupo: "Categoria" })),
+                ...promocoes.map((p) => ({ valor: `promotion:${p.id}`, texto: p.nome, grupo: "Promoção" })),
+              ]}
+            />
 
             <Input
               label="URL externa"

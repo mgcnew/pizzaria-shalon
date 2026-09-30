@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatBRL } from "@/lib/format";
-import { Input, Select, StatusBadge } from "@/ui/components";
+import { Input, SelectMenu, StatusBadge } from "@/ui/components";
 import { Cartao, LinhaLista } from "@/ui/patterns";
 import { obterSessaoInterna, podeNaUI } from "@/application/auth/sessao";
 import {
@@ -185,16 +185,13 @@ export async function EdicaoProduto({
         <div className="mt-3 rounded-12 border border-border-shalon bg-elev p-3">
           <FormularioAcao acao={salvarVariacao} rotulo="Habilitar tamanho" variante="secundario">
             <input type="hidden" name="produto_id" value={produto.id} />
-            <Select label="Tamanho" name="tamanho_id" required defaultValue="">
-              <option value="" disabled>
-                Escolha o tamanho
-              </option>
-              {tamanhosDisponiveis.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </Select>
+            <SelectMenu
+              label="Tamanho"
+              name="tamanho_id"
+              required
+              placeholder="Escolha o tamanho"
+              opcoes={tamanhosDisponiveis.map((t) => ({ valor: t.id, texto: t.name }))}
+            />
             <Input
               label="Preço neste tamanho"
               name="preco"
@@ -312,23 +309,20 @@ export async function EdicaoProduto({
           <FormularioAcao acao={montarFogazza} rotulo="Salvar sabores da fogazza">
             <input type="hidden" name="produto_id" value={produto.id} />
             <input type="hidden" name="categoria_da_lista" value={categoriaDosSabores} />
-            <Select
+            <SelectMenu
               label="Sabores de"
               name="categoria_sabores_id"
-              defaultValue={categoriaDosSabores}
+              valorInicial={categoriaDosSabores}
               hint={
                 categoriaDosSabores
                   ? "Ao trocar a categoria, salve para ver os sabores dela."
                   : "Escolha a categoria e salve para ver a lista de sabores."
               }
-            >
-              <option value="">Nenhuma (fogazza comum)</option>
-              {categorias.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
+              opcoes={[
+                { valor: "", texto: "Nenhuma (fogazza comum)" },
+                ...categorias.map((c) => ({ valor: c.id, texto: c.name })),
+              ]}
+            />
             {categoriaDosSabores ? (
               // O React limpa o formulário depois do envio; a chave muda com o
               // que o servidor gravou e remonta a lista no estado salvo.

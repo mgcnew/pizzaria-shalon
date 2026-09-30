@@ -1,4 +1,4 @@
-import { Input, Select, StatusBadge, Textarea } from "@/ui/components";
+import { Input, SelectMenu, StatusBadge, Textarea } from "@/ui/components";
 import { Cartao, LinhaLista, ParDeDados } from "@/ui/patterns";
 import {
   listarBandeiras,
@@ -151,14 +151,19 @@ export async function SecaoPagamentos({ podeGerenciar }: { podeGerenciar: boolea
                   Oferecer Pix antecipado no checkout
                 </label>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Select label="Tipo de chave" name="tipo" defaultValue={pix?.key_type ?? ""}>
-                    <option value="">Não definido</option>
-                    <option value="cpf">CPF</option>
-                    <option value="cnpj">CNPJ</option>
-                    <option value="email">E-mail</option>
-                    <option value="telefone">Telefone</option>
-                    <option value="aleatoria">Aleatória</option>
-                  </Select>
+                  <SelectMenu
+                    label="Tipo de chave"
+                    name="tipo"
+                    valorInicial={pix?.key_type ?? ""}
+                    opcoes={[
+                      { valor: "", texto: "Não definido" },
+                      { valor: "cpf", texto: "CPF" },
+                      { valor: "cnpj", texto: "CNPJ" },
+                      { valor: "email", texto: "E-mail" },
+                      { valor: "telefone", texto: "Telefone" },
+                      { valor: "aleatoria", texto: "Aleatória" },
+                    ]}
+                  />
                   <Input label="Chave Pix" name="chave" defaultValue={pix?.pix_key ?? ""} />
                   <div className="sm:col-span-2">
                     <Input

@@ -1,4 +1,4 @@
-import { StatusBadge, Input, Select } from "@/ui/components";
+import { StatusBadge, Input, SelectMenu } from "@/ui/components";
 import { Cartao, LinhaLista } from "@/ui/patterns";
 import {
   listarAdicionais,
@@ -94,20 +94,18 @@ export async function PainelBordasAdicionais({
             variante="secundario"
           >
             <div className="grid gap-3 sm:grid-cols-2">
-              <Select label="Copiar de" name="de" defaultValue={origemSugerida.id}>
-                {tamanhosDePizza.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </Select>
-              <Select label="Para" name="para" defaultValue={tamanhosDeFogazza[0]?.id}>
-                {tamanhosDeFogazza.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </Select>
+              <SelectMenu
+                label="Copiar de"
+                name="de"
+                valorInicial={origemSugerida.id}
+                opcoes={tamanhosDePizza.map((t) => ({ valor: t.id, texto: t.name }))}
+              />
+              <SelectMenu
+                label="Para"
+                name="para"
+                valorInicial={tamanhosDeFogazza[0]?.id ?? ""}
+                opcoes={tamanhosDeFogazza.map((t) => ({ valor: t.id, texto: t.name }))}
+              />
             </div>
           </FormularioAcao>
         </Cartao>

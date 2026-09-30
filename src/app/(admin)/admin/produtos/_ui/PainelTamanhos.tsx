@@ -1,4 +1,4 @@
-import { StatusBadge, Input, Select } from "@/ui/components";
+import { StatusBadge, Input, SelectMenu } from "@/ui/components";
 import { Cartao, LinhaLista } from "@/ui/patterns";
 import { listarTamanhos } from "@/application/catalogo/consultas";
 import { salvarTamanho, alternarAtivoTamanho } from "@/application/catalogo/acoes";
@@ -69,15 +69,16 @@ export async function PainelTamanhos({ podeGerenciar }: { podeGerenciar: boolean
       <Cartao titulo="Novo tamanho">
         <FormularioAcao acao={salvarTamanho} rotulo="Criar tamanho">
           <Input label="Nome" name="nome" required placeholder="Ex.: Tradicional" />
-          <Select
+          <SelectMenu
             label="Vendido como"
             name="vendido_como"
-            defaultValue="pizza"
+            valorInicial="pizza"
             hint="Fogazza: o sabor de pizza vendido como fogazza. Aceita 1 sabor e não tem borda; o máximo de sabores vira 1."
-          >
-            <option value="pizza">Pizza</option>
-            <option value="fogazza">Fogazza</option>
-          </Select>
+            opcoes={[
+              { valor: "pizza", texto: "Pizza" },
+              { valor: "fogazza", texto: "Fogazza" },
+            ]}
+          />
           <Input label="Fatias" name="fatias" type="number" min={1} required defaultValue={8} />
           <Input
             label="Máximo de sabores"

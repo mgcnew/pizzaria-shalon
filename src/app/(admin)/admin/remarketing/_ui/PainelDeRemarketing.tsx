@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Button, Select, Textarea } from "@/ui/components";
+import { Button, SelectMenu, Textarea } from "@/ui/components";
 import { Aviso, Cartao, EmptyState } from "@/ui/patterns";
 import { formatBRL } from "@/lib/format";
 import { prepararContato, registrarResultado } from "@/application/remarketing/acoes";
@@ -117,17 +117,12 @@ export function PainelDeRemarketing({
               descricao="Escreva a mensagem abaixo, ou cadastre modelos para reaproveitar."
             />
           ) : (
-            <Select
+            <SelectMenu
               label="Template"
-              value={templateId}
-              onChange={(e) => setTemplateId(e.target.value)}
-            >
-              {templates.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </Select>
+              valor={templateId}
+              aoMudar={setTemplateId}
+              opcoes={templates.map((t) => ({ valor: t.id, texto: t.name }))}
+            />
           )}
 
           <div className="mt-3">
@@ -233,17 +228,12 @@ export function PainelDeRemarketing({
 
                 {informando === c.contato_id ? (
                   <div className="mt-3 flex flex-col gap-3">
-                    <Select
+                    <SelectMenu
                       label="O que aconteceu"
-                      value={resultado}
-                      onChange={(e) => setResultado(e.target.value as ResultadoDoContato)}
-                    >
-                      {RESULTADOS.map((r) => (
-                        <option key={r.valor} value={r.valor}>
-                          {r.rotulo}
-                        </option>
-                      ))}
-                    </Select>
+                      valor={resultado}
+                      aoMudar={(valor) => setResultado(valor as ResultadoDoContato)}
+                      opcoes={RESULTADOS.map((r) => ({ valor: r.valor, texto: r.rotulo }))}
+                    />
                     {resultado === "opted_out" ? (
                       <p className="m-0 text-[12.5px] text-muted">
                         Isto também retira o consentimento promocional do cliente.

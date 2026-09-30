@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Badge, Button, Input, Select, SelectMenu, Textarea } from "@/ui/components";
+import { Badge, Button, Input, SelectMenu, Textarea } from "@/ui/components";
 import { Aviso, Cartao, EmptyState, LinhaLista } from "@/ui/patterns";
 import {
   definirAcesso,
@@ -154,24 +154,19 @@ export function GestaoDaEquipe({
                 value={rascunho.telefone}
                 onChange={(e) => setRascunho({ ...rascunho, telefone: e.target.value })}
               />
-              <Select
+              <SelectMenu
                 label="Função"
-                value={rascunho.tipo}
-                onChange={(e) =>
+                valor={rascunho.tipo}
+                aoMudar={(valor) =>
                   setRascunho({
                     ...rascunho,
-                    tipo: e.target.value as MembroDaEquipe["tipo"],
+                    tipo: valor as MembroDaEquipe["tipo"],
                     // Marcar "Entregador" já liga a caixa: é o caso comum.
-                    entregador: e.target.value === "driver" ? true : rascunho.entregador,
+                    entregador: valor === "driver" ? true : rascunho.entregador,
                   })
                 }
-              >
-                {TIPOS.map((t) => (
-                  <option key={t.valor} value={t.valor}>
-                    {t.texto}
-                  </option>
-                ))}
-              </Select>
+                opcoes={TIPOS.map((t) => ({ valor: t.valor, texto: t.texto }))}
+              />
 
               <label className="flex items-center gap-2 text-[13.5px] text-ink">
                 <input
