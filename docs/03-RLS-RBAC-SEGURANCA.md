@@ -540,6 +540,11 @@ Reconhecimento de retorno deve ocorrer por credencial local segura e operação 
 
 `customers.view` permite consulta operacional conforme necessidade.
 
+No lançamento manual, o reconhecimento do cliente (RN-MAN-007) é uma única
+função `SECURITY DEFINER`, `cliente_para_balcao`, pelo WhatsApp **exato**, que
+exige `orders.create_manual` **e** `customers.view` e não é executável por
+`anon`. Não existe busca por parte do número.
+
 `customers.block` controla bloqueio/desbloqueio.
 
 Motivo de bloqueio é **interno** e nunca deve ser retornado ao cliente.

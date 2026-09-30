@@ -794,6 +794,37 @@ indisponível.
 Decisão de 21/09/2026, que promove a interpretação registrada em
 D-2026-09-19-49.
 
+### RN-MAN-007 — O balcão reconhece o cliente pelo WhatsApp exato
+No lançamento manual, ao informar o WhatsApp **completo** de um cliente já
+cadastrado, a equipe vê:
+
+- resumo: nome, cliente desde, pedidos concluídos, último pedido e ticket médio;
+- endereços salvos ativos, sem repetir o mesmo endereço, o preferencial
+  primeiro, com a opção de digitar outro;
+- o último pedido (não cancelado nem rejeitado), para repetir;
+- o que ele mais pede (produto + tamanho, em pedidos concluídos, só o que está
+  ativo), para adicionar com um toque;
+- a forma de pagamento que ele mais usa, e se costuma pedir troco.
+
+Tudo isso é **sugestão**. Preenche só campos vazios, nunca sobrescreve o que o
+atendente digitou. Item repetido ou sugerido entra **reprecificado pelo
+cardápio de hoje** (preço, promoção e disponibilidade atuais); o que não pode
+mais ser vendido não entra, e a tela diz por quê. O pedido continua sendo
+recalculado inteiro na criação.
+
+Endereço salvo escolhido só é reaproveitado se for **deste** cliente, estiver
+ativo e igual ao digitado; qualquer diferença vira endereço novo.
+
+**Cliente bloqueado:** a tela avisa, com o motivo interno, e não deixa lançar.
+A recusa de verdade continua em `criar_pedido` (RN-CLI-008). O motivo é da
+equipe e nunca é repassado ao cliente.
+
+Não é busca: número incompleto não consulta nada. Exige `orders.create_manual`
+e `customers.view`. Favoritos continuam locais ao aparelho do cliente (§30 do
+`CLAUDE.md`) e não aparecem aqui; "mais pedidos" cumpre esse papel no balcão.
+
+Decisão de 30/09/2026 (D-2026-09-30-104).
+
 ---
 
 # PARTE VI — ACOMPANHAMENTO PÚBLICO

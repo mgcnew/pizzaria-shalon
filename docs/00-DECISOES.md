@@ -3741,6 +3741,32 @@ some do cardápio e preserva o histórico de vendas.
 
 ---
 
+## D-2026-09-30-104 — O balcão reconhece o cliente pelo WhatsApp
+
+**Data:** 30/09/2026 · **Decisão do responsável pelo produto nesta conversa**
+
+**Pedido.** No "Novo pedido", ao digitar o telefone de um cliente da base,
+trazer os dados dele em vez de redigitar tudo.
+
+**Decisão.** Escopo escolhido: reconhecer + endereços salvos; repetir o
+último pedido; "mais pedidos" + pagamento habitual. Cliente bloqueado: avisa
+com o motivo interno e impede o lançamento. Ficaram de fora os alertas de
+pedido em aberto e de nome divergente. Favoritos não entram: são locais ao
+aparelho do cliente (§30), e "mais pedidos" cumpre esse papel no balcão.
+Tudo é sugestão: itens remontados pelo motor de hoje, pedido recalculado na
+criação, bloqueio recusado de novo pelo banco.
+
+**Achado no caminho.** `criar_pedido` usa o `endereco.id` recebido sem
+conferir de quem é. No balcão, o id só segue depois de conferido no servidor
+contra os endereços do próprio cliente. O checkout público tem o mesmo ponto
+e ficou registrado como tarefa separada.
+
+**Onde foi formalizada:** 04 RN-MAN-007; 03 §12.2;
+`supabase/migrations/20260930160000_cliente_no_balcao.sql`;
+`supabase/tests/cliente_no_balcao.sql`.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.

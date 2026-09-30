@@ -1,21 +1,24 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Input } from "@/ui/components/Input";
 import { Select } from "@/ui/components/Select";
 import { Textarea } from "@/ui/components/Textarea";
 import { formatBRL } from "@/lib/format";
-import { criarPedidoManual } from "@/application/pedidos/acoes";
+import { buscarClienteParaBalcao, criarPedidoManual } from "@/application/pedidos/acoes";
 import {
   ORIGENS_MANUAIS,
+  type ClienteNoBalcao,
+  type EnderecoSalvo,
   type ItemDoRascunho,
   type Modalidade,
   type OrigemManual,
 } from "@/application/pedidos/tipos";
 import type { FormaDePagamento } from "@/application/checkout/tipos";
 import { EscolherProduto } from "./EscolherProduto";
+import { AtalhosDoCliente, EnderecosSalvos, ResumoDoCliente } from "./ClienteNoBalcao";
 
 export type EtapaNovoPedido = "cliente" | "itens" | "pagamento";
 
@@ -91,6 +94,16 @@ export function NovoPedido({
   const [cep, setCep] = useState("");
   const [referencia, setReferencia] = useState("");
 
+  /**
+   * Cliente reconhecido pelo WhatsApp exato (RN-MAN-007). Só sugere: nada
+   * aqui decide preço, disponibilidade ou bloqueio — o servidor decide de
+   * novo ao lançar.
+   */
+  const [reconhecido, setReconhecido] = useState<ClienteNoBalcao | null>(null);
+  const [consultando, setConsultando] = useState(false);
+  const [enderecoSalvoId, setEnderecoSalvoId] = useState<string | null>(null);
+  const whatsappDigitos = whatsapp.replace(/\D/g, "");
+
   const [itens, setItens] = useState<ItemDoRascunho[]>([]);
   const [observacao, setObservacao] = useState("");
 
@@ -113,6 +126,73 @@ export function NovoPedido({
   const chaveDaTentativa = useRef<string | null>(null);
 
   const formas = formasPorModalidade[modalidade];
+
+  // Estado atual lido pela consulta sem reexecutá-la a cada tecla nos
+  // campos que ela pode preencher.
+  const atual = useRef({ nome, modalidade, logradouro, formaId, formas });
+  useEffect(() => {
+    atual.current = { nome, modalidade, logradouro, formaId, formas };
+  });
+
+  function aplicarEndereco(e: EnderecoSalvo | null) {
+    setEnderecoSalvoId(e?.id ?? null);
+    setLogradouro(e?.logradouro ?? "");
+    setNumero(e?.numero ?? "");
+    setComplemento(e?.complemento ?? "");
+    setBairro(e?.bairro ?? "");
+    setCidade(e?.cidade ?? "");
+    setUf(e?.uf ?? "");
+    setCep(e?.cep ?? "");
+    setReferencia(e?.referencia ?? "");
+  }
+
+  const esperaDaConsulta = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const consultaAtual = useRef(0);
+  useEffect(() => () => {
+    if (esperaDaConsulta.current) clearTimeout(esperaDaConsulta.current);
+  }, []);
+
+  function mudarWhatsapp(valor: string) {
+    setWhatsapp(valor);
+    const digitos = valor.replace(/\D/g, "");
+    if (esperaDaConsulta.current) clearTimeout(esperaDaConsulta.current);
+    const minha = ++consultaAtual.current;
+
+    if (digitos.length < 10) {
+      setReconhecido(null);
+      setConsultando(false);
+      return;
+    }
+    setConsultando(true);
+    esperaDaConsulta.current = setTimeout(async () => {
+      const r = await buscarClienteParaBalcao(digitos);
+      // Só a última digitação vale: resposta atrasada não troca o cliente.
+      if (minha !== consultaAtual.current) return;
+      setConsultando(false);
+      if (!r.ok || !r.encontrado) {
+        setReconhecido(null);
+        return;
+      }
+      const { ok: _ok, encontrado: _encontrado, ...dados } = r;
+      setReconhecido(dados);
+      if (dados.cliente.bloqueado) return;
+
+      // Preenche só o que ainda está vazio: nunca sobrescreve o que o
+      // atendente já digitou.
+      const agora = atual.current;
+      if (agora.nome.trim() === "") setNome(dados.cliente.nome);
+      const preferido = dados.enderecos[0];
+      if (agora.modalidade === "delivery" && agora.logradouro.trim() === "" && preferido) {
+        aplicarEndereco(preferido);
+      }
+      const habitual = dados.pagamento_habitual;
+      if (agora.formaId === "" && habitual && agora.formas.some((f) => f.id === habitual.forma_id)) {
+        setFormaId(habitual.forma_id);
+      }
+    }, 350);
+  }
+
+  const bloqueado = reconhecido?.cliente.bloqueado === true;
   const forma = formas.find((f) => f.id === formaId) ?? null;
 
   // Soma dos valores que o servidor calculou item a item. Conferência, não
@@ -128,7 +208,8 @@ export function NovoPedido({
 
   const clienteCompleto =
     nome.trim().length >= 2 &&
-    whatsapp.replace(/\D/g, "").length >= 10 &&
+    whatsappDigitos.length >= 10 &&
+    !bloqueado &&
     (modalidade === "pickup" || enderecoCompleto);
 
   const podeLancar =
@@ -153,6 +234,9 @@ export function NovoPedido({
         endereco:
           modalidade === "delivery"
             ? {
+                // O servidor só aproveita o endereço salvo se ele for deste
+                // cliente e estiver igual ao digitado.
+                id: enderecoSalvoId,
                 logradouro: logradouro.trim(),
                 numero: numero.trim(),
                 complemento: complemento.trim() || null,
@@ -341,17 +425,31 @@ export function NovoPedido({
           <Input
             label="WhatsApp"
             value={whatsapp}
-            onChange={(e) => setWhatsapp(e.target.value)}
+            onChange={(e) => mudarWhatsapp(e.target.value)}
             inputMode="tel"
             maxLength={24}
             placeholder="(00) 00000-0000"
             hint="Identificador operacional do cliente. Cliente já cadastrado é reconhecido por ele."
           />
+          {consultando ? (
+            <p className="m-0 text-[12.5px] text-muted" role="status">
+              Procurando cliente…
+            </p>
+          ) : reconhecido !== null ? (
+            <ResumoDoCliente dados={reconhecido} />
+          ) : null}
         </fieldset>
 
         {modalidade === "delivery" ? (
           <fieldset className={`m-0 flex flex-col gap-3 rounded-16 border border-border-shalon bg-surface p-4 ${classeDaEtapa("cliente")}`}>
             <legend className="px-1 text-[15px] font-bold text-ink">Endereço de entrega</legend>
+            {reconhecido !== null && !bloqueado && reconhecido.enderecos.length > 0 ? (
+              <EnderecosSalvos
+                enderecos={reconhecido.enderecos}
+                selecionado={enderecoSalvoId}
+                aoEscolher={aplicarEndereco}
+              />
+            ) : null}
             <div className="flex gap-3">
               <div className="flex-[3]">
                 <Input label="Rua" value={logradouro} onChange={(e) => setLogradouro(e.target.value)} maxLength={160} />
@@ -431,6 +529,14 @@ export function NovoPedido({
                     </option>
                   ))}
                 </Select>
+              ) : null}
+
+              {reconhecido?.pagamento_habitual && !bloqueado ? (
+                <p className="m-0 text-[12.5px] text-ink-2">
+                  Costuma pagar com {reconhecido.pagamento_habitual.forma}
+                  {reconhecido.pagamento_habitual.pede_troco ? ", e costuma pedir troco" : ""}.
+                  Confirme com o cliente.
+                </p>
               ) : null}
 
               {forma?.permite_troco ? (
@@ -516,6 +622,14 @@ export function NovoPedido({
               ))}
             </ul>
           )}
+
+          {reconhecido !== null ? (
+            <AtalhosDoCliente
+              key={reconhecido.cliente.id}
+              dados={reconhecido}
+              aoAdicionar={(novos) => setItens((lista) => [...lista, ...novos])}
+            />
+          ) : null}
 
           <EscolherProduto aoAdicionar={(item) => setItens((lista) => [...lista, item])} />
         </section>

@@ -6,6 +6,8 @@ import { z } from "zod";
 import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
 import { obterLojaPublica } from "@/application/publico/consultas";
 import { cotarEntrega } from "@/application/checkout/acoes";
+import { montarItem } from "@/application/publico/acoes";
+import type { ItemMontado } from "@/application/publico/tipos";
 import { logger } from "@/lib/logger";
 import {
   montarAlteracao,
@@ -15,7 +17,11 @@ import {
   type LinhaComanda,
 } from "@/domain/pedidos/comanda";
 import { obterPedido } from "./consultas";
-import type { ResultadoComando } from "./tipos";
+import type {
+  ClienteNoBalcao,
+  ResultadoClienteNoBalcao,
+  ResultadoComando,
+} from "./tipos";
 
 /**
  * Operação interna de pedidos.
@@ -312,6 +318,12 @@ const pedidoManualSchema = z.object({
     .optional(),
   endereco: z
     .object({
+      /**
+       * Endereço salvo escolhido no balcão (RN-MAN-007). Só é repassado a
+       * `criar_pedido` depois de conferido aqui contra os endereços do
+       * próprio cliente — ver `enderecoSalvoConferido`.
+       */
+      id: z.string().uuid().nullish(),
       logradouro: z.string().min(2).max(160),
       numero: z.string().min(1).max(20),
       complemento: z.string().max(80).nullish(),
@@ -386,6 +398,9 @@ export async function criarPedidoManual(entrada: unknown): Promise<ResultadoPedi
 
     rota = { distancia_km: medida.distancia_km, provedor: medida.provedor };
     enderecoParaBanco = {
+      id: dados.endereco.id
+        ? await enderecoSalvoConferido(dados.endereco.id, dados.cliente?.whatsapp, dados.endereco)
+        : null,
       logradouro: dados.endereco.logradouro,
       numero: dados.endereco.numero,
       complemento: dados.endereco.complemento ?? null,
@@ -448,4 +463,86 @@ export async function criarPedidoManual(entrada: unknown): Promise<ResultadoPedi
     // dele: dizer o contrário daria um link que não abre nada.
     token: resposta["ja_existia"] ? null : token,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Cliente no balcão (RN-MAN-007)
+// ---------------------------------------------------------------------------
+
+async function consultarClienteNoBalcao(whatsapp: string): Promise<ResultadoClienteNoBalcao> {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("cliente_para_balcao", { p_whatsapp: whatsapp });
+  if (error) {
+    logger.error("pedidos:clienteNoBalcao", { code: (error as { code?: string }).code });
+    return { ok: false, erro: "Não foi possível consultar o cliente agora." };
+  }
+  return data as ResultadoClienteNoBalcao;
+}
+
+/**
+ * Reconhece o cliente pelo WhatsApp EXATO, para o balcão não redigitar o que
+ * já sabe. Quem autoriza é o banco (`orders.create_manual` + `customers.view`);
+ * número incompleto não consulta nada — não é busca por pedaço de número.
+ */
+export async function buscarClienteParaBalcao(whatsapp: unknown): Promise<ResultadoClienteNoBalcao> {
+  const digitos = typeof whatsapp === "string" ? whatsapp.replace(/\D/g, "") : "";
+  if (digitos.length < 10 || digitos.length > 15) return { ok: true, encontrado: false };
+  return consultarClienteNoBalcao(digitos);
+}
+
+const configuracaoSchema = z.object({
+  produto_id: z.string().uuid(),
+  variacao_id: z.string().uuid().nullish(),
+  sabores: z.array(z.string().uuid()).max(4).optional(),
+  borda_id: z.string().uuid().nullish(),
+  adicionais: z.array(z.string().uuid()).max(20).optional(),
+  observacao: z.string().max(300).optional(),
+  quantidade: z.number().int().min(1).max(99).optional(),
+});
+
+/**
+ * Remonta configurações já pedidas (último pedido, mais pedidos) pelo motor
+ * de HOJE: preço, promoção e disponibilidade atuais, nunca os do histórico.
+ * O que não pode mais ser vendido volta com o motivo, para a tela dizer.
+ */
+export async function remontarItens(configuracoes: unknown): Promise<ItemMontado[]> {
+  const validado = z.array(configuracaoSchema).min(1).max(30).safeParse(configuracoes);
+  if (!validado.success) return [{ ok: false, erro: "Itens inválidos." }];
+  return Promise.all(
+    validado.data.map((c) =>
+      montarItem({
+        produto_id: c.produto_id,
+        variacao_id: c.variacao_id ?? null,
+        sabores: c.sabores ?? [],
+        borda_id: c.borda_id ?? null,
+        adicionais: c.adicionais ?? [],
+        observacao: c.observacao ?? "",
+        quantidade: c.quantidade ?? 1,
+      }),
+    ),
+  );
+}
+
+function mesmoTexto(a: string | null | undefined, b: string | null | undefined): boolean {
+  return (a ?? "").trim().toLowerCase() === (b ?? "").trim().toLowerCase();
+}
+
+/**
+ * `criar_pedido` usa o `endereco.id` recebido sem inserir linha nova, e não
+ * confere de quem ele é. Por isso o id só segue se for de um endereço ativo
+ * DESTE cliente e o endereço digitado for exatamente o salvo; qualquer
+ * diferença (inclusive complemento) vira endereço novo, pelo fluxo normal.
+ */
+async function enderecoSalvoConferido(
+  id: string,
+  whatsapp: string | undefined,
+  digitado: { [K in "logradouro" | "numero" | "complemento" | "bairro" | "cidade" | "uf" | "cep" | "referencia"]?: string | null | undefined },
+): Promise<string | null> {
+  if (!whatsapp) return null;
+  const r = await buscarClienteParaBalcao(whatsapp);
+  if (!r.ok || !r.encontrado) return null;
+  const salvo = (r as ClienteNoBalcao).enderecos.find((e) => e.id === id);
+  if (!salvo) return null;
+  const campos = ["logradouro", "numero", "complemento", "bairro", "cidade", "uf", "cep", "referencia"] as const;
+  return campos.every((c) => mesmoTexto(salvo[c], digitado[c])) ? id : null;
 }

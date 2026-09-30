@@ -201,3 +201,65 @@ export type ItemDoRascunho = {
   total: number;
   rotulos: string[];
 };
+
+/** Configuração de item como `configuracao_do_item` a devolve. */
+export type ConfiguracaoSalva = {
+  produto_id: string;
+  variacao_id: string | null;
+  sabores: string[];
+  borda_id: string | null;
+  adicionais: string[];
+  observacao: string;
+  quantidade: number;
+};
+
+export type EnderecoSalvo = {
+  id: string;
+  rotulo: string | null;
+  logradouro: string;
+  numero: string;
+  complemento: string | null;
+  bairro: string;
+  cidade: string;
+  uf: string;
+  cep: string | null;
+  referencia: string | null;
+  preferido: boolean;
+};
+
+/**
+ * O que o balcão sabe do cliente pelo WhatsApp exato (RN-MAN-007). Espelha
+ * `cliente_para_balcao` (migration 0140). Tudo aqui é SUGESTÃO: preço,
+ * disponibilidade e bloqueio são decididos de novo na criação do pedido.
+ */
+export type ClienteNoBalcao = {
+  cliente: {
+    id: string;
+    nome: string;
+    desde: string;
+    pedidos: number;
+    ultimo_em: string | null;
+    ticket_medio: number | null;
+    bloqueado: boolean;
+    motivo_bloqueio: string | null;
+  };
+  enderecos: EnderecoSalvo[];
+  ultimo_pedido: {
+    numero: number;
+    em: string;
+    modalidade: Modalidade;
+    itens: { nome: string; produto_slug: string | null; configuracao: ConfiguracaoSalva }[];
+  } | null;
+  mais_pedidos: { nome: string; vezes: number; configuracao: ConfiguracaoSalva }[];
+  pagamento_habitual: { forma_id: string; forma: string; pede_troco: boolean } | null;
+};
+
+export type ResultadoClienteNoBalcao =
+  | { ok: true; encontrado: false }
+  | ({ ok: true; encontrado: true } & ClienteNoBalcao)
+  | { ok: false; erro: string };
+
+/** Item remontado pelo motor para entrar no rascunho, ou o motivo de não entrar. */
+export type ItemRemontado =
+  | { ok: true; item: ItemDoRascunho }
+  | { ok: false; nome: string; erro: string };
