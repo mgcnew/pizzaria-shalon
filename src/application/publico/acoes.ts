@@ -3,7 +3,15 @@
 import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
 import { logger } from "@/lib/logger";
 import type { DadosDoConfigurador } from "@/ui/configurador/tipos";
-import { buscar, montarDadosDoConfigurador, obterProdutoPublico } from "./consultas";
+import {
+  buscar,
+  montarDadosDaFogazza,
+  montarDadosDoConfigurador,
+  obterCardDeFogazza,
+  obterProdutoPublico,
+  type CardDeFogazza,
+  type DadosDaFogazza,
+} from "./consultas";
 import type { ConfiguracaoItem, ItemMontado, ResultadoBusca, Revalidacao } from "./tipos";
 
 /**
@@ -86,6 +94,44 @@ export async function carregarConfigurador(
     return await montarDadosDoConfigurador(slug);
   } catch (erro) {
     logger.error("publico:carregarConfigurador", {
+      code: (erro as { code?: string })?.code,
+    });
+    return null;
+  }
+}
+
+/**
+ * O card de fogazza aberto no balcão: a lista de sabores (RN-FOG-003).
+ * `null` quando o produto não é card — aí o balcão abre o configurador.
+ */
+export async function carregarSaboresDaFogazza(slug: unknown): Promise<CardDeFogazza | null> {
+  if (typeof slug !== "string" || slug.length === 0 || slug.length > 160) return null;
+  try {
+    return await obterCardDeFogazza(slug);
+  } catch (erro) {
+    logger.error("publico:carregarSaboresDaFogazza", {
+      code: (erro as { code?: string })?.code,
+    });
+    return null;
+  }
+}
+
+/**
+ * O configurador da fogazza de um sabor, sob demanda. A MESMA função da
+ * página pública (`montarDadosDaFogazza`): o balcão vê o mesmo preço, os
+ * mesmos adicionais e a mesma disponibilidade que o cliente.
+ */
+export async function carregarConfiguradorDaFogazza(
+  cardSlug: unknown,
+  saborSlug: unknown,
+): Promise<DadosDaFogazza | null> {
+  const valido = (v: unknown): v is string =>
+    typeof v === "string" && v.length > 0 && v.length <= 160;
+  if (!valido(cardSlug) || !valido(saborSlug)) return null;
+  try {
+    return await montarDadosDaFogazza(cardSlug, saborSlug);
+  } catch (erro) {
+    logger.error("publico:carregarConfiguradorDaFogazza", {
       code: (erro as { code?: string })?.code,
     });
     return null;

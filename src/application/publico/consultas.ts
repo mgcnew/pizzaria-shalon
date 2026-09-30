@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
 import { logger } from "@/lib/logger";
 import type { DadosDoConfigurador, DadosPorTamanho } from "@/ui/configurador/tipos";
@@ -14,6 +15,7 @@ import type {
   ProdutoDetalhe,
   ProdutoPublico,
   ResultadoBusca,
+  SaborDaFogazza,
   SaborPublico,
   TamanhoPublico,
 } from "./tipos";
@@ -72,6 +74,14 @@ export function listarTamanhos(produtoId: string): Promise<TamanhoPublico[]> {
  */
 export function listarSabores(tamanhoId: string): Promise<SaborPublico[]> {
   return rpc<SaborPublico>("sabores_publicos", { p_size_id: tamanhoId });
+}
+
+/**
+ * RN-FOG-003: os sabores de um card de fogazza. Vazio quando o produto não é
+ * card de entrada — a fogazza de preço próprio continua produto simples.
+ */
+export function listarSaboresDaFogazza(cardId: string): Promise<SaborDaFogazza[]> {
+  return rpc<SaborDaFogazza>("sabores_da_fogazza", { p_card_id: cardId });
 }
 
 export function listarBordas(produtoId: string, tamanhoId: string): Promise<OpcaoPreco[]> {
@@ -197,6 +207,108 @@ export async function montarDadosDoConfigurador(
     : { ok: false as const, erro: "Indisponível no momento." };
 
   return { produto, tamanhos, porTamanho, montadoInicial };
+}
+
+/** O card de fogazza aberto: o próprio card e a lista de sabores dele. */
+export type CardDeFogazza = { card: ProdutoDetalhe; sabores: SaborDaFogazza[] };
+
+/**
+ * Lê o card de entrada de fogazza. `null` quando o slug não existe ou o
+ * produto não é card (a fogazza de preço próprio, por exemplo).
+ *
+ * Card sem nenhum sabor ativo também devolve `null`: para o cliente ele é
+ * indisponível, e quem mostra isso é a página do produto, como para qualquer
+ * outro item.
+ */
+export async function obterCardDeFogazza(slug: string): Promise<CardDeFogazza | null> {
+  const card = await obterProdutoPublico(slug);
+  if (card === null || card.tipo !== "fogazza") return null;
+  const sabores = await listarSaboresDaFogazza(card.id);
+  if (sabores.length === 0) return null;
+  return { card, sabores };
+}
+
+/**
+ * O configurador da fogazza de UM sabor (RN-FOG-002 a RN-FOG-005).
+ *
+ * É o configurador de sempre, com o produto sendo o SABOR e um único
+ * tamanho — o de fogazza —, fixo. O preço, a promoção, os adicionais e o
+ * limite vêm das mesmas funções da pizza, e `montar_item` recebe o sabor e a
+ * variação de fogazza como recebe qualquer pizza de um sabor.
+ *
+ * A disponibilidade é a da FOGAZZA do sabor, não a da pizza: com os tamanhos
+ * de pizza pausados e a fogazza à venda, a pizza some do cardápio e a
+ * fogazza continua (RN-FOG-006).
+ */
+export type DadosDaFogazza = DadosDoConfigurador & {
+  card: ProdutoDetalhe;
+  sabor: SaborDaFogazza;
+};
+
+// Por requisição: a página pede os mesmos dados para o título e para o corpo.
+export const montarDadosDaFogazza = cache(montarDadosDaFogazzaSemCache);
+
+async function montarDadosDaFogazzaSemCache(
+  cardSlug: string,
+  saborSlug: string,
+): Promise<DadosDaFogazza | null> {
+  const aberto = await obterCardDeFogazza(cardSlug);
+  if (aberto === null) return null;
+  const sabor = aberto.sabores.find((s) => s.slug === saborSlug);
+  if (sabor === undefined) return null;
+
+  const produtoDoSabor = await obterProdutoPublico(sabor.slug);
+  if (produtoDoSabor === null) return null;
+
+  const disponivel = aberto.card.disponivel && sabor.disponivel;
+  const produto: ProdutoDetalhe = {
+    ...produtoDoSabor,
+    // O que se vende aqui é a fogazza: preço e disponibilidade são os dela.
+    preco_de: sabor.preco_de,
+    preco: sabor.preco,
+    preco_max: sabor.preco,
+    em_promocao: sabor.em_promocao,
+    disponivel,
+    tem_tamanhos: true,
+  };
+
+  const tamanho: TamanhoPublico = {
+    variacao_id: sabor.variacao_id,
+    tamanho_id: sabor.tamanho_id,
+    tamanho_nome: sabor.tamanho_nome,
+    fatias: sabor.fatias,
+    max_sabores: 1,
+    preco_de: sabor.preco_de,
+    preco: sabor.preco,
+    em_promocao: sabor.em_promocao,
+    disponivel,
+  };
+
+  // Fogazza não tem borda nem meio a meio (RN-FOG-004): só os adicionais.
+  const [adicionais, montadoInicial] = await Promise.all([
+    produto.adicionais_ligados
+      ? listarAdicionais(produto.id, sabor.tamanho_id)
+      : Promise.resolve([]),
+    disponivel
+      ? montarItemNoServidor({
+          produto_id: produto.id,
+          variacao_id: sabor.variacao_id,
+          sabores: [sabor.variacao_id],
+          quantidade: 1,
+        })
+      : Promise.resolve({ ok: false as const, erro: "Indisponível no momento." }),
+  ]);
+
+  return {
+    card: aberto.card,
+    sabor,
+    produto,
+    tamanhos: [tamanho],
+    porTamanho: { [sabor.tamanho_id]: { sabores: [], bordas: [], adicionais } },
+    montadoInicial,
+    tamanhoFixo: true,
+    caminho: `${aberto.card.slug}/${sabor.slug}`,
+  };
 }
 
 /**

@@ -6,6 +6,7 @@ import { formatBRL } from "@/lib/format";
 import { Badge } from "@/ui/components";
 import {
   listarComponentesDoCombo,
+  listarSaboresDaFogazza,
   montarDadosDoConfigurador,
   obterLojaPublica,
   obterProdutoPublico,
@@ -15,6 +16,7 @@ import { AvisoLojaFechada } from "../../_ui/AvisoLojaFechada";
 import { BotaoFavorito } from "../../_ui/BotaoFavorito";
 import { Compartilhar } from "../../_ui/Compartilhar";
 import { Configurador } from "../../_ui/Configurador";
+import { EscolherSabor } from "../../_ui/EscolherSabor";
 
 /**
  * Página de produto — RN-LINK-001 e RN-LINK-002.
@@ -49,11 +51,18 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
   const [produto, loja] = await Promise.all([obterProdutoPublico(slug), obterLojaPublica()]);
   if (!produto) notFound();
 
+  // Card de entrada de fogazza (RN-FOG-003): em vez do configurador, a lista
+  // de sabores. A fogazza de preço próprio devolve lista vazia e segue como
+  // produto simples.
+  const saboresDaFogazza =
+    produto.tipo === "fogazza" ? await listarSaboresDaFogazza(produto.id) : [];
+  const ehCardDeFogazza = saboresDaFogazza.length > 0;
+
   // Tamanhos, sabores, bordas, adicionais e o primeiro preço vêm prontos da
   // MESMA função que o balcão usa para montar item (complemento da Fase 6).
   // Duplicar esse carregamento criaria duas verdades sobre quais sabores e
   // bordas existem.
-  const dadosDoConfigurador = await montarDadosDoConfigurador(slug);
+  const dadosDoConfigurador = ehCardDeFogazza ? null : await montarDadosDoConfigurador(slug);
 
   const componentes =
     produto.tipo === "combo" ? await listarComponentesDoCombo(produto.id) : [];
@@ -143,7 +152,9 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
           </section>
         ) : null}
 
-        {produto.disponivel && dadosDoConfigurador !== null ? (
+        {produto.disponivel && ehCardDeFogazza ? (
+          <EscolherSabor cardSlug={produto.slug} sabores={saboresDaFogazza} />
+        ) : produto.disponivel && dadosDoConfigurador !== null ? (
           <Configurador dados={dadosDoConfigurador} lojaAberta={loja?.aberta ?? false} />
         ) : (
           <div className="mt-5 rounded-14 border border-dashed border-border-shalon bg-elev px-5 py-8 text-center">

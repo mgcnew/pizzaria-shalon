@@ -83,6 +83,11 @@ Preço aplicável significa:
 
 Esta regra também cobre o estado normal de um cadastro recém-criado, ainda incompleto: ele existe, é editável e não aparece para venda. *(Decisão aprovada em 18/09/2026; histórico em `docs/00-DECISOES.md` D-2026-09-18-21.)*
 
+O preço de fogazza (RN-FOG-002) não é tamanho de pizza. A pizza de preço
+único que também é vendida como fogazza continua sendo pizza **sem**
+variação por tamanho: vende pelo preço próprio, e a fogazza dela, pelo preço
+de fogazza. *(D-2026-09-29-100.)*
+
 ---
 
 # PARTE II — CARDÁPIO E PRECIFICAÇÃO
@@ -197,6 +202,14 @@ categoria vêm os sabores e em qual tamanho de fogazza. O card mostra "a
 partir de" o menor preço de fogazza dos sabores e lista os sabores com o
 preço de cada um.
 
+O card aparece no cardápio, na categoria dele, no link direto e na busca; a
+busca também o encontra pelo nome dos sabores ("fogazza calabresa"). A lista
+de sabores tem busca própria, com a mesma regra da busca do cardápio
+(RN-BUSCA-001). Escolhido o sabor, abre a página daquela fogazza, com o
+configurador de sempre e o tamanho fixo; o link dela é compartilhável e é
+para ela que o "Editar" do carrinho volta. O balcão ("Novo pedido") segue o
+mesmo caminho: card, sabor, configurador. *(D-2026-09-29-99.)*
+
 ### RN-FOG-004 — Um sabor, sem borda
 Fogazza tem exatamente um sabor: não existe meio a meio. Fogazza não tem
 borda.
@@ -211,6 +224,20 @@ e a cópia fica auditada.
 Sabor esgotado esgota a pizza e a fogazza daquele sabor. A fogazza de um
 sabor também pode ser pausada sozinha (por exemplo, falta de massa de
 fogazza) sem afetar a pizza.
+
+O contrário também vale: com os tamanhos de pizza de um sabor pausados e a
+fogazza à venda, a pizza aparece indisponível no cardápio e a fogazza
+continua à venda. O card de entrada fica disponível enquanto ele e a
+categoria dele estiverem abertos e houver ao menos um sabor à venda.
+*(D-2026-09-29-99.)*
+
+### RN-FOG-007 — A fogazza se vende pelo card
+A fogazza de um sabor só é vendida enquanto houver card de entrada
+disponível para aquele tamanho de fogazza e aquela categoria de sabores.
+Pausar o card — ou a categoria dele — pausa as fogazzas que ele oferece, sem
+afetar as pizzas. O servidor aplica a regra em toda montagem de item
+(cardápio, carrinho, checkout e balcão), não só na tela.
+*(D-2026-09-29-99.)*
 
 ### RN-BEB-001
 Cada apresentação de bebida é um produto independente, com preço e disponibilidade próprios.
@@ -255,6 +282,11 @@ Promoção pode ter início/fim programados ou permanecer válida até desativa�
 
 ### RN-PROMO-003
 Promoção pode atingir uma variação específica de produto ou um combo.
+
+Produto com tamanho de pizza recebe promoção pela variação. A pizza de preço
+único continua recebendo promoção no produto mesmo quando tem preço de
+fogazza; a fogazza dela recebe promoção na variação de fogazza, e uma não
+altera a outra. *(D-2026-09-29-100.)*
 
 ### RN-PROMO-004
 Não são permitidos períodos promocionais conflitantes/sobrepostos para o mesmo alvo.

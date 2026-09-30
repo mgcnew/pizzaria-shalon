@@ -69,6 +69,27 @@ export type SaborPublico = {
   disponivel: boolean;
 };
 
+/**
+ * Um sabor dentro de um card de fogazza (`sabores_da_fogazza`, RN-FOG-003).
+ * A variação é a do sabor no tamanho de fogazza; preço e disponibilidade já
+ * vêm calculados, com a promoção e o card pausado considerados.
+ */
+export type SaborDaFogazza = {
+  variacao_id: string;
+  produto_id: string;
+  nome: string;
+  slug: string;
+  descricao: string | null;
+  preco_de: number;
+  preco: number;
+  em_promocao: boolean;
+  disponivel: boolean;
+  imagem_path: string | null;
+  tamanho_id: string;
+  tamanho_nome: string;
+  fatias: number;
+};
+
 export type OpcaoPreco = { id: string; nome: string; preco: number };
 
 export type ComponenteCombo = {

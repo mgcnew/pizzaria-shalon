@@ -3580,6 +3580,88 @@ RN-FOG-006; `02-MODELO-DADOS-SUPABASE.md` §5.2, §5.3, §5.4;
 
 ---
 
+## D-2026-09-29-99 — Fogazza por sabor, entrega 2: a vitrine
+
+**Data:** 29/09/2026 · **Entrega aprovada pelo responsável pelo produto nesta conversa**
+
+**Decisão.** Os cards de entrada saem da blindagem da entrega 1 e viram a
+vitrine da fogazza (RN-FOG-003):
+- o card aparece no cardápio, na categoria, no link direto e na busca, com
+  "a partir de" o menor preço de fogazza dos sabores; a busca também o acha
+  pelo nome do sabor;
+- a página do card lista os sabores, com busca, preço e "indisponível hoje";
+  o sabor abre `/produto/<card>/<sabor>`: o configurador de sempre, com o
+  tamanho fixo, só adicionais e observação; é para lá que o "Editar" do
+  carrinho volta;
+- o "Novo pedido" do balcão segue o mesmo caminho (card → sabor →
+  configurador), com as mesmas leituras. Estava previsto para a entrega 3;
+  entrou aqui porque, com o card visível, o balcão abriria um card sem preço.
+
+**Disponibilidade (RN-FOG-006 e RN-FOG-007, novas redações).**
+- A fogazza só se vende enquanto houver card disponível para aquele tamanho
+  e aquela categoria: pausar o card, ou a categoria dele, pausa as fogazzas.
+  A regra está em `variante_disponivel`, que o motor de preço já consulta —
+  vale no cardápio, no carrinho, no checkout e no balcão.
+- A pendência da D-98 foi resolvida sem mexer em `produto_disponivel`, que
+  continua dizendo se o sabor é vendável em algum tamanho (é o que o motor de
+  preço precisa). O que o cardápio mostra passou para
+  `produto_disponivel_no_cardapio`: a pizza depende só dos tamanhos de pizza,
+  e o card depende dele, da categoria e de haver sabor à venda.
+- A lista de produtos do painel mostra o mesmo: o card com a faixa de preço
+  dos sabores, e a pizza sem o preço de fogazza na faixa.
+
+**Na tela.** O item entra no carrinho com o nome do sabor e, abaixo, o nome
+do tamanho de fogazza, como o tamanho da pizza ("Calabresa · Fogazza"). A
+página do sabor não tem favorito: o favorito guarda o produto, que ali é o
+sabor de pizza; o card de entrada é que pode ser favoritado.
+
+**Fica para a entrega 3.** Relatórios e "Mais pedidos" separando fogazza de
+pizza pelo tamanho (hoje a fogazza vendida conta para o sabor). O PDV não
+muda: a venda rápida não aceita item que exige preparo, e pizza e fogazza
+exigem.
+
+**Onde foi formalizada:** `04-REGRAS-NEGOCIO.md` RN-FOG-003, RN-FOG-006 e
+RN-FOG-007; `02-MODELO-DADOS-SUPABASE.md` §5.2 e §5.3;
+`supabase/migrations/20260929160000_fogazza_vitrine.sql`;
+`supabase/tests/fogazza_entrega2.sql` (e D4–D7 de
+`fogazza_entrega1.sql` atualizados); telas em `(publico)/produto/[slug]`,
+`(publico)/produto/[slug]/[sabor]`, `_ui/EscolherSabor.tsx` e
+`admin/pedidos/_ui/EscolherProduto.tsx`.
+
+---
+
+## D-2026-09-29-100 — Fogazza em sabor de preço único
+
+**Data:** 29/09/2026 · **Decisão do responsável pelo produto nesta conversa**
+("Adaptar o motor")
+
+**O achado.** A validação da entrega 2 no dev mostrou que o desenho da
+fogazza supôs que todo sabor tem tamanhos de pizza. No cadastro real, 61 dos
+63 sabores vendem por um preço único (`base_price`, sem variação). Ao ganhar
+o preço de fogazza — uma variação —, a pizza desses sabores deixava de ser
+vendável: o motor pedia um tamanho que não existe. A entrega 1 já estava em
+produção com esse defeito, mas sem produto cadastrado lá, sem dano.
+
+**Decisão.** O preço de fogazza não é tamanho de pizza. Em todo lugar em que
+"ter variação" significava "ter tamanho", passa a valer "ter tamanho de
+pizza": o preço único continua sendo o preço da pizza, e o de fogazza fica à
+parte (RN-DISP-006 e RN-PROMO-003, novas redações). Nenhuma regra de preço
+muda: o preço efetivo do produto e o da variação já eram calculados
+separados, cada um com a sua promoção.
+
+**O que mudou (migration 0136):** `produto_disponivel`, `montar_item` (só
+tamanho de pizza pede "Escolha um tamanho."), `produto_disponivel_no_cardapio`
+e o gatilho de promoção por produto. No painel, a promoção oferece a pizza de
+preço único pelo produto e a fogazza dela pela variação; o texto de ajuda do
+preço próprio explica que o preço de fogazza não conta como tamanho.
+
+**Onde foi formalizada:** `04-REGRAS-NEGOCIO.md` RN-DISP-006 e RN-PROMO-003;
+`02-MODELO-DADOS-SUPABASE.md` §5.2;
+`supabase/migrations/20260929170000_fogazza_em_preco_unico.sql`;
+`supabase/tests/fogazza_preco_unico.sql`.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.

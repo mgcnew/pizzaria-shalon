@@ -31,6 +31,17 @@ export type DadosDoConfigurador = {
   porTamanho: DadosPorTamanho;
   /** Primeiro preço, já calculado no servidor: a tela abre com valor. */
   montadoInicial: ItemMontado;
+  /**
+   * O tamanho já vem decidido e não é escolha do cliente — a fogazza, que só
+   * existe num tamanho (RN-FOG-004). A seção de tamanho não aparece.
+   */
+  tamanhoFixo?: boolean;
+  /**
+   * Caminho da página deste item, abaixo de `/produto/`, para o "Editar" do
+   * carrinho. Omitido, é o slug do produto. A fogazza volta pelo card
+   * ("fogazza-salgada/calabresa"), e não pela página da pizza.
+   */
+  caminho?: string;
 };
 
 /** As escolhas do usuário, do jeito que a tela as mantém. */

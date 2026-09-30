@@ -267,9 +267,16 @@ Os dois campos de fogazza vêm juntos e só existem em produto do tipo `fogazza`
 (`products_escolha_de_sabor`); o tamanho indicado precisa ser vendido como
 fogazza. Ver RN-FOG-003 e D-2026-09-29-98.
 
+O card de entrada não tem variação nem `base_price`: o preço que o cardápio
+mostra ("a partir de") e a disponibilidade dele vêm dos sabores
+(`sabores_da_fogazza`, `produto_disponivel_no_cardapio`). A variação de
+fogazza de um sabor só está disponível enquanto houver card disponível para
+aquele tamanho e aquela categoria (`fogazza_a_venda`, RN-FOG-007;
+D-2026-09-29-99).
+
 `base_price` atende produtos simples e combos. Pizza com tamanho usa `product_variants.price` como autoridade.
 
-Produto sem preço aplicável não é considerado disponível para venda (RN-DISP-006): com variação, exige ao menos uma variação ativa e disponível; sem variação, exige `base_price` definido.
+Produto sem preço aplicável não é considerado disponível para venda (RN-DISP-006): com variação, exige ao menos uma variação ativa e disponível; sem variação, exige `base_price` definido. A variação de fogazza não conta como tamanho de pizza: o sabor de preço único com preço de fogazza continua vendendo a pizza pelo `base_price` (D-2026-09-29-100).
 
 ## 5.3 `pizza_sizes`
 
@@ -286,7 +293,7 @@ Tamanho vendido como `fogazza`: `max_flavors = 1`
 (`pizza_sizes_fogazza_um_sabor`), sem preço de borda, e usado só por produto
 do tipo `pizza`. As leituras públicas da pizza (`cardapio_publico`,
 `tamanhos_publicos`, `buscar_catalogo`) consideram só tamanhos vendidos como
-pizza.
+pizza; a fogazza chega ao cliente pelo card de entrada (§5.2).
 
 ## 5.4 `product_variants`
 

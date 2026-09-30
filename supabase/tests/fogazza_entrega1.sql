@@ -12,7 +12,8 @@
 --      destino e deixa auditoria;
 --   D. o cardápio público continua igual para a pizza: não oferece o tamanho
 --      de fogazza, o preço "a partir de" não cai para o da fogazza, a promoção
---      da fogazza não marca a pizza, e o card de entrada não aparece;
+--      da fogazza não marca a pizza (o card de entrada, escondido nesta
+--      entrega, aparece desde a entrega 2 — cenários D4 a D6);
 --   E. o motor que já existe calcula a fogazza: preço do sabor, sem meio a
 --      meio, sem borda, com adicional pelo preço do tamanho de fogazza.
 --
@@ -206,14 +207,18 @@ select pg_temp.checar('D2 "a partir de" da pizza ignora a fogazza mais barata', 
   (select preco::text from public.cardapio_publico() where slug = 'calabresa-f98'));
 select pg_temp.checar('D3 promoção só na fogazza não marca a pizza em promoção', 'false',
   (select em_promocao::text from public.cardapio_publico() where slug = 'calabresa-f98'));
-select pg_temp.checar('D4 card de entrada fora do cardápio até a entrega 2', '0',
+-- D4–D6 mudaram com a entrega 2 (0135): até ela o card de entrada ficava
+-- escondido; agora ele é a vitrine da fogazza. O detalhe está na suíte
+-- fogazza_entrega2.sql.
+select pg_temp.checar('D4 card de entrada no cardápio (desde a entrega 2)', '1',
   (select count(*)::text from public.cardapio_publico() where slug = 'fogazza-salgada-f98'));
-select pg_temp.checar('D5 ...e fora do link direto', '0',
+select pg_temp.checar('D5 ...no link direto', '1',
   (select count(*)::text from public.produto_publico('fogazza-salgada-f98')));
-select pg_temp.checar('D6 ...e fora da busca', '0',
+select pg_temp.checar('D6 ...e na busca', '1',
   (select count(*)::text from public.buscar_catalogo('fogazza salgada f98')));
 select pg_temp.checar('D7 buscar "fogazza" não devolve a PIZZA de calabresa', '0',
-  (select count(*)::text from public.buscar_catalogo('fogazza calabresa f98')));
+  (select count(*)::text from public.buscar_catalogo('fogazza calabresa f98')
+    where slug = 'calabresa-f98'));
 select pg_temp.checar('D8 a busca da pizza continua achando e cobrando a pizza', '50.00',
   (select preco::text from public.buscar_catalogo('calabresa f98') where slug = 'calabresa-f98'));
 select pg_temp.checar('D9 sabores do tamanho de fogazza: os 2, com o preço de fogazza', 'Calabresa F98=15.00,Mussarela F98=19.00',

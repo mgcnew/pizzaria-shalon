@@ -61,7 +61,7 @@ export function NucleoConfigurador({
   variacaoInicial?: string | null;
   aoConfirmar: (item: ItemConfigurado) => void;
 }) {
-  const { produto, tamanhos, porTamanho, montadoInicial } = dados;
+  const { produto, tamanhos, porTamanho, montadoInicial, tamanhoFixo = false } = dados;
   const [recalculando, iniciarRecalculo] = useTransition();
 
   const disponiveis = tamanhos.filter((t) => t.disponivel);
@@ -176,7 +176,7 @@ export function NucleoConfigurador({
     if (!montado.ok) return;
     aoConfirmar({
       produtoId: produto.id,
-      produtoSlug: produto.slug,
+      produtoSlug: dados.caminho ?? produto.slug,
       escolhas: config,
       saboresCompletos: saboresEscolhidos,
       montado,
@@ -247,8 +247,8 @@ export function NucleoConfigurador({
 
   return (
     <div className={ancoragem === "fixa" ? "pb-[150px]" : ""}>
-      {/* 1 · Tamanho — RN-PIZZA-003 */}
-      {tamanhos.length > 0 ? (
+      {/* 1 · Tamanho — RN-PIZZA-003. Fixo na fogazza (RN-FOG-004). */}
+      {tamanhos.length > 0 && !tamanhoFixo ? (
         <fieldset className="mt-5 border-0 p-0">
           <legend className="mb-1 text-[16px] font-bold text-ink">Escolha o tamanho</legend>
           <p className="m-0 mb-[10px] text-[13px] text-muted">Obrigatório</p>

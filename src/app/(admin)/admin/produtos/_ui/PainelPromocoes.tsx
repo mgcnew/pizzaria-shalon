@@ -1,7 +1,12 @@
 import { formatBRL } from "@/lib/format";
 import { StatusBadge, Input, Select } from "@/ui/components";
 import { Cartao, EmptyState } from "@/ui/patterns";
-import { listarPromocoes, listarProdutos, listarVariacoes } from "@/application/catalogo/consultas";
+import {
+  listarPromocoes,
+  listarProdutos,
+  listarTamanhos,
+  listarVariacoes,
+} from "@/application/catalogo/consultas";
 import {
   salvarPromocao,
   alternarAtivoPromocao,
@@ -51,18 +56,34 @@ function formatarData(iso: string | null): string {
 }
 
 export async function PainelPromocoes({ podeGerenciar }: { podeGerenciar: boolean }) {
-  const [promocoes, produtos] = await Promise.all([listarPromocoes(), listarProdutos()]);
+  const [promocoes, produtos, tamanhos] = await Promise.all([
+    listarPromocoes(),
+    listarProdutos(),
+    listarTamanhos(),
+  ]);
 
   // Alvos possíveis (RN-PROMO-003): uma VARIAÇÃO específica, ou um produto de
-  // preço próprio — bebida, fogazza, combo. Produto com variação não pode ser
-  // alvo direto: a autoridade de preço dele está na variação.
+  // preço próprio — bebida, fogazza, combo. Produto com tamanho de pizza não
+  // pode ser alvo direto: a autoridade de preço dele está na variação.
   const comVariacao = produtos.filter((p) => p.ativo && p.tamanhos > 0);
-  const comPrecoProprio = produtos.filter(
-    (p) => p.ativo && p.tamanhos === 0 && p.preco_base !== null,
-  );
 
   const variacoesPorProduto = await Promise.all(
     comVariacao.map(async (p) => ({ produto: p, variacoes: await listarVariacoes(p.id) })),
+  );
+
+  // O preço de fogazza não conta como tamanho (D-2026-09-29-100): a pizza de
+  // preço único que também é vendida como fogazza continua podendo ter
+  // promoção no produto — e a fogazza dela, na variação.
+  const tamanhosDeFogazza = new Set(
+    tamanhos.filter((t) => t.sold_as === "fogazza").map((t) => t.id),
+  );
+  const soFogazza = new Set(
+    variacoesPorProduto
+      .filter(({ variacoes }) => variacoes.every((v) => tamanhosDeFogazza.has(v.tamanho_id)))
+      .map(({ produto }) => produto.id),
+  );
+  const comPrecoProprio = produtos.filter(
+    (p) => p.ativo && p.preco_base !== null && (p.tamanhos === 0 || soFogazza.has(p.id)),
   );
 
   return (
@@ -148,7 +169,7 @@ export async function PainelPromocoes({ podeGerenciar }: { podeGerenciar: boolea
               </optgroup>
             ))}
             {comPrecoProprio.length > 0 ? (
-              <optgroup label="Preço próprio (bebida, fogazza, combo)">
+              <optgroup label="Preço próprio (bebida, fogazza, combo, pizza de preço único)">
                 {comPrecoProprio.map((p) => (
                   <option key={p.id} value={`product:${p.id}`}>
                     {p.nome} ({p.preco_base === null ? "—" : formatBRL(p.preco_base)})

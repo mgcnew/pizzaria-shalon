@@ -2,8 +2,15 @@
 
 import { useState, useTransition } from "react";
 import { formatBRL } from "@/lib/format";
-import { buscarProdutos, carregarConfigurador } from "@/application/publico/acoes";
+import {
+  buscarProdutos,
+  carregarConfigurador,
+  carregarConfiguradorDaFogazza,
+  carregarSaboresDaFogazza,
+} from "@/application/publico/acoes";
+import type { CardDeFogazza } from "@/application/publico/consultas";
 import type { ResultadoBusca } from "@/application/publico/tipos";
+import { filtrarSabores } from "@/domain/catalogo/buscaDeSabor";
 import type { ItemDoRascunho } from "@/application/pedidos/tipos";
 import { NucleoConfigurador } from "@/ui/configurador/NucleoConfigurador";
 import type { DadosDoConfigurador } from "@/ui/configurador/tipos";
@@ -24,6 +31,10 @@ import type { DadosDoConfigurador } from "@/ui/configurador/tipos";
  *
  * Serve tanto ao pedido manual quanto à inclusão de item numa alteração: o
  * que muda é só o que o chamador faz com o item devolvido.
+ *
+ * Card de fogazza (RN-FOG-003) tem um passo a mais, como no cardápio: a
+ * lista de sabores do card, e depois o configurador daquele sabor com o
+ * tamanho fixo — as mesmas leituras da página pública.
  */
 export function EscolherProduto({
   aoAdicionar,
@@ -35,6 +46,9 @@ export function EscolherProduto({
   const [termo, setTermo] = useState("");
   const [resultados, setResultados] = useState<ResultadoBusca[]>([]);
   const [dados, setDados] = useState<DadosDoConfigurador | null>(null);
+  const [titulo, setTitulo] = useState("");
+  const [fogazza, setFogazza] = useState<CardDeFogazza | null>(null);
+  const [filtroSabor, setFiltroSabor] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, iniciar] = useTransition();
 
@@ -50,26 +64,53 @@ export function EscolherProduto({
     });
   }
 
-  function abrir(slug: string) {
+  function abrir(p: ResultadoBusca) {
     setErro(null);
     iniciar(async () => {
-      const d = await carregarConfigurador(slug);
+      if (p.tipo === "fogazza") {
+        const card = await carregarSaboresDaFogazza(p.slug);
+        if (card !== null) {
+          setFiltroSabor("");
+          setFogazza(card);
+          return;
+        }
+      }
+      const d = await carregarConfigurador(p.slug);
       if (d === null) {
         setErro("Não foi possível abrir este produto.");
         return;
       }
+      setTitulo(d.produto.nome);
       setDados(d);
     });
+  }
+
+  function abrirSabor(card: CardDeFogazza["card"], saborSlug: string) {
+    setErro(null);
+    iniciar(async () => {
+      const d = await carregarConfiguradorDaFogazza(card.slug, saborSlug);
+      if (d === null) {
+        setErro("Não foi possível abrir este sabor.");
+        return;
+      }
+      setTitulo(`${card.nome} · ${d.produto.nome}`);
+      setDados(d);
+    });
+  }
+
+  function recomecar() {
+    setDados(null);
+    setFogazza(null);
   }
 
   if (dados !== null) {
     return (
       <div className="rounded-12 border border-border-shalon bg-elev p-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="m-0 text-[15px] font-bold text-ink">{dados.produto.nome}</h3>
+          <h3 className="m-0 text-[15px] font-bold text-ink">{titulo}</h3>
           <button
             type="button"
-            onClick={() => setDados(null)}
+            onClick={recomecar}
             className="min-h-touch cursor-pointer rounded-11 border-[1.5px] border-border-shalon bg-surface px-3 text-[13px] font-semibold text-ink"
           >
             Trocar produto
@@ -98,11 +139,75 @@ export function EscolherProduto({
               total: item.montado.total,
               rotulos: item.montado.rotulos,
             });
-            setDados(null);
+            recomecar();
             setTermo("");
             setResultados([]);
           }}
         />
+      </div>
+    );
+  }
+
+  if (fogazza !== null) {
+    const visiveis = filtrarSabores(fogazza.sabores, filtroSabor);
+    return (
+      <div className="rounded-12 border border-border-shalon bg-elev p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="m-0 text-[15px] font-bold text-ink">{fogazza.card.nome}</h3>
+          <button
+            type="button"
+            onClick={recomecar}
+            className="min-h-touch cursor-pointer rounded-11 border-[1.5px] border-border-shalon bg-surface px-3 text-[13px] font-semibold text-ink"
+          >
+            Trocar produto
+          </button>
+        </div>
+
+        <label htmlFor="busca-sabor-fogazza" className="mb-[6px] mt-2 block text-[13.5px] font-semibold text-ink">
+          Escolha o sabor
+        </label>
+        <input
+          id="busca-sabor-fogazza"
+          value={filtroSabor}
+          onChange={(e) => setFiltroSabor(e.target.value)}
+          placeholder="Filtrar sabores…"
+          className="min-h-touch w-full rounded-11 border-[1.5px] border-border-shalon bg-surface px-3 text-[15px] text-ink focus:border-brand-orange focus:outline-none"
+        />
+
+        {ocupado ? <p className="m-0 mt-2 text-[12.5px] text-muted">Abrindo…</p> : null}
+        {erro !== null ? (
+          <p role="alert" className="m-0 mt-2 text-[13px] font-semibold text-tdf">
+            {erro}
+          </p>
+        ) : null}
+
+        {visiveis.length > 0 ? (
+          <ul className="m-0 mt-2 list-none p-0">
+            {visiveis.map((s) => (
+              <li key={s.variacao_id}>
+                <button
+                  type="button"
+                  disabled={!s.disponivel}
+                  onClick={() => abrirSabor(fogazza.card, s.slug)}
+                  className={[
+                    "flex w-full min-h-touch items-center justify-between gap-3 rounded-11 border-0 bg-transparent px-2 py-2 text-left",
+                    s.disponivel ? "cursor-pointer hover:bg-surface" : "cursor-not-allowed opacity-60",
+                  ].join(" ")}
+                >
+                  <span className="block min-w-0 text-[14.5px] font-semibold text-ink">
+                    {s.nome}
+                    {s.disponivel ? "" : " · indisponível hoje"}
+                  </span>
+                  <span className="whitespace-nowrap text-[14px] tabular-nums text-ink-2">
+                    {formatBRL(s.preco)}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="m-0 mt-2 text-[13px] text-ink-2">Nenhum sabor com “{filtroSabor}”.</p>
+        )}
       </div>
     );
   }
@@ -135,7 +240,7 @@ export function EscolherProduto({
               <button
                 type="button"
                 disabled={!p.disponivel}
-                onClick={() => abrir(p.slug)}
+                onClick={() => abrir(p)}
                 className={[
                   "flex w-full min-h-touch items-center justify-between gap-3 rounded-11 border-0 bg-transparent px-2 py-2 text-left",
                   p.disponivel ? "cursor-pointer hover:bg-surface" : "cursor-not-allowed opacity-60",

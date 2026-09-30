@@ -88,7 +88,7 @@ export function FormularioProduto({
         inputMode="decimal"
         defaultValue={produto?.preco_base === null || produto === undefined ? "" : String(produto.preco_base).replace(".", ",")}
         placeholder="Ex.: 56,90"
-        hint="Use para bebida, fogazza e combo. Pizza com tamanhos ignora este campo — o preço é por tamanho."
+        hint="Use para bebida, fogazza, combo e pizza de preço único. Pizza com tamanhos ignora este campo — o preço é por tamanho. O preço de fogazza não conta como tamanho."
       />
 
       <Input
