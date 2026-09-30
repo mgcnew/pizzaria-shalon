@@ -3473,6 +3473,63 @@ continuam lidos a cada acesso, pelo mesmo motivo da Etapa 5 descartada
 
 ---
 
+## D-2026-09-29-97 — Sabores de pizza com o nome do sabor, e busca por palavras
+
+**Data:** 29/09/2026 · **Aprovado pelo responsável pelo produto (lista
+"antes → depois" e itens 1 a 5)**
+
+**Contexto.** Para a fogazza reaproveitar os sabores de pizza (discussão em
+aberto, ver "Fogazza" abaixo), os sabores precisam se chamar pelo sabor, e
+não "Pizza de …". Renomear também limpa a comanda: a meio a meio deixa de
+sair como "1x Pizza mussarela / Pizza calabresa".
+
+**Decisão (dados do DEV).**
+1. Os 61 sabores que começavam com "Pizza " passam a se chamar só pelo sabor
+   ("Pizza calabresa" → "Calabresa"). "À Moda" e "À Moda da casa" não mudam.
+2. Com crase: "À sua escolha", "À moda do pizzaiolo".
+3. Grafia de marca: "Shalon" (era "Shallon"), "Chocolate branco c/
+   Chocoball" (era "chocoboll"), "Sonho de Valsa" e "Bis" com maiúscula.
+4. Dois endereços trocados corrigidos: a Brócolis sai de `/produto/pizza-bauru`
+   e vai para `/produto/pizza-brocolis`, que era da Caipira; a Caipira vai
+   para `/produto/pizza-caipira`. Os demais endereços não mudam.
+5. Nomes com número ("Caipira 3", "Dois queijos 2", "Lombo 2", "Milho verde
+   2") ficam como estão até a Shalon dizer o que diferencia cada um.
+
+Produção ainda não tem catálogo: lá o cadastro nasce com estes nomes.
+
+**Consequência encontrada e corrigida: a busca.** `buscar_catalogo`
+procurava o termo inteiro como um trecho só. Com a renomeação, "pizza
+calabresa" passou a devolver 0. A migration 0133 faz a busca casar
+**palavras**: cada palavra do termo precisa aparecer no nome, na descrição,
+na categoria ou num tamanho oferecido, e palavras de ligação (de, com, c/…)
+não contam. A palavra inteira no nome vem primeiro na ordem. Medido no DEV:
+
+| Termo | Antes | Depois |
+|---|---|---|
+| pizza calabresa | 0 | 8 (Calabresa primeiro) |
+| pizza de calabresa | 0 | 8 |
+| chocolate morango | 0 | 1 |
+| chocolate c/ morango | 0 | 1 |
+
+A seção 8 da `publico_fase4.sql` passa inteira, com 3 cenários novos. A
+função continua INVOKER, sob o RLS de `products`; o termo é escapado antes
+de virar regex.
+
+**Fogazza, ainda em aberto.** Direção discutida: dois produtos de entrada
+("Fogazza salgada", "Fogazza doce"), cada um com uma foto. O cliente escolhe
+1 sabor dentre os sabores de pizza marcados para fogazza, sem meio a meio e
+sem borda, com adicionais cobrados à parte, e os relatórios contam fogazza
+separada da pizza. Isso muda a RN-FOG-001 ("fogazza não herda regras de
+pizza"). Faltam quatro respostas da Shalon: preço (único, faixa ou por
+sabor), quais sabores entram, adicionais iguais aos da pizza ou não, e se a
+falta de ingrediente é compartilhada.
+
+**Onde foi formalizada:**
+`supabase/migrations/20260929140000_busca_por_palavras.sql`;
+`supabase/tests/publico_fase4.sql` (8.13 a 8.15); dados do catálogo no DEV.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.

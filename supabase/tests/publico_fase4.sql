@@ -373,6 +373,14 @@ select pg_temp.checar('8.9 termo sem correspondencia', '0',
   (select count(*)::text from public.buscar_catalogo('zzzzz') where slug like '%-f4'));
 select pg_temp.checar('8.10 produto INATIVO nunca aparece na busca', '0',
   (select count(*)::text from public.buscar_catalogo('inativa') where slug like '%-f4'));
+-- 0133: a busca casa PALAVRAS, cada uma em qualquer lugar do produto
+-- (D-2026-09-29-97). Antes, o termo inteiro tinha de ser um trecho só.
+select pg_temp.checar('8.13 palavras em lugares diferentes (categoria + nome)', '1',
+  (select count(*)::text from public.buscar_catalogo('pizzas calabresa') where slug like '%-f4'));
+select pg_temp.checar('8.14 palavra de ligacao e ignorada', '1',
+  (select count(*)::text from public.buscar_catalogo('calabresa com cebola') where slug like '%-f4'));
+select pg_temp.checar('8.15 tamanho + sabor', '1',
+  (select count(*)::text from public.buscar_catalogo('mini portuguesa') where slug like '%-f4'));
 
 
 reset role;  -- mutação de estado: anon não tem policy de escrita
