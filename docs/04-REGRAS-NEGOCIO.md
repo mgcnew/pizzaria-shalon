@@ -367,6 +367,10 @@ Busca pública considera nome, descrição, categoria e tamanhos oferecidos, sem
 ### RN-BUSCA-002
 Produto ativo porém temporariamente indisponível pode aparecer na busca com indicação “Indisponível hoje”, sem possibilidade de adição.
 
+Produto, categoria ou tamanho **inativo** não aparece no cardápio, na busca
+nem pelo link direto — para ninguém, inclusive para a equipe logada no
+painel. *(D-2026-09-30-103.)*
+
 ### RN-LINK-001
 Produtos, combos e categorias podem possuir links compartilháveis.
 

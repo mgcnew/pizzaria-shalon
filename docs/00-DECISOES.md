@@ -3720,6 +3720,27 @@ borda.
 
 ---
 
+## D-2026-09-30-103 — Inativo não aparece no cardápio, nem para quem está logado
+
+**Data:** 30/09/2026 · **Decisão do responsável pelo produto nesta conversa**
+
+**O achado.** A "Fogazza mussarela", inativada, aparecia no cardápio público
+como "indisponível" para quem estava logado no painel. As leituras do
+cardápio confiavam no RLS para esconder inativos; o RLS da equipe mostra
+inativos, porque o painel precisa deles.
+
+**Decisão.** Inativo não é cardápio para ninguém: o filtro de ativo passa a
+estar escrito nas leituras públicas (cardápio, link direto, busca, tamanhos,
+sabores do meio a meio e categorias). Equipe logada e visitante veem o mesmo
+cardápio. Temporariamente indisponível continua aparecendo marcado; só o
+inativo sai. Inativar continua sendo a forma de "retirar" um produto:
+some do cardápio e preserva o histórico de vendas.
+
+**Onde foi formalizada:** `supabase/migrations/20260930140000_inativo_fora_do_cardapio.sql`;
+`supabase/tests/inativo_fora_do_cardapio.sql`.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.
