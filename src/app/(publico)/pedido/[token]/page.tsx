@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 const TOM = {
   aguardando: "border-twb bg-tw text-twf",
   andamento: "border-border-shalon bg-elev text-ink",
-  concluido: "border-tsb bg-ts text-tsf",
+  concluido: "border-tgb bg-tg text-tgf",
   problema: "border-tdb bg-td text-tdf",
 } as const;
 
@@ -57,8 +57,8 @@ export default async function Page({
   return (
     <section className="mx-auto max-w-[680px] px-4 py-4">
       {novo === "1" ? (
-        <div className="mb-4 rounded-14 border border-tsb bg-ts p-4">
-          <p className="m-0 font-display text-[20px] font-bold text-tsf">
+        <div className="mb-4 rounded-14 border border-tgb bg-tg p-4">
+          <p className="m-0 font-display text-[20px] font-bold text-tgf">
             Pedido enviado, {pedido.cliente_nome.split(" ")[0]}!
           </p>
           <p className="m-0 mt-1 text-[14px] text-ink-2">

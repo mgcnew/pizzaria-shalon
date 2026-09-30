@@ -63,7 +63,7 @@ export function FormularioNovaSenha() {
   if (estado.ok) {
     return (
       <div className="mt-5">
-        <p className="m-0 rounded-12 border border-tsb bg-ts px-3 py-3 text-[14px] font-semibold text-tsf">
+        <p className="m-0 rounded-12 border border-tgb bg-tg px-3 py-3 text-[14px] font-semibold text-tgf">
           Senha definida. Entre com ela agora.
         </p>
         <Link

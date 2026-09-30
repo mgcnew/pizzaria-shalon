@@ -208,9 +208,9 @@ export function PainelAlteracao({
           {novos.map((i) => (
             <li
               key={i.linha}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-10 bg-ts px-3 py-2"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-10 bg-tg px-3 py-2"
             >
-              <span className="text-[14px] text-tsf">
+              <span className="text-[14px] text-tgf">
                 + {i.quantidade}× {i.nome}
                 {i.rotulos.length > 0 ? (
                   <span className="block text-[12px] text-ink-2">{i.rotulos.join(" · ")}</span>

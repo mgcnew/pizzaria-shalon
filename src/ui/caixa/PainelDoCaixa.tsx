@@ -360,7 +360,7 @@ function FormularioDeFechamento({ erroExterno, aoErro, aoCancelar }: {
     }}>
       <ResumoVisualDoFechamento conferencia={conferencia} />
       {conferencia.fechado ? (
-        <p className="m-0 rounded-12 border border-tsb bg-ts p-3 text-[13.5px] font-semibold text-tsf">Contagem correta. O caixa foi fechado com sucesso.</p>
+        <p className="m-0 rounded-12 border border-tgb bg-tg p-3 text-[13.5px] font-semibold text-tgf">Contagem correta. O caixa foi fechado com sucesso.</p>
       ) : (
         <p className="m-0 rounded-12 border border-twb bg-tw p-3 text-[13.5px] font-semibold text-twf">Há {diferenca !== null && diferenca > 0 ? "sobra" : "falta"} de {formatBRL(Math.abs(diferenca ?? 0))}.</p>
       )}

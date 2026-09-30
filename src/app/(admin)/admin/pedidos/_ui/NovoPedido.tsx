@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Input } from "@/ui/components/Input";
-import { Select } from "@/ui/components/Select";
+import { SelectMenu } from "@/ui/components/SelectMenu";
 import { Textarea } from "@/ui/components/Textarea";
 import { formatBRL } from "@/lib/format";
 import { buscarClienteParaBalcao, criarPedidoManual } from "@/application/pedidos/acoes";
@@ -277,8 +277,8 @@ export function NovoPedido({
 
   if (criado !== null) {
     return (
-      <div className="rounded-16 border border-tsb bg-ts p-4">
-        <p className="m-0 font-display text-[20px] font-bold text-tsf">
+      <div className="rounded-16 border border-tgb bg-tg p-4">
+        <p className="m-0 font-display text-[20px] font-bold text-tgf">
           Pedido #{criado.numero} lançado
         </p>
         <p className="m-0 mt-1 text-[14px] text-ink-2">{explicarLancamento(criado.status)}</p>
@@ -348,7 +348,7 @@ export function NovoPedido({
                   aria-current={ativa ? "step" : undefined}
                   className={[
                     "motion-interactive group flex min-w-[76px] cursor-pointer flex-col items-center border-0 bg-transparent px-1 text-center transition-colors disabled:cursor-not-allowed",
-                    ativa ? "text-ink" : concluida ? "text-tsf" : "text-muted",
+                    ativa ? "text-ink" : concluida ? "text-tgf" : "text-muted",
                   ].join(" ")}
                 >
                   <span
@@ -357,7 +357,7 @@ export function NovoPedido({
                       ativa
                         ? "border-cta bg-cta text-cta-fg shadow-[0_4px_12px_rgb(30_24_20/0.12)]"
                         : concluida
-                          ? "border-tsb bg-ts text-tsf"
+                          ? "border-tgb bg-tg text-tgf"
                           : "border-border-shalon bg-surface text-muted group-enabled:group-hover:border-brand-orange",
                     ].join(" ")}
                   >
@@ -375,18 +375,13 @@ export function NovoPedido({
         <fieldset className={`m-0 flex flex-col gap-3 rounded-16 border border-border-shalon bg-surface p-4 ${classeDaEtapa("cliente")}`}>
           <legend className="px-1 text-[15px] font-bold text-ink">Canal e modalidade</legend>
 
-          <Select
+          <SelectMenu
             label="De onde veio este pedido"
-            value={origem}
-            onChange={(e) => setOrigem(e.target.value as OrigemManual)}
+            valor={origem}
+            aoMudar={(valor) => setOrigem(valor as OrigemManual)}
             hint="Fica registrado no pedido e serve para comparar canais depois."
-          >
-            {ORIGENS_MANUAIS.map((o) => (
-              <option key={o.valor} value={o.valor}>
-                {o.rotulo}
-              </option>
-            ))}
-          </Select>
+            opcoes={ORIGENS_MANUAIS.map((o) => ({ valor: o.valor, texto: o.rotulo }))}
+          />
 
           {origem === "ifood" ? (
             <p className="m-0 rounded-10 bg-tw px-3 py-2 text-[12.5px] font-semibold text-twf">
@@ -503,32 +498,30 @@ export function NovoPedido({
             </p>
           ) : (
             <>
-              <Select
+              <SelectMenu
                 label="Forma"
-                value={formaId}
-                onChange={(e) => {
-                  setFormaId(e.target.value);
+                valor={formaId}
+                aoMudar={(valor) => {
+                  setFormaId(valor);
                   setBandeiraId("");
                   setPrecisaTroco(false);
                 }}
-              >
-                <option value="">Escolha…</option>
-                {formas.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.nome}
-                  </option>
-                ))}
-              </Select>
+                opcoes={[
+                  { valor: "", texto: "Escolha…" },
+                  ...formas.map((f) => ({ valor: f.id, texto: f.nome })),
+                ]}
+              />
 
               {forma?.exige_bandeira ? (
-                <Select label="Bandeira" value={bandeiraId} onChange={(e) => setBandeiraId(e.target.value)}>
-                  <option value="">Escolha…</option>
-                  {forma.bandeiras.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.nome}
-                    </option>
-                  ))}
-                </Select>
+                <SelectMenu
+                  label="Bandeira"
+                  valor={bandeiraId}
+                  aoMudar={setBandeiraId}
+                  opcoes={[
+                    { valor: "", texto: "Escolha…" },
+                    ...forma.bandeiras.map((b) => ({ valor: b.id, texto: b.nome })),
+                  ]}
+                />
               ) : null}
 
               {reconhecido?.pagamento_habitual && !bloqueado ? (

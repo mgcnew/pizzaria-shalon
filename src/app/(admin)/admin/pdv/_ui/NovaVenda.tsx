@@ -788,8 +788,8 @@ export function NovaVenda({
         <h2 className="m-0 mb-3 text-[15px] font-bold text-ink">Venda atual</h2>
 
         {criado !== null ? (
-          <div className="mb-3 rounded-12 border border-tsb bg-ts p-3">
-            <p role="status" className="m-0 text-[14px] font-semibold text-tsf">
+          <div className="mb-3 rounded-12 border border-tgb bg-tg p-3">
+            <p role="status" className="m-0 text-[14px] font-semibold text-tgf">
               Venda #{criado.numero} concluída · {formatBRL(criado.total)}
             </p>
 
@@ -804,7 +804,7 @@ export function NovaVenda({
                 <strong className="text-right tabular-nums text-ink">{formatBRL(criado.troco ?? 0)}</strong>
               </div>
             ) : null}
-            <div className="mt-3 border-t border-tsb pt-3">
+            <div className="mt-3 border-t border-tgb pt-3">
               <CupomVenda58 venda={criado} aoNovaVenda={novaVenda} />
             </div>
           </div>
