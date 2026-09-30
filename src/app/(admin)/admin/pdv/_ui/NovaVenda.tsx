@@ -584,31 +584,56 @@ export function NovaVenda({
 
         {/* `text`, nunca `number`: campo numérico come zero à esquerda, e em
             EAN-13 o zero à esquerda é significativo. */}
-        <input
-          ref={campo}
-          /*
-           * `data-pdv="leitura"` é como o casco reconhece ESTE campo sem
-           * precisar de uma ref compartilhada: ele lê `document.activeElement`
-           * no instante da tecla, e o atributo diz se o foco está aqui (§2.1).
-           */
-          data-pdv="leitura"
-          type="text"
-          inputMode="text"
-          autoComplete="off"
-          value={leitura}
-          onChange={(e) => setLeitura(e.target.value)}
-          /*
-           * SEM `onKeyDown` AQUI, e isto é a Etapa 9.
-           *
-           * Enter e Tab passaram a ser decididos por `atalhos.ts`, através do
-           * listener único do casco. Manter o handler local faria o Enter
-           * resolver DUAS vezes — o local e o global — e duas resoluções do
-           * mesmo bipe é como um item entra dobrado no carrinho.
-           */
-          placeholder="Código de barras ou nome do produto"
-          aria-label="Código de barras ou nome do produto"
-          className="mt-3 min-h-touch-cta w-full rounded-11 border-[1.5px] border-border-shalon bg-surface px-3 font-mono text-[15px] tracking-wide text-ink focus:border-brand-orange focus:outline-none"
-        />
+        <div className="motion-interactive group mt-3 flex min-h-[54px] items-center gap-3 rounded-14 border-[1.5px] border-border-shalon bg-bg px-3.5 transition-colors focus-within:border-brand-orange focus-within:bg-surface">
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            className="h-5 w-5 shrink-0 text-muted transition-colors group-focus-within:text-brand-orange"
+          >
+            <path d="M3.5 5v14M7 5v14M10 5v14M14 5v14M16.5 5v14M20.5 5v14" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M2.5 8V4.5A1.5 1.5 0 0 1 4 3h3M21.5 8V4.5A1.5 1.5 0 0 0 20 3h-3M2.5 16v3.5A1.5 1.5 0 0 0 4 21h3M21.5 16v3.5A1.5 1.5 0 0 1 20 21h-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+          <input
+            ref={campo}
+            /*
+             * `data-pdv="leitura"` é como o casco reconhece ESTE campo sem
+             * precisar de uma ref compartilhada: ele lê `document.activeElement`
+             * no instante da tecla, e o atributo diz se o foco está aqui (§2.1).
+             */
+            data-pdv="leitura"
+            type="text"
+            inputMode="text"
+            autoComplete="off"
+            value={leitura}
+            onChange={(e) => setLeitura(e.target.value)}
+            /*
+             * SEM `onKeyDown` AQUI, e isto é a Etapa 9.
+             *
+             * Enter e Tab passaram a ser decididos por `atalhos.ts`, através do
+             * listener único do casco. Manter o handler local faria o Enter
+             * resolver DUAS vezes — o local e o global — e duas resoluções do
+             * mesmo bipe é como um item entra dobrado no carrinho.
+             */
+            placeholder="Código ou nome do produto"
+            aria-label="Código de barras ou nome do produto"
+            className="min-h-[51px] min-w-0 flex-1 border-0 bg-transparent text-[15px] font-medium text-ink outline-none placeholder:text-muted"
+          />
+          {leitura ? (
+            <button
+              type="button"
+              aria-label="Limpar código ou busca"
+              onClick={limparBusca}
+              className="motion-interactive flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-9 border-0 bg-tn text-[18px] text-ink-2 transition-colors hover:bg-border-shalon hover:text-ink"
+            >
+              ×
+            </button>
+          ) : (
+            <span className="hidden shrink-0 items-center gap-1 rounded-8 border border-border-shalon bg-surface px-2 py-1 text-[10.5px] font-semibold text-muted sm:flex">
+              Enter <span aria-hidden="true">↵</span>
+            </span>
+          )}
+        </div>
         <p className="m-0 mt-1 text-[12px] text-muted">
           O leitor digita e confirma sozinho. Não encontrando o código, a mesma
           caixa procura pelo nome.
