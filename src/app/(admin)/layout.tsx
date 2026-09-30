@@ -71,12 +71,12 @@ export default async function LayoutAdmin({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex min-h-[53px] flex-wrap items-center gap-3 border-b border-admin-nav-border bg-admin-nav-bg px-4 py-1">
+        <header className="sticky top-0 z-30 flex min-h-[53px] flex-nowrap items-center gap-2 border-b border-admin-nav-border bg-admin-nav-bg px-3 py-1 sm:gap-3 sm:px-4">
           <DrawerAdmin />
           <Link
             href="/admin"
             aria-label="Ir para o painel administrativo"
-            className="flex min-w-[120px] flex-1 items-center self-stretch"
+            className="flex min-w-0 flex-1 items-center self-stretch"
           >
             <Image
               src="/marca/logo-shalon.webp"
@@ -84,12 +84,12 @@ export default async function LayoutAdmin({
               width={512}
               height={256}
               priority
-              className="h-[34px] w-auto sm:h-[38px]"
+              className="h-[30px] w-auto sm:h-[38px]"
             />
           </Link>
           <SeletorDeTema atual={temaAtual} />
           {podeNaUI(sessao, "orders.view") ? (
-            <Suspense fallback={<Skeleton className="min-h-touch min-w-touch shrink-0 rounded-12" />}>
+            <Suspense fallback={<Skeleton className="h-10 w-10 shrink-0 rounded-12 sm:h-touch sm:w-touch" />}>
               <SinoDoPainel key={sessao.appUserId} appUserId={sessao.appUserId} />
             </Suspense>
           ) : null}

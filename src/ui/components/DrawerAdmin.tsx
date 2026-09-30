@@ -33,7 +33,7 @@ export function DrawerAdmin() {
         aria-label="Abrir menu"
         aria-expanded={aberto}
         onClick={() => setAberto(true)}
-        className="min-h-touch min-w-touch cursor-pointer rounded-11 border-[1.5px] border-border-shalon bg-transparent text-[17px] text-ink lg:hidden"
+        className="h-10 w-10 shrink-0 cursor-pointer rounded-11 border-[1.5px] border-border-shalon bg-transparent text-[15px] text-ink sm:h-touch sm:w-touch sm:text-[17px] lg:hidden"
       >
         ☰
       </button>

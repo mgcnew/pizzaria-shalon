@@ -247,9 +247,9 @@ export function SinoNotificacoesAdmin({
         aria-expanded={aberto}
         aria-controls="notificacoes-admin"
         onClick={() => setAberto((valor) => !valor)}
-        className="motion-interactive relative flex min-h-touch min-w-touch cursor-pointer items-center justify-center rounded-12 border border-border-shalon bg-surface text-ink transition-colors hover:border-brand-orange hover:bg-elev"
+        className="motion-interactive relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-12 border border-border-shalon bg-surface text-ink transition-colors hover:border-brand-orange hover:bg-elev sm:h-touch sm:w-touch"
       >
-        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-5 w-5">
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-[17px] w-[17px] sm:h-5 sm:w-5">
           <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         {naoLidas > 0 ? (

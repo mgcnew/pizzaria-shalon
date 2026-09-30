@@ -26,7 +26,7 @@ export function SeletorDeTema({ atual }: { atual: Tema }) {
 
   return (
     <div
-      className="flex shrink-0 items-center rounded-pill border border-border-shalon bg-bg p-1"
+      className="flex shrink-0 items-center rounded-pill border border-border-shalon bg-bg p-0.5 sm:p-1"
       role="group"
       aria-label="Tema da interface"
     >
@@ -41,7 +41,7 @@ export function SeletorDeTema({ atual }: { atual: Tema }) {
               aria-label={o.rotulo}
               title={o.rotulo}
               className={[
-                "flex h-9 w-9 cursor-pointer items-center justify-center rounded-pill border-0",
+                "flex h-8 w-8 cursor-pointer items-center justify-center rounded-pill border-0 sm:h-9 sm:w-9",
                 "motion-interactive transition-colors",
                 ativo
                   ? "bg-cta text-cta-fg shadow-sm"
@@ -49,12 +49,12 @@ export function SeletorDeTema({ atual }: { atual: Tema }) {
               ].join(" ")}
             >
               {o.valor === "claro" ? (
-                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-[15px] w-[15px] sm:h-[18px] sm:w-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <circle cx="12" cy="12" r="4" />
                   <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41" />
                 </svg>
               ) : (
-                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg aria-hidden="true" viewBox="0 0 24 24" className="h-[15px] w-[15px] sm:h-[18px] sm:w-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
                 </svg>
               )}

@@ -8,6 +8,7 @@ import { logger } from "@/lib/logger";
 import { buscarCatalogoPdv, resolverCodigoDeBarras } from "./consultas";
 import { obterPagamentoDoPedido } from "@/application/caixa/consultas";
 import type { PagamentoDoPedido } from "@/application/caixa/tipos";
+import type { PedidoAdministrativo } from "@/application/pedidos/tipos";
 import type { ItemCatalogoPdv, ResolucaoDeCodigo, VendaNoHistoricoDoPdv } from "./tipos";
 
 /**
@@ -157,6 +158,53 @@ export async function listarHistoricoDeVendas(
     return { ok: false, erro: String(resposta["erro"] ?? "Não foi possível consultar as vendas.") };
   }
   return { ok: true, vendas: (resposta["vendas"] ?? []) as VendaNoHistoricoDoPdv[] };
+}
+
+export type ItemDaSegundaVia = {
+  linha: number;
+  nome: string;
+  quantidade: number;
+  total: number;
+  detalhes: string[];
+};
+
+export type ResultadoSegundaVia =
+  | { ok: true; itens: ItemDaSegundaVia[] }
+  | { ok: false; erro: string };
+
+/** Carrega apenas os snapshots necessários para reimprimir o recibo de uma venda. */
+export async function obterItensDaSegundaVia(pedidoId: unknown): Promise<ResultadoSegundaVia> {
+  const validado = z.string().uuid().safeParse(pedidoId);
+  if (!validado.success) return { ok: false, erro: "Venda inválida." };
+
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("pedido_administrativo", {
+    p_order_id: validado.data,
+  });
+  if (error || !data) {
+    logger.error("pdv:obterItensDaSegundaVia", {
+      code: (error as { code?: string } | null)?.code,
+    });
+    return { ok: false, erro: "Não foi possível preparar a segunda via agora." };
+  }
+
+  const pedido = data as PedidoAdministrativo;
+  return {
+    ok: true,
+    itens: pedido.itens.map((item) => ({
+      linha: item.linha,
+      nome: item.nome,
+      quantidade: item.quantidade,
+      total: item.total,
+      detalhes: [
+        item.tamanho,
+        item.sabores?.map((sabor) => sabor.nome).join(" / ") ?? null,
+        item.borda ? `Borda: ${item.borda}` : null,
+        ...(item.adicionais ?? []),
+        item.observacao ? `Obs.: ${item.observacao}` : null,
+      ].filter((detalhe): detalhe is string => Boolean(detalhe)),
+    })),
+  };
 }
 
 /**

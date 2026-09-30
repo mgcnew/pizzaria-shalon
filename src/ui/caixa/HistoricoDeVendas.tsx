@@ -2,7 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { estornarPagamento } from "@/application/caixa/acoes";
-import { listarHistoricoDeVendas } from "@/application/pdv/acoes";
+import {
+  listarHistoricoDeVendas,
+  obterItensDaSegundaVia,
+  type ItemDaSegundaVia,
+} from "@/application/pdv/acoes";
 import type { VendaNoHistoricoDoPdv } from "@/application/pdv/tipos";
 import { formatBRL } from "@/lib/format";
 import { Button, Input, StatusBadge } from "@/ui/components";
@@ -34,6 +38,11 @@ export function HistoricoDeVendas({ podeEstornar }: { podeEstornar: boolean }) {
   const [erro, setErro] = useState<string | null>(null);
   const [mensagem, setMensagem] = useState<string | null>(null);
   const [selecionada, setSelecionada] = useState<VendaNoHistoricoDoPdv | null>(null);
+  const [segundaVia, setSegundaVia] = useState<{
+    venda: VendaNoHistoricoDoPdv;
+    itens: ItemDaSegundaVia[];
+  } | null>(null);
+  const [preparandoVia, setPreparandoVia] = useState<string | null>(null);
   const [motivo, setMotivo] = useState("");
   const [carregando, iniciar] = useTransition();
   const painel = useRef<HTMLDivElement>(null);
@@ -59,6 +68,7 @@ export function HistoricoDeVendas({ podeEstornar }: { podeEstornar: boolean }) {
     if (carregando) return;
     setAberto(false);
     setSelecionada(null);
+    setSegundaVia(null);
     setMotivo("");
   }
 
@@ -111,6 +121,19 @@ export function HistoricoDeVendas({ podeEstornar }: { podeEstornar: boolean }) {
       setMensagem(`Pagamento da venda #${numero} estornado com sucesso.`);
       await consultar();
     });
+  }
+
+  async function prepararSegundaVia(venda: VendaNoHistoricoDoPdv) {
+    setErro(null);
+    setMensagem(null);
+    setPreparandoVia(venda.pedido_id);
+    const resultado = await obterItensDaSegundaVia(venda.pedido_id);
+    setPreparandoVia(null);
+    if (!resultado.ok) {
+      setErro(resultado.erro);
+      return;
+    }
+    setSegundaVia({ venda, itens: resultado.itens });
   }
 
   return (
@@ -184,40 +207,48 @@ export function HistoricoDeVendas({ podeEstornar }: { podeEstornar: boolean }) {
                   Nenhuma venda encontrada.
                 </p>
               ) : (
-                <div className="overflow-hidden rounded-12 border border-border-shalon">
+                <div className="lg:overflow-hidden lg:rounded-12 lg:border lg:border-border-shalon">
                   <div className="hidden grid-cols-[90px_1fr_1fr_130px_125px] gap-3 bg-elev px-3 py-2 text-[11px] font-bold uppercase tracking-wide text-muted lg:grid">
                     <span>Venda</span><span>Cliente / origem</span><span>Pagamento</span>
                     <span>Recebido</span><span className="text-right">Ação</span>
                   </div>
-                  <ul className="m-0 list-none p-0">
+                  <ul className="m-0 grid list-none gap-3 p-0 lg:block">
                     {filtradas.map((venda) => {
                       const estornada = venda.situacao_pagamento === "reversed";
                       return (
                         <li
                           key={venda.pedido_id}
-                          className="grid gap-2 border-b border-border-shalon bg-surface px-3 py-3 last:border-b-0 lg:grid-cols-[90px_1fr_1fr_130px_125px] lg:items-center lg:gap-3"
+                          className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-3 rounded-14 border border-border-shalon bg-surface p-4 shadow-[0_5px_18px_rgb(41_37_36/0.05)] lg:grid-cols-[90px_1fr_1fr_130px_210px] lg:items-center lg:gap-3 lg:rounded-none lg:border-0 lg:border-b lg:px-3 lg:py-3 lg:shadow-none lg:last:border-b-0"
                         >
-                          <div>
+                          <div className="col-start-1 row-start-1 lg:col-auto lg:row-auto">
                             <strong className="text-[14px] text-ink">#{venda.numero}</strong>
                             <p className="m-0 text-[11.5px] text-muted">{formatarData(venda.pago_em)}</p>
                           </div>
-                          <div className="min-w-0">
+                          <div className="col-start-1 row-start-2 min-w-0 lg:col-auto lg:row-auto">
                             <p className="m-0 truncate text-[13.5px] font-semibold text-ink">{venda.cliente || "Balcão"}</p>
                             <p className="m-0 text-[12px] text-muted">{ROTULOS_ORIGEM[venda.origem] ?? venda.origem}</p>
                           </div>
-                          <div className="min-w-0">
+                          <div className="col-start-2 row-start-2 min-w-0 text-right lg:col-auto lg:row-auto lg:text-left">
                             <p className="m-0 truncate text-[13px] text-ink-2">{venda.formas || "—"}</p>
                             <StatusBadge tom={estornada ? "neutro" : "sucesso"}>
                               {estornada ? "Estornado" : "Pago"}
                             </StatusBadge>
                           </div>
-                          <div>
+                          <div className="col-start-2 row-start-1 text-right lg:col-auto lg:row-auto lg:text-left">
                             <strong className={estornada ? "text-[14px] tabular-nums text-muted line-through" : "text-[14px] tabular-nums text-ink"}>
                               {formatBRL(venda.valor_pago)}
                             </strong>
                             {estornada ? <p className="m-0 text-[11.5px] text-muted">{formatarData(venda.estornado_em)}</p> : null}
                           </div>
-                          <div className="lg:text-right">
+                          <div className="col-span-2 flex flex-wrap justify-end gap-2 border-t border-border-shalon pt-3 lg:col-auto lg:row-auto lg:border-0 lg:pt-0">
+                            <Button
+                              variante="secundario"
+                              tamanho="sm"
+                              disabled={preparandoVia === venda.pedido_id}
+                              onClick={() => { void prepararSegundaVia(venda); }}
+                            >
+                              {preparandoVia === venda.pedido_id ? "Preparando…" : "Imprimir 2ª via"}
+                            </Button>
                             {!estornada && venda.pode_estornar && podeEstornar ? (
                               <Button variante="perigo" tamanho="sm" onClick={() => {
                                 setSelecionada(venda);
@@ -226,8 +257,6 @@ export function HistoricoDeVendas({ podeEstornar }: { podeEstornar: boolean }) {
                               }}>
                                 Estornar
                               </Button>
-                            ) : !estornada && !podeEstornar ? (
-                              <span className="text-[11.5px] text-muted">Sem permissão</span>
                             ) : null}
                           </div>
                         </li>
@@ -268,8 +297,118 @@ export function HistoricoDeVendas({ podeEstornar }: { podeEstornar: boolean }) {
               </div>
             ) : null}
           </div>
+
+          {segundaVia ? (
+            <PreviaSegundaVia
+              venda={segundaVia.venda}
+              itens={segundaVia.itens}
+              aoFechar={() => setSegundaVia(null)}
+            />
+          ) : null}
         </div>
       ) : null}
     </>
+  );
+}
+
+function PreviaSegundaVia({
+  venda,
+  itens,
+  aoFechar,
+}: {
+  venda: VendaNoHistoricoDoPdv;
+  itens: ItemDaSegundaVia[];
+  aoFechar: () => void;
+}) {
+  const quantidade = itens.reduce((total, item) => total + item.quantidade, 0);
+  const estornada = venda.situacao_pagamento === "reversed";
+
+  return (
+    <div
+      className="fixed inset-0 z-[95] flex items-end justify-center bg-black/55 p-0 sm:items-center sm:p-4"
+      onKeyDown={(evento) => {
+        if (evento.key !== "Escape") return;
+        evento.stopPropagation();
+        aoFechar();
+      }}
+      onMouseDown={(evento) => {
+        if (evento.target === evento.currentTarget) aoFechar();
+      }}
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="titulo-segunda-via"
+        className="max-h-[94dvh] w-full overflow-y-auto rounded-t-20 border border-border-shalon bg-surface p-4 shadow-2xl sm:max-w-[440px] sm:rounded-20 sm:p-5"
+      >
+        <div className="mb-4 flex items-start justify-between gap-3 print:hidden">
+          <div>
+            <h3 id="titulo-segunda-via" className="m-0 font-display text-[19px] font-bold text-ink">
+              Segunda via do recibo
+            </h3>
+            <p className="m-0 mt-1 text-[12px] text-muted">Confira antes de enviar para a impressora de 58 mm.</p>
+          </div>
+          <button
+            type="button"
+            aria-label="Fechar segunda via"
+            onClick={aoFechar}
+            className="flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full border border-border-shalon bg-elev text-[20px] text-ink"
+          >
+            ×
+          </button>
+        </div>
+
+        <div id="cupom-segunda-via" className="mx-auto w-full max-w-[58mm] bg-white p-[3mm] font-mono text-[10px] leading-[1.35] text-black shadow-[0_4px_18px_rgb(0_0_0/0.12)] print:shadow-none">
+          <p className="m-0 text-center text-[12px] font-bold">PIZZARIA SHALON</p>
+          <p className="m-0 text-center">COMPROVANTE NAO FISCAL</p>
+          <p className="m-0 mt-1 text-center font-bold">*** SEGUNDA VIA ***</p>
+          {estornada ? <p className="m-0 mt-1 border border-black p-1 text-center font-bold">PAGAMENTO ESTORNADO</p> : null}
+          <div className="my-2 border-y border-dashed border-black py-1">
+            <p className="m-0">VENDA #{venda.numero}</p>
+            <p className="m-0">{formatarData(venda.pago_em)}</p>
+            <p className="m-0">{venda.cliente || "Balcão"}</p>
+          </div>
+          {itens.map((item) => (
+            <div key={item.linha} className="mb-1.5">
+              <div className="grid grid-cols-[1fr_auto] gap-2">
+                <span>{item.quantidade}x {item.nome}</span>
+                <span>{formatBRL(item.total)}</span>
+              </div>
+              {item.detalhes.map((detalhe, indice) => (
+                <p key={`${item.linha}-${indice}`} className="m-0 pl-2 text-[9px]">+ {detalhe}</p>
+              ))}
+            </div>
+          ))}
+          <div className="mt-2 border-t border-dashed border-black pt-1">
+            <p className="m-0 flex justify-between"><span>{quantidade} item(ns)</span><strong>{formatBRL(venda.valor_pago)}</strong></p>
+            <p className="m-0 flex justify-between gap-2"><span>Pagamento</span><span className="text-right">{venda.formas || "—"}</span></p>
+          </div>
+          <p className="mb-0 mt-3 text-center">Obrigado pela preferencia!</p>
+        </div>
+
+        <div className="mt-4 flex gap-2 print:hidden">
+          <Button onClick={() => window.print()} tamanho="md" className="flex-1">
+            Imprimir em 58 mm
+          </Button>
+          <Button variante="secundario" onClick={aoFechar} tamanho="md">
+            Fechar
+          </Button>
+        </div>
+        <style>{`
+          @media print {
+            @page { size: 58mm auto; margin: 0; }
+            body * { visibility: hidden !important; }
+            #cupom-segunda-via, #cupom-segunda-via * { visibility: visible !important; }
+            #cupom-segunda-via {
+              position: absolute !important;
+              inset: 0 auto auto 0 !important;
+              width: 58mm !important;
+              max-width: 58mm !important;
+              margin: 0 !important;
+            }
+          }
+        `}</style>
+      </section>
+    </div>
   );
 }

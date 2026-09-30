@@ -51,9 +51,9 @@ export function MenuUsuarioAdmin({
         aria-expanded={aberto}
         aria-controls="menu-usuario-admin"
         onClick={() => setAberto((valor) => !valor)}
-        className="motion-interactive group flex min-h-touch cursor-pointer items-center gap-2 rounded-12 border border-border-shalon bg-surface px-1.5 py-1.5 text-left transition-colors hover:border-brand-orange hover:bg-elev sm:pr-3"
+        className="motion-interactive group flex h-10 shrink-0 cursor-pointer items-center gap-2 rounded-12 border border-border-shalon bg-surface p-1 text-left transition-colors hover:border-brand-orange hover:bg-elev sm:h-auto sm:min-h-touch sm:px-1.5 sm:py-1.5 sm:pr-3"
       >
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-10 bg-tn text-[13px] font-extrabold uppercase text-ink">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-9 bg-tn text-[12px] font-extrabold uppercase text-ink sm:h-8 sm:w-8 sm:rounded-10 sm:text-[13px]">
           {nome.charAt(0)}
         </span>
         <span className="hidden min-w-0 sm:block">

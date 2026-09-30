@@ -15,7 +15,11 @@ vi.mock("@/application/caixa/consultas", () => ({
   obterPagamentoDoPedido: vi.fn(),
 }));
 
-const { finalizarVendaRapida, listarHistoricoDeVendas } = await import("@/application/pdv/acoes");
+const {
+  finalizarVendaRapida,
+  listarHistoricoDeVendas,
+  obterItensDaSegundaVia,
+} = await import("@/application/pdv/acoes");
 
 const entrada = {
   idempotency_key: "00000000-0000-4000-8000-000000000001",
@@ -122,6 +126,41 @@ describe("histórico unificado de vendas", () => {
 
     expect(resultado.ok && resultado.vendas).toHaveLength(1);
     expect(rpc).toHaveBeenCalledWith("historico_vendas_pdv", { p_limite: 150 });
+  });
+
+  it("prepara os snapshots dos itens para a segunda via", async () => {
+    rpc.mockResolvedValue({
+      data: {
+        itens: [{
+          linha: 1,
+          nome: "Pizza Shalon",
+          quantidade: 1,
+          total: 42,
+          tamanho: "Grande",
+          sabores: [{ nome: "Calabresa", porcao: 1 }],
+          borda: "Catupiry",
+          adicionais: ["Bacon"],
+          observacao: "Sem cebola",
+        }],
+      },
+      error: null,
+    });
+
+    const resultado = await obterItensDaSegundaVia("33333333-3333-4333-8333-333333333333");
+
+    expect(resultado).toEqual({
+      ok: true,
+      itens: [{
+        linha: 1,
+        nome: "Pizza Shalon",
+        quantidade: 1,
+        total: 42,
+        detalhes: ["Grande", "Calabresa", "Borda: Catupiry", "Bacon", "Obs.: Sem cebola"],
+      }],
+    });
+    expect(rpc).toHaveBeenCalledWith("pedido_administrativo", {
+      p_order_id: "33333333-3333-4333-8333-333333333333",
+    });
   });
 
   it("recusa limite inválido antes de consultar", async () => {
