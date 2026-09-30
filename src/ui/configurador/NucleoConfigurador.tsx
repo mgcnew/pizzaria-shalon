@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { formatBRL } from "@/lib/format";
+import { filtrarSabores } from "@/domain/catalogo/buscaDeSabor";
 import { montarItem } from "@/application/publico/acoes";
 import type { ItemMontado } from "@/application/publico/tipos";
 import type { DadosDoConfigurador, Escolhas, ItemConfigurado } from "./tipos";
@@ -148,6 +149,28 @@ export function NucleoConfigurador({
   function escolherTamanho(variacaoId: string) {
     aplicar({ variacaoId, sabores: [], bordaId: null, adicionais: [] });
   }
+
+  /**
+   * No balcão (`embutida`) a lista do meio a meio vira busca: com dezenas de
+   * sabores, rolar a lista inteira atrasa o atendimento. O atendente digita e
+   * só aparece o que bate; os sabores já escolhidos ficam sempre à vista. O
+   * cardápio público segue com a lista completa do design aprovado.
+   */
+  const buscaDeSabor = ancoragem === "embutida";
+  const [termoDoSabor, setTermoDoSabor] = useState("");
+
+  const outrosSabores = (dadosDoTamanho?.sabores ?? []).filter(
+    (s) => s.variacao_id !== config.variacaoId,
+  );
+  const saboresAchados =
+    buscaDeSabor && termoDoSabor.trim() !== ""
+      ? filtrarSabores(outrosSabores, termoDoSabor).filter((s) => !config.sabores.includes(s.variacao_id))
+      : [];
+  const saboresNoLimite = config.sabores.length >= (tamanho?.max_sabores ?? 1) - 1;
+  // Na busca, os escolhidos aparecem sempre; os demais, só os que batem.
+  const saboresVisiveis = buscaDeSabor
+    ? [...outrosSabores.filter((s) => config.sabores.includes(s.variacao_id)), ...saboresAchados]
+    : outrosSabores;
 
   function alternarSabor(id: string) {
     const atual = config.sabores;
@@ -306,54 +329,82 @@ export function NucleoConfigurador({
           <p className="m-0 mb-[10px] text-[13px] text-muted">
             {produto.nome} já está escolhido. Some outro sabor se quiser meio a meio.
           </p>
+          {buscaDeSabor && !saboresNoLimite ? (
+            <div className="mb-2">
+              <label htmlFor="busca-sabor-meio-a-meio" className="sr-only">
+                Buscar sabor para o meio a meio
+              </label>
+              <input
+                id="busca-sabor-meio-a-meio"
+                type="search"
+                value={termoDoSabor}
+                onChange={(e) => setTermoDoSabor(e.target.value)}
+                placeholder="Buscar sabor… (ex.: calabresa)"
+                autoComplete="off"
+                className="min-h-touch w-full rounded-11 border-[1.5px] border-border-shalon bg-surface px-3 text-[15px] text-ink focus:border-brand-orange focus:outline-none"
+              />
+            </div>
+          ) : null}
           <div className="flex flex-col gap-2">
-            {dadosDoTamanho.sabores
-              .filter((s) => s.variacao_id !== config.variacaoId)
-              .map((s) => {
-                const ativo = config.sabores.includes(s.variacao_id);
-                const cheio =
-                  !ativo && config.sabores.length >= (tamanho?.max_sabores ?? 1) - 1;
-                const bloqueado = !s.disponivel || cheio;
-                return (
-                  <button
-                    key={s.variacao_id}
-                    type="button"
-                    disabled={bloqueado}
-                    onClick={() => alternarSabor(s.variacao_id)}
-                    aria-pressed={ativo}
+            {saboresVisiveis.map((s) => {
+              const ativo = config.sabores.includes(s.variacao_id);
+              const cheio =
+                !ativo && config.sabores.length >= (tamanho?.max_sabores ?? 1) - 1;
+              const bloqueado = !s.disponivel || cheio;
+              return (
+                <button
+                  key={s.variacao_id}
+                  type="button"
+                  disabled={bloqueado}
+                  onClick={() => {
+                    alternarSabor(s.variacao_id);
+                    if (buscaDeSabor) setTermoDoSabor("");
+                  }}
+                  aria-pressed={ativo}
+                  className={[
+                    "flex min-h-[56px] items-center gap-3 rounded-13 border-2 px-[14px] py-[13px] text-left",
+                    bloqueado ? "cursor-not-allowed opacity-60" : "cursor-pointer",
+                    ativo ? "border-brand-red bg-td" : "border-border-shalon bg-surface",
+                  ].join(" ")}
+                >
+                  <span
+                    aria-hidden="true"
                     className={[
-                      "flex min-h-[56px] items-center gap-3 rounded-13 border-2 px-[14px] py-[13px] text-left",
-                      bloqueado ? "cursor-not-allowed opacity-60" : "cursor-pointer",
-                      ativo ? "border-brand-red bg-td" : "border-border-shalon bg-surface",
+                      "flex h-5 w-5 shrink-0 items-center justify-center rounded-6 border-2 text-[13px] font-bold text-white",
+                      ativo ? "border-brand-red bg-brand-red" : "border-border-shalon",
                     ].join(" ")}
                   >
-                    <span
-                      aria-hidden="true"
-                      className={[
-                        "flex h-5 w-5 shrink-0 items-center justify-center rounded-6 border-2 text-[13px] font-bold text-white",
-                        ativo ? "border-brand-red bg-brand-red" : "border-border-shalon",
-                      ].join(" ")}
-                    >
-                      {ativo ? "✓" : ""}
+                    {ativo ? "✓" : ""}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[15px] font-semibold text-ink">
+                      {s.nome}
+                      {s.disponivel ? "" : " · indisponível hoje"}
                     </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[15px] font-semibold text-ink">
-                        {s.nome}
-                        {s.disponivel ? "" : " · indisponível hoje"}
+                    {s.descricao ? (
+                      <span className="block truncate text-[13px] text-ink-2">
+                        {s.descricao}
                       </span>
-                      {s.descricao ? (
-                        <span className="block truncate text-[13px] text-ink-2">
-                          {s.descricao}
-                        </span>
-                      ) : null}
-                    </span>
-                    <span className="text-[14px] font-semibold tabular-nums text-ink-2">
-                      {formatBRL(s.preco)}
-                    </span>
-                  </button>
-                );
-              })}
+                    ) : null}
+                  </span>
+                  <span className="text-[14px] font-semibold tabular-nums text-ink-2">
+                    {formatBRL(s.preco)}
+                  </span>
+                </button>
+              );
+            })}
           </div>
+          {buscaDeSabor ? (
+            <p className="m-0 mt-2 text-[12.5px] text-muted" role="status">
+              {saboresNoLimite
+                ? `Limite de ${tamanho?.max_sabores} sabores atingido. Desmarque um para trocar.`
+                : termoDoSabor.trim() === ""
+                ? `Digite para buscar entre ${outrosSabores.length} sabores.`
+                : saboresAchados.length === 0
+                  ? "Nenhum sabor encontrado com esse nome."
+                  : null}
+            </p>
+          ) : null}
 
           {/* Microcopy do design, preservada literalmente — continua sendo a
               regra vigente (RN-PIZZA-005). */}

@@ -3790,6 +3790,26 @@ e para o balcão.
 
 ---
 
+## D-2026-09-30-106 — No balcão, o meio a meio escolhe o sabor por busca
+
+**Data:** 30/09/2026 · **Decisão do responsável pelo produto nesta conversa**
+
+**Decisão.** No configurador do administrativo (Novo pedido, PDV, alteração
+de pedido), a lista de sabores do meio a meio deixa de aparecer inteira: o
+atendente digita e aparecem só os sabores que batem (mesma regra da busca do
+cardápio: sem acento, por palavra). Os sabores já escolhidos ficam sempre à
+vista; ao escolher um, a busca limpa; atingido o limite de sabores do tamanho,
+a busca some e a tela diz para desmarcar um para trocar.
+
+**O que não muda.** O cardápio público segue com a lista completa do design
+aprovado. Preço, disponibilidade e limite de sabores continuam decididos pelo
+motor (`montar_item`); a busca só esconde linhas.
+
+**Onde foi formalizada:** `src/ui/configurador/NucleoConfigurador.tsx`
+(modo `embutida`), reaproveitando `src/domain/catalogo/buscaDeSabor.ts`.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.
