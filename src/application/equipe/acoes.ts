@@ -15,8 +15,8 @@ import type { Resultado } from "./tipos";
  *     (CLAUDE.md §16/§17);
  *  2. não transforma consumo em dívida — registrar é um ato, lançar no livro
  *     é outro, de quem tem `employees.finance.manage` (§15);
- *  3. não toca em salário. Em nenhuma hipótese, por nenhum caminho
- *     (RN-EMPFIN-003).
+ *  3. lançamentos do livro não alteram a referência salarial nem aplicam
+ *     descontos automaticamente (RN-EMPFIN-003).
  */
 
 const ROTA_EQUIPE = "/admin/equipe";
@@ -205,15 +205,17 @@ const funcionarioSchema = z.object({
   entregador: z.boolean(),
   admitido_em: z.string().max(10).optional(),
   observacao: z.string().max(400).optional(),
-});
+  salario_valor: z.number().finite().nonnegative().max(9999999999.99).nullable().optional(),
+  salario_base: z.enum(["daily", "monthly"]).optional(),
+}).refine((dados) => dados.salario_valor == null || dados.salario_base !== undefined);
 
 /** RN-FUNC-001: cadastro e edição. Situação tem rotina própria. */
 export async function salvarFuncionario(entrada: unknown): Promise<Resultado> {
   const v = funcionarioSchema.safeParse(entrada);
-  if (!v.success) return { ok: false, erro: "Informe ao menos o nome e o tipo." };
+  if (!v.success) return { ok: false, erro: "Confira nome, função e salário informado." };
 
   const supabase = await getSupabaseServerClient();
-  const { data, error } = await supabase.rpc("salvar_funcionario", {
+  const { data, error } = await supabase.rpc("salvar_funcionario_com_referencia", {
     p_dados: {
       id: v.data.id ?? null,
       nome: v.data.nome,
@@ -222,6 +224,10 @@ export async function salvarFuncionario(entrada: unknown): Promise<Resultado> {
       entregador: v.data.entregador,
       admitido_em: v.data.admitido_em || null,
       observacao: v.data.observacao ?? null,
+      ...(v.data.salario_valor !== undefined ? {
+        salario_valor: v.data.salario_valor,
+        salario_base: v.data.salario_base ?? "monthly",
+      } : {}),
     },
   });
   if (error) return falha("salvarFuncionario", error);

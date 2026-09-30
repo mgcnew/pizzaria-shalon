@@ -87,6 +87,21 @@ export type MembroDaEquipe = {
   acesso: AcessoDoFuncionario | null;
 };
 
+/** Dados protegidos por `employees.finance.view`, separados de `equipe()`. */
+export type ReferenciaSalarial = {
+  funcionario_id: string;
+  valor: number | null;
+  base: "daily" | "monthly";
+};
+
+export type LancamentoParaConferencia = {
+  id: string;
+  tipo: TipoDeLancamento;
+  valor: number;
+  quando: string;
+  motivo: string;
+};
+
 export type PapelAtribuivel = {
   id: string;
   nome: string;

@@ -9,6 +9,7 @@ import { EscolherProduto } from "../../pedidos/_ui/EscolherProduto";
 import type { ItemDoRascunho } from "@/application/pedidos/tipos";
 import type { FuncionarioBasico } from "@/application/equipe/consultas";
 import { GestaoDaEquipe } from "./GestaoDaEquipe";
+import { ConferenciaSalarial } from "./ConferenciaSalarial";
 import {
   lancarNoFuncionario,
   registrarMovimentoInterno,
@@ -20,6 +21,8 @@ import type {
   MembroDaEquipe,
   MovimentoInterno,
   PapelAtribuivel,
+  ReferenciaSalarial,
+  LancamentoParaConferencia,
   TipoDeMovimento,
 } from "@/application/equipe/tipos";
 
@@ -31,8 +34,7 @@ import type {
  *  - qualquer pessoa do balcão registra cortesia, consumo e perda;
  *  - o valor mostrado é DE REFERÊNCIA — não é venda, não é receita e não é
  *    cobrança;
- *  - o histórico financeiro do funcionário só existe para quem tem a
- *    permissão dele, e mesmo assim NÃO contém salário;
+ *  - o histórico e a referência salarial exigem a permissão financeira;
  *  - transformar um consumo em dívida é um segundo ato, explícito.
  *
  * O item usa o `EscolherProduto` do balcão, que usa o `NucleoConfigurador` do
@@ -86,11 +88,15 @@ export function PainelDaEquipe({
   papeis,
   movimentos,
   historico,
+  referencias,
+  lancamentosDoMes,
+  mesConferencia,
   funcionarioSelecionado,
   meuAppUserId,
   podeVerFinanceiro,
   podeLancar,
   podeGerirEquipe,
+  podeGerirSalario,
   podeGerirAcesso,
   caixaAberto,
 }: {
@@ -101,12 +107,16 @@ export function PainelDaEquipe({
   papeis: PapelAtribuivel[];
   movimentos: MovimentoInterno[];
   historico: HistoricoDoFuncionario | null;
+  referencias: ReferenciaSalarial[] | null;
+  lancamentosDoMes: LancamentoParaConferencia[] | null;
+  mesConferencia: string;
   funcionarioSelecionado: string | null;
   meuAppUserId: string | null;
   podeVerFinanceiro: boolean;
   podeLancar: boolean;
   /** `employees.manage`. */
   podeGerirEquipe: boolean;
+  podeGerirSalario: boolean;
   /** `employees.manage` E `roles.manage`. */
   podeGerirAcesso: boolean;
   /** RN-EMPFIN-004: sem gaveta aberta, adiantamento em dinheiro não sai. */
@@ -396,8 +406,8 @@ export function PainelDaEquipe({
 
   const livro = (
     <Cartao
-      titulo="Histórico do funcionário"
-      descricao="Consumo, adiantamento e diferença de acerto. Conferência gerencial — não é folha de pagamento."
+      titulo="Histórico e conferência do funcionário"
+      descricao="Salário combinado, vales e outros lançamentos para conferência gerencial."
       largura="cheio"
     >
       <SelectMenu
@@ -411,6 +421,19 @@ export function PainelDaEquipe({
           ...funcionarios.map((f) => ({ valor: f.id, texto: f.nome })),
         ]}
       />
+
+      {funcionarioSelecionado ? (
+        <ConferenciaSalarial
+          key={`${funcionarioSelecionado}-${mesConferencia}`}
+          referencia={referencias?.find((item) => item.funcionario_id === funcionarioSelecionado) ?? null}
+          lancamentos={lancamentosDoMes}
+          disponivel={referencias !== null && lancamentosDoMes !== null}
+          mes={mesConferencia}
+          aoMudarMes={(valor) => {
+            router.push(`/admin/equipe?aba=livro&funcionario=${funcionarioSelecionado}&mes=${valor}`);
+          }}
+        />
+      ) : null}
 
       {/* RN-EMPFIN-004: um fato, dois livros. A tela diz isso antes de gravar. */}
       {podeLancar && funcionarioSelecionado ? (
@@ -588,7 +611,9 @@ export function PainelDaEquipe({
         <GestaoDaEquipe
           equipe={equipe}
           papeis={papeis}
+          referencias={referencias}
           podeGerir={podeGerirEquipe}
+          podeGerirSalario={podeGerirSalario}
           podeGerirAcesso={podeGerirAcesso}
         />
       ) : aba === "livro" && podeVerFinanceiro ? (

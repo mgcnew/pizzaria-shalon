@@ -5,6 +5,8 @@ import {
   listarFuncionarios,
   listarMovimentos,
   listarPapeis,
+  listarReferenciasSalariais,
+  listarLancamentosParaConferencia,
   obterHistorico,
 } from "@/application/equipe/consultas";
 import { obterCaixa } from "@/application/caixa/consultas";
@@ -18,9 +20,8 @@ export const metadata: Metadata = { title: "Funcionários / Equipe" };
  * Três abas, três assuntos: movimentações internas, cadastro da equipe, e —
  * para quem tem a permissão financeira — o histórico do funcionário.
  *
- * O QUE ESTA PÁGINA NÃO TEM: salário. Ele não é lido aqui, não é passado ao
- * painel e não viaja no HTML — nem para quem poderia vê-lo noutra tela. A
- * separação de §15 é de dados, não de botão escondido.
+ * A referência salarial é consultada separadamente, apenas com a permissão
+ * financeira. `equipe()` continua sem salário para quem só vê dados operacionais.
  *
  * O que continua fora é a CRIAÇÃO da conta de login: exigiria `service_role`
  * (CLAUDE.md §13) e uma política de senha ainda não normatizada. A tela
@@ -29,9 +30,9 @@ export const metadata: Metadata = { title: "Funcionários / Equipe" };
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ aba?: string; funcionario?: string }>;
+  searchParams: Promise<{ aba?: string; funcionario?: string; mes?: string }>;
 }) {
-  const { aba, funcionario } = await searchParams;
+  const { aba, funcionario, mes } = await searchParams;
 
   const sessao = await obterSessaoInterna();
   const podeVerFinanceiro = podeNaUI(sessao, "employees.finance.view");
@@ -49,9 +50,14 @@ export default async function Page({
    */
   const abaEfetiva =
     aba === "equipe" ? "equipe" : aba === "livro" && podeVerFinanceiro ? "livro" : "movimentos";
+  const partesMes = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit",
+  }).formatToParts(new Date());
+  const mesAtual = `${partesMes.find((parte) => parte.type === "year")?.value}-${partesMes.find((parte) => parte.type === "month")?.value}`;
+  const mesConferencia = /^\d{4}-(0[1-9]|1[0-2])$/.test(mes ?? "") ? mes! : mesAtual;
   const nenhum = <T,>(valor: T) => Promise.resolve(valor);
 
-  const [funcionarios, equipe, papeis, movimentos, historico, caixa] = await Promise.all([
+  const [funcionarios, equipe, papeis, movimentos, historico, caixa, referencias, lancamentosDoMes] = await Promise.all([
     abaEfetiva === "equipe" ? nenhum([]) : listarFuncionarios(),
     abaEfetiva === "equipe" ? listarEquipe() : nenhum([]),
     // A lista já vem marcando o que ESTE usuário pode conceder (RN-RBAC-005).
@@ -62,6 +68,10 @@ export default async function Page({
     abaEfetiva === "livro" && funcionario ? obterHistorico(funcionario) : nenhum(null),
     // O caixa só decide o "pela gaveta" do adiantamento, no livro.
     abaEfetiva === "livro" ? obterCaixa() : nenhum({ aberto: false as const }),
+    podeVerFinanceiro && (abaEfetiva === "equipe" || abaEfetiva === "livro")
+      ? listarReferenciasSalariais() : nenhum([]),
+    abaEfetiva === "livro" && funcionario && podeVerFinanceiro
+      ? listarLancamentosParaConferencia(funcionario, mesConferencia) : nenhum([]),
   ]);
 
   return (
@@ -80,11 +90,15 @@ export default async function Page({
         papeis={papeis}
         movimentos={movimentos}
         historico={historico}
+        referencias={referencias}
+        lancamentosDoMes={lancamentosDoMes}
+        mesConferencia={mesConferencia}
         funcionarioSelecionado={funcionario ?? null}
         meuAppUserId={sessao?.appUserId ?? null}
         podeVerFinanceiro={podeVerFinanceiro}
         podeLancar={podeNaUI(sessao, "employees.finance.manage")}
         podeGerirEquipe={podeGerirEquipe}
+        podeGerirSalario={podeGerirEquipe && podeNaUI(sessao, "employees.finance.manage") && podeVerFinanceiro}
         // Dar acesso é transformar alguém em usuário: exige as duas permissões.
         podeGerirAcesso={podeGerirEquipe && podeNaUI(sessao, "roles.manage")}
         caixaAberto={caixa.aberto}

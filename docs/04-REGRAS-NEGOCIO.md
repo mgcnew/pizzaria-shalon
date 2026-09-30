@@ -1068,9 +1068,11 @@ Adiantamento pode registrar valor, data, motivo, notas, forma de pagamento e res
 
 ### RN-EMPFIN-002
 O sistema pode manter salário de referência e lançamentos para conferência gerencial, mas não é sistema de folha de pagamento.
+O salário de referência pode ser mensal ou por diária. Na diária, a quantidade de dias usada na prévia é informada por quem confere; não é inferida de entregas ou presença.
 
 ### RN-EMPFIN-003
 Não realizar automaticamente descontos trabalhistas/salariais a partir de divergências, consumos ou ocorrências.
+Cada lançamento começa fora da prévia de abatimentos e só é considerado quando o usuário financeiro o seleciona. Essa seleção não registra pagamento nem altera o livro do funcionário.
 
 ### RN-EMPFIN-004 — Adiantamento pago em dinheiro pela gaveta
 Decisão de 22/09/2026, que resolve a lacuna registrada em `D-2026-09-22-57`

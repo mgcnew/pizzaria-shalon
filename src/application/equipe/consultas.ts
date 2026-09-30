@@ -7,6 +7,8 @@ import type {
   MembroDaEquipe,
   MovimentoInterno,
   PapelAtribuivel,
+  ReferenciaSalarial,
+  LancamentoParaConferencia,
   TipoDeMovimento,
 } from "./tipos";
 
@@ -66,6 +68,56 @@ export async function obterHistorico(
     return { funcionario_id: funcionarioId, lancamentos: [], total_confirmado: 0 };
   }
   return data as HistoricoDoFuncionario;
+}
+
+/** Consulta isolada; nunca acrescentar estes campos à projeção `equipe()`. */
+export async function listarReferenciasSalariais(): Promise<ReferenciaSalarial[] | null> {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.from("employee_financial_profiles")
+    .select("employee_id, salary_reference, salary_basis");
+  if (error) {
+    logger.error("equipe:listarReferenciasSalariais", { code: error.code });
+    return null;
+  }
+  return (data ?? []).map((item) => ({
+    funcionario_id: item.employee_id as string,
+    valor: item.salary_reference === null ? null : Number(item.salary_reference),
+    base: item.salary_basis as ReferenciaSalarial["base"],
+  }));
+}
+
+/** Todos os lançamentos confirmados do mês, sem o limite de 100 do histórico. */
+export async function listarLancamentosParaConferencia(
+  funcionarioId: string,
+  mes: string,
+): Promise<LancamentoParaConferencia[] | null> {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(mes)) return null;
+  const ano = Number(mes.slice(0, 4));
+  const numeroMes = Number(mes.slice(5, 7));
+  const inicio = `${mes}-01T00:00:00-03:00`;
+  const fimMes = numeroMes === 12
+    ? `${ano + 1}-01`
+    : `${ano}-${String(numeroMes + 1).padStart(2, "0")}`;
+  const fim = `${fimMes}-01T00:00:00-03:00`;
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.from("employee_ledger_entries")
+    .select("id, entry_type, amount, occurred_at, reason")
+    .eq("employee_id", funcionarioId)
+    .eq("status", "confirmed")
+    .gte("occurred_at", inicio)
+    .lt("occurred_at", fim)
+    .order("occurred_at", { ascending: false });
+  if (error) {
+    logger.error("equipe:listarLancamentosParaConferencia", { code: error.code });
+    return null;
+  }
+  return (data ?? []).map((item) => ({
+    id: item.id as string,
+    tipo: item.entry_type as LancamentoParaConferencia["tipo"],
+    valor: Number(item.amount),
+    quando: item.occurred_at as string,
+    motivo: item.reason as string,
+  }));
 }
 
 export type FuncionarioBasico = {

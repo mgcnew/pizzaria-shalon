@@ -218,6 +218,7 @@ Tabela separada por sensibilidade.
 
 - `employee_id uuid PK/FK`
 - `salary_reference numeric(12,2) nullable`
+- `salary_basis text` — `monthly` ou `daily`; padrão `monthly` para referências existentes
 - `notes text nullable`
 - `updated_by uuid`
 - `updated_at timestamptz`

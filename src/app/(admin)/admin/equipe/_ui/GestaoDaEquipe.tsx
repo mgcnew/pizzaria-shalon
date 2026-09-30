@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Badge, Button, Input, Select, Textarea } from "@/ui/components";
+import { Badge, Button, Input, Select, SelectMenu, Textarea } from "@/ui/components";
 import { Aviso, Cartao, EmptyState, LinhaLista } from "@/ui/patterns";
 import {
   definirAcesso,
@@ -11,7 +11,7 @@ import {
   salvarFuncionario,
   vincularAcesso,
 } from "@/application/equipe/acoes";
-import type { MembroDaEquipe, PapelAtribuivel } from "@/application/equipe/tipos";
+import type { MembroDaEquipe, PapelAtribuivel, ReferenciaSalarial } from "@/application/equipe/tipos";
 
 /**
  * Cadastro de funcionários, acesso ao sistema e papéis.
@@ -22,9 +22,8 @@ import type { MembroDaEquipe, PapelAtribuivel } from "@/application/equipe/tipos
  *   acesso      — a conta que entra no sistema. Opcional.
  *   papéis      — o que aquela conta pode fazer. Um segundo ato, deliberado.
  *
- * O QUE ELA NÃO TEM: salário. Não é lido, não é passado para cá e não viaja
- * no HTML. Quem precisa dele usa a tela e a permissão do salário, que são
- * outras (§15, RN-FUNC-003).
+ * A referência salarial chega por consulta separada, somente com permissão
+ * financeira. Ela não integra `equipe()`, que também serve ao atendente.
  *
  * O QUE ELA NÃO FAZ: criar conta de login. Isso exigiria `service_role` e uma
  * política de senha que ainda não está normatizada (A-20). A tela vincula uma
@@ -53,6 +52,9 @@ type Rascunho = {
   entregador: boolean;
   admitido_em: string;
   observacao: string;
+  salario: string;
+  baseSalarial: ReferenciaSalarial["base"];
+  temReferencia: boolean;
 };
 
 const VAZIO: Rascunho = {
@@ -63,18 +65,33 @@ const VAZIO: Rascunho = {
   entregador: false,
   admitido_em: "",
   observacao: "",
+  salario: "",
+  baseSalarial: "monthly",
+  temReferencia: false,
 };
+
+function salarioEmNumero(texto: string): number | null {
+  const valor = texto.trim().replace(",", ".");
+  if (!/^\d+(\.\d{1,2})?$/.test(valor)) return null;
+  const numero = Number(valor);
+  return Number.isFinite(numero) && numero <= 9999999999.99 ? numero : null;
+}
 
 export function GestaoDaEquipe({
   equipe,
   papeis,
+  referencias,
   podeGerir,
+  podeGerirSalario,
   podeGerirAcesso,
 }: {
   equipe: MembroDaEquipe[];
   papeis: PapelAtribuivel[];
+  referencias: ReferenciaSalarial[] | null;
   /** `employees.manage`. */
   podeGerir: boolean;
+  /** `employees.manage` e permissões financeiras de leitura e escrita. */
+  podeGerirSalario: boolean;
   /** `employees.manage` E `roles.manage`: dar acesso exige as duas. */
   podeGerirAcesso: boolean;
 }) {
@@ -172,6 +189,35 @@ export function GestaoDaEquipe({
                 value={rascunho.admitido_em}
                 onChange={(e) => setRascunho({ ...rascunho, admitido_em: e.target.value })}
               />
+              {podeGerirSalario && referencias === null ? (
+                <p role="alert" className="m-0 rounded-11 border border-tdb bg-td p-3 text-[13px] text-tdf">
+                  Não foi possível carregar o salário. Reabra a página antes de alterar a referência.
+                </p>
+              ) : null}
+              {podeGerirSalario && referencias !== null ? (
+                <div className="grid gap-3 rounded-12 border border-border-shalon bg-elev p-3 sm:grid-cols-2">
+                  <div className="sm:col-span-2">
+                    <p className="m-0 text-[14px] font-bold text-ink">Salário combinado</p>
+                    <p className="m-0 mt-1 text-[12px] text-muted">
+                      Referência para conferência. Vales e descontos só entram se forem escolhidos no histórico financeiro.
+                    </p>
+                  </div>
+                  <SelectMenu
+                    label="Forma do combinado"
+                    valor={rascunho.baseSalarial}
+                    aoMudar={(valor) => setRascunho({ ...rascunho, baseSalarial: valor as ReferenciaSalarial["base"] })}
+                    opcoes={[{ valor: "monthly", texto: "Por mês" }, { valor: "daily", texto: "Por diária" }]}
+                  />
+                  <Input
+                    label={rascunho.baseSalarial === "daily" ? "Valor da diária (R$)" : "Valor mensal (R$)"}
+                    inputMode="decimal"
+                    placeholder="0,00"
+                    value={rascunho.salario}
+                    onChange={(e) => setRascunho({ ...rascunho, salario: e.target.value })}
+                    hint="Deixe em branco se ainda não houver combinado."
+                  />
+                </div>
+              ) : null}
               <Textarea
                 label="Observação"
                 value={rascunho.observacao}
@@ -182,7 +228,9 @@ export function GestaoDaEquipe({
               <div className="flex gap-2">
                 <Button
                   variante="primario"
-                  disabled={enviando || rascunho.nome.trim().length < 2}
+                  disabled={enviando || rascunho.nome.trim().length < 2 ||
+                    (podeGerirSalario && referencias === null) ||
+                    (podeGerirSalario && rascunho.salario.trim() !== "" && salarioEmNumero(rascunho.salario) === null)}
                   onClick={() =>
                     executar(() =>
                       salvarFuncionario({
@@ -193,6 +241,10 @@ export function GestaoDaEquipe({
                         entregador: rascunho.entregador,
                         admitido_em: rascunho.admitido_em || undefined,
                         observacao: rascunho.observacao.trim() || undefined,
+                        ...(podeGerirSalario && (rascunho.salario.trim() !== "" || rascunho.temReferencia)
+                          ? { salario_valor: rascunho.salario.trim() === "" ? null : salarioEmNumero(rascunho.salario),
+                              salario_base: rascunho.baseSalarial }
+                          : {}),
                       }),
                     )
                   }
@@ -244,7 +296,8 @@ export function GestaoDaEquipe({
                 <div className="flex flex-wrap items-center gap-2">
                   <Button
                     variante="secundario"
-                    onClick={() =>
+                    onClick={() => {
+                      const referencia = referencias?.find((item) => item.funcionario_id === m.funcionario_id);
                       setRascunho({
                         id: m.funcionario_id,
                         nome: m.nome,
@@ -253,8 +306,11 @@ export function GestaoDaEquipe({
                         entregador: m.entregador,
                         admitido_em: m.admitido_em ?? "",
                         observacao: m.observacao ?? "",
-                      })
-                    }
+                        salario: referencia?.valor == null ? "" : String(referencia.valor).replace(".", ","),
+                        baseSalarial: referencia?.base ?? "monthly",
+                        temReferencia: referencia !== undefined,
+                      });
+                    }}
                   >
                     Editar
                   </Button>

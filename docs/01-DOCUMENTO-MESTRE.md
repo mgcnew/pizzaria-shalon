@@ -861,19 +861,21 @@ Consumo interno não deve artificialmente aumentar o faturamento de clientes.
 
 43. Folha/acerto de funcionário
 
-O sistema poderá possuir salário mensal de referência e apresentar lançamentos vinculados ao período.
+O sistema poderá possuir salário de referência por mês ou por diária e apresentar lançamentos vinculados ao período. Na referência diária, a quantidade de diárias é informada manualmente na conferência.
 
 Conceitualmente:
 
-Salário de referência
+Salário de referência (mensal ou diária × quantidade informada)
 
-+/- lançamentos registrados
+− lançamentos escolhidos explicitamente para abatimento
 
 = valor previsto para conferência
 
 O sistema deverá fornecer controle e documentação.
 
 Não deverá assumir automaticamente que qualquer ocorrência pode legalmente ser descontada do salário.
+
+A conferência é uma simulação gerencial: selecionar lançamentos altera apenas a previsão exibida, sem registrar pagamento nem modificar os lançamentos ou o salário combinado.
 
 44. Comprovantes e anexos
 
