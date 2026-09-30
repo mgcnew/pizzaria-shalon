@@ -168,6 +168,14 @@ export type CentralDeAtencao = {
 
 export type ProdutoNoRanking = {
   produto_id: string;
+  /**
+   * Identidade da LINHA do ranking. A fogazza de um sabor é item próprio,
+   * com o mesmo `produto_id` da pizza do sabor, então é a chave que distingue
+   * as duas: `<produto>` ou `<produto>:<tamanho de fogazza>` (RN-FOG-008).
+   */
+  chave: string;
+  /** O tamanho de fogazza, quando a linha é a fogazza do sabor. */
+  tamanho_id: string | null;
   nome: string;
   categoria: string | null;
   tipo: string;

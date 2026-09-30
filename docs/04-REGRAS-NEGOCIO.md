@@ -239,6 +239,14 @@ afetar as pizzas. O servidor aplica a regra em toda montagem de item
 (cardápio, carrinho, checkout e balcão), não só na tela.
 *(D-2026-09-29-99.)*
 
+### RN-FOG-008 — Fogazza nos relatórios
+Nos relatórios e no ranking do painel, a fogazza de cada sabor é linha
+própria ("Calabresa · Fogazza"), separada da pizza do sabor e na categoria
+do card de entrada. Vendas por categoria separam fogazza de pizza. O card de
+entrada não aparece no ranking: quem vende são os sabores. O que identifica
+a fogazza vendida é o tamanho do item (vendido como fogazza).
+*(D-2026-09-30-101.)*
+
 ### RN-BEB-001
 Cada apresentação de bebida é um produto independente, com preço e disponibilidade próprios.
 
@@ -315,6 +323,11 @@ Exibir até 6 produtos elegíveis, ativos e disponíveis. Produto temporariament
 
 ### RN-POP-004
 Produto novo não recebe impulso artificial.
+
+### RN-POP-005 — Fogazza no "Mais pedidos"
+A fogazza vendida soma no card de entrada que a vende (ex.: "Fogazza
+salgada"), e não na pizza do sabor: é o card que o cliente abre no cardápio.
+A pizza do sabor conta só pizzas. *(D-2026-09-30-101.)*
 
 ### RN-DEST-001
 “Destaque/Recomendado pela Shalon” é escolha manual independente do ranking de vendas.

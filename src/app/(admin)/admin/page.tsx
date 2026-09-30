@@ -289,7 +289,7 @@ async function BlocoDoRanking({ ranking: consulta }: { ranking: Promise<RankingD
           ) : (
             <ul className="m-0 flex list-none flex-col gap-2 p-0">
               {maisVendidos.map((p) => (
-                <li key={p.produto_id} className="flex items-center justify-between gap-3">
+                <li key={p.chave} className="flex items-center justify-between gap-3">
                   <span className="flex flex-col">
                     <span className="text-[13.5px] font-semibold text-ink">{p.nome}</span>
                     <span className="text-[12px] text-muted">{p.categoria}</span>
@@ -318,7 +318,7 @@ async function BlocoDoRanking({ ranking: consulta }: { ranking: Promise<RankingD
           ) : (
             <ul className="m-0 flex list-none flex-col gap-2 p-0">
               {menorMovimentacao.map((p) => (
-                <li key={p.produto_id} className="flex items-center justify-between gap-3">
+                <li key={p.chave} className="flex items-center justify-between gap-3">
                   <span className="flex flex-col">
                     <span className="text-[13.5px] font-semibold text-ink">{p.nome}</span>
                     <span className="text-[12px] text-muted">

@@ -12,7 +12,8 @@
 
 /** O mínimo que o recorte precisa saber de cada produto. */
 export type ProdutoComparavel = {
-  produto_id: string;
+  /** Identidade da linha: a fogazza do sabor é linha própria (RN-FOG-008). */
+  chave: string;
   nome: string;
   quantidade: number;
   /** Esteve no catálogo o período inteiro E continua disponível. */
@@ -36,10 +37,10 @@ export function recorteDeMenorMovimentacao<T extends ProdutoComparavel>(
   maisVendidos: readonly ProdutoComparavel[] = [],
   limite: number = LIMITE_DE_MENOR_MOVIMENTACAO,
 ): T[] {
-  const noTopo = new Set(maisVendidos.map((p) => p.produto_id));
+  const noTopo = new Set(maisVendidos.map((p) => p.chave));
 
   return produtos
-    .filter((p) => p.elegivel_para_baixa_venda && !noTopo.has(p.produto_id))
+    .filter((p) => p.elegivel_para_baixa_venda && !noTopo.has(p.chave))
     .slice()
     .sort(
       // Desempate pelo nome: sem ele, dois produtos com a mesma quantidade

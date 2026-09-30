@@ -21,7 +21,7 @@ function produto(
   elegivel = true,
 ): ProdutoComparavel {
   return {
-    produto_id: `id-${nome}`,
+    chave: `id-${nome}`,
     nome,
     quantidade,
     elegivel_para_baixa_venda: elegivel,
@@ -83,6 +83,13 @@ describe("recorteDeMenorMovimentacao", () => {
   it("devolve lista vazia quando não há nenhum comparável", () => {
     expect(recorteDeMenorMovimentacao([produto("Nova", 0, false)])).toEqual([]);
     expect(recorteDeMenorMovimentacao([])).toEqual([]);
+  });
+
+  it("a fogazza do sabor é linha própria: a pizza no topo não a esconde (RN-FOG-008)", () => {
+    const pizza = { ...produto("Calabresa", 30), chave: "calabresa" };
+    const fogazza = { ...produto("Calabresa · Fogazza", 1), chave: "calabresa:fogazza" };
+    const r = recorteDeMenorMovimentacao([pizza, fogazza], [pizza]);
+    expect(r.map((p) => p.nome)).toEqual(["Calabresa · Fogazza"]);
   });
 
   it("não altera a lista recebida", () => {

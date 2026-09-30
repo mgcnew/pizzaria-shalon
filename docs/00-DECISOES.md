@@ -3662,6 +3662,35 @@ preço próprio explica que o preço de fogazza não conta como tamanho.
 
 ---
 
+## D-2026-09-30-101 — Fogazza por sabor, entrega 3: relatórios e "Mais pedidos"
+
+**Data:** 30/09/2026 · **Decisão do responsável pelo produto nesta conversa**
+
+**Decisão.**
+- **Relatórios e ranking do painel:** uma linha por sabor ("Calabresa ·
+  Fogazza"), separada da pizza, na categoria do card de entrada; vendas por
+  categoria separam fogazza de pizza (RN-FOG-008).
+- **"Mais pedidos" do cardápio:** a fogazza soma no card de entrada; a pizza
+  do sabor conta só pizzas (RN-POP-005).
+
+**Como (migration 0137).** `vendas_por_produto` ganha `tamanho_id` (o
+tamanho de fogazza da linha, nulo nas demais) — troca de assinatura, com as
+concessões restauradas só para `service_role`. `ranking_de_produtos`
+devolve `chave` única por linha, a fogazza como item próprio (com a
+disponibilidade da fogazza e "entrou no catálogo" pela data do preço de
+fogazza) e deixa o card de entrada de fora; a disponibilidade da pizza passa
+a ser a do cardápio. `mais_pedidos` soma a fogazza no card e filtra pela
+disponibilidade do cardápio. No painel, as listas do ranking usam `chave`.
+
+**Limite conhecido.** O pedido não guarda a qual card pertencia: o card e o
+"vendido como fogazza" são lidos do cadastro atual.
+
+**Onde foi formalizada:** `04-REGRAS-NEGOCIO.md` RN-FOG-008 e RN-POP-005;
+`supabase/migrations/20260930100000_fogazza_nos_relatorios.sql`;
+`supabase/tests/fogazza_entrega3.sql`; `domain/analitico/ranking.ts`.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.
