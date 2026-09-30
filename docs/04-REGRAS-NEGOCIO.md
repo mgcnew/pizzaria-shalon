@@ -179,6 +179,39 @@ Remoção de ingredientes e pedidos especiais são registrados como observação
 ### RN-FOG-001
 Fogazza é produto normal e não herda automaticamente regras de pizza.
 
+> **Substituída em 29/09/2026 (D-2026-09-29-98)** para a fogazza vendida por
+> sabor, que segue RN-FOG-002 a RN-FOG-006. Continua valendo para a fogazza
+> comum, cadastrada como produto simples com preço próprio.
+
+### RN-FOG-002 — Fogazza é o sabor de pizza num tamanho de fogazza
+A fogazza por sabor usa os sabores de pizza já cadastrados. Cada sabor pode
+ter um preço "como fogazza", que é a variação do sabor num tamanho marcado
+como vendido como fogazza. O preço é individual por sabor. O tamanho de
+fogazza só é usado por sabor de pizza e nunca aparece como opção na página da
+pizza.
+
+### RN-FOG-003 — Cards de entrada
+O cliente chega à fogazza por cards de entrada (por exemplo "Fogazza
+salgada" e "Fogazza doce"), produtos do tipo fogazza que indicam de qual
+categoria vêm os sabores e em qual tamanho de fogazza. O card mostra "a
+partir de" o menor preço de fogazza dos sabores e lista os sabores com o
+preço de cada um.
+
+### RN-FOG-004 — Um sabor, sem borda
+Fogazza tem exatamente um sabor: não existe meio a meio. Fogazza não tem
+borda.
+
+### RN-FOG-005 — Adicionais
+Os adicionais da fogazza são os mesmos da pizza, cobrados à parte pelo preço
+cadastrado no tamanho de fogazza. A Shalon decidiu que esse preço é o mesmo
+da Tradicional; o painel oferece copiar os preços de um tamanho para outro,
+e a cópia fica auditada.
+
+### RN-FOG-006 — Disponibilidade compartilhada
+Sabor esgotado esgota a pizza e a fogazza daquele sabor. A fogazza de um
+sabor também pode ser pausada sozinha (por exemplo, falta de massa de
+fogazza) sem afetar a pizza.
+
 ### RN-BEB-001
 Cada apresentação de bebida é um produto independente, com preço e disponibilidade próprios.
 

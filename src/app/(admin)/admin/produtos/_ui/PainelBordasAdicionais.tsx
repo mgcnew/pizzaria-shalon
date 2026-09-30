@@ -1,4 +1,4 @@
-import { StatusBadge, Input } from "@/ui/components";
+import { StatusBadge, Input, Select } from "@/ui/components";
 import { Cartao, LinhaLista } from "@/ui/patterns";
 import {
   listarAdicionais,
@@ -11,6 +11,7 @@ import {
   salvarAdicional,
   salvarBorda,
   salvarPrecoPorTamanho,
+  copiarPrecosDeAdicionais,
   alternarAtivoSimples,
   alternarDisponibilidadeSimples,
 } from "@/application/catalogo/acoes";
@@ -43,7 +44,17 @@ export async function PainelBordasAdicionais({
     ehBorda ? listarPrecosDeBordas() : listarPrecosDeAdicionais(),
   ]);
 
-  const tamanhosAtivos = tamanhos.filter((t) => t.is_active);
+  // Fogazza não tem borda (RN-FOG-004): o tamanho de fogazza nem aparece
+  // para borda. Para adicional ele aparece, com o preço próprio.
+  const tamanhosAtivos = tamanhos.filter(
+    (t) => t.is_active && !(ehBorda && t.sold_as === "fogazza"),
+  );
+  const tamanhosDePizza = tamanhosAtivos.filter((t) => t.sold_as === "pizza");
+  const tamanhosDeFogazza = tamanhosAtivos.filter((t) => t.sold_as === "fogazza");
+  // "Copiar preços da Tradicional" (decisão da Shalon): a Tradicional é a
+  // origem sugerida; sem ela, o primeiro tamanho de pizza.
+  const origemSugerida =
+    tamanhosDePizza.find((t) => /tradicional/i.test(t.name)) ?? tamanhosDePizza[0];
   const tabela = ehBorda ? "crusts" : "addons";
 
   const precoDe = (itemId: string, tamanhoId: string): number | null => {
@@ -68,6 +79,37 @@ export async function PainelBordasAdicionais({
             Cadastre ao menos um tamanho antes: o preço {ehBorda ? "da borda" : "do adicional"} é
             definido por tamanho.
           </p>
+        </Cartao>
+      ) : null}
+
+      {!ehBorda && podeGerenciar && tamanhosDeFogazza.length > 0 && origemSugerida ? (
+        <Cartao
+          titulo="Preços dos adicionais na fogazza"
+          descricao="Os adicionais da fogazza custam o mesmo de um tamanho de pizza. Copiar substitui, de uma vez, os preços que o tamanho de destino já tiver."
+          largura="cheio"
+        >
+          <FormularioAcao
+            acao={copiarPrecosDeAdicionais}
+            rotulo={`Copiar preços da ${origemSugerida.name}`}
+            variante="secundario"
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Select label="Copiar de" name="de" defaultValue={origemSugerida.id}>
+                {tamanhosDePizza.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </Select>
+              <Select label="Para" name="para" defaultValue={tamanhosDeFogazza[0]?.id}>
+                {tamanhosDeFogazza.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </FormularioAcao>
         </Cartao>
       ) : null}
 

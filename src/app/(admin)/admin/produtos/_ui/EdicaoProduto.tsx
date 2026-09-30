@@ -10,6 +10,7 @@ import {
   listarCategorias,
   listarTamanhos,
   listarVariacoes,
+  obterEscolhaDeSabor,
   obterProduto,
 } from "@/application/catalogo/consultas";
 import {
@@ -17,6 +18,7 @@ import {
   alternarDisponibilidadeProduto,
   alternarDisponibilidadeVariacao,
   removerVariacao,
+  salvarEscolhaDeSabor,
   salvarVariacao,
 } from "@/application/catalogo/acoes";
 import { substituirImagemDoProduto, urlPublica } from "@/application/midia/imagem";
@@ -50,10 +52,22 @@ export async function EdicaoProduto({
   }
 
   const podeGerenciar = podeNaUI(sessao, "catalog.manage");
-  const usaTamanho = produto.tipo !== "combo";
+  // Card de entrada de fogazza (RN-FOG-003): de onde vêm os sabores. Só é lido
+  // para produto do tipo fogazza.
+  const escolhaDeSabor =
+    produto.tipo === "fogazza" ? await obterEscolhaDeSabor(produto.id) : null;
+  const ehCardDeFogazza = Boolean(escolhaDeSabor?.categoria_sabores_id);
+  // O card de entrada não tem tamanho próprio: o preço é o de cada sabor.
+  const usaTamanho = produto.tipo !== "combo" && !ehCardDeFogazza;
+  // O tamanho de fogazza só existe em sabor de pizza (RN-FOG-002); o banco
+  // recusaria, a tela nem oferece.
   const tamanhosDisponiveis = tamanhos.filter(
-    (t) => t.is_active && !variacoes.some((v) => v.tamanho_id === t.id),
+    (t) =>
+      t.is_active &&
+      !variacoes.some((v) => v.tamanho_id === t.id) &&
+      (t.sold_as === "pizza" || produto.tipo === "pizza"),
   );
+  const tamanhosDeFogazza = tamanhos.filter((t) => t.is_active && t.sold_as === "fogazza");
   const imagemUrl = produto.imagem_path ? await urlPublica(produto.imagem_path) : null;
 
   // Uma leitura para o produto e uma por variante. São poucas — o catálogo da
@@ -274,8 +288,61 @@ export async function EdicaoProduto({
     </div>
   );
 
+  const saboresDaFogazza =
+    escolhaDeSabor !== null ? (
+      <Cartao
+        titulo="Sabores da fogazza"
+        descricao="Este card lista os sabores de uma categoria de pizza, cada um com o seu preço de fogazza. O preço de fogazza de cada sabor é cadastrado no próprio sabor, na aba Tamanhos."
+        largura="cheio"
+      >
+        {tamanhosDeFogazza.length === 0 ? (
+          <p className="m-0 text-[13.5px] text-ink-2">
+            Crie antes um tamanho “vendido como Fogazza” em Configurar cardápio → Tamanhos.
+          </p>
+        ) : podeGerenciar ? (
+          <FormularioAcao acao={salvarEscolhaDeSabor} rotulo="Salvar sabores da fogazza">
+            <input type="hidden" name="produto_id" value={produto.id} />
+            <Select
+              label="Sabores de"
+              name="categoria_sabores_id"
+              defaultValue={escolhaDeSabor.categoria_sabores_id ?? ""}
+              hint="Em branco nos dois campos: volta a ser uma fogazza comum, com preço próprio."
+            >
+              <option value="">Nenhuma (fogazza comum)</option>
+              {categorias.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+            <Select
+              label="Tamanho de fogazza"
+              name="tamanho_fogazza_id"
+              defaultValue={escolhaDeSabor.tamanho_fogazza_id ?? ""}
+            >
+              <option value="">Nenhum</option>
+              {tamanhosDeFogazza.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                </option>
+              ))}
+            </Select>
+          </FormularioAcao>
+        ) : (
+          <p className="m-0 text-[13.5px] text-ink-2">
+            {ehCardDeFogazza
+              ? `Sabores de ${categorias.find((c) => c.id === escolhaDeSabor.categoria_sabores_id)?.name ?? "—"}.`
+              : "Fogazza comum, com preço próprio."}
+          </p>
+        )}
+      </Cartao>
+    ) : null;
+
   const secoes: SecaoEdicaoProduto[] = [
     { id: "dados", nome: "Dados", conteudo: dados },
+    ...(saboresDaFogazza
+      ? [{ id: "sabores", nome: "Sabores", conteudo: saboresDaFogazza }]
+      : []),
     ...(tamanhosHabilitados
       ? [{ id: "tamanhos", nome: "Tamanhos", conteudo: tamanhosHabilitados }]
       : []),

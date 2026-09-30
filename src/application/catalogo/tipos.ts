@@ -122,6 +122,17 @@ export type Tamanho = {
   max_flavors: number;
   is_active: boolean;
   sort_order: number;
+  /**
+   * "fogazza": o tamanho em que um sabor de pizza é vendido como fogazza
+   * (RN-FOG-002). Aceita 1 sabor, não tem borda e só vale para sabor de pizza.
+   */
+  sold_as: "pizza" | "fogazza";
+};
+
+/** Card de entrada de fogazza: de onde vêm os sabores e em qual tamanho (RN-FOG-003). */
+export type EscolhaDeSabor = {
+  categoria_sabores_id: string | null;
+  tamanho_fogazza_id: string | null;
 };
 
 export type Borda = {

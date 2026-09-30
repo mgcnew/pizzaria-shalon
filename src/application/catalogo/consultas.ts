@@ -12,6 +12,7 @@ import type {
   ProdutoAdmin,
   PromocaoAdmin,
   Tamanho,
+  EscolhaDeSabor,
   VariacaoAdmin,
 } from "./tipos";
 
@@ -71,7 +72,7 @@ export const listarTamanhos = cache(async (): Promise<Tamanho[]> => {
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase
     .from("pizza_sizes")
-    .select("id, name, slice_count, max_flavors, is_active, sort_order")
+    .select("id, name, slice_count, max_flavors, is_active, sort_order, sold_as")
     .order("sort_order")
     .order("name");
   if (error) throw error;
@@ -139,6 +140,26 @@ export async function listarPrecosDeAdicional(addonId: string): Promise<PrecoPor
     .eq("addon_id", addonId);
   if (error) throw error;
   return (data ?? []) as PrecoPorTamanho[];
+}
+
+/**
+ * Card de entrada de fogazza (RN-FOG-003): de qual categoria vêm os sabores e
+ * em qual tamanho de fogazza eles são vendidos. Fora da listagem geral de
+ * produtos de propósito: só a edição de um produto do tipo fogazza precisa.
+ */
+export async function obterEscolhaDeSabor(produtoId: string): Promise<EscolhaDeSabor> {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select("flavor_category_id, flavor_size_id")
+    .eq("id", produtoId)
+    .maybeSingle();
+  if (error) throw error;
+  const linha = data as { flavor_category_id: string | null; flavor_size_id: string | null } | null;
+  return {
+    categoria_sabores_id: linha?.flavor_category_id ?? null,
+    tamanho_fogazza_id: linha?.flavor_size_id ?? null,
+  };
 }
 
 export async function obterProduto(id: string): Promise<ProdutoAdmin | null> {

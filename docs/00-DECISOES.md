@@ -3530,6 +3530,56 @@ falta de ingrediente é compartilhada.
 
 ---
 
+## D-2026-09-29-98 — Fogazza vendida a partir do sabor de pizza (entrega 1: regra, modelo e painel)
+
+**Data:** 29/09/2026 · **Decisão do responsável pelo produto nesta conversa**
+
+**Respostas da Shalon.**
+- Preço individual por sabor, a partir de R$ 17,00.
+- Todos os sabores de pizza existem como fogazza.
+- Mesmos adicionais, pelo preço da Tradicional.
+- Sabor esgotado esgota pizza e fogazza.
+
+**Decisão.** Fogazza é o sabor de pizza vendido num tamanho marcado como
+fogazza (RN-FOG-002 a 006). O cliente chega por cards de entrada ("Fogazza
+salgada", "Fogazza doce"), escolhe um sabor, sem meio a meio e sem borda,
+com adicionais cobrados à parte. O motor que já calcula a pizza calcula a
+fogazza: preço, promoção, disponibilidade, limite por pedido e comanda. A
+RN-FOG-001 continua valendo só para a fogazza comum, de preço próprio.
+
+**Entrega 1 (migration 0134):**
+- `pizza_sizes.sold_as` (`pizza`/`fogazza`); o tamanho de fogazza tem 1
+  sabor, não recebe borda e só serve a sabor de pizza;
+- `products.flavor_category_id` e `flavor_size_id` no card de entrada;
+- `copiar_precos_adicionais(de, para)`, DEFINER com a guarda de
+  `catalog.manage` e auditoria;
+- **blindagem**: `cardapio_publico`, `tamanhos_publicos` e `buscar_catalogo`
+  passam a considerar só tamanho vendido como pizza e escondem o card de
+  entrada. O cliente não vê nada de fogazza nova até a entrega 2, e a pizza
+  não passa a mostrar "a partir de R$ 17";
+- **painel**: "Vendido como" na criação de tamanho; "Copiar preços da
+  Tradicional" em Adicionais; borda sem o tamanho de fogazza; aba "Sabores"
+  no produto do tipo fogazza; o tamanho de fogazza só é oferecido a sabor de
+  pizza.
+
+**Fica para depois.**
+- **Entrega 2 (cardápio):** vitrine dos cards, lista de sabores com busca e
+  configurador com o tamanho fixo. A disponibilidade do card da pizza
+  (`produto_disponivel`) também precisa deixar de contar a variação de
+  fogazza: hoje, pizza com os tamanhos de pizza pausados e a fogazza ativa
+  apareceria disponível.
+- **Entrega 3 (relatórios):** ranking e relatórios separando fogazza de
+  pizza pelo tamanho; busca do "Novo pedido" no painel. Enquanto isso, o
+  "Novo pedido" também não oferece a fogazza nova, porque usa as mesmas
+  leituras blindadas.
+
+**Onde foi formalizada:** `04-REGRAS-NEGOCIO.md` RN-FOG-001 (marcada) a
+RN-FOG-006; `02-MODELO-DADOS-SUPABASE.md` §5.2, §5.3, §5.4;
+`supabase/migrations/20260929150000_fogazza_por_sabor.sql`;
+`supabase/tests/fogazza_entrega1.sql`; painel em `produtos/_ui`.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.

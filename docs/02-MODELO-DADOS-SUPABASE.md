@@ -258,7 +258,13 @@ Categorias iniciais são dados, não enum estrutural: Pizzas Salgadas, Pizzas Do
 - `max_quantity_per_order integer nullable`
 - `sort_order integer`
 - `image_asset_id uuid nullable -> media_assets.id`
+- `flavor_category_id uuid nullable -> categories.id` — card de entrada de fogazza: categoria de onde vêm os sabores
+- `flavor_size_id uuid nullable -> pizza_sizes.id` — card de entrada de fogazza: tamanho (vendido como fogazza) em que os sabores são vendidos
 - `created_at`, `updated_at`
+
+Os dois campos de fogazza vêm juntos e só existem em produto do tipo `fogazza`
+(`products_escolha_de_sabor`); o tamanho indicado precisa ser vendido como
+fogazza. Ver RN-FOG-003 e D-2026-09-29-98.
 
 `base_price` atende produtos simples e combos. Pizza com tamanho usa `product_variants.price` como autoridade.
 
@@ -270,9 +276,16 @@ Produto sem preço aplicável não é considerado disponível para venda (RN-DIS
 - `name text UNIQUE`
 - `slice_count integer`
 - `max_flavors integer default 1`
+- `sold_as text default 'pizza'` — `pizza` ou `fogazza` (RN-FOG-002)
 - `is_active boolean`
 - `sort_order integer`
 - `created_at`, `updated_at`
+
+Tamanho vendido como `fogazza`: `max_flavors = 1`
+(`pizza_sizes_fogazza_um_sabor`), sem preço de borda, e usado só por produto
+do tipo `pizza`. As leituras públicas da pizza (`cardapio_publico`,
+`tamanhos_publicos`, `buscar_catalogo`) consideram só tamanhos vendidos como
+pizza.
 
 ## 5.4 `product_variants`
 
@@ -289,7 +302,7 @@ Variação comercial produto+tamanho. Principalmente pizzas.
 - `created_at`, `updated_at`
 - UNIQUE (`product_id`, `size_id`)
 
-Somente produtos compatíveis com variação devem usar esta tabela. Fogazza simples e bebida não precisam ganhar tamanho artificial.
+Somente produtos compatíveis com variação devem usar esta tabela. Fogazza simples e bebida não precisam ganhar tamanho artificial. A fogazza por sabor é uma variação do **sabor de pizza** no tamanho vendido como fogazza, com o preço daquele sabor (RN-FOG-002).
 
 O `sku` é **cadastro de fornecedor** e não identificador de venda. Ele não é
 usado por nenhum fluxo e **não** se confunde com código de barras, que tem

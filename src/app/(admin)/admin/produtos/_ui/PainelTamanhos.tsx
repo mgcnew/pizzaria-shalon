@@ -1,4 +1,4 @@
-import { StatusBadge, Input } from "@/ui/components";
+import { StatusBadge, Input, Select } from "@/ui/components";
 import { Cartao, LinhaLista } from "@/ui/patterns";
 import { listarTamanhos } from "@/application/catalogo/consultas";
 import { salvarTamanho, alternarAtivoTamanho } from "@/application/catalogo/acoes";
@@ -12,6 +12,10 @@ import { BotaoAcao } from "./BotaoAcao";
  * são linhas desta tabela (D-2026-09-17-04). Cada tamanho define quantas
  * fatias tem e o MÁXIMO DE SABORES — é esse número que decide se existe meio
  * a meio naquele tamanho (RN-PIZZA-004). Máximo 1 = a interface nem oferece.
+ *
+ * "Vendido como fogazza" (RN-FOG-002): o tamanho em que um sabor de pizza é
+ * vendido como fogazza. Aceita 1 sabor, não tem borda, e o cliente só o vê
+ * pelos cards de fogazza, nunca na página da pizza.
  */
 export async function PainelTamanhos({ podeGerenciar }: { podeGerenciar: boolean }) {
   const tamanhos = await listarTamanhos();
@@ -35,12 +39,16 @@ export async function PainelTamanhos({ podeGerenciar }: { podeGerenciar: boolean
               <div className="min-w-[160px] flex-1">
                 <p className="m-0 text-[15px] font-semibold text-ink">{t.name}</p>
                 <p className="mt-[2px] text-[12.5px] text-muted">
-                  {t.slice_count} fatias ·{" "}
-                  {t.max_flavors === 1
-                    ? "1 sabor (sem meio a meio)"
-                    : `até ${t.max_flavors} sabores`}
+                  {t.sold_as === "fogazza"
+                    ? "Fogazza · 1 sabor, sem borda"
+                    : `${t.slice_count} fatias · ${
+                        t.max_flavors === 1
+                          ? "1 sabor (sem meio a meio)"
+                          : `até ${t.max_flavors} sabores`
+                      }`}
                 </p>
               </div>
+              {t.sold_as === "fogazza" ? <StatusBadge tom="info">Fogazza</StatusBadge> : null}
               <StatusBadge tom={t.is_active ? "sucesso" : "neutro"}>
                 {t.is_active ? "Ativo" : "Inativo"}
               </StatusBadge>
@@ -61,6 +69,15 @@ export async function PainelTamanhos({ podeGerenciar }: { podeGerenciar: boolean
       <Cartao titulo="Novo tamanho">
         <FormularioAcao acao={salvarTamanho} rotulo="Criar tamanho">
           <Input label="Nome" name="nome" required placeholder="Ex.: Tradicional" />
+          <Select
+            label="Vendido como"
+            name="vendido_como"
+            defaultValue="pizza"
+            hint="Fogazza: o sabor de pizza vendido como fogazza. Aceita 1 sabor e não tem borda; o máximo de sabores vira 1."
+          >
+            <option value="pizza">Pizza</option>
+            <option value="fogazza">Fogazza</option>
+          </Select>
           <Input label="Fatias" name="fatias" type="number" min={1} required defaultValue={8} />
           <Input
             label="Máximo de sabores"

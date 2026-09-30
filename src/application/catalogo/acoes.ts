@@ -51,6 +51,9 @@ function falha(contexto: string, erro: unknown): EstadoFormulario {
     crusts_name_key: "Já existe uma borda com esse nome.",
     addons_name_key: "Já existe um adicional com esse nome.",
     product_variants_unica: "Esse produto já tem preço cadastrado nesse tamanho.",
+    pizza_sizes_fogazza_um_sabor: "Tamanho de fogazza aceita 1 sabor só.",
+    products_escolha_de_sabor:
+      "Escolha a categoria dos sabores e o tamanho de fogazza juntos, num produto do tipo Fogazza.",
   };
 
   const conhecido = e?.constraint ? porConstraint[e.constraint] : undefined;
@@ -173,14 +176,19 @@ export async function salvarTamanho(
     return { erro: "O máximo de sabores precisa ser 1 ou mais." };
   }
 
+  // RN-FOG-002: o tamanho de fogazza vende um sabor só. A regra é do banco;
+  // aqui ela só evita a Owner digitar um número que seria recusado.
+  const vendidoComo = form.get("vendido_como") === "fogazza" ? "fogazza" : "pizza";
+
   const ordem = Number(form.get("ordem") ?? 0);
   const supabase = await getSupabaseServerClient();
   try {
     const dados = {
       name: nome.data,
       slice_count: fatias,
-      max_flavors: maxSabores,
+      max_flavors: vendidoComo === "fogazza" ? 1 : maxSabores,
       sort_order: ordem,
+      sold_as: vendidoComo,
     };
     if (id) {
       const { error, count } = await supabase
@@ -209,8 +217,76 @@ export async function alternarAtivoTamanho(form: FormData): Promise<void> {
   revalidatePath(ROTA);
 }
 
+/**
+ * RN-FOG-005: copia os preços de adicionais de um tamanho para outro, de uma
+ * vez — "os adicionais da fogazza custam o mesmo da Tradicional". Quem decide
+ * a permissão e grava a auditoria é a função do banco.
+ */
+export async function copiarPrecosDeAdicionais(
+  _estado: EstadoFormulario,
+  form: FormData,
+): Promise<EstadoFormulario> {
+  const de = String(form.get("de") ?? "");
+  const para = String(form.get("para") ?? "");
+  if (!de || !para) return { erro: "Escolha de qual tamanho copiar e para qual." };
+  if (de === para) return { erro: "Escolha dois tamanhos diferentes." };
+
+  const supabase = await getSupabaseServerClient();
+  try {
+    const { data, error } = await supabase.rpc("copiar_precos_adicionais", {
+      p_de: de,
+      p_para: para,
+    });
+    if (error) throw error;
+    const copiados = Number((data as { copiados?: number } | null)?.copiados ?? 0);
+    return ok(
+      copiados === 0
+        ? "O tamanho de origem não tem preço de adicional para copiar."
+        : `${copiados} ${copiados === 1 ? "preço copiado" : "preços copiados"}.`,
+    );
+  } catch (erro) {
+    return falha("copiarPrecosDeAdicionais", erro);
+  }
+}
+
 // ------------------------------------------------------------------ produtos
 const TIPOS = ["pizza", "fogazza", "drink", "combo", "other"] as const;
+
+/**
+ * RN-FOG-003: o card de entrada de fogazza diz de qual categoria vêm os
+ * sabores e em qual tamanho de fogazza eles são vendidos. Os dois vêm juntos;
+ * deixar os dois em branco volta o produto a ser uma fogazza comum.
+ */
+export async function salvarEscolhaDeSabor(
+  _estado: EstadoFormulario,
+  form: FormData,
+): Promise<EstadoFormulario> {
+  const produtoId = String(form.get("produto_id") ?? "");
+  const categoria = String(form.get("categoria_sabores_id") ?? "");
+  const tamanho = String(form.get("tamanho_fogazza_id") ?? "");
+  if (!produtoId) return { erro: "Produto não informado." };
+  if (Boolean(categoria) !== Boolean(tamanho)) {
+    return { erro: "Escolha a categoria dos sabores e o tamanho de fogazza juntos." };
+  }
+
+  const supabase = await getSupabaseServerClient();
+  try {
+    const { error, count } = await supabase
+      .from("products")
+      .update(
+        { flavor_category_id: categoria || null, flavor_size_id: tamanho || null },
+        { count: "exact" },
+      )
+      .eq("id", produtoId);
+    if (error) throw error;
+    const semLinha = conferirLinhas(count);
+    if (semLinha) return semLinha;
+    revalidatePath(`${ROTA}/${produtoId}`);
+    return ok(categoria ? "Sabores da fogazza salvos." : "Escolha de sabores removida.");
+  } catch (erro) {
+    return falha("salvarEscolhaDeSabor", erro);
+  }
+}
 
 export async function salvarProduto(
   _estado: EstadoFormulario,

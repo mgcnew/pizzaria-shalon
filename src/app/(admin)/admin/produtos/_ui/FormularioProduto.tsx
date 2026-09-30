@@ -9,7 +9,7 @@ import { FormularioAcao } from "./FormularioAcao";
  *
  * O protótipo tinha um seletor de tipo em pílulas e o aviso de que "as seções
  * de personalização mudam conforme o tipo — refrigerante não recebe sabores
- * nem borda" (RN-FOG-001 e RN-BEB-001). A regra continua; aqui o tipo é um
+ * nem borda" (RN-BEB-001; a fogazza por sabor é RN-FOG-002..006). Aqui o tipo é um
  * select porque o formulário é renderizado no servidor, sem estado de
  * cliente para trocar as pílulas.
  *
@@ -42,7 +42,7 @@ export function FormularioProduto({
         name="tipo"
         required
         defaultValue={produto?.tipo ?? "pizza"}
-        hint="Fogazza e bebida não herdam regras de pizza: não recebem tamanho de pizza, meio a meio nem borda."
+        hint="Bebida não recebe tamanho, meio a meio nem borda. Fogazza por sabor: crie o produto do tipo Fogazza e, depois de salvar, escolha de onde vêm os sabores na aba Sabores."
       >
         {TIPOS_PRODUTO.map((t) => (
           <option key={t.valor} value={t.valor}>
@@ -56,7 +56,7 @@ export function FormularioProduto({
         name="nome"
         required
         defaultValue={produto?.nome ?? ""}
-        placeholder="Ex.: Pizza Calabresa"
+        placeholder="Ex.: Calabresa"
       />
 
       <Textarea
