@@ -3758,12 +3758,35 @@ criação, bloqueio recusado de novo pelo banco.
 
 **Achado no caminho.** `criar_pedido` usa o `endereco.id` recebido sem
 conferir de quem é. No balcão, o id só segue depois de conferido no servidor
-contra os endereços do próprio cliente. O checkout público tem o mesmo ponto
-e ficou registrado como tarefa separada.
+contra os endereços do próprio cliente. O mesmo ponto no checkout público foi
+corrigido no banco em D-2026-09-30-105.
 
 **Onde foi formalizada:** 04 RN-MAN-007; 03 §12.2;
 `supabase/migrations/20260930160000_cliente_no_balcao.sql`;
 `supabase/tests/cliente_no_balcao.sql`.
+
+---
+
+## D-2026-09-30-105 — O endereço salvo usado no pedido tem de ser do próprio cliente
+
+**Data:** 30/09/2026 · **Decisão do responsável pelo produto nesta conversa**
+
+**O achado.** `criar_pedido` aproveitava o `endereco.id` recebido sem
+conferir de quem era, e o checkout público repassa o id vindo do navegador.
+Um id de outro cliente ficava gravado no snapshot do pedido, e um id
+inventado fazia o endereço real do cliente nunca ser salvo. Não havia
+vazamento: o snapshot usa os campos digitados, e o `endereco_id` não é
+devolvido ao público.
+
+**Decisão.** O id só vale se for de um endereço **ativo do cliente do
+pedido**. Qualquer outro caso é tratado como endereço novo, pelo fluxo
+normal; o pedido não é recusado. A regra fica no banco e vale para o público
+e para o balcão.
+
+**Onde foi formalizada:** 03 §12.1;
+`supabase/migrations/20260930180000_endereco_salvo_do_proprio_cliente.sql`
+(patch por âncora, no padrão da `exige_producao`);
+`supabase/tests/endereco_salvo_do_proprio_cliente.sql`.
 
 ---
 

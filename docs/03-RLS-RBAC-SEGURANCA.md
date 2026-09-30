@@ -536,6 +536,10 @@ O frontend não pode fazer algo como:
 
 Reconhecimento de retorno deve ocorrer por credencial local segura e operação controlada.
 
+Id de endereço salvo enviado pelo navegador não é autoridade: `criar_pedido`
+só o aproveita se for de um endereço ativo do cliente do pedido; qualquer
+outro caso vira endereço novo (D-2026-09-30-105).
+
 ## 12.2 Interno
 
 `customers.view` permite consulta operacional conforme necessidade.
