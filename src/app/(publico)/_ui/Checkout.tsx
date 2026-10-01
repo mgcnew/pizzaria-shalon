@@ -208,6 +208,10 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
       if (r.bairro) setBairro((atual) => atual.trim() || r.bairro);
       setCidade(r.cidade);
       setUf(r.uf);
+      // Com a rua pronta, o que falta é o número: o cursor vai direto para lá.
+      if (r.logradouro) {
+        requestAnimationFrame(() => document.getElementById("campo-número")?.focus());
+      }
     });
   }
 
@@ -507,6 +511,23 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
                 />
               ) : null}
 
+              <Input
+                label="CEP"
+                value={cep}
+                onChange={(e) => {
+                  editarEndereco(setCep)(e.target.value);
+                  preencherPeloCep(e.target.value);
+                }}
+                inputMode="numeric"
+                maxLength={12}
+                hint={
+                  buscandoCep
+                    ? "Buscando o endereço…"
+                    : (avisoCep ??
+                      "Comece pelo CEP: a gente completa rua, bairro e cidade. Se não souber, preencha à mão.")
+                }
+              />
+
               <div className="flex gap-3">
                 <div className="flex-[3]">
                   <Input
@@ -552,23 +573,6 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
                   />
                 </div>
               </div>
-
-              <Input
-                label="CEP"
-                value={cep}
-                onChange={(e) => {
-                  editarEndereco(setCep)(e.target.value);
-                  preencherPeloCep(e.target.value);
-                }}
-                inputMode="numeric"
-                maxLength={12}
-                hint={
-                  buscandoCep
-                    ? "Buscando o endereço…"
-                    : (avisoCep ??
-                      "Opcional. Preenchendo o CEP, a gente completa rua, bairro e cidade.")
-                }
-              />
 
               {/* RN-ENT-004: estes dois vão para o entregador, não para o
                   cálculo. Não entram na busca do endereço. */}

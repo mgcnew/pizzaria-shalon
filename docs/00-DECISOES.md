@@ -3857,6 +3857,20 @@ service worker público), e o push aprovado é só o do painel (01 §1918).
 
 ---
 
+## D-2026-10-01-109 — No checkout, o endereço começa pelo CEP
+
+**Data:** 01/10/2026 · **Decisão do responsável pelo produto nesta conversa**
+
+**Decisão.** O CEP passa a ser o primeiro campo do endereço de entrega (logo
+abaixo dos endereços salvos, quando houver). Encontrado o CEP, rua, bairro,
+cidade e UF são completados e o cursor vai para o Número. Antes ele vinha no
+fim, depois de o cliente já ter digitado tudo à mão. O CEP continua opcional e
+continua sem decidir coordenada, distância ou taxa (D-2026-09-24-75).
+
+**Onde foi formalizada:** `src/app/(publico)/_ui/Checkout.tsx`.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.
