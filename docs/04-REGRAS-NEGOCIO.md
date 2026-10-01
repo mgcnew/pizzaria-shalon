@@ -1069,6 +1069,15 @@ Registra motoboy, pedidos, horário de saída e valores esperados por meio de pa
 ### RN-RUN-003
 Retorno permite registrar valores efetivamente recebidos e conciliar a saída.
 
+**Como (D-2026-10-01-111).** O recebimento de cada entrega é registrado **no
+próprio acerto**: cada pedido entregue sem pagamento tem "Receber", com a
+forma esperada já marcada e o dinheiro como "com o motoboy". Cartão e Pix na
+maquininha não entram no "deveria trazer em dinheiro". O acerto **só conclui
+quando toda entrega concluída da corrida tem recebimento** — o banco recusa
+antes disso. Concluir recolhe para a gaveta exatamente o dinheiro registrado;
+"quanto ele trouxe" só confere contra esse valor e registra a diferença. Não
+existe caminho para dinheiro da rua entrar no caixa sem pedido por trás.
+
 ### RN-RUN-004
 Diferença registra valor, motivo, responsável, data/hora, notas e anexo opcional.
 

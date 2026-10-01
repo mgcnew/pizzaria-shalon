@@ -1,6 +1,10 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { GavetaDeCobranca } from "../../pedidos/_ui/GavetaDeCobranca";
+import type { FormaParaRecebimento } from "../../pedidos/_ui/Recebimento";
+import type { PedidoAReceber } from "@/application/pdv/tipos";
 import { Badge, Button, Input, SelectMenu, Textarea } from "@/ui/components";
 import { Aviso, Cartao, EmptyState, LinhaLista, ParDeDados } from "@/ui/patterns";
 import { formatBRL } from "@/lib/format";
@@ -71,12 +75,31 @@ export function PainelDeEntregas({
   central,
   corrida,
   podeAcertar,
+  podeReceber = false,
+  cobraveis = {},
+  formasDeRecebimento = [],
+  caixaAberto = false,
 }: {
   central: CentralDeEntregas;
   corrida: Corrida | null;
   /** `deliveries.settle`. Sem ela o acerto nem aparece (RN-RBAC-004). */
   podeAcertar: boolean;
+  /** `payments.register`: receber, no acerto, o que o cliente pagou na porta. */
+  podeReceber?: boolean;
+  /** Quem está devendo, pela mesma `pedidos_a_receber` da fila de pedidos. */
+  cobraveis?: Record<string, PedidoAReceber>;
+  formasDeRecebimento?: FormaParaRecebimento[];
+  caixaAberto?: boolean;
 }) {
+  const router = useRouter();
+  /**
+   * Receber no acerto (D-2026-10-01-111): a MESMA gaveta e a MESMA
+   * `registrar_pagamento` da fila de pedidos. Pedido e chave da tentativa
+   * nascem juntos no clique, como lá.
+   */
+  const [cobrando, setCobrando] = useState<{ pedido: PedidoAReceber; tentativa: string } | null>(
+    null,
+  );
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, iniciar] = useTransition();
   const [motoboyEscolhido, setMotoboyEscolhido] = useState<Record<string, string>>({});
@@ -290,6 +313,22 @@ export function PainelDeEntregas({
                 ) : null}
               </div>
 
+              {corrida.status === "settling" &&
+              p.situacao === "delivered" &&
+              p.recebido === 0 &&
+              podeReceber &&
+              cobraveis[p.pedido_id] ? (
+                <Button
+                  variante="primario"
+                  onClick={() => {
+                    const pedido = cobraveis[p.pedido_id];
+                    if (pedido) setCobrando({ pedido, tentativa: crypto.randomUUID() });
+                  }}
+                >
+                  Receber
+                </Button>
+              ) : null}
+
               {p.situacao === "pending" && corrida.status === "out" ? (
                 <div className="flex items-center gap-2">
                   <Button
@@ -416,10 +455,10 @@ export function PainelDeEntregas({
                 valor={formatBRL(corrida.esperado_em_dinheiro)}
               />
               {corrida.pedidos_sem_pagamento > 0 ? (
-                <p className="m-0 mt-2 text-[12.5px] text-tdf">
+                <p className="m-0 mt-2 text-[12.5px] font-semibold text-tdf">
                   {corrida.pedidos_sem_pagamento}{" "}
-                  {corrida.pedidos_sem_pagamento === 1 ? "entrega" : "entregas"} sem recebimento
-                  registrado. Confira antes de acertar.
+                  {corrida.pedidos_sem_pagamento === 1 ? "entrega" : "entregas"} sem recebimento.
+                  Use &ldquo;Receber&rdquo; em cada uma, com o que o cliente pagou, antes de acertar.
                 </p>
               ) : null}
 
@@ -448,7 +487,7 @@ export function PainelDeEntregas({
                   <div className="flex gap-2">
                     <Button
                       variante="primario"
-                      disabled={enviando || valorDevolvido === null}
+                      disabled={enviando || valorDevolvido === null || corrida.pedidos_sem_pagamento > 0}
                       onClick={() =>
                         executar(() =>
                           conciliarCorrida({
@@ -467,7 +506,11 @@ export function PainelDeEntregas({
                   </div>
                 </div>
               ) : (
-                <Button variante="primario" onClick={() => setAcertando(true)}>
+                <Button
+                  variante="primario"
+                  disabled={corrida.pedidos_sem_pagamento > 0}
+                  onClick={() => setAcertando(true)}
+                >
                   Fazer o acerto
                 </Button>
               )}
@@ -486,6 +529,19 @@ export function PainelDeEntregas({
           ) : null}
         </Cartao>
       ) : null}
+
+      <GavetaDeCobranca
+        key={cobrando?.pedido.id ?? "fechada"}
+        pedido={cobrando?.pedido ?? null}
+        tentativa={cobrando?.tentativa ?? null}
+        formas={formasDeRecebimento}
+        caixaAberto={caixaAberto}
+        aoFechar={() => setCobrando(null)}
+        aoConcluir={() => {
+          setCobrando(null);
+          router.refresh();
+        }}
+      />
     </div>
   );
 }

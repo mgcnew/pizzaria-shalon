@@ -307,9 +307,24 @@ select pg_temp.checar('Pedro acerta', 'true',
 select pg_temp.checar('o dinheiro do transferido entra na gaveta uma vez', '30.00',
   pg_temp.variacao());
 
--- João conclui os dois que ficaram com ele, sem receber nada.
+-- João conclui os dois que ficaram com ele, sem receber dinheiro: os
+-- clientes pagaram na maquininha, registrado no acerto (D-2026-10-01-111).
 select public.registrar_retorno(pg_temp.vinculo(pg_temp.uid('teste.p2')), '{"entregue":true}'::jsonb);
 select public.registrar_retorno(pg_temp.vinculo(pg_temp.uid('teste.p3')), '{"entregue":true}'::jsonb);
+create or replace function pg_temp.receber_na_maquininha(p_pedido uuid) returns void
+language plpgsql as $$
+begin
+  -- D-2026-10-01-111: o acerto só fecha com cada entrega recebida. Cartão ou
+  -- Pix na maquininha do motoboy não é dinheiro: não muda o esperado.
+  perform public.registrar_pagamento(p_pedido, jsonb_build_object(
+    'idempotency_key', gen_random_uuid()::text,
+    'linhas', jsonb_build_array(jsonb_build_object(
+      'forma_id', (select id::text from public.payment_methods where code = 'pix_maquininha'),
+      'valor', (select total from public.orders where id = p_pedido)))));
+end;
+$$;
+select pg_temp.receber_na_maquininha(pg_temp.uid('teste.p2'));
+select pg_temp.receber_na_maquininha(pg_temp.uid('teste.p3'));
 
 select pg_temp.checar('o acerto do Joao NAO cobra o que ele transferiu', '0.00',
   (public.corrida(pg_temp.uid('teste.joao')) ->> 'esperado_em_dinheiro'));
@@ -618,6 +633,7 @@ select public.despachar_corrida(
   (select id from public.driver_runs where driver_employee_id = pg_temp.uid('teste.novo')
      and status = 'open' limit 1));
 select public.registrar_retorno(pg_temp.vinculo(pg_temp.uid('teste.p6')), '{"entregue":true}'::jsonb);
+select pg_temp.receber_na_maquininha(pg_temp.uid('teste.p6'));
 select public.conciliar_corrida(
   (select id from public.driver_runs where driver_employee_id = pg_temp.uid('teste.novo')
      and status = 'settling' limit 1), '{"devolvido":0}'::jsonb);

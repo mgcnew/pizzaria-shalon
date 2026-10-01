@@ -3893,6 +3893,28 @@ o dinheiro "com o motoboy" até o acerto. Nenhum bloqueio novo no banco.
 
 ---
 
+## D-2026-10-01-111 — O acerto do motoboy é onde a entrega é recebida
+
+**Data:** 01/10/2026 · **Decisão do responsável pelo produto nesta conversa**
+
+**O achado.** O acerto só recolhia o dinheiro de recebimentos já
+registrados, um por pedido, em outra tela. Entrega sem recebimento era só
+avisada: dava para concluir digitando "quanto ele trouxe", o valor virava
+"sobra" sem entrar no caixa, e o pedido ficava "a receber" para sempre.
+
+**Decisão.** Cada entrega concluída sem pagamento ganha "Receber" dentro do
+acerto — a mesma gaveta e a mesma `registrar_pagamento` da fila de pedidos,
+com a forma esperada marcada e o dinheiro "com o motoboy". O acerto só
+conclui com todas as entregas recebidas (o banco recusa antes). Concluir
+recolhe o dinheiro registrado para a gaveta e confere com o que ele trouxe.
+
+**Onde foi formalizada:** 04 RN-RUN-003 (nota);
+`supabase/migrations/20261001120000_acerto_exige_recebimento.sql` (patch por
+âncora em `conciliar_corrida`); `supabase/tests/acerto_exige_recebimento.sql`;
+`equipe_fase8b.sql` ajustada para receber antes de acertar.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.

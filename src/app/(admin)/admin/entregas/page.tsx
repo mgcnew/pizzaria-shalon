@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { obterSessaoInterna, podeNaUI } from "@/application/auth/sessao";
 import { listarCorridas, obterCentral, obterCorrida } from "@/application/entregas/consultas";
+import { listarPedidosAReceber } from "@/application/pdv/consultas";
+import { formasParaRecebimento } from "@/application/configuracoes/consultas";
+import { obterCaixa } from "@/application/caixa/consultas";
 import { Cartao } from "@/ui/patterns";
 import { formatBRL } from "@/lib/format";
 import { PainelDeEntregas } from "./_ui/PainelDeEntregas";
@@ -22,12 +25,19 @@ export default async function Page({
 }) {
   const { corrida: corridaId } = await searchParams;
 
-  const [sessao, central, corrida, historico] = await Promise.all([
-    obterSessaoInterna(),
-    obterCentral(),
-    corridaId ? obterCorrida(corridaId) : Promise.resolve(null),
-    listarCorridas(10),
-  ]);
+  const [sessao, central, corrida, historico, aReceber, formasDeRecebimento, caixa] =
+    await Promise.all([
+      obterSessaoInterna(),
+      obterCentral(),
+      corridaId ? obterCorrida(corridaId) : Promise.resolve(null),
+      listarCorridas(10),
+      // Receber no acerto (D-2026-10-01-111) usa a MESMA autoridade da fila
+      // de pedidos para saber quem está devendo — nada de segundo critério.
+      corridaId ? listarPedidosAReceber() : Promise.resolve({ pedidos: [] }),
+      corridaId ? formasParaRecebimento() : Promise.resolve([]),
+      corridaId ? obterCaixa() : Promise.resolve(null),
+    ]);
+  const cobraveis = Object.fromEntries(aReceber.pedidos.map((p) => [p.id, p]));
 
   return (
     <div className="flex flex-col gap-5">
@@ -42,6 +52,10 @@ export default async function Page({
         central={central}
         corrida={corrida}
         podeAcertar={podeNaUI(sessao, "deliveries.settle")}
+        podeReceber={podeNaUI(sessao, "payments.register")}
+        cobraveis={cobraveis}
+        formasDeRecebimento={formasDeRecebimento}
+        caixaAberto={caixa?.aberto ?? false}
       />
 
       {historico.length > 0 ? (
