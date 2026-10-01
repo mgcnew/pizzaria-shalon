@@ -444,6 +444,14 @@ function ResumoVisualDoFechamento({
             <ParDeDados chave="Despesas pelo caixa" valor={formatBRL(resumo.despesas_pelo_caixa)} />
             <ParDeDados chave="Entradas pelo caixa" valor={formatBRL(resumo.entradas_pelo_caixa)} />
             <ParDeDados chave="Estornos" valor={formatBRL(resumo.estornos)} />
+            {/* Falta ou sobra já justificada no acerto do motoboy (0144):
+                aparece aqui para o fechamento não cobrar de novo. */}
+            {(resumo.diferencas_de_motoboy ?? 0) !== 0 ? (
+              <ParDeDados
+                chave="Diferenças de motoboy"
+                valor={formatBRL(resumo.diferencas_de_motoboy)}
+              />
+            ) : null}
           </div>
 
           {resumo.dinheiro_fora_da_gaveta > 0 ? (

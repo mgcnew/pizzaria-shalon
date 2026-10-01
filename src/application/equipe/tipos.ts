@@ -165,3 +165,23 @@ export type Resultado =
       /** Entregador com corrida por acertar. */
       temCorridaAberta?: boolean;
     };
+
+/**
+ * Diferença do acerto de um motoboy e o que a dona decidiu (RN-RUN-006, 0144).
+ * Negativa é falta (ele trouxe menos); positiva é sobra.
+ */
+export type DiferencaDeAcerto = {
+  acerto_id: string;
+  corrida_id: string;
+  funcionario_id: string;
+  funcionario: string;
+  acertado_em: string;
+  esperado: number;
+  devolvido: number;
+  diferenca: number;
+  motivo: string | null;
+  situacao: "pendente" | "lancada" | "dispensada";
+  lancamento_id: string | null;
+  dispensada_em: string | null;
+  motivo_da_dispensa: string | null;
+};

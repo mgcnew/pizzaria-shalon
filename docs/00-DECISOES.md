@@ -3915,6 +3915,30 @@ recolhe o dinheiro registrado para a gaveta e confere com o que ele trouxe.
 
 ---
 
+## D-2026-10-01-112 — Diferença do motoboy: o caixa registra o que entrou, a dona decide o resto
+
+**Data:** 01/10/2026 · **Decisão do responsável pelo produto nesta conversa**
+
+**O caso.** O cliente pagou R$ 54, o motoboy trouxe R$ 50. "Receber" registra
+o que o cliente pagou (54); a falta de 4 é do motoboy. Lançar 54 e chamar de
+vale não é correto.
+
+**Dois achados.** (1) O acerto punha os 54 inteiros no esperado da gaveta, e
+o fechamento acusaria −4 de novo, pedindo outra justificativa. (2) A
+diferença ficava só na corrida: não havia onde a dona decidir.
+
+**Decisão.** O acerto lança no caixa um movimento próprio de falta/sobra,
+ligado a ele — a gaveta espera o que entrou. A diferença aparece no livro do
+motoboy como pendente, e a dona decide uma vez: lançar no funcionário (só
+falta, só no motoboy da corrida) ou não lançar, com motivo. Nada é
+descontado sozinho (RN-RUN-005).
+
+**Onde foi formalizada:** 04 RN-RUN-006 (nota);
+`supabase/migrations/20261001140000_diferenca_do_motoboy.sql`;
+`supabase/tests/diferenca_do_motoboy.sql`; `DiferencasDeAcerto.tsx`.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.

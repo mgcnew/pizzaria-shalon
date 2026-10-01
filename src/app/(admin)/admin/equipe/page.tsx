@@ -7,6 +7,7 @@ import {
   listarPapeis,
   listarReferenciasSalariais,
   listarLancamentosParaConferencia,
+  listarDiferencasDeAcerto,
   obterHistorico,
 } from "@/application/equipe/consultas";
 import { obterCaixa } from "@/application/caixa/consultas";
@@ -57,7 +58,7 @@ export default async function Page({
   const mesConferencia = /^\d{4}-(0[1-9]|1[0-2])$/.test(mes ?? "") ? mes! : mesAtual;
   const nenhum = <T,>(valor: T) => Promise.resolve(valor);
 
-  const [funcionarios, equipe, papeis, movimentos, historico, caixa, referencias, lancamentosDoMes] = await Promise.all([
+  const [funcionarios, equipe, papeis, movimentos, historico, caixa, referencias, lancamentosDoMes, diferencas] = await Promise.all([
     abaEfetiva === "equipe" ? nenhum([]) : listarFuncionarios(),
     abaEfetiva === "equipe" ? listarEquipe() : nenhum([]),
     // A lista já vem marcando o que ESTE usuário pode conceder (RN-RBAC-005).
@@ -72,6 +73,9 @@ export default async function Page({
       ? listarReferenciasSalariais() : nenhum([]),
     abaEfetiva === "livro" && funcionario && podeVerFinanceiro
       ? listarLancamentosParaConferencia(funcionario, mesConferencia) : nenhum([]),
+    // Diferenças de acerto do motoboy para a dona decidir (RN-RUN-006, 0144).
+    abaEfetiva === "livro" && funcionario && podeVerFinanceiro
+      ? listarDiferencasDeAcerto(funcionario) : nenhum([]),
   ]);
 
   return (
@@ -90,6 +94,7 @@ export default async function Page({
         papeis={papeis}
         movimentos={movimentos}
         historico={historico}
+        diferencas={diferencas}
         referencias={referencias}
         lancamentosDoMes={lancamentosDoMes}
         mesConferencia={mesConferencia}

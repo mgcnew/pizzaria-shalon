@@ -10,7 +10,9 @@ export type TomDoCaixa = "sucesso" | "atencao" | "perigo" | "info" | "neutro";
 
 export type MovimentoDoCaixa = {
   id: string;
-  tipo: "opening" | "sale_receipt" | "supply" | "withdrawal" | "expense" | "refund" | "adjustment" | "other";
+  tipo:
+    | "opening" | "sale_receipt" | "supply" | "withdrawal" | "expense" | "refund" | "adjustment"
+    | "other" | "employee_advance" | "driver_difference";
   sentido: "in" | "out";
   valor: number;
   motivo: string | null;
@@ -71,6 +73,8 @@ export type ResumoDeFechamento = {
   despesas_pelo_caixa: number;
   entradas_pelo_caixa: number;
   estornos: number;
+  /** Sobra menos falta dos acertos de motoboy nesta sessão (0144). */
+  diferencas_de_motoboy: number;
   esperado_em_dinheiro: number;
   contado: number | null;
   diferenca: number | null;

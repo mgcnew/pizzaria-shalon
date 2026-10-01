@@ -353,3 +353,24 @@ export async function definirPapeis(entrada: unknown): Promise<Resultado> {
   revalidatePath(ROTA_EQUIPE);
   return resposta(data);
 }
+
+/**
+ * "Não lançar" a diferença de um acerto no funcionário (RN-RUN-006, 0144).
+ * Fica registrado, com quem decidiu e por quê; lançar depois é recusado.
+ */
+export async function dispensarDiferencaDoAcerto(entrada: unknown): Promise<Resultado> {
+  const v = z
+    .object({ acerto_id: z.string().uuid(), motivo: z.string().trim().min(3).max(400) })
+    .safeParse(entrada);
+  if (!v.success) return { ok: false, erro: "Informe o motivo de não lançar." };
+
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("dispensar_diferenca_do_acerto", {
+    p_acerto_id: v.data.acerto_id,
+    p_motivo: v.data.motivo,
+  });
+  if (error) return falha("dispensarDiferencaDoAcerto", error);
+
+  revalidatePath(ROTA_EQUIPE);
+  return resposta(data);
+}

@@ -16,6 +16,8 @@ import {
   reverterLancamentoFuncionario,
   reverterMovimentoInterno,
 } from "@/application/equipe/acoes";
+import { DiferencasDeAcerto } from "./DiferencasDeAcerto";
+import type { DiferencaDeAcerto } from "@/application/equipe/tipos";
 import type {
   HistoricoDoFuncionario,
   MembroDaEquipe,
@@ -88,6 +90,7 @@ export function PainelDaEquipe({
   papeis,
   movimentos,
   historico,
+  diferencas = [],
   referencias,
   lancamentosDoMes,
   mesConferencia,
@@ -107,6 +110,8 @@ export function PainelDaEquipe({
   papeis: PapelAtribuivel[];
   movimentos: MovimentoInterno[];
   historico: HistoricoDoFuncionario | null;
+  /** Diferenças de acerto do motoboy escolhido (RN-RUN-006, 0144). */
+  diferencas?: DiferencaDeAcerto[];
   referencias: ReferenciaSalarial[] | null;
   lancamentosDoMes: LancamentoParaConferencia[] | null;
   mesConferencia: string;
@@ -505,6 +510,14 @@ export function PainelDaEquipe({
             </Button>
           )}
         </div>
+      ) : null}
+
+      {funcionarioSelecionado && diferencas.length > 0 ? (
+        <DiferencasDeAcerto
+          diferencas={diferencas}
+          funcionarioId={funcionarioSelecionado}
+          podeDecidir={podeLancar}
+        />
       ) : null}
 
       {historico === null ? null : historico.lancamentos.length === 0 ? (

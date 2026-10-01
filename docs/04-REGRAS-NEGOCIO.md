@@ -1087,6 +1087,18 @@ Diferença de motoboy nunca gera desconto salarial automático.
 ### RN-RUN-006
 Usuário financeiro autorizado decide separadamente se a ocorrência deve gerar lançamento no histórico financeiro do funcionário.
 
+**Como (D-2026-10-01-112).** A diferença do acerto (o motoboy trouxe menos ou
+mais do que o recebido registrado) tem dois efeitos, e nenhum é desconto:
+1. **No caixa**, entra um movimento próprio, de falta (saída) ou sobra
+   (entrada), ligado ao acerto e com o motivo. A gaveta passa a esperar o que
+   entrou de fato, e o fechamento mostra a linha "Diferenças de motoboy" sem
+   cobrar justificativa de novo. A venda continua sendo o que o cliente pagou.
+2. **No histórico do motoboy** (Equipe › Livro), a diferença fica
+   **pendente** até alguém com `employees.finance.manage` decidir, uma vez só:
+   **"Lançar no funcionário"** (falta vira lançamento de diferença no livro
+   dele, ligado à corrida) ou **"Não lançar"** (arquivada, com motivo). O
+   lançamento só vale para quem fez a corrida.
+
 ### RN-RUN-007
 Entrega não realizada não é tratada como dinheiro recebido pelo motoboy.
 

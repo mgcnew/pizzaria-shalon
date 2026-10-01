@@ -472,8 +472,10 @@ export function PainelDeEntregas({
                   />
                   {diferenca !== null && diferenca !== 0 ? (
                     <p className="m-0 text-[13px] font-semibold text-tdf">
-                      Diferença de {formatBRL(diferenca)}. Isto não desconta salário — fica
-                      registrado, e virar acerto com o funcionário é uma decisão à parte.
+                      {diferenca < 0 ? "Falta" : "Sobra"} de {formatBRL(Math.abs(diferenca))}. O caixa
+                      registra o que entrou de fato, e a diferença vai para o histórico do motoboy
+                      (Equipe › Livro), onde a dona decide se lança no funcionário. Nada é
+                      descontado sozinho.
                     </p>
                   ) : null}
                   {(diferenca !== null && diferenca !== 0) || exigeMotivo ? (

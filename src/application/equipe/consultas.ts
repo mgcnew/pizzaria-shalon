@@ -3,6 +3,7 @@ import "server-only";
 import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
 import { logger } from "@/lib/logger";
 import type {
+  DiferencaDeAcerto,
   HistoricoDoFuncionario,
   MembroDaEquipe,
   MovimentoInterno,
@@ -53,6 +54,20 @@ export async function listarMovimentos(
  * O livro de um funcionário. Sem `employees.finance.view` volta vazio — e
  * vazio é a resposta correta, não um erro que revelaria que há algo ali.
  */
+/**
+ * Diferenças de acerto do motoboy, pendentes primeiro (RN-RUN-006, 0144).
+ * Sem `employees.finance.view` a função do banco devolve lista vazia.
+ */
+export async function listarDiferencasDeAcerto(funcionarioId: string): Promise<DiferencaDeAcerto[]> {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("diferencas_de_acerto", { p_funcionario: funcionarioId });
+  if (error) {
+    logger.error("equipe:listarDiferencasDeAcerto", { code: (error as { code?: string }).code });
+    return [];
+  }
+  return (data ?? []) as DiferencaDeAcerto[];
+}
+
 export async function obterHistorico(
   funcionarioId: string,
   limite = 100,
