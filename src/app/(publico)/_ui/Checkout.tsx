@@ -10,16 +10,27 @@ import { formatBRL } from "@/lib/format";
 import { paraRevalidacao } from "@/domain/carrinho/carrinho";
 import { revalidarCarrinho } from "@/application/publico/acoes";
 import type { Revalidacao } from "@/application/publico/tipos";
-import { cotarEntrega, enviarPedido } from "@/application/checkout/acoes";
+import {
+  cotarEntrega,
+  enviarPedido,
+  esquecerNoNavegador,
+  reconhecerNoNavegador,
+} from "@/application/checkout/acoes";
 import { buscarEnderecoPorCep } from "@/application/checkout/cep";
 import type {
+  ClienteDoDispositivo,
   CotacaoEntrega,
+  EnderecoDoCliente,
   FormaDePagamento,
   Modalidade,
 } from "@/application/checkout/tipos";
 import type { LojaPublica } from "@/application/publico/tipos";
 import { useLoja } from "@/ui/publico/useLoja";
-import { garantirDispositivo, registrarPedido } from "@/ui/publico/armazenamentoLocal";
+import {
+  esquecerDispositivo,
+  garantirDispositivo,
+  registrarPedido,
+} from "@/ui/publico/armazenamentoLocal";
 
 /**
  * Checkout — a sequência do design aprovado: modalidade, identificação,
@@ -42,7 +53,7 @@ const UF = /^[A-Za-z]{2}$/;
 
 export function Checkout({ loja, formasPorModalidade }: Props) {
   const router = useRouter();
-  const { carrinho, itens, esvaziar } = useLoja();
+  const { carrinho, itens, esvaziar, dispositivo } = useLoja();
 
   const [modalidade, setModalidade] = useState<Modalidade>("delivery");
   const [nome, setNome] = useState("");
@@ -61,6 +72,113 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
 
   const [cotacao, setCotacao] = useState<CotacaoEntrega | null>(null);
   const [cotando, iniciarCotacao] = useTransition();
+
+  /**
+   * RN-CLI-004: o mesmo navegador reconhece o cliente pela credencial que
+   * guardou na primeira compra — nunca pelo WhatsApp digitado (03 §12.1).
+   * Preenche só o que está vazio; o cliente confere e muda o que quiser.
+   */
+  const [reconhecido, setReconhecido] = useState<
+    Extract<ClienteDoDispositivo, { encontrado: true }> | null
+  >(null);
+  // Endereço salvo escolhido. Qualquer edição nos campos o desfaz: o que
+  // vale é o que está escrito, e o servidor só aceita o id se for do cliente.
+  const [enderecoSalvoId, setEnderecoSalvoId] = useState<string | null>(null);
+
+  function cotarEndereco(e: {
+    logradouro: string;
+    numero: string;
+    complemento: string | null;
+    bairro: string;
+    cidade: string;
+    uf: string;
+    cep: string | null;
+    referencia: string | null;
+  }) {
+    iniciarCotacao(async () => {
+      setCotacao(await cotarEntrega(e));
+    });
+  }
+
+  function aplicarEnderecoSalvo(e: EnderecoDoCliente | null) {
+    setEnderecoSalvoId(e?.id ?? null);
+    setLogradouro(e?.logradouro ?? "");
+    setNumero(e?.numero ?? "");
+    setComplemento(e?.complemento ?? "");
+    setBairro(e?.bairro ?? "");
+    setCidade(e?.cidade ?? loja.endereco_cidade);
+    setUf(e?.uf ?? loja.endereco_uf);
+    setCep(e?.cep ?? "");
+    setReferencia(e?.referencia ?? "");
+    setCotacao(null);
+    // Endereço já conhecido: a distância costuma estar guardada, e o cliente
+    // não precisa apertar "calcular" para ver a taxa.
+    if (e) {
+      cotarEndereco({
+        logradouro: e.logradouro,
+        numero: e.numero,
+        complemento: e.complemento,
+        bairro: e.bairro,
+        cidade: e.cidade,
+        uf: e.uf,
+        cep: e.cep,
+        referencia: e.referencia,
+      });
+    }
+  }
+
+  /** Editar à mão desfaz a escolha do endereço salvo. */
+  function editarEndereco(definir: (valor: string) => void) {
+    return (valor: string) => {
+      setEnderecoSalvoId(null);
+      definir(valor);
+    };
+  }
+
+
+  // O endereço preferido entra quando o cliente está em entrega e ainda não
+  // digitou nada — ao ser reconhecido, ou ao trocar de retirada para entrega.
+  const atual = useRef({ modalidade, logradouro, numero });
+  useEffect(() => {
+    atual.current = { modalidade, logradouro, numero };
+  });
+  function sugerirPreferido(
+    preferido: EnderecoDoCliente | undefined,
+    m: Modalidade = atual.current.modalidade,
+  ) {
+    const vazio = atual.current.logradouro.trim() === "" && atual.current.numero.trim() === "";
+    if (m === "delivery" && preferido && vazio) aplicarEnderecoSalvo(preferido);
+  }
+  // O reconhecimento responde depois; chama sempre a versão atual.
+  const sugerir = useRef(sugerirPreferido);
+  useEffect(() => {
+    sugerir.current = sugerirPreferido;
+  });
+
+  useEffect(() => {
+    if (!dispositivo) return;
+    let cancelado = false;
+    void reconhecerNoNavegador(dispositivo).then((r) => {
+      if (cancelado || !r.encontrado) return;
+      setReconhecido(r);
+      setNome((valor) => valor.trim() || r.nome);
+      setWhatsapp((valor) => valor.trim() || r.whatsapp);
+      sugerir.current(r.enderecos[0]);
+    });
+    return () => {
+      cancelado = true;
+    };
+  }, [dispositivo]);
+
+  function naoSouEu() {
+    const token = dispositivo;
+    esquecerDispositivo();
+    if (token) void esquecerNoNavegador(token);
+    setReconhecido(null);
+    setNome("");
+    setWhatsapp("");
+    aplicarEnderecoSalvo(null);
+  }
 
   // Preenchimento por CEP: conveniência de digitação. O ViaCEP não decide
   // coordenada, distância nem taxa — quem faz isso é o provedor de rotas e a
@@ -147,18 +265,15 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
 
   function pedirCotacao() {
     if (!enderecoCompleto) return;
-    iniciarCotacao(async () => {
-      const r = await cotarEntrega({
-        logradouro: logradouro.trim(),
-        numero: numero.trim(),
-        complemento: complemento.trim() || null,
-        bairro: bairro.trim(),
-        cidade: cidade.trim(),
-        uf: uf.trim().toUpperCase(),
-        cep: cep.trim() || null,
-        referencia: referencia.trim() || null,
-      });
-      setCotacao(r);
+    cotarEndereco({
+      logradouro: logradouro.trim(),
+      numero: numero.trim(),
+      complemento: complemento.trim() || null,
+      bairro: bairro.trim(),
+      cidade: cidade.trim(),
+      uf: uf.trim().toUpperCase(),
+      cep: cep.trim() || null,
+      referencia: referencia.trim() || null,
     });
   }
 
@@ -209,6 +324,7 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
         endereco:
           modalidade === "delivery"
             ? {
+                id: enderecoSalvoId,
                 logradouro: logradouro.trim(),
                 numero: numero.trim(),
                 complemento: complemento.trim() || null,
@@ -317,6 +433,7 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
                     setModalidade(m);
                     setFormaId("");
                     setBandeiraId("");
+                    sugerirPreferido(reconhecido?.enderecos[0], m);
                   }}
                   aria-pressed={modalidade === m}
                   className={[
@@ -340,6 +457,23 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
           {/* 2. Identificação */}
           <fieldset className="m-0 flex flex-col gap-3 rounded-16 border border-border-shalon bg-surface p-4">
             <legend className="px-1 text-[15px] font-bold text-ink">Seus dados</legend>
+            {reconhecido !== null ? (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-12 bg-elev px-3 py-2.5">
+                <p className="m-0 text-[14px] text-ink">
+                  <span className="font-semibold">
+                    Olá, {reconhecido.nome.trim().split(/\s+/)[0]}!
+                  </span>{" "}
+                  <span className="text-ink-2">Preenchemos com os dados deste aparelho.</span>
+                </p>
+                <button
+                  type="button"
+                  onClick={naoSouEu}
+                  className="min-h-touch cursor-pointer border-0 bg-transparent px-1 text-[13.5px] font-semibold text-ink-2 underline"
+                >
+                  Não sou eu
+                </button>
+              </div>
+            ) : null}
             <Input
               label="Nome"
               value={nome}
@@ -365,13 +499,20 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
           {modalidade === "delivery" ? (
             <fieldset className="m-0 flex flex-col gap-3 rounded-16 border border-border-shalon bg-surface p-4">
               <legend className="px-1 text-[15px] font-bold text-ink">Endereço de entrega</legend>
+              {reconhecido !== null && reconhecido.enderecos.length > 0 ? (
+                <EnderecosDoCliente
+                  enderecos={reconhecido.enderecos}
+                  selecionado={enderecoSalvoId}
+                  aoEscolher={aplicarEnderecoSalvo}
+                />
+              ) : null}
 
               <div className="flex gap-3">
                 <div className="flex-[3]">
                   <Input
                     label="Rua"
                     value={logradouro}
-                    onChange={(e) => setLogradouro(e.target.value)}
+                    onChange={(e) => editarEndereco(setLogradouro)(e.target.value)}
                     autoComplete="address-line1"
                     maxLength={160}
                   />
@@ -380,7 +521,7 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
                   <Input
                     label="Número"
                     value={numero}
-                    onChange={(e) => setNumero(e.target.value)}
+                    onChange={(e) => editarEndereco(setNumero)(e.target.value)}
                     maxLength={20}
                   />
                 </div>
@@ -389,7 +530,7 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
               <Input
                 label="Bairro"
                 value={bairro}
-                onChange={(e) => setBairro(e.target.value)}
+                onChange={(e) => editarEndereco(setBairro)(e.target.value)}
                 maxLength={80}
               />
 
@@ -398,7 +539,7 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
                   <Input
                     label="Cidade"
                     value={cidade}
-                    onChange={(e) => setCidade(e.target.value)}
+                    onChange={(e) => editarEndereco(setCidade)(e.target.value)}
                     maxLength={80}
                   />
                 </div>
@@ -406,7 +547,7 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
                   <Input
                     label="UF"
                     value={uf}
-                    onChange={(e) => setUf(e.target.value.toUpperCase().slice(0, 2))}
+                    onChange={(e) => editarEndereco(setUf)(e.target.value.toUpperCase().slice(0, 2))}
                     maxLength={2}
                   />
                 </div>
@@ -416,7 +557,7 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
                 label="CEP"
                 value={cep}
                 onChange={(e) => {
-                  setCep(e.target.value);
+                  editarEndereco(setCep)(e.target.value);
                   preencherPeloCep(e.target.value);
                 }}
                 inputMode="numeric"
@@ -434,14 +575,14 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
               <Input
                 label="Complemento"
                 value={complemento}
-                onChange={(e) => setComplemento(e.target.value)}
+                onChange={(e) => editarEndereco(setComplemento)(e.target.value)}
                 maxLength={80}
                 hint="Apartamento, bloco, fundos. Não entra no cálculo da distância."
               />
               <Input
                 label="Ponto de referência"
                 value={referencia}
-                onChange={(e) => setReferencia(e.target.value)}
+                onChange={(e) => editarEndereco(setReferencia)(e.target.value)}
                 maxLength={160}
                 hint="Ajuda o entregador a chegar. Não entra no cálculo da distância."
               />
@@ -666,5 +807,74 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
         </aside>
       </div>
     </section>
+  );
+}
+
+/**
+ * Endereços salvos do cliente reconhecido (RN-CLI-006): o preferido primeiro,
+ * e sempre a saída "Outro endereço" para digitar um novo.
+ */
+function EnderecosDoCliente({
+  enderecos,
+  selecionado,
+  aoEscolher,
+}: {
+  enderecos: EnderecoDoCliente[];
+  selecionado: string | null;
+  aoEscolher: (endereco: EnderecoDoCliente | null) => void;
+}) {
+  const opcao = (ativo: boolean) =>
+    [
+      "flex min-h-touch w-full cursor-pointer items-start gap-3 rounded-12 border-[1.5px] px-3 py-2.5 text-left",
+      ativo ? "border-brand-orange bg-elev" : "border-border-shalon bg-surface",
+    ].join(" ");
+  const marca = (ativo: boolean) =>
+    [
+      "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
+      ativo ? "border-brand-red" : "border-border-shalon",
+    ].join(" ");
+
+  return (
+    <div role="radiogroup" aria-label="Seus endereços salvos" className="flex flex-col gap-2">
+      {enderecos.map((e) => {
+        const ativo = selecionado === e.id;
+        return (
+          <button
+            key={e.id}
+            type="button"
+            role="radio"
+            aria-checked={ativo}
+            onClick={() => aoEscolher(e)}
+            className={opcao(ativo)}
+          >
+            <span aria-hidden="true" className={marca(ativo)}>
+              {ativo ? <span className="h-2.5 w-2.5 rounded-full bg-brand-red" /> : null}
+            </span>
+            <span className="min-w-0">
+              <span className="block text-[14.5px] font-semibold text-ink">
+                {e.rotulo?.trim() || `${e.logradouro}, ${e.numero}`}
+              </span>
+              <span className="block text-[13px] text-ink-2">
+                {[e.rotulo?.trim() ? `${e.logradouro}, ${e.numero}` : null, e.complemento, e.bairro]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+            </span>
+          </button>
+        );
+      })}
+      <button
+        type="button"
+        role="radio"
+        aria-checked={selecionado === null}
+        onClick={() => aoEscolher(null)}
+        className={opcao(selecionado === null)}
+      >
+        <span aria-hidden="true" className={marca(selecionado === null)}>
+          {selecionado === null ? <span className="h-2.5 w-2.5 rounded-full bg-brand-red" /> : null}
+        </span>
+        <span className="block text-[14.5px] font-semibold text-ink">Outro endereço</span>
+      </button>
+    </div>
   );
 }

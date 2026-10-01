@@ -520,6 +520,12 @@ Ela pode autorizar apenas o conjunto de pedidos associado àquele dispositivo/id
 
 **Proibido:** permitir recuperação de todo histórico apenas digitando nome ou WhatsApp.
 
+A mesma credencial reconhece o cliente no checkout (RN-CLI-004):
+`cliente_do_dispositivo(token)` devolve só nome, WhatsApp e endereços salvos
+do dono; credencial malformada, desconhecida, revogada ou de cliente
+bloqueado recebe a mesma resposta vazia. `esquecer_dispositivo(token)` revoga
+("Não sou eu") e só funciona para quem tem a credencial (D-2026-10-01-107).
+
 Favoritos permanecem locais na V1 e não precisam de RLS.
 
 ---

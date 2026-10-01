@@ -16,6 +16,7 @@ import {
 import { logger } from "@/lib/logger";
 import { lerSegredoDeOrigem, tokenDeAcompanhamento, SegredoAusente } from "./segredo";
 import type {
+  ClienteDoDispositivo,
   CotacaoEntrega,
   EnderecoInformado,
   PedidoParaEnviar,
@@ -543,6 +544,38 @@ export async function resumoDosPedidos(
   );
 
   return resultados.filter((p) => p !== null);
+}
+
+const tokenDeDispositivo = z.string().regex(/^[0-9a-f]{64}$/);
+
+/**
+ * Reconhece o cliente NESTE navegador (RN-CLI-004).
+ *
+ * A única chave é a credencial que o próprio navegador guardou na primeira
+ * compra. Não existe consulta por WhatsApp: digitar o número de alguém não
+ * devolve nome nem endereço de ninguém (03 §12.1). Credencial inválida,
+ * revogada ou de cliente bloqueado respondem igual: nada.
+ */
+export async function reconhecerNoNavegador(token: unknown): Promise<ClienteDoDispositivo> {
+  const validado = tokenDeDispositivo.safeParse(token);
+  if (!validado.success) return { encontrado: false };
+
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("cliente_do_dispositivo", { p_token: validado.data });
+  if (error) {
+    logger.error("checkout:reconhecer", { code: (error as { code?: string }).code });
+    return { encontrado: false };
+  }
+  return (data as ClienteDoDispositivo | null) ?? { encontrado: false };
+}
+
+/** "Não sou eu": revoga a credencial deste navegador. */
+export async function esquecerNoNavegador(token: unknown): Promise<void> {
+  const validado = tokenDeDispositivo.safeParse(token);
+  if (!validado.success) return;
+  const supabase = await getSupabaseServerClient();
+  const { error } = await supabase.rpc("esquecer_dispositivo", { p_token: validado.data });
+  if (error) logger.error("checkout:esquecer", { code: (error as { code?: string }).code });
 }
 
 /**

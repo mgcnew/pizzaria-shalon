@@ -176,3 +176,27 @@ export type PixParaPagamento =
       valor: number;
     }
   | { ok: false };
+
+/** Endereço salvo do cliente reconhecido no mesmo navegador (RN-CLI-004). */
+export type EnderecoDoCliente = {
+  id: string;
+  rotulo: string | null;
+  logradouro: string;
+  numero: string;
+  complemento: string | null;
+  bairro: string;
+  cidade: string;
+  uf: string;
+  cep: string | null;
+  referencia: string | null;
+  preferido: boolean;
+};
+
+/**
+ * O que o navegador recebe de volta com a própria credencial. Espelha
+ * `cliente_do_dispositivo` (migration 0142): nome, WhatsApp e endereços, e
+ * nada mais.
+ */
+export type ClienteDoDispositivo =
+  | { encontrado: false }
+  | { encontrado: true; nome: string; whatsapp: string; enderecos: EnderecoDoCliente[] };

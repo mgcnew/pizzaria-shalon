@@ -3810,6 +3810,27 @@ motor (`montar_item`); a busca só esconde linhas.
 
 ---
 
+## D-2026-10-01-107 — O mesmo navegador reconhece o cliente no checkout
+
+**Data:** 01/10/2026 · **Decisão do responsável pelo produto nesta conversa**
+
+**O achado.** RN-CLI-004 e o Documento Mestre preveem saudação e dados
+pré-preenchidos para o cliente que volta no mesmo navegador. A credencial do
+navegador já era criada e ligada ao cliente desde a Fase 5, mas nada a lia de
+volta: o cliente recorrente redigitava tudo.
+
+**Decisão.** Implementar pelo navegador, como os documentos preveem: saudação,
+nome/WhatsApp/endereço preenchidos só onde está vazio, escolha entre endereços
+salvos, "Não sou eu" que revoga a credencial. **Pelo WhatsApp digitado, não**:
+continua proibido no público (03 §12.1), porque devolveria nome e endereço de
+quem tiver o número digitado.
+
+**Onde foi formalizada:** 04 RN-CLI-004; 03 §11;
+`supabase/migrations/20261001100000_cliente_do_dispositivo.sql`;
+`supabase/tests/cliente_do_dispositivo.sql`.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.

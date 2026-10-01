@@ -60,6 +60,8 @@ export function useLoja() {
     hidratado: estado.hidratado,
     carrinho: estado.carrinho,
     favoritos: estado.favoritos,
+    /** Credencial deste navegador (03 §11), para reconhecer o cliente (RN-CLI-004). */
+    dispositivo: estado.dispositivo,
     /** Pedidos feitos neste aparelho (03 §11). Só tokens, nunca status. */
     pedidos: estado.pedidos,
     expirou: estado.expirou,

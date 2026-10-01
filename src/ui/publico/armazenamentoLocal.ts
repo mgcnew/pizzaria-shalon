@@ -181,6 +181,21 @@ export function garantirDispositivo(): string | null {
 }
 
 /** Guarda o token de acompanhamento do pedido recém-criado. */
+/**
+ * "Não sou eu" (RN-CLI-004): descarta a credencial deste navegador. A próxima
+ * compra cria outra — a antiga, revogada no servidor, não volta a ser usada.
+ */
+export function esquecerDispositivo(): void {
+  iniciar();
+  estado = { ...estado, dispositivo: null };
+  try {
+    window.localStorage.removeItem(CHAVE_DISPOSITIVO);
+  } catch {
+    // Armazenamento bloqueado: a credencial só existia nesta visita.
+  }
+  avisar();
+}
+
 export function registrarPedido(pedido: PedidoLocal): void {
   const pedidos = registrarPedidoLocal(lerEstado().pedidos, pedido);
   estado = { ...estado, pedidos };

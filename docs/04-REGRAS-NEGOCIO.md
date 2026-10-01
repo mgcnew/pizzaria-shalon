@@ -439,6 +439,17 @@ WhatsApp é identificador operacional, mas não substitui a chave primária inte
 ### RN-CLI-004
 Mesmo dispositivo pode reconhecer cliente recorrente e preencher dados previamente conhecidos.
 
+**Como funciona (D-2026-10-01-107).** A chave é a credencial que o navegador
+guarda na primeira compra; o banco guarda só o hash e a liga ao cliente. Com
+ela, o checkout recebe nome, WhatsApp e endereços salvos (o preferido
+primeiro), mostra uma saudação curta e preenche **só campos vazios**. Na
+entrega, o cliente escolhe um endereço salvo ou "Outro endereço"; escolhido
+um salvo, a taxa é calculada sem precisar apertar "calcular". "Não sou eu"
+revoga a credencial e limpa o que foi preenchido. Credencial inválida,
+revogada ou de cliente bloqueado não devolve nada. O WhatsApp digitado nunca
+serve de chave de busca (03 §12.1). A credencial é por endereço de site:
+compra feita em um domínio não é reconhecida em outro.
+
 ### RN-CLI-005
 Alteração de nome/WhatsApp em pedido novo pode atualizar o cadastro principal para uso futuro, sem alterar snapshots de pedidos antigos.
 
