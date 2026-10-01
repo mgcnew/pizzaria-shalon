@@ -20,6 +20,9 @@ import {
 
 const CHAVE_ULTIMO_SOM = "shalon-admin-ultimo-alerta-sonoro";
 
+/** Quantas notificações o painel mostra antes de "Mostrar mais". */
+const VISIVEIS_DE_INICIO = 5;
+
 function preferenciaSalva(chave: string): boolean {
   if (typeof window === "undefined") return false;
   try {
@@ -50,6 +53,9 @@ export function SinoNotificacoesAdmin({
   const chaveAreas = `shalon-admin-areas-sonoras:${appUserId}`;
   const [resumo, setResumo] = useState(iniciais);
   const [aberto, setAberto] = useState(false);
+  // O painel abre com as mais recentes; "Mostrar mais" revela o resto, com
+  // rolagem. Cada nova abertura volta ao resumo.
+  const [mostrandoTodas, setMostrandoTodas] = useState(false);
   const [somPreferido, setSomPreferido] = useState(() => preferenciaSalva(chaveSom));
   const [somLigado, setSomLigado] = useState(false);
   const [areasSonoras, setAreasSonoras] = useState<AreaAlerta[]>(() => areasSalvas(chaveAreas));
@@ -246,7 +252,10 @@ export function SinoNotificacoesAdmin({
         aria-haspopup="dialog"
         aria-expanded={aberto}
         aria-controls="notificacoes-admin"
-        onClick={() => setAberto((valor) => !valor)}
+        onClick={() => {
+          setMostrandoTodas(false);
+          setAberto((valor) => !valor);
+        }}
         className="motion-interactive relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-12 border border-border-shalon bg-surface text-ink transition-colors hover:border-brand-orange hover:bg-elev sm:h-touch sm:w-touch"
       >
         <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-[17px] w-[17px] sm:h-5 sm:w-5">
@@ -310,7 +319,7 @@ export function SinoNotificacoesAdmin({
           <div className="scrollbar-subtle max-h-[min(420px,65vh)] overflow-y-auto p-2">
             {resumo.items.length === 0 ? (
               <p className="m-0 px-3 py-6 text-center text-[13px] text-muted">Nenhuma notificação por enquanto.</p>
-            ) : resumo.items.map((notificacao) => (
+            ) : (mostrandoTodas ? resumo.items : resumo.items.slice(0, VISIVEIS_DE_INICIO)).map((notificacao) => (
               <button
                 key={notificacao.id}
                 type="button"
@@ -328,6 +337,18 @@ export function SinoNotificacoesAdmin({
                 </span>
               </button>
             ))}
+            {resumo.items.length > VISIVEIS_DE_INICIO ? (
+              <button
+                type="button"
+                onClick={() => setMostrandoTodas((valor) => !valor)}
+                aria-expanded={mostrandoTodas}
+                className="mt-1 flex min-h-touch w-full cursor-pointer items-center justify-center rounded-11 border-0 bg-transparent px-3 text-[12.5px] font-semibold text-ink-2 hover:bg-elev"
+              >
+                {mostrandoTodas
+                  ? "Mostrar menos"
+                  : `Mostrar mais (${resumo.items.length - VISIVEIS_DE_INICIO})`}
+              </button>
+            ) : null}
           </div>
         </section>
       ) : null}
