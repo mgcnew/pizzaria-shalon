@@ -17,6 +17,7 @@ import {
   type LinhaComanda,
 } from "@/domain/pedidos/comanda";
 import { obterPedido } from "./consultas";
+import { obterPagamentoDoPedido } from "@/application/caixa/consultas";
 import type {
   ClienteNoBalcao,
   ResultadoClienteNoBalcao,
@@ -164,7 +165,13 @@ export async function emitirDocumento(
     return { ok: false, erro: "Pedido inválido." };
   }
 
-  const [pedido, loja] = await Promise.all([obterPedido(pedidoId), obterLojaPublica()]);
+  const [pedido, loja, pagamento] = await Promise.all([
+    obterPedido(pedidoId),
+    obterLojaPublica(),
+    // Só para saber se já está pago (D-2026-10-01-110). Sem acesso ou com
+    // falha, a comanda sai como sempre saiu: dizendo como cobrar.
+    tipo === "comanda" ? obterPagamentoDoPedido(pedidoId) : Promise.resolve(null),
+  ]);
   if (pedido === null) return { ok: false, erro: "Pedido não encontrado." };
 
   const fuso = loja?.fuso ?? "America/Sao_Paulo";
@@ -201,6 +208,7 @@ export async function emitirDocumento(
       trocoPara: pedido.pagamento?.troco_para ?? null,
       trocoEsperado: pedido.pagamento?.troco_esperado ?? null,
       formaPagamento: pedido.pagamento?.forma ?? null,
+      pago: (pagamento?.realizado ?? []).some((p) => p.status === "confirmed"),
     });
   } else {
     const revisao = pedido.revisoes.find((r) => r.status === "applied");

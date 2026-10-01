@@ -71,6 +71,11 @@ export type PedidoDaComanda = {
   trocoPara?: number | null;
   trocoEsperado?: number | null;
   formaPagamento?: string | null;
+  /**
+   * Já tem pagamento confirmado (cliente pagou na loja). Na entrega, a comanda
+   * diz PAGO e não manda cobrar nem levar troco (D-2026-10-01-110).
+   */
+  pago?: boolean;
 };
 
 // ----------------------------------------------------------------- texto
@@ -219,7 +224,10 @@ export function montarComanda(pedido: PedidoDaComanda): LinhaComanda[] {
 
   // A única informação financeira, e só quando serve à operação de entrega
   // (RN-PRINT-003: nada de transformar a comanda de cozinha em fechamento).
-  if (
+  if (pedido.modalidade === "delivery" && pedido.pago === true) {
+    saida.push(SEPARADOR);
+    saida.push({ texto: "PAGO - NAO COBRAR", estilo: "destaque" });
+  } else if (
     pedido.modalidade === "delivery" &&
     pedido.trocoEsperado != null &&
     pedido.trocoPara != null

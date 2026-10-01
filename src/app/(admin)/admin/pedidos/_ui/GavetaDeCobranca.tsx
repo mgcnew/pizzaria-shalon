@@ -7,6 +7,7 @@ import { obterPagamentoDoPedidoNoPdv } from "@/application/pdv/acoes";
 import { formatBRL } from "@/lib/format";
 import type { PagamentoDoPedido } from "@/application/caixa/tipos";
 import type { PedidoAReceber } from "@/application/pdv/tipos";
+import { momentoDoRecebimento } from "@/domain/pedidos/recebimentoNaEntrega";
 
 /**
  * Cobrar sem sair da fila.
@@ -174,6 +175,7 @@ export function GavetaDeCobranca({
               formaInicialId={
                 formas.find((f) => f.nome === pagamento?.esperado?.metodo)?.id ?? null
               }
+              momento={momentoDoRecebimento(pedido.modalidade, pedido.status_operacional)}
               aoConcluir={aoConcluir}
             />
           )}

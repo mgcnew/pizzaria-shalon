@@ -14,6 +14,7 @@ import { AcoesDoPedido } from "../_ui/AcoesDoPedido";
 import { Comanda } from "../_ui/Comanda";
 import { PainelAlteracao } from "../_ui/PainelAlteracao";
 import { Recebimento } from "../_ui/Recebimento";
+import { momentoDoRecebimento } from "@/domain/pedidos/recebimentoNaEntrega";
 
 export const metadata: Metadata = { title: "Pedido" };
 
@@ -248,6 +249,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
               formas={formasParaRecebimento}
               caixaAberto={caixa.aberto}
               tentativa={randomUUID()}
+              momento={momentoDoRecebimento(pedido.modalidade, pedido.status)}
             />
           </Cartao>
 

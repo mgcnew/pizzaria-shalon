@@ -120,6 +120,20 @@ describe("comanda de produção", () => {
     expect(retirada).not.toContain("TROCO");
   });
 
+  it("entrega já paga na loja sai como PAGO, sem troco nem cobrança", () => {
+    const texto = renderizarTexto(montarComanda({ ...PEDIDO, pago: true }));
+    expect(texto).toContain("PAGO - NAO COBRAR");
+    expect(texto).not.toContain("TROCO");
+    expect(texto).not.toContain("Levar");
+    expect(texto).not.toContain("Pagamento:");
+  });
+
+  it("entrega ainda não paga continua dizendo como cobrar", () => {
+    const texto = renderizarTexto(montarComanda({ ...PEDIDO, pago: false }));
+    expect(texto).not.toContain("PAGO");
+    expect(texto).toContain("TROCO PARA R$ 150,00");
+  });
+
   it("não imprime endereço na retirada", () => {
     const retirada = renderizarTexto(
       montarComanda({ ...PEDIDO, modalidade: "pickup", endereco: null }),

@@ -574,6 +574,13 @@ operação depende dele.
 `pronto`, `em produção` e `aceito` convivem na mesma lista: **o status
 operacional não gateia o recebimento**.
 
+**Reconciliação de 01/10/2026 (D-2026-10-01-110).** Continua não gateando —
+nada é bloqueado —, mas a **entrega que ainda não saiu** abre o recebimento em
+"Receber na entrega", e registrar agora exige escolher "Cliente já pagou na
+loja". Antes, o botão levava direto ao formulário, e o caminho natural era
+registrar um pagamento que só aconteceria na porta do cliente (RN-PGTO-012/014).
+Depois da saída, dinheiro abre como "com o motoboy" (fora da gaveta).
+
 ### 4.3 Aba *Caixa*
 
 Recebe o `PainelDoCaixa.tsx` **como está**, sem uma linha de diferença:

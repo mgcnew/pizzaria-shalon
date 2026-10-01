@@ -3871,6 +3871,28 @@ continua sem decidir coordenada, distância ou taxa (D-2026-09-24-75).
 
 ---
 
+## D-2026-10-01-110 — Entrega: receber na entrega por padrão, pagar na loja a um toque
+
+**Data:** 01/10/2026 · **Decisão do responsável pelo produto nesta conversa**
+
+**O achado.** O "Receber" de um pedido de entrega abria direto o formulário,
+antes de o pedido sair. Registrar ali, e a entrega não acontecer, obrigaria a
+estornar um pagamento que nunca existiu. E o padrão "dinheiro entrou na
+gaveta" valia também para o dinheiro que estava com o motoboy.
+
+**Decisão.** Entrega que ainda não saiu abre em **"Receber na entrega"** (não
+registra nada; o motoboy cobra). **"Cliente já pagou na loja"** fica a um
+toque — caso real do cliente que paga no balcão e pede para entregar — e
+registra na hora; a comanda então sai **PAGO - NAO COBRAR**, sem troco nem
+forma de pagamento. Depois da saída, o registro é o que o motoboy trouxe, com
+o dinheiro "com o motoboy" até o acerto. Nenhum bloqueio novo no banco.
+
+**Onde foi formalizada:** 04 RN-PGTO-012 (nota); 09 §4.2 (reconciliação);
+`src/domain/pedidos/recebimentoNaEntrega.ts` (+ testes);
+`Recebimento.tsx`; `comanda.ts` (+ testes).
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.

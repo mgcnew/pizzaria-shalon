@@ -570,6 +570,15 @@ Na entrega, `01 §79.18` põe essa confirmação no **retorno do entregador**, q
 
 Decisão de 21/09/2026 (D-2026-09-21-54).
 
+**Na tela, entrega começa em "Receber na entrega" (D-2026-10-01-110).**
+Enquanto o pedido de entrega não saiu, o recebimento abre com "Receber na
+entrega" marcado — nada é registrado, e o motoboy cobra na porta. A um toque
+fica "Cliente já pagou na loja", que registra na hora (dinheiro na gaveta) e
+faz a comanda sair como **PAGO - NAO COBRAR**, sem troco. Depois que o pedido
+sai, o que se registra é o que o motoboy recebeu: dinheiro "com o motoboy"
+(fora da gaveta) até o acerto. Nada disso é bloqueio no banco: pagar antes da
+entrega é um caso real e continua permitido.
+
 ### RN-PGTO-013 — Um ato de registro por pedido, com quantas formas precisar
 O pagamento dividido de RN-PGTO-004 é **um** ato com várias linhas — R$ 30 em
 dinheiro e R$ 25 no débito são duas linhas do mesmo registro, não dois

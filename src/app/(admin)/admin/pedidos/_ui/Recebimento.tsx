@@ -7,6 +7,10 @@ import { Aviso, ParDeDados } from "@/ui/patterns";
 import { formatBRL } from "@/lib/format";
 import { estornarPagamento, registrarPagamento } from "@/application/caixa/acoes";
 import { useAvisarOperacaoEmVoo } from "@/ui/operacaoEmVoo";
+import {
+  dinheiroNaGavetaPorPadrao,
+  type MomentoDoRecebimento,
+} from "@/domain/pedidos/recebimentoNaEntrega";
 import type { PagamentoDoPedido } from "@/application/caixa/tipos";
 
 /**
@@ -57,6 +61,7 @@ function linhaVazia(
   formas: FormaParaRecebimento[],
   total: string,
   formaInicialId?: string | null,
+  naGaveta = true,
 ): Linha {
   // A forma ESPERADA abre selecionada (09 §1.3). O cliente já disse como
   // pretende pagar; começar em outra obriga o operador a corrigir a tela toda
@@ -68,7 +73,7 @@ function linhaVazia(
     bandeira_id: "",
     valor: total,
     recebido: "",
-    na_gaveta: true,
+    na_gaveta: naGaveta,
   };
 }
 
@@ -80,6 +85,7 @@ export function Recebimento({
   caixaAberto,
   tentativa,
   formaInicialId = null,
+  momento = "agora",
   aoConcluir,
   aoRegistrarComandos,
 }: {
@@ -95,6 +101,12 @@ export function Recebimento({
    * vale é o RECEBIDO, que pode diferir do esperado (§24).
    */
   formaInicialId?: string | null;
+  /**
+   * Quando este pagamento está sendo recebido (D-2026-10-01-110). Entrega que
+   * ainda não saiu abre em "Receber na entrega"; depois da saída, o dinheiro
+   * vem marcado como "com o motoboy". Retirada e balcão: recebe-se agora.
+   */
+  momento?: MomentoDoRecebimento;
   /**
    * Registra os comandos de teclado do painel — Etapa 9, §3.
    *
@@ -118,9 +130,13 @@ export function Recebimento({
   aoConcluir?: () => void;
 }) {
   const totalTexto = total.toFixed(2).replace(".", ",");
+  const naGavetaPadrao = dinheiroNaGavetaPorPadrao(momento);
   const [linhas, setLinhas] = useState<Linha[]>([
-    linhaVazia(formas, totalTexto, formaInicialId),
+    linhaVazia(formas, totalTexto, formaInicialId, naGavetaPadrao),
   ]);
+  // Entrega que não saiu começa em "na entrega": registrar agora é a exceção
+  // do cliente que pagou na loja, a um toque — nunca o caminho por descuido.
+  const [receberAgora, setReceberAgora] = useState(momento !== "antes_da_entrega");
   const [erro, setErro] = useState<string | null>(null);
   const [estornando, setEstornando] = useState(false);
   const [enviando, iniciar] = useTransition();
@@ -170,9 +186,12 @@ export function Recebimento({
     setLinhas((atuais) => {
       const somadoAgora = atuais.reduce((s, l) => s + (paraNumero(l.valor) ?? 0), 0);
       const restante = Math.round((total - somadoAgora) * 100) / 100;
-      return [...atuais, { ...linhaVazia(formas, formatarValor(restante > 0 ? restante : 0)) }];
+      return [
+        ...atuais,
+        { ...linhaVazia(formas, formatarValor(restante > 0 ? restante : 0), null, naGavetaPadrao) },
+      ];
     });
-  }, [formas, jaPago, total]);
+  }, [formas, jaPago, total, naGavetaPadrao]);
 
   /**
    * `*` — "recebido em mãos" igual ao valor devido, na última linha em dinheiro.
@@ -210,9 +229,9 @@ export function Recebimento({
    * caminho para o dinheiro, e dois caminhos divergem.
    */
   const confirmar = useCallback(() => {
-    if (jaPago || enviando) return;
+    if (jaPago || enviando || !receberAgora) return;
     formulario.current?.requestSubmit();
-  }, [enviando, jaPago]);
+  }, [enviando, jaPago, receberAgora]);
 
   useEffect(() => {
     if (aoRegistrarComandos === undefined) return;
@@ -236,7 +255,7 @@ export function Recebimento({
       // mesma chave tem de ser reenviada, senão o retry vira segundo
       // pagamento em vez de repetição da mesma intenção (CLAUDE.md §34).
       chave.current = crypto.randomUUID();
-      setLinhas([linhaVazia(formas, totalTexto, formaInicialId)]);
+      setLinhas([linhaVazia(formas, totalTexto, formaInicialId, naGavetaPadrao)]);
       setEstornando(false);
       aoConcluir?.();
     });
@@ -302,8 +321,67 @@ export function Recebimento({
 
       {erro ? <Aviso erro={erro} /> : null}
 
+      {/* ------------------------------------- entrega: quando receber */}
+      {!jaPago && momento === "antes_da_entrega" ? (
+        <div
+          role="radiogroup"
+          aria-label="Quando este pedido de entrega será pago"
+          className="flex flex-col gap-2 border-t border-border-shalon pt-3"
+        >
+          {[
+            {
+              agora: false,
+              titulo: "Receber na entrega",
+              detalhe:
+                "O motoboy recebe na porta. O pagamento é registrado quando ele voltar, no acerto da saída.",
+            },
+            {
+              agora: true,
+              titulo: "Cliente já pagou na loja",
+              detalhe: "Registra agora. A comanda sai como PAGO e o motoboy não cobra.",
+            },
+          ].map((opcao) => {
+            const ativa = receberAgora === opcao.agora;
+            return (
+              <button
+                key={opcao.titulo}
+                type="button"
+                role="radio"
+                aria-checked={ativa}
+                onClick={() => setReceberAgora(opcao.agora)}
+                className={[
+                  "flex min-h-touch w-full cursor-pointer items-start gap-3 rounded-12 border-[1.5px] px-3 py-2.5 text-left",
+                  ativa ? "border-brand-red bg-elev" : "border-border-shalon bg-surface hover:border-brand-orange",
+                ].join(" ")}
+              >
+                <span
+                  aria-hidden="true"
+                  className={[
+                    "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
+                    ativa ? "border-brand-red" : "border-border-shalon",
+                  ].join(" ")}
+                >
+                  {ativa ? <span className="h-2.5 w-2.5 rounded-full bg-brand-red" /> : null}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[14px] font-semibold text-ink">{opcao.titulo}</span>
+                  <span className="block text-[12.5px] text-ink-2">{opcao.detalhe}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {!jaPago && momento === "depois_da_saida" ? (
+        <p className="m-0 rounded-10 bg-tw px-3 py-2 text-[12.5px] font-semibold text-twf">
+          Registre o que o motoboy recebeu. Dinheiro fica como &ldquo;com o motoboy&rdquo; até o
+          acerto da saída.
+        </p>
+      ) : null}
+
       {/* -------------------------------------------------- registrar */}
-      {!jaPago ? (
+      {!jaPago && receberAgora ? (
         <form
           ref={formulario}
           className="flex flex-col gap-3 border-t border-border-shalon pt-3"
@@ -462,7 +540,7 @@ export function Recebimento({
             {enviando ? "Registrando…" : `Registrar pagamento de ${formatBRL(total)}`}
           </Button>
         </form>
-      ) : (
+      ) : jaPago ? (
         <div className="border-t border-border-shalon pt-3">
           {estornando ? (
             <form
@@ -487,7 +565,7 @@ export function Recebimento({
             </Button>
           )}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
