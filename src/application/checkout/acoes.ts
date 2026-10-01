@@ -14,6 +14,8 @@ import {
   type ConfiancaReutilizavel,
 } from "./cacheDeEndereco";
 import { logger } from "@/lib/logger";
+import { assinaturaDoPedido } from "@/domain/pedidos/acompanhamento";
+import { pedidoPorToken } from "./consultas";
 import { lerSegredoDeOrigem, tokenDeAcompanhamento, SegredoAusente } from "./segredo";
 import type {
   ClienteDoDispositivo,
@@ -544,6 +546,21 @@ export async function resumoDosPedidos(
   );
 
   return resultados.filter((p) => p !== null);
+}
+
+/**
+ * O que a página do cliente precisa para saber se o pedido mudou: só a
+ * assinatura e o estado. A credencial é o token do próprio pedido, pela mesma
+ * consulta do acompanhamento (03 §10) — nada de tempo real aberto ao público.
+ */
+export async function conferirPedido(
+  token: unknown,
+): Promise<{ ok: true; assinatura: string; status: string } | { ok: false }> {
+  const validado = z.string().regex(/^[0-9a-f]{64}$/).safeParse(token);
+  if (!validado.success) return { ok: false };
+  const pedido = await pedidoPorToken(validado.data);
+  if (pedido === null) return { ok: false };
+  return { ok: true, assinatura: assinaturaDoPedido(pedido), status: pedido.status };
 }
 
 const tokenDeDispositivo = z.string().regex(/^[0-9a-f]{64}$/);

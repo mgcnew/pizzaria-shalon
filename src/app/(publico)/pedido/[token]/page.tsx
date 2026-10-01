@@ -6,6 +6,8 @@ import { descreverEstado } from "@/domain/pedidos/estados";
 import { alteracaoDoPedido, pedidoPorToken, pixDoPedido } from "@/application/checkout/consultas";
 import { ChavePix } from "../../_ui/ChavePix";
 import { DecidirAlteracao } from "../../_ui/DecidirAlteracao";
+import { AcompanharAoVivo } from "../../_ui/AcompanharAoVivo";
+import { assinaturaDoPedido } from "@/domain/pedidos/acompanhamento";
 
 export const metadata: Metadata = {
   title: "Acompanhar pedido",
@@ -67,6 +69,13 @@ export default async function Page({
           </p>
         </div>
       ) : null}
+
+      <AcompanharAoVivo
+        token={token}
+        numero={pedido.numero}
+        assinatura={assinaturaDoPedido(pedido)}
+        status={pedido.status}
+      />
 
       {alteracao.ok ? <DecidirAlteracao token={token} proposta={alteracao} /> : null}
 

@@ -3831,6 +3831,32 @@ quem tiver o número digitado.
 
 ---
 
+## D-2026-10-01-108 — O acompanhamento do cliente se atualiza sozinho e avisa
+
+**Data:** 01/10/2026 · **Decisão do responsável pelo produto nesta conversa**
+
+**O achado.** A página de acompanhamento (`/pedido/[token]`) lia o pedido uma
+vez; o cliente só via a mudança de estado recarregando a página.
+
+**Decisão.** Com a página aberta e visível, ela confere o pedido a cada 15 s
+(e na hora em que o cliente volta para a aba), e para nos estados finais
+(concluído, rejeitado, cancelado). Ao mudar algo visível — estado, Pix,
+total, aprovação de entrega — a página é atualizada pelo servidor e o
+cliente é avisado: destaque na tela, título da aba com o novo estado e
+vibração no celular. Som só se o cliente ligar "Avisar com som" (o navegador
+não toca som sem um toque antes); a preferência fica no aparelho.
+
+**O que não muda.** A conferência usa o token do pedido, pela mesma consulta
+do acompanhamento: nada de tempo real do banco aberto ao público (03 §10).
+Push com a página fechada continua fora: seria escopo novo (consentimento,
+service worker público), e o push aprovado é só o do painel (01 §1918).
+
+**Onde foi formalizada:** `src/app/(publico)/_ui/AcompanharAoVivo.tsx`,
+`src/domain/pedidos/acompanhamento.ts` (+ testes),
+`conferirPedido` em `src/application/checkout/acoes.ts`.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.
