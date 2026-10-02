@@ -182,7 +182,7 @@ export async function PainelBordasAdicionais({
       ))}
 
       {podeGerenciar ? (
-      <Cartao titulo={ehBorda ? "Nova borda" : "Novo adicional"}>
+      <Cartao largura="cheio" titulo={ehBorda ? "Nova borda" : "Novo adicional"}>
         <FormularioAcao
           acao={ehBorda ? salvarBorda : salvarAdicional}
           rotulo={ehBorda ? "Criar borda" : "Criar adicional"}

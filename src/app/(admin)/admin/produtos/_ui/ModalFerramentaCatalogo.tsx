@@ -7,12 +7,15 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 export function ModalFerramentaCatalogo({
   titulo,
   children,
+  abas,
   variante = "ferramenta",
   tamanho = "amplo",
   fecharComVoltar = false,
 }: {
   titulo: string;
   children: ReactNode;
+  /** Navegação entre seções, logo abaixo do título (ex.: "Gerenciar cardápio"). */
+  abas?: ReactNode;
   variante?: "ferramenta" | "formulario";
   tamanho?: "compacto" | "regular" | "medio" | "amplo";
   fecharComVoltar?: boolean;
@@ -78,6 +81,19 @@ export function ModalFerramentaCatalogo({
     };
   }, [desktop, fechar]);
 
+  // Com as abas numa faixa rolável (celular), a ativa pode nascer fora da
+  // tela: traz para a vista, sem mexer na rolagem da página.
+  // Só quando a aba ATIVA muda — rerenderizar não pode puxar a rolagem.
+  const ultimaAbaAtiva = useRef<string | null>(null);
+  useEffect(() => {
+    if (!abas) return;
+    const ativa = painelRef.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+    const chave = ativa?.getAttribute("href") ?? null;
+    if (!ativa || chave === ultimaAbaAtiva.current) return;
+    ultimaAbaAtiva.current = chave;
+    ativa.scrollIntoView({ block: "nearest", inline: "center" });
+  });
+
   return (
     <div className="fixed inset-0 z-70 flex overflow-y-auto bg-bg lg:items-center lg:justify-center lg:bg-transparent lg:p-6">
       <button
@@ -124,6 +140,12 @@ export function ModalFerramentaCatalogo({
             ×
           </button>
         </header>
+
+        {abas ? (
+          <div className="mb-3 border-b border-border-shalon pb-3 lg:mb-0 lg:shrink-0 lg:bg-surface lg:px-5 lg:py-3">
+            {abas}
+          </div>
+        ) : null}
 
         <div
           className={[

@@ -3939,6 +3939,41 @@ descontado sozinho (RN-RUN-005).
 
 ---
 
+## D-2026-10-02-113 — Configuração do cardápio num modal só, com abas
+
+**Data:** 02/10/2026 · **Decisão do responsável pelo produto nesta conversa**
+
+**Decisão.** Categorias, Tamanhos, Bordas, Adicionais, Combos, Promoções e
+Banners ficam no modal **"Gerenciar cardápio"**, com uma aba para cada um.
+O menu "Mais › Configurar cardápio" dá lugar a um único botão "Gerenciar
+cardápio", que abre o modal na aba Categorias. A aba continua no endereço
+(`?aba=`): recarregar, voltar e compartilhar o link mantêm a aba. Cada aba
+segue carregando só os dados dela; o modal tem largura única, para não
+mudar de tamanho a cada troca; no celular as abas rolam na horizontal, com a
+ativa sempre à vista.
+
+**Onde foi formalizada:** `src/app/(admin)/admin/produtos/page.tsx` e
+`_ui/ModalFerramentaCatalogo.tsx`.
+
+---
+
+## D-2026-10-02-114 — Data e hora no tema do sistema
+
+**Data:** 02/10/2026 · **Decisão do responsável pelo produto nesta conversa**
+
+**Decisão.** Os campos de data, data e hora, e hora deixam o seletor do
+navegador (que não aceita as cores da Shalon) e passam a usar
+`CampoDataHora`, no tema: calendário com mês, "Hoje", "Limpar" e "OK";
+colunas de hora e minuto (de 5 em 5; minuto fora do passo, vindo do banco,
+continua aparecendo). O valor enviado é o mesmo do campo nativo
+(`AAAA-MM-DD`, `AAAA-MM-DDTHH:mm`, `HH:mm`), sem fuso, então nada muda no
+servidor. Usado em promoções, banners, admissão do funcionário e horários
+da loja.
+
+**Onde foi formalizada:** `src/ui/components/CampoDataHora.tsx`.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.

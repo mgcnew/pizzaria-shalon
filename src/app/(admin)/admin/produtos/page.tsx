@@ -9,10 +9,11 @@ import { PainelBordasAdicionais } from "./_ui/PainelBordasAdicionais";
 import { PainelCombos } from "./_ui/PainelCombos";
 import { PainelPromocoes } from "./_ui/PainelPromocoes";
 import { PainelBanners } from "./_ui/PainelBanners";
-import { MenuFerramentasCatalogo } from "./_ui/MenuFerramentasCatalogo";
 import { ModalFerramentaCatalogo } from "./_ui/ModalFerramentaCatalogo";
 import { FormularioProduto } from "./_ui/FormularioProduto";
 import { EdicaoProduto } from "./_ui/EdicaoProduto";
+import { Abas } from "@/ui/patterns";
+import { IndicadorDeNavegacao } from "@/ui/components/IndicadorDeNavegacao";
 
 export const metadata: Metadata = { title: "Produtos" };
 
@@ -29,6 +30,9 @@ export const metadata: Metadata = { title: "Produtos" };
  *
  * "Banners" foi acrescentada: é escopo da Fase 3 (§7.2, item 11) e o
  * protótipo não tinha a tela de administração correspondente.
+ *
+ * "GERENCIAR CARDÁPIO" (D-2026-10-02-113). As sete ferramentas ficam num
+ * modal só, com abas; a página tem um botão para abri-lo, na primeira aba.
  *
  * A ferramenta selecionada viaja na URL. No desktop ela abre em modal e no
  * mobile ocupa a página, sempre com navegação SPA e URL compartilhável.
@@ -56,17 +60,6 @@ export default async function Page({
   };
 
   const aba = FERRAMENTAS.some((a) => a.valor === um("aba")) ? um("aba") : "produtos";
-  const tamanhoDaFerramenta =
-    aba === "tamanhos" ||
-    aba === "adicionais" ||
-    aba === "promocoes" ||
-    aba === "banners"
-      ? "compacto"
-      : aba === "categorias" || aba === "bordas"
-        ? "regular"
-        : aba === "combos"
-          ? "medio"
-          : "amplo";
 
   // A interface esconde o que não se aplica. Quem autoriza de verdade é o
   // RLS: mesmo que alguém chame a Server Action direto, a escrita é recusada
@@ -99,10 +92,17 @@ export default async function Page({
               + Novo produto
             </Link>
           ) : null}
-          <MenuFerramentasCatalogo
-            ferramentas={FERRAMENTAS}
-            atual={aba === "produtos" ? undefined : aba}
-          />
+          {/* Um botão só: dentro do modal, as seções viram abas. */}
+          <Link
+            href="/admin/produtos?aba=categorias"
+            className="motion-interactive relative inline-flex min-h-touch items-center gap-2 rounded-11 border-[1.5px] border-border-shalon bg-surface px-[14px] text-[14px] font-semibold text-ink transition-colors hover:border-brand-orange"
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" className="h-[18px] w-[18px]" fill="none">
+              <path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+            Gerenciar cardápio
+            <IndicadorDeNavegacao forma="traco" tom="marca" />
+          </Link>
         </div>
       </div>
 
@@ -123,8 +123,10 @@ export default async function Page({
       ) : null}
       {aba !== "produtos" ? (
         <ModalFerramentaCatalogo
-          titulo={FERRAMENTAS.find((ferramenta) => ferramenta.valor === aba)?.nome ?? "Cardápio"}
-          tamanho={tamanhoDaFerramenta}
+          titulo="Gerenciar cardápio"
+          // Largura única: o modal não muda de tamanho a cada troca de aba.
+          tamanho="medio"
+          abas={<Abas abas={FERRAMENTAS} atual={aba} parametro="aba" base="/admin/produtos" />}
         >
           {aba === "categorias" ? <PainelCategorias podeGerenciar={podeGerenciar} /> : null}
           {aba === "tamanhos" ? <PainelTamanhos podeGerenciar={podeGerenciar} /> : null}

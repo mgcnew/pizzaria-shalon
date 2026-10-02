@@ -66,7 +66,7 @@ export async function PainelTamanhos({ podeGerenciar }: { podeGerenciar: boolean
       </Cartao>
 
       {podeGerenciar ? (
-      <Cartao titulo="Novo tamanho">
+      <Cartao largura="cheio" titulo="Novo tamanho">
         <FormularioAcao acao={salvarTamanho} rotulo="Criar tamanho">
           <Input label="Nome" name="nome" required placeholder="Ex.: Tradicional" />
           <SelectMenu

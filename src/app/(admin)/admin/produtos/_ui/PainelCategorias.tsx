@@ -69,7 +69,7 @@ export async function PainelCategorias({ podeGerenciar }: { podeGerenciar: boole
       </Cartao>
 
       {podeGerenciar ? (
-      <Cartao titulo="Nova categoria" descricao="O endereço público é gerado a partir do nome.">
+      <Cartao largura="cheio" titulo="Nova categoria" descricao="O endereço público é gerado a partir do nome.">
         <FormularioAcao acao={salvarCategoria} rotulo="Criar categoria">
           <Input label="Nome" name="nome" required placeholder="Ex.: Pizzas Doces" />
           <Textarea label="Descrição (opcional)" name="descricao" />
