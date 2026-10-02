@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { StatusBadge, Input, SelectMenu } from "@/ui/components";
+import { StatusBadge, Input, SelectMenu, CampoDataHora } from "@/ui/components";
 import { Cartao, EmptyState, LinhaLista } from "@/ui/patterns";
 import {
   listarBanners,
@@ -99,7 +99,7 @@ export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean 
 
       {podeGerenciar ? (
       <>
-      <Cartao
+      <Cartao largura="cheio"
         titulo="Enviar imagem de banner"
         descricao="Use uma imagem horizontal na proporção 2:1 para preencher corretamente o carrossel promocional."
       >
@@ -116,7 +116,7 @@ export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean 
         </FormularioAcao>
       </Cartao>
 
-      <Cartao
+      <Cartao largura="cheio"
         titulo="Novo banner"
         descricao="Para divulgar uma promoção no carrossel, escolha Promoção no campo Destino. O banner sairá do ar junto com o fim da oferta."
       >
@@ -163,8 +163,8 @@ export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean 
               placeholder="https://..."
               hint="Preencha somente se o destino for Link externo."
             />
-            <Input label="Começa em (opcional)" name="inicio" type="datetime-local" />
-            <Input label="Termina em (opcional)" name="fim" type="datetime-local" />
+            <CampoDataHora label="Começa em (opcional)" name="inicio" modo="dataHora" />
+            <CampoDataHora label="Termina em (opcional)" name="fim" modo="dataHora" />
             <Input label="Ordem" name="ordem" type="number" defaultValue={0} min={0} />
           </FormularioAcao>
         )}

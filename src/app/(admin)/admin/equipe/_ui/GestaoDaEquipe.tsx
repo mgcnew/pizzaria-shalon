@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Badge, Button, Input, SelectMenu, Textarea } from "@/ui/components";
+import { Badge, Button, CampoDataHora, Input, SelectMenu, Textarea } from "@/ui/components";
 import { Aviso, Cartao, EmptyState, LinhaLista } from "@/ui/patterns";
 import {
   definirAcesso,
@@ -177,12 +177,12 @@ export function GestaoDaEquipe({
                 Faz entregas
               </label>
 
-              <Input
+              <CampoDataHora
                 label="Admitido em"
-                type="date"
+                modo="data"
                 hint="Opcional."
-                value={rascunho.admitido_em}
-                onChange={(e) => setRascunho({ ...rascunho, admitido_em: e.target.value })}
+                valor={rascunho.admitido_em}
+                aoMudar={(valor) => setRascunho({ ...rascunho, admitido_em: valor })}
               />
               {podeGerirSalario && referencias === null ? (
                 <p role="alert" className="m-0 rounded-11 border border-tdb bg-td p-3 text-[13px] text-tdf">

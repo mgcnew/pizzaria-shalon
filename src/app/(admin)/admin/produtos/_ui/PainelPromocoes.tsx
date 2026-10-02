@@ -1,5 +1,5 @@
 import { formatBRL } from "@/lib/format";
-import { StatusBadge, Input, SelectMenu } from "@/ui/components";
+import { StatusBadge, Input, SelectMenu, CampoDataHora } from "@/ui/components";
 import { Cartao, EmptyState } from "@/ui/patterns";
 import {
   listarPromocoes,
@@ -148,7 +148,7 @@ export async function PainelPromocoes({ podeGerenciar }: { podeGerenciar: boolea
       )}
 
       {podeGerenciar ? (
-      <Cartao
+      <Cartao largura="cheio"
         titulo="Nova promoção"
         descricao="Sem data de término, a promoção vale até você desativá-la."
       >
@@ -183,11 +183,11 @@ export async function PainelPromocoes({ podeGerenciar }: { podeGerenciar: boolea
             required
             placeholder="Ex.: 45,90"
           />
-          <Input label="Começa em" name="inicio" type="datetime-local" required />
-          <Input
+          <CampoDataHora label="Começa em" name="inicio" modo="dataHora" required />
+          <CampoDataHora
             label="Termina em (opcional)"
             name="fim"
-            type="datetime-local"
+            modo="dataHora"
             hint="Em branco: vale até desativação manual."
           />
           <Input

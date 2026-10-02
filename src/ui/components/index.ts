@@ -4,6 +4,7 @@ export { StatusBadge } from "./StatusBadge";
 export { Input } from "./Input";
 export { Select } from "./Select";
 export { SelectMenu } from "./SelectMenu";
+export { CampoDataHora } from "./CampoDataHora";
 export type { OpcaoSelectMenu } from "./SelectMenu";
 export { Textarea } from "./Textarea";
 export { SeletorDeTema } from "./SeletorDeTema";

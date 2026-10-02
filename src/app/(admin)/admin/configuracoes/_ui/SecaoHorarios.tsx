@@ -1,4 +1,4 @@
-import { Input, StatusBadge } from "@/ui/components";
+import { CampoDataHora, StatusBadge } from "@/ui/components";
 import { Cartao } from "@/ui/patterns";
 import { listarHorarios } from "@/application/configuracoes/consultas";
 import { salvarHorario } from "@/application/configuracoes/acoes";
@@ -60,17 +60,17 @@ export async function SecaoHorarios({ podeGerenciar }: { podeGerenciar: boolean 
                 >
                   <input type="hidden" name="dia" value={dia} />
                   <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-2">
-                    <Input
+                    <CampoDataHora
                       label="Abre"
                       name="abre"
-                      type="time"
-                      defaultValue={h?.opens_at?.slice(0, 5) ?? ""}
+                      modo="hora"
+                      valorInicial={h?.opens_at?.slice(0, 5) ?? ""}
                     />
-                    <Input
+                    <CampoDataHora
                       label="Fecha"
                       name="fecha"
-                      type="time"
-                      defaultValue={h?.closes_at?.slice(0, 5) ?? ""}
+                      modo="hora"
+                      valorInicial={h?.closes_at?.slice(0, 5) ?? ""}
                     />
                   </div>
                   <label className="flex min-h-touch shrink-0 items-center gap-2 rounded-11 border border-border-shalon px-3 text-[13px] font-semibold text-ink">
