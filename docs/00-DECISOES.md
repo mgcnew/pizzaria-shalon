@@ -3974,6 +3974,43 @@ da loja.
 
 ---
 
+## D-2026-10-02-115 — Desempenho: funções na região de São Paulo e vitrine do catálogo
+
+**Data:** 02/10/2026 · **Decisão do responsável pelo produto nesta conversa**
+
+**Contexto.** Auditoria de desempenho: o atraso percebido vinha de dois
+pontos. (1) As funções da Vercel rodavam em `iad1` (EUA) e o Supabase está
+em `sa-east-1` (São Paulo): cada consulta e cada ação cruzava o continente.
+(2) O cardápio, a busca e a lista de produtos do admin recalculavam a
+disponibilidade produto a produto, por funções SQL aninhadas que o
+Postgres não incorpora à consulta (~150 ms por chamada, para 83 produtos).
+
+**Decisão.**
+1. `vercel.json` fixa as funções em `gru1` (São Paulo), junto do banco.
+2. `vitrine_do_catalogo()` (0145) calcula preço de/por/até, promoção,
+   disponibilidade e "tem tamanhos" de todos os produtos numa passada, por
+   junções. `cardapio_publico`, `buscar_catalogo`, `catalogo_produtos_admin`
+   e `mais_pedidos` leem dela. **Nenhuma regra muda**: as funções por produto
+   (`produto_disponivel_no_cardapio`, `sabores_da_fogazza`, etc.) continuam
+   sendo a regra para `montar_item`, balcão e sabores, e a suíte
+   `vitrine_do_catalogo.sql` compara as duas produto a produto em cada
+   cenário (pausa, inativo, combo, fogazza, promoção; servidor, visitante e
+   dona). Mudar a regra numa exige mudar na outra.
+3. Leituras públicas repetidas na mesma requisição usam React `cache`
+   (por requisição, nunca entre requisições): `obterProdutoPublico` e
+   `listarCardapio`. A página de produto carrega sabores, configurador e
+   combo em paralelo, e o configurador busca o primeiro preço junto com as
+   opções de cada tamanho.
+
+Continua valendo: nada de cache entre requisições para pedidos, caixa,
+entregas, notificações, financeiro, preços ou catálogo.
+
+**Onde foi formalizada:** `vercel.json`,
+`supabase/migrations/20261002100000_vitrine_do_catalogo.sql`,
+`supabase/tests/vitrine_do_catalogo.sql`, `src/application/publico/consultas.ts`.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.

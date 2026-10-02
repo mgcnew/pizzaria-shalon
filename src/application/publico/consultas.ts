@@ -52,17 +52,28 @@ export function listarCategoriasPublicas(): Promise<CategoriaPublica[]> {
   return rpc<CategoriaPublica>("categorias_publicas");
 }
 
-export function listarCardapio(categoriaSlug?: string): Promise<ProdutoPublico[]> {
-  return rpc<ProdutoPublico>("cardapio_publico", {
-    p_categoria_slug: categoriaSlug ?? null,
-  });
-}
+// Por requisição (React `cache`), nunca entre requisições: preço e
+// disponibilidade são sempre os de agora. A home pede o cardápio e o "Mais
+// pedidos" pede de novo para achar os produtos do ranking — é a mesma ida.
+export const listarCardapio = cache(
+  (categoriaSlug?: string): Promise<ProdutoPublico[]> =>
+    rpc<ProdutoPublico>("cardapio_publico", {
+      p_categoria_slug: categoriaSlug ?? null,
+    }),
+);
 
-/** RN-LINK-001/002: o link abre sempre o estado comercial ATUAL. */
-export async function obterProdutoPublico(slug: string): Promise<ProdutoDetalhe | null> {
-  const linhas = await rpc<ProdutoDetalhe>("produto_publico", { p_slug: slug });
-  return linhas[0] ?? null;
-}
+/**
+ * RN-LINK-001/002: o link abre sempre o estado comercial ATUAL.
+ *
+ * Por requisição: o título da página, o corpo e o configurador pedem o mesmo
+ * produto, e eram três idas ao banco em sequência.
+ */
+export const obterProdutoPublico = cache(
+  async (slug: string): Promise<ProdutoDetalhe | null> => {
+    const linhas = await rpc<ProdutoDetalhe>("produto_publico", { p_slug: slug });
+    return linhas[0] ?? null;
+  },
+);
 
 export function listarTamanhos(produtoId: string): Promise<TamanhoPublico[]> {
   return rpc<TamanhoPublico>("tamanhos_publicos", { p_product_id: produtoId });
@@ -180,9 +191,21 @@ export async function montarDadosDoConfigurador(
 
   const tamanhos = produto.tem_tamanhos ? await listarTamanhos(produto.id) : [];
 
+  const primeiroTamanho = tamanhos.find((t) => t.disponivel) ?? null;
+
+  // O primeiro preço vem do servidor, pela mesma `montar_item` de sempre.
+  // Só depende dos tamanhos: vai junto com as opções de cada um.
   const porTamanho: DadosPorTamanho = {};
-  await Promise.all(
-    tamanhos.map(async (t) => {
+  const [montadoInicial] = await Promise.all([
+    produto.disponivel
+      ? montarItemNoServidor({
+          produto_id: produto.id,
+          variacao_id: primeiroTamanho?.variacao_id ?? null,
+          sabores: primeiroTamanho ? [primeiroTamanho.variacao_id] : [],
+          quantidade: 1,
+        })
+      : Promise.resolve<ItemMontado>({ ok: false, erro: "Indisponível no momento." }),
+    Promise.all(tamanhos.map(async (t) => {
       const [sabores, bordas, adicionais] = await Promise.all([
         t.max_sabores > 1 ? listarSabores(t.tamanho_id) : Promise.resolve([]),
         listarBordas(produto.id, t.tamanho_id),
@@ -191,20 +214,8 @@ export async function montarDadosDoConfigurador(
           : Promise.resolve([]),
       ]);
       porTamanho[t.tamanho_id] = { sabores, bordas, adicionais };
-    }),
-  );
-
-  const primeiroTamanho = tamanhos.find((t) => t.disponivel) ?? null;
-
-  // O primeiro preço vem do servidor, pela mesma `montar_item` de sempre.
-  const montadoInicial = produto.disponivel
-    ? await montarItemNoServidor({
-        produto_id: produto.id,
-        variacao_id: primeiroTamanho?.variacao_id ?? null,
-        sabores: primeiroTamanho ? [primeiroTamanho.variacao_id] : [],
-        quantidade: 1,
-      })
-    : { ok: false as const, erro: "Indisponível no momento." };
+    })),
+  ]);
 
   return { produto, tamanhos, porTamanho, montadoInicial };
 }
@@ -252,12 +263,15 @@ async function montarDadosDaFogazzaSemCache(
   cardSlug: string,
   saborSlug: string,
 ): Promise<DadosDaFogazza | null> {
-  const aberto = await obterCardDeFogazza(cardSlug);
+  // O produto do sabor é lido pelo slug da URL, junto com o card: o sabor
+  // só vale se estiver na lista do card, conferida logo abaixo.
+  const [aberto, produtoDoSabor] = await Promise.all([
+    obterCardDeFogazza(cardSlug),
+    obterProdutoPublico(saborSlug),
+  ]);
   if (aberto === null) return null;
   const sabor = aberto.sabores.find((s) => s.slug === saborSlug);
   if (sabor === undefined) return null;
-
-  const produtoDoSabor = await obterProdutoPublico(sabor.slug);
   if (produtoDoSabor === null) return null;
 
   const disponivel = aberto.card.disponivel && sabor.disponivel;

@@ -54,18 +54,22 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
   // Card de entrada de fogazza (RN-FOG-003): em vez do configurador, a lista
   // de sabores. A fogazza de preço próprio devolve lista vazia e segue como
   // produto simples.
-  const saboresDaFogazza =
-    produto.tipo === "fogazza" ? await listarSaboresDaFogazza(produto.id) : [];
-  const ehCardDeFogazza = saboresDaFogazza.length > 0;
+  const pedindoSabores =
+    produto.tipo === "fogazza" ? listarSaboresDaFogazza(produto.id) : Promise.resolve([]);
 
   // Tamanhos, sabores, bordas, adicionais e o primeiro preço vêm prontos da
   // MESMA função que o balcão usa para montar item (complemento da Fase 6).
   // Duplicar esse carregamento criaria duas verdades sobre quais sabores e
-  // bordas existem.
-  const dadosDoConfigurador = ehCardDeFogazza ? null : await montarDadosDoConfigurador(slug);
-
-  const componentes =
-    produto.tipo === "combo" ? await listarComponentesDoCombo(produto.id) : [];
+  // bordas existem. Só a fogazza espera a lista de sabores para decidir; o
+  // resto vai ao banco em paralelo.
+  const [saboresDaFogazza, dadosDoConfigurador, componentes] = await Promise.all([
+    pedindoSabores,
+    produto.tipo === "fogazza"
+      ? pedindoSabores.then((s) => (s.length > 0 ? null : montarDadosDoConfigurador(slug)))
+      : montarDadosDoConfigurador(slug),
+    produto.tipo === "combo" ? listarComponentesDoCombo(produto.id) : Promise.resolve([]),
+  ]);
+  const ehCardDeFogazza = saboresDaFogazza.length > 0;
 
   const imagem = produto.imagem_path ? await urlDaImagem(produto.imagem_path) : null;
 
