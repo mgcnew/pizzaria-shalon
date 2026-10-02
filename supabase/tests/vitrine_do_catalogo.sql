@@ -1,7 +1,8 @@
 -- =============================================================================
 -- VITRINE DO CATÁLOGO — a mesma regra, calculada em conjunto
 --
--- D-2026-10-02-115 · Migration: 20261002100000_vitrine_do_catalogo.sql
+-- D-2026-10-02-115 · Migrations: 20261002100000_vitrine_do_catalogo.sql e
+--                   20261002110000_busca_sem_funcao_por_produto.sql
 --
 -- `vitrine_do_catalogo()` reescreve, para todos os produtos de uma vez, o que
 -- as funções por produto calculam. Esta suíte compara as duas, produto a
@@ -175,6 +176,10 @@ select pg_temp.checar('V7 cardapio_publico entrega o que a vitrine calcula', '15
 select pg_temp.checar('V8 busca entrega o que a vitrine calcula', '30|25|t',
   (select concat_ws('|', preco_de::int, preco::int, disponivel)
      from public.buscar_catalogo('calabresa v145') where slug = 'calabresa-v145'));
+
+select pg_temp.checar('V9 busca pelo nome do sabor acha o card de fogazza (0146)',
+  'fogazza-salgada-v145,mussarela-v145',
+  (select string_agg(slug, ',' order by slug) from public.buscar_catalogo('mussarela v145')));
 
 -- --------------------------------------------------------------- 2. equivalência
 -- Um bloco por cenário: servidor, visitante e dona.
