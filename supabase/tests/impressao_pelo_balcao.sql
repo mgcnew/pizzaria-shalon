@@ -52,13 +52,9 @@ select 'b6b6b6b6-0000-0000-0000-000000000001', id from public.roles where name =
 insert into public.user_roles (app_user_id, role_id)
 select 'b6b6b6b6-0000-0000-0000-000000000002', id from public.roles where name = 'Atendente';
 
--- O banco de desenvolvimento pode ter uma sessão de caixa aberta de verdade
--- (alguém operando o painel). Dentro desta transação ela sai do caminho, e o
--- ROLLBACK a devolve intacta: sem isso, `abrir_caixa` encontraria a sessão
--- da pessoa e o teste mediria o estado do ambiente, não a regra.
-delete from public.cash_movements;
-delete from public.cash_session_corrections;
-delete from public.cash_sessions;
+-- Diferente de `operacao_fase6.sql`, este teste NÃO mexe no caixa: não
+-- precisa dele, e o DEV tem pagamentos ligados às sessões (apagá-las viola
+-- `payments_cash_session_id_fkey`).
 
 delete from public.store_settings;
 insert into public.store_settings (
