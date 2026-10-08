@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  COLUNAS,
   LARGURA,
   ladoALado,
   montarAlteracao,
@@ -197,5 +198,47 @@ describe("documento de ALTERAÇÃO (RN-PRINT-005)", () => {
     for (const linha of alteracao) {
       expect(linha.texto.length).toBeLessThanOrEqual(LARGURA);
     }
+  });
+});
+
+describe("papel de 80 mm (D-2026-10-08-116)", () => {
+  const alteracao = {
+    numero: 1042,
+    horario: "19/09 20:40",
+    motivo: "Acabou a calabresa",
+    itensAntes: [{ quantidade: 2, nome: "Calabresa" }],
+    itensDepois: [{ quantidade: 1, nome: "Mussarela", tamanho: "Tradicional" }],
+  };
+
+  it("58 mm continua em 32 colunas e é o padrão", () => {
+    expect(COLUNAS["58"]).toBe(32);
+    expect(LARGURA).toBe(32);
+    expect(renderizarTexto(montarComanda(PEDIDO, COLUNAS["58"]))).toBe(
+      renderizarTexto(montarComanda(PEDIDO)),
+    );
+  });
+
+  it("80 mm usa 48 colunas e nenhuma linha passa disso", () => {
+    expect(COLUNAS["80"]).toBe(48);
+    for (const linha of montarComanda(PEDIDO, COLUNAS["80"])) {
+      expect(linha.texto.length).toBeLessThanOrEqual(48);
+    }
+    for (const linha of montarAlteracao(alteracao, COLUNAS["80"])) {
+      expect(linha.texto.length).toBeLessThanOrEqual(48);
+    }
+  });
+
+  it("separadores ocupam a largura inteira do papel", () => {
+    const linhas = montarComanda(PEDIDO, COLUNAS["80"]);
+    expect(linhas.some((l) => l.estilo === "separador" && l.texto === "-".repeat(48))).toBe(true);
+    const alt = montarAlteracao(alteracao, COLUNAS["80"]);
+    expect(alt[0]?.texto).toBe("*".repeat(48));
+  });
+
+  it("o conteúdo é o mesmo nas duas larguras; muda só a quebra", () => {
+    const palavras = (t: string) => t.replace(/[-*]{3,}/g, "").split(/\s+/).filter(Boolean);
+    expect(palavras(renderizarTexto(montarComanda(PEDIDO, COLUNAS["80"])))).toEqual(
+      palavras(renderizarTexto(montarComanda(PEDIDO, COLUNAS["58"]))),
+    );
   });
 });

@@ -7,6 +7,7 @@ import { SecaoEntrega } from "./_ui/SecaoEntrega";
 import { SecaoPagamentos } from "./_ui/SecaoPagamentos";
 import { SecaoOperacao } from "./_ui/SecaoOperacao";
 import { SecaoAuditoria } from "./_ui/SecaoAuditoria";
+import { SecaoImpressora } from "./_ui/SecaoImpressora";
 
 export const metadata: Metadata = { title: "Configurações" };
 
@@ -16,11 +17,9 @@ export const metadata: Metadata = { title: "Configurações" };
  * O design tinha: Pizzaria · Horários · Entrega · Pagamentos · Operação ·
  * Impressora · Aparência · Auditoria.
  *
- * "Impressora" NÃO foi implementada nesta fase, e isso é deliberado: a
- * impressão 58 mm é escopo da Fase 6 (05-PLANO §7.1 não a inclui na Fase 3) e
- * depende de prova de conceito com o equipamento real (pendência A-08). Uma
- * aba com botão "Teste de impressão" que não imprime seria pior que a
- * ausência dela.
+ * "Impressora" entrou com a impressora de 80 mm do balcão (D-2026-10-08-116).
+ * Ao contrário das outras seções, é configuração DO APARELHO, guardada no
+ * navegador: a impressora está ligada nele, e não na loja.
  *
  * "Aparência" deixou de ser uma seção: claro/escuro é preferência do
  * navegador e fica disponível globalmente na topbar administrativa.
@@ -32,6 +31,7 @@ const SECOES: readonly Aba[] = [
   { nome: "Entrega", valor: "entrega" },
   { nome: "Pagamentos", valor: "pagamentos" },
   { nome: "Operação", valor: "operacao" },
+  { nome: "Impressora", valor: "impressora" },
   { nome: "Auditoria", valor: "auditoria" },
 ];
 
@@ -64,6 +64,7 @@ export default async function Page({
       {secao === "entrega" ? <SecaoEntrega podeGerenciar={podeGerenciar} /> : null}
       {secao === "pagamentos" ? <SecaoPagamentos podeGerenciar={podeGerenciar} /> : null}
       {secao === "operacao" ? <SecaoOperacao podeGerenciar={podeGerenciar} /> : null}
+      {secao === "impressora" ? <SecaoImpressora /> : null}
 
       {secao === "auditoria" ? <SecaoAuditoria podeVer={podeVerAuditoria} /> : null}
     </div>

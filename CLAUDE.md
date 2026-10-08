@@ -673,9 +673,10 @@ Respeitar consentimento promocional.
 
 ---
 
-# 32. IMPRESSÃO 58 MM
+# 32. IMPRESSÃO 58 MM E 80 MM
 
-A impressão é comanda/cupom **não fiscal**.
+A impressão é comanda/cupom **não fiscal**, em papel de 58 mm ou 80 mm
+conforme o aparelho que imprime (D-2026-10-08-116).
 
 Não implementar NFC-e, NF-e, SAT, CF-e ou equivalente.
 

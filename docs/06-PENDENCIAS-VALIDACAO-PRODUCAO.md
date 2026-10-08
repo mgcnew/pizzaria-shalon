@@ -297,6 +297,34 @@ Não alterar a implementação do provedor apenas por falta da chave.
 
 ## POC da impressora térmica 58 mm
 
+### Atualização de 08/10/2026 — 80 mm no balcão (D-2026-10-08-116)
+
+Fatos novos, informados pela dona:
+
+- A 58 mm é uma **KD-1025** (Bluetooth). Não achamos ficha técnica do modelo.
+  Ela **já imprime no Android pelo RawBT**, o que indica, sem estar provado,
+  Bluetooth Clássico com ESC/POS.
+- Para o balcão entrou uma térmica **80 mm por USB**, ligada ao notebook.
+
+**Implementado e testado sem equipamento:** comanda em 48 colunas, impressão
+direta na impressora padrão do sistema (navegador aberto com
+`--kiosk-printing`) e Configurações → Impressora, com escolha por aparelho e
+teste de impressão.
+
+**Ainda não validado no equipamento real — fazer no notebook do balcão:**
+
+| # | Teste | O que observar |
+|---|---|---|
+| 1 | Teste de impressão em 80 mm | a régua de 48 colunas cabe numa linha; acentos saem certos |
+| 2 | Sem janela de escolha | com o atalho `--kiosk-printing`, imprimir não abre janela nenhuma |
+| 3 | Margens e largura | o driver está com papel de rolo 80 mm; não sobra margem grande nem corta à direita |
+| 4 | Comanda real | pedido com meio a meio, borda, adicionais e observação longa |
+| 5 | Cupom do PDV e fechamento de caixa | saem em 80 mm, legíveis |
+| 6 | Impressora desligada | o que o Windows faz (fila parada); o sistema fica em "enviada" e a pessoa registra "Não saiu" |
+| 7 | Comprimento do papel | o driver não força folha de tamanho fixo, o que deixaria papel em branco no fim |
+
+A POC da 58 mm abaixo continua aberta: é a **entrega 2** (Web Serial).
+
 > **OBRIGATÓRIA ANTES DE PRODUÇÃO — BLOQUEIA APENAS O TRANSPORTE FÍSICO DA
 > IMPRESSÃO, NÃO O RESTO DA FASE 6.**
 

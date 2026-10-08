@@ -253,7 +253,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
             />
           </Cartao>
 
-          <Cartao titulo="Comanda 58 mm" largura="cheio">
+          <Cartao titulo="Comanda" largura="cheio">
             <Comanda
               pedidoId={pedido.id}
               impressoes={pedido.impressoes}

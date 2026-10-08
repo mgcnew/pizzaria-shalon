@@ -10,6 +10,7 @@ import {
 import type { VendaNoHistoricoDoPdv } from "@/application/pdv/tipos";
 import { formatBRL } from "@/lib/format";
 import { Button, Input, StatusBadge } from "@/ui/components";
+import { useImpressoraDoAparelho } from "@/ui/impressao/impressoraDoAparelho";
 
 const ROTULOS_ORIGEM: Record<string, string> = {
   counter: "PDV / Balcão",
@@ -320,6 +321,7 @@ function PreviaSegundaVia({
   itens: ItemDaSegundaVia[];
   aoFechar: () => void;
 }) {
+  const { papel } = useImpressoraDoAparelho();
   const quantidade = itens.reduce((total, item) => total + item.quantidade, 0);
   const estornada = venda.situacao_pagamento === "reversed";
 
@@ -346,7 +348,7 @@ function PreviaSegundaVia({
             <h3 id="titulo-segunda-via" className="m-0 font-display text-[19px] font-bold text-ink">
               Segunda via do recibo
             </h3>
-            <p className="m-0 mt-1 text-[12px] text-muted">Confira antes de enviar para a impressora de 58 mm.</p>
+            <p className="m-0 mt-1 text-[12px] text-muted">Confira antes de enviar para a impressora de {papel} mm.</p>
           </div>
           <button
             type="button"
@@ -358,7 +360,7 @@ function PreviaSegundaVia({
           </button>
         </div>
 
-        <div id="cupom-segunda-via" className="mx-auto w-full max-w-[58mm] bg-white p-[3mm] font-mono text-[10px] leading-[1.35] text-black shadow-[0_4px_18px_rgb(0_0_0/0.12)] print:shadow-none">
+        <div id="cupom-segunda-via" className={`mx-auto w-full ${papel === "80" ? "max-w-[80mm]" : "max-w-[58mm]"} bg-white p-[3mm] font-mono text-[10px] leading-[1.35] text-black shadow-[0_4px_18px_rgb(0_0_0/0.12)] print:shadow-none`}>
           <p className="m-0 text-center text-[12px] font-bold">PIZZARIA SHALON</p>
           <p className="m-0 text-center">COMPROVANTE NAO FISCAL</p>
           <p className="m-0 mt-1 text-center font-bold">*** SEGUNDA VIA ***</p>
@@ -388,7 +390,7 @@ function PreviaSegundaVia({
 
         <div className="mt-4 flex gap-2 print:hidden">
           <Button onClick={() => window.print()} tamanho="md" className="flex-1">
-            Imprimir em 58 mm
+            Imprimir em {papel} mm
           </Button>
           <Button variante="secundario" onClick={aoFechar} tamanho="md">
             Fechar
@@ -396,14 +398,14 @@ function PreviaSegundaVia({
         </div>
         <style>{`
           @media print {
-            @page { size: 58mm auto; margin: 0; }
+            @page { size: ${papel}mm auto; margin: 0; }
             body * { visibility: hidden !important; }
             #cupom-segunda-via, #cupom-segunda-via * { visibility: visible !important; }
             #cupom-segunda-via {
               position: absolute !important;
               inset: 0 auto auto 0 !important;
-              width: 58mm !important;
-              max-width: 58mm !important;
+              width: ${papel}mm !important;
+              max-width: ${papel}mm !important;
               margin: 0 !important;
             }
           }

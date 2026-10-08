@@ -13,6 +13,7 @@ import {
 } from "@/application/caixa/acoes";
 import type { ResumoDeFechamento } from "@/application/caixa/tipos";
 import { HistoricoDeVendas } from "./HistoricoDeVendas";
+import { useImpressoraDoAparelho } from "@/ui/impressao/impressoraDoAparelho";
 
 type Operacao = "abrir" | "reforco" | "sangria" | "fechar" | null;
 
@@ -390,6 +391,7 @@ function ResumoVisualDoFechamento({
 }: {
   conferencia: ConferenciaDoFechamento;
 }) {
+  const { papel } = useImpressoraDoAparelho();
   const resumo = conferencia.resumo;
   return (
     <div id="resumo-impressao-fechamento" className="flex flex-col gap-3 bg-surface print:p-[3mm]">
@@ -471,7 +473,7 @@ function ResumoVisualDoFechamento({
           #resumo-impressao-fechamento {
             position: absolute !important;
             inset: 0 auto auto 0 !important;
-            width: 58mm !important;
+            width: ${papel}mm !important;
             color: #000 !important;
             font-family: ui-monospace, monospace !important;
             font-size: 11px !important;

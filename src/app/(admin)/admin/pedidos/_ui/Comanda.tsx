@@ -4,21 +4,24 @@ import { useState, useTransition } from "react";
 import { confirmarImpressao, emitirDocumento } from "@/application/pedidos/acoes";
 import type { ImpressaoDoPedido } from "@/application/pedidos/tipos";
 import type { LinhaComanda } from "@/domain/pedidos/comanda";
+import { useImpressoraDoAparelho } from "@/ui/impressao/impressoraDoAparelho";
+import { imprimirLinhas } from "@/ui/impressao/imprimir";
 
 /**
- * Comanda 58 mm — emissão, conferência e registro do desfecho.
+ * Comanda — emissão, impressão, conferência e registro do desfecho.
  *
  * O QUE ESTA TELA NÃO AFIRMA: que imprimiu.
  *
- * O transporte físico ainda não foi escolhido (A-08; o roteiro da POC está
- * em `06-PENDENCIAS-VALIDACAO-PRODUCAO.md`), e mesmo depois dele vários
- * caminhos não devolvem confirmação do equipamento. Por isso a emissão
- * registra `solicitada`, e quem diz se saiu no papel é a pessoa que olhou
- * para a impressora.
+ * O caminho até o papel depende da impressora DESTE aparelho
+ * (D-2026-10-08-116): conferir na tela, ou mandar direto para a impressora
+ * padrão do sistema. No segundo caso o registro passa a `enviada` — o
+ * navegador entregou ao sistema —, mas nenhum desses caminhos devolve
+ * confirmação do equipamento. Quem diz se saiu no papel é a pessoa que
+ * olhou para a impressora.
  *
- * O documento em si é gerado pelo domínio (`montarComanda`), em 32 colunas,
- * de forma determinística. O que aparece aqui em fonte monoespaçada é
- * exatamente o que seria enviado.
+ * O documento em si é gerado pelo domínio (`montarComanda`), em 32 ou 48
+ * colunas conforme o papel, de forma determinística. O que aparece aqui em
+ * fonte monoespaçada é exatamente o que foi enviado.
  */
 
 const ROTULO_STATUS: Record<ImpressaoDoPedido["status"], string> = {
@@ -47,6 +50,8 @@ export function Comanda({
   const [pedindoFalha, setPedindoFalha] = useState(false);
   const [viaLocalDaComanda, setViaLocalDaComanda] = useState(0);
   const [ocupado, iniciar] = useTransition();
+  const impressora = useImpressoraDoAparelho();
+  const direto = impressora.modo === "sistema";
 
   /**
    * Quantas vias de comanda este pedido já tem.
@@ -71,13 +76,25 @@ export function Comanda({
     setDocumento(null);
     setPedindoFalha(false);
     iniciar(async () => {
-      const r = await emitirDocumento(pedidoId, tipo);
+      const r = await emitirDocumento(pedidoId, tipo, impressora);
       if (!r.ok) {
         setErro(r.erro);
         return;
       }
       setDocumento({ id: r.impressao_id, via: r.via, linhas: r.linhas });
       if (tipo === "comanda") setViaLocalDaComanda(r.via);
+      if (!direto) return;
+
+      try {
+        await imprimirLinhas(r.linhas, impressora.papel);
+      } catch {
+        // A via já está registrada; fica `solicitada` e a pessoa decide se
+        // saiu ou não. Não marcamos erro sozinhos: o papel pode ter saído.
+        setErro("O navegador não conseguiu enviar para a impressora. Confira e registre o resultado.");
+        return;
+      }
+      const enviado = await confirmarImpressao(r.impressao_id, "sent");
+      if (!enviado.ok) setErro(enviado.erro ?? "Não foi possível registrar o envio.");
     });
   }
 
@@ -105,7 +122,9 @@ export function Comanda({
           className="min-h-touch cursor-pointer rounded-11 border-0 bg-cta px-4 text-[14px] font-semibold text-cta-fg disabled:cursor-not-allowed disabled:opacity-60"
         >
           {comandasEmitidas === 0
-            ? "Emitir comanda"
+            ? direto
+              ? "Imprimir comanda"
+              : "Emitir comanda"
             : `Reimprimir comanda (via ${comandasEmitidas + 1})`}
         </button>
 
@@ -139,7 +158,9 @@ export function Comanda({
       {documento !== null ? (
         <div className="rounded-12 border border-border-shalon bg-elev p-3">
           <p className="m-0 mb-2 text-[13px] font-semibold text-ink">
-            Via {documento.via} — confira antes de registrar o resultado
+            {direto
+              ? `Via ${documento.via} enviada à impressora de ${impressora.papel} mm — saiu no papel?`
+              : `Via ${documento.via} — confira antes de registrar o resultado`}
           </p>
           <pre className="m-0 max-h-[360px] overflow-auto whitespace-pre rounded-10 bg-surface p-3 font-mono text-[12px] leading-[1.35] text-ink">
             {documento.linhas.map((l) => l.texto).join("\n")}

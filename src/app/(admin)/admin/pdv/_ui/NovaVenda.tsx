@@ -9,6 +9,7 @@ import type { ItemCatalogoPdv, VarianteDoPdv } from "@/application/pdv/tipos";
 import type { ItemDoRascunho } from "@/application/pedidos/tipos";
 import type { FormaParaRecebimento } from "@/app/(admin)/admin/pedidos/_ui/Recebimento";
 import type { AreaComTeclado } from "./PdvComTeclado";
+import { useImpressoraDoAparelho } from "@/ui/impressao/impressoraDoAparelho";
 
 /**
  * Nova venda de balcão — Fase 12, Etapa 6.
@@ -805,7 +806,7 @@ export function NovaVenda({
               </div>
             ) : null}
             <div className="mt-3 border-t border-tgb pt-3">
-              <CupomVenda58 venda={criado} aoNovaVenda={novaVenda} />
+              <CupomDaVenda venda={criado} aoNovaVenda={novaVenda} />
             </div>
           </div>
         ) : (
@@ -1001,20 +1002,21 @@ export function NovaVenda({
   );
 }
 
-function CupomVenda58({
+function CupomDaVenda({
   venda,
   aoNovaVenda,
 }: {
   venda: VendaConcluida;
   aoNovaVenda: () => void;
 }) {
+  const { papel } = useImpressoraDoAparelho();
   const [emitir, setEmitir] = useState<boolean | null>(null);
   const quantidade = venda.itens.reduce((soma, item) => soma + item.quantidade, 0);
 
   if (emitir === null) {
     return (
       <div>
-        <p className="m-0 text-[13.5px] font-semibold text-ink">Deseja emitir o cupom 58 mm?</p>
+        <p className="m-0 text-[13.5px] font-semibold text-ink">Deseja emitir o cupom {papel} mm?</p>
         <p className="m-0 mt-1 text-[12px] text-muted">
           Comprovante da venda, sem valor fiscal. NFC-e/SAT exige integração fiscal própria.
         </p>
@@ -1056,9 +1058,9 @@ function CupomVenda58({
   return (
     <div>
       <p className="m-0 mb-2 text-[12px] font-semibold uppercase tracking-wide text-ink-2">
-        Prévia do cupom 58 mm
+        Prévia do cupom {papel} mm
       </p>
-      <div id="cupom-venda-pdv" className="mx-auto w-full max-w-[58mm] bg-white p-[3mm] font-mono text-[10px] leading-[1.35] text-black">
+      <div id="cupom-venda-pdv" className={`mx-auto w-full ${papel === "80" ? "max-w-[80mm]" : "max-w-[58mm]"} bg-white p-[3mm] font-mono text-[10px] leading-[1.35] text-black`}>
         <p className="m-0 text-center text-[12px] font-bold">PIZZARIA SHALON</p>
         <p className="m-0 text-center">COMPROVANTE NAO FISCAL</p>
         <p className="my-2 border-y border-dashed border-black py-1">VENDA #{venda.numero}</p>
@@ -1082,7 +1084,7 @@ function CupomVenda58({
           onClick={() => window.print()}
           className="min-h-touch cursor-pointer rounded-11 border-0 bg-cta px-4 text-[13.5px] font-semibold text-cta-fg"
         >
-          Imprimir em 58 mm
+          Imprimir em {papel} mm
         </button>
         <button
           type="button"
@@ -1094,14 +1096,14 @@ function CupomVenda58({
       </div>
       <style>{`
         @media print {
-          @page { size: 58mm auto; margin: 0; }
+          @page { size: ${papel}mm auto; margin: 0; }
           body * { visibility: hidden !important; }
           #cupom-venda-pdv, #cupom-venda-pdv * { visibility: visible !important; }
           #cupom-venda-pdv {
             position: absolute !important;
             inset: 0 auto auto 0 !important;
-            width: 58mm !important;
-            max-width: 58mm !important;
+            width: ${papel}mm !important;
+            max-width: ${papel}mm !important;
             margin: 0 !important;
           }
         }

@@ -1325,6 +1325,11 @@ Pode existir view/cache posteriormente. Clientes sem consentimento não entram e
 
 # 16. Impressão 58 mm
 
+> **D-2026-10-08-116:** papel de 58 mm ou 80 mm, conforme o aparelho. Não muda o
+> modelo: a largura e o modo ficam no navegador do aparelho, e
+> `order_prints.transport` registra o caminho (`tela`, `sistema-58mm`,
+> `sistema-80mm`).
+
 ## 16.1 `print_jobs`
 
 - `id uuid PK`

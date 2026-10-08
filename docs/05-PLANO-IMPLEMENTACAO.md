@@ -567,6 +567,12 @@ Reimpressão auditada.
 
 Alteração após impressão gera documento **ALTERAÇÃO**.
 
+> **D-2026-10-08-116:** a impressão passou a aceitar também papel de 80 mm,
+> configurado por aparelho. Entrega 1 (feita): comanda em 48 colunas,
+> impressão direta na impressora padrão do sistema e a aba Configurações →
+> Impressora. Entrega 2: 58 mm direto pela Web Serial. Entrega 3: o celular
+> pedir impressão na 80 mm do balcão, com o notebook ligado e o painel aberto.
+
 ## 10.6 Critério de saída
 
 A equipe consegue receber, aceitar, imprimir, produzir, alterar, rejeitar/cancelar e concluir pedidos sem manipular estado diretamente no banco.

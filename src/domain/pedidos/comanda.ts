@@ -1,11 +1,11 @@
 /**
- * Comanda de produção 58 mm.
+ * Comanda de produção — papel de 58 mm ou de 80 mm.
  *
  * 04-REGRAS-NEGOCIO.md RN-PRINT-001 a RN-PRINT-006 · CLAUDE.md §32
  * 05-PLANO-IMPLEMENTACAO.md §10.5
  *
  * ESTE MÓDULO NÃO IMPRIME. Ele decide o que a comanda DIZ e como ela se
- * organiza em 32 colunas — nada mais. Nenhum byte de ESC/POS, nenhum
+ * organiza em 32 ou 48 colunas — nada mais. Nenhum byte de ESC/POS, nenhum
  * Bluetooth, nenhuma chamada de rede.
  *
  * A separação é deliberada: o transporte físico ainda não foi escolhido
@@ -24,8 +24,17 @@
  * moto precisa levar o troco certo.
  */
 
-/** 58 mm em fonte A dá 32 colunas. Confirmar no equipamento é teste 4 da POC. */
-export const LARGURA = 32;
+/** Largura do papel configurada no aparelho que imprime (D-2026-10-08-116). */
+export type Papel = "58" | "80";
+
+/**
+ * Colunas úteis em fonte A: 58 mm dá 32, 80 mm dá 48. Confirmar no
+ * equipamento é o teste 4 da POC.
+ */
+export const COLUNAS: Record<Papel, number> = { "58": 32, "80": 48 };
+
+/** Largura padrão: a comanda de 58 mm, que é o que existia antes do 80 mm. */
+export const LARGURA = COLUNAS["58"];
 
 export type EstiloLinha =
   /** Texto comum. */
@@ -122,17 +131,20 @@ export function ladoALado(esquerda: string, direita: string, largura = LARGURA):
   return esquerda + " ".repeat(sobra) + direita;
 }
 
-function centralizar(texto: string, largura = LARGURA): string {
+function centralizar(texto: string, largura: number): string {
   if (texto.length >= largura) return texto.slice(0, largura);
   const antes = Math.floor((largura - texto.length) / 2);
   return " ".repeat(antes) + texto;
 }
 
-const SEPARADOR: LinhaComanda = { texto: "-".repeat(LARGURA), estilo: "separador" };
 const VAZIO: LinhaComanda = { texto: "", estilo: "vazio" };
 
-function linhas(texto: string, estilo: EstiloLinha = "normal"): LinhaComanda[] {
-  return quebrar(texto).map((t) => ({ texto: t, estilo }));
+function separador(largura: number, caractere = "-"): LinhaComanda {
+  return { texto: caractere.repeat(largura), estilo: "separador" };
+}
+
+function linhas(texto: string, largura: number, estilo: EstiloLinha = "normal"): LinhaComanda[] {
+  return quebrar(texto, largura).map((t) => ({ texto: t, estilo }));
 }
 
 function reais(valor: number): string {
@@ -141,31 +153,32 @@ function reais(valor: number): string {
 
 // ---------------------------------------------------------------- itens
 
-function bloqueDoItem(item: ItemDaComanda): LinhaComanda[] {
+function bloqueDoItem(item: ItemDaComanda, largura: number): LinhaComanda[] {
   const saida: LinhaComanda[] = [];
+  const txt = (texto: string, estilo?: EstiloLinha) => linhas(texto, largura, estilo);
 
   // Quantidade colada no nome: é o que a cozinha lê primeiro.
   const titulo = `${item.quantidade}x ${item.sabores?.length ? item.sabores.join(" / ") : item.nome}`;
-  saida.push(...linhas(titulo, "titulo"));
+  saida.push(...txt(titulo, "titulo"));
 
-  if (item.tamanho) saida.push(...linhas(`  ${item.tamanho}`));
+  if (item.tamanho) saida.push(...txt(`  ${item.tamanho}`));
   if (item.sabores && item.sabores.length > 1) {
-    saida.push(...linhas("  MEIO A MEIO", "destaque"));
+    saida.push(...txt("  MEIO A MEIO", "destaque"));
   }
-  if (item.borda) saida.push(...linhas(`  Borda: ${item.borda}`));
+  if (item.borda) saida.push(...txt(`  Borda: ${item.borda}`));
   if (item.adicionais?.length) {
-    saida.push(...linhas(`  Adicionais: ${item.adicionais.join(", ")}`));
+    saida.push(...txt(`  Adicionais: ${item.adicionais.join(", ")}`));
   }
   for (const componente of item.combo ?? []) {
     saida.push(
-      ...linhas(
+      ...txt(
         `  - ${componente.quantidade}x ${componente.nome}` +
           (componente.tamanho ? ` (${componente.tamanho})` : ""),
       ),
     );
   }
   // Observação do item em destaque: é a instrução que costuma ser esquecida.
-  if (item.observacao) saida.push(...linhas(`  >> ${item.observacao}`, "destaque"));
+  if (item.observacao) saida.push(...txt(`  >> ${item.observacao}`, "destaque"));
 
   return saida;
 }
@@ -179,11 +192,19 @@ function bloqueDoItem(item: ItemDaComanda): LinhaComanda[] {
  * no banco (`registrar_impressao` recusa pedido não aceito), e não numa
  * condição de interface.
  */
-export function montarComanda(pedido: PedidoDaComanda): LinhaComanda[] {
+export function montarComanda(
+  pedido: PedidoDaComanda,
+  largura: number = LARGURA,
+): LinhaComanda[] {
   const saida: LinhaComanda[] = [];
+  const txt = (texto: string, estilo?: EstiloLinha) => linhas(texto, largura, estilo);
+  const SEPARADOR = separador(largura);
 
-  saida.push({ texto: centralizar("PIZZARIA SHALON"), estilo: "titulo" });
-  saida.push({ texto: centralizar("*** NAO E DOCUMENTO FISCAL ***"), estilo: "normal" });
+  saida.push({ texto: centralizar("PIZZARIA SHALON", largura), estilo: "titulo" });
+  saida.push({
+    texto: centralizar("*** NAO E DOCUMENTO FISCAL ***", largura),
+    estilo: "normal",
+  });
   saida.push(SEPARADOR);
 
   saida.push({ texto: `PEDIDO #${pedido.numero}`, estilo: "titulo" });
@@ -198,28 +219,28 @@ export function montarComanda(pedido: PedidoDaComanda): LinhaComanda[] {
   });
   saida.push(VAZIO);
 
-  saida.push(...linhas(`Cliente: ${pedido.cliente}`));
+  saida.push(...txt(`Cliente: ${pedido.cliente}`));
 
   if (pedido.modalidade === "delivery" && pedido.endereco) {
     saida.push(SEPARADOR);
-    saida.push(...linhas(`${pedido.endereco.logradouro}, ${pedido.endereco.numero}`));
-    if (pedido.endereco.complemento) saida.push(...linhas(pedido.endereco.complemento));
-    saida.push(...linhas(pedido.endereco.bairro));
+    saida.push(...txt(`${pedido.endereco.logradouro}, ${pedido.endereco.numero}`));
+    if (pedido.endereco.complemento) saida.push(...txt(pedido.endereco.complemento));
+    saida.push(...txt(pedido.endereco.bairro));
     if (pedido.endereco.referencia) {
-      saida.push(...linhas(`Ref.: ${pedido.endereco.referencia}`));
+      saida.push(...txt(`Ref.: ${pedido.endereco.referencia}`));
     }
   }
 
   saida.push(SEPARADOR);
   for (const item of pedido.itens) {
-    saida.push(...bloqueDoItem(item));
+    saida.push(...bloqueDoItem(item, largura));
     saida.push(VAZIO);
   }
 
   if (pedido.observacao) {
     saida.push(SEPARADOR);
-    saida.push(...linhas("OBSERVACAO DO PEDIDO", "titulo"));
-    saida.push(...linhas(pedido.observacao, "destaque"));
+    saida.push(...txt("OBSERVACAO DO PEDIDO", "titulo"));
+    saida.push(...txt(pedido.observacao, "destaque"));
   }
 
   // A única informação financeira, e só quando serve à operação de entrega
@@ -240,7 +261,7 @@ export function montarComanda(pedido: PedidoDaComanda): LinhaComanda[] {
     saida.push({ texto: `Levar ${reais(pedido.trocoEsperado)}`, estilo: "destaque" });
   } else if (pedido.modalidade === "delivery" && pedido.formaPagamento) {
     saida.push(SEPARADOR);
-    saida.push(...linhas(`Pagamento: ${pedido.formaPagamento}`));
+    saida.push(...txt(`Pagamento: ${pedido.formaPagamento}`));
   }
 
   saida.push(SEPARADOR);
@@ -265,33 +286,38 @@ export type AlteracaoDaComanda = {
  * segundo papel parecido com o primeiro. Por isso ele começa gritando o que
  * é, mostra o que sai e o que entra, e só então repete o pedido inteiro.
  */
-export function montarAlteracao(dados: AlteracaoDaComanda): LinhaComanda[] {
+export function montarAlteracao(
+  dados: AlteracaoDaComanda,
+  largura: number = LARGURA,
+): LinhaComanda[] {
   const saida: LinhaComanda[] = [];
+  const txt = (texto: string, estilo?: EstiloLinha) => linhas(texto, largura, estilo);
+  const SEPARADOR = separador(largura);
 
-  saida.push({ texto: "*".repeat(LARGURA), estilo: "separador" });
-  saida.push({ texto: centralizar("*** ALTERACAO ***"), estilo: "destaque" });
-  saida.push({ texto: centralizar(`PEDIDO #${dados.numero}`), estilo: "destaque" });
-  saida.push({ texto: "*".repeat(LARGURA), estilo: "separador" });
+  saida.push(separador(largura, "*"));
+  saida.push({ texto: centralizar("*** ALTERACAO ***", largura), estilo: "destaque" });
+  saida.push({ texto: centralizar(`PEDIDO #${dados.numero}`, largura), estilo: "destaque" });
+  saida.push(separador(largura, "*"));
   saida.push({ texto: dados.horario, estilo: "normal" });
   saida.push(VAZIO);
-  saida.push(...linhas("A comanda anterior deste pedido NAO vale mais.", "destaque"));
+  saida.push(...txt("A comanda anterior deste pedido NAO vale mais.", "destaque"));
   saida.push(VAZIO);
-  saida.push(...linhas(`Motivo: ${dados.motivo}`));
+  saida.push(...txt(`Motivo: ${dados.motivo}`));
 
   saida.push(SEPARADOR);
-  saida.push(...linhas("ERA", "titulo"));
+  saida.push(...txt("ERA", "titulo"));
   for (const item of dados.itensAntes) {
-    saida.push(...linhas(`  - ${item.quantidade}x ${item.nome}`));
+    saida.push(...txt(`  - ${item.quantidade}x ${item.nome}`));
   }
 
   saida.push(SEPARADOR);
-  saida.push(...linhas("PASSA A SER", "titulo"));
+  saida.push(...txt("PASSA A SER", "titulo"));
   for (const item of dados.itensDepois) {
-    saida.push(...bloqueDoItem(item));
+    saida.push(...bloqueDoItem(item, largura));
     saida.push(VAZIO);
   }
 
-  saida.push({ texto: "*".repeat(LARGURA), estilo: "separador" });
+  saida.push(separador(largura, "*"));
   return saida;
 }
 

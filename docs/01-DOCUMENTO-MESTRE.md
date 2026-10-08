@@ -1839,6 +1839,10 @@ Se a entrega falhar, usar **“Entrega não realizada”** com motivo obrigatór
 
 Não haverá KDS na V1. A produção usa comanda térmica **58 mm não fiscal**.
 
+> **Ampliado por D-2026-10-08-116:** a comanda também sai em impressora térmica
+> de **80 mm** (a do balcão, ligada ao notebook). Cada aparelho configura o seu
+> papel e se imprime direto ou só mostra na tela.
+
 Comanda de produção só é impressa/gerada após aceite efetivo do pedido. Deve priorizar legibilidade: número/hora, entrega/retirada, itens, sabores/meio a meio, tamanho, borda, adicionais, observações e quantidades. Evitar poluição financeira desnecessária.
 
 Reimpressão é permitida e auditada. Se pedido já impresso sofrer alteração autorizada, gerar **comanda adicional de ALTERAÇÃO**, visualmente destacada, mostrando exatamente o que mudou; nunca fingir que a impressão original não existiu.

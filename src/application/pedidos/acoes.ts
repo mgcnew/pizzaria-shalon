@@ -10,6 +10,7 @@ import { montarItem } from "@/application/publico/acoes";
 import type { ItemMontado } from "@/application/publico/tipos";
 import { logger } from "@/lib/logger";
 import {
+  COLUNAS,
   montarAlteracao,
   montarComanda,
   renderizarTexto,
@@ -156,14 +157,31 @@ export type DocumentoParaImpressao =
  *
  * O banco recusa emitir comanda de pedido não aceito (RN-PRINT-001/002) —
  * a interface não é a guardiã dessa regra.
+ *
+ * `papel` e `modo` vêm da configuração DO APARELHO que vai imprimir
+ * (D-2026-10-08-116). Não são dado sensível nem decidem nada de domínio:
+ * mudam só a largura em que o texto é quebrado e o que fica anotado como
+ * transporte. Mesmo assim passam por validação — vieram do navegador.
  */
+const impressaoSchema = z.object({
+  papel: z.enum(["58", "80"]),
+  modo: z.enum(["tela", "sistema"]),
+});
+
 export async function emitirDocumento(
   pedidoId: string,
   tipo: "comanda" | "alteracao",
+  impressao: { papel: "58" | "80"; modo: "tela" | "sistema" } = { papel: "58", modo: "tela" },
 ): Promise<DocumentoParaImpressao> {
   if (!z.string().uuid().safeParse(pedidoId).success) {
     return { ok: false, erro: "Pedido inválido." };
   }
+  const configuracao = impressaoSchema.safeParse(impressao);
+  if (!configuracao.success) {
+    return { ok: false, erro: "Configuração de impressora inválida." };
+  }
+  const { papel, modo } = configuracao.data;
+  const largura = COLUNAS[papel];
 
   const [pedido, loja, pagamento] = await Promise.all([
     obterPedido(pedidoId),
@@ -209,7 +227,7 @@ export async function emitirDocumento(
       trocoEsperado: pedido.pagamento?.troco_esperado ?? null,
       formaPagamento: pedido.pagamento?.forma ?? null,
       pago: (pagamento?.realizado ?? []).some((p) => p.status === "confirmed"),
-    });
+    }, largura);
   } else {
     const revisao = pedido.revisoes.find((r) => r.status === "applied");
     if (revisao === undefined) {
@@ -224,7 +242,7 @@ export async function emitirDocumento(
         nome: i.nome,
       })),
       itensDepois: itens,
-    });
+    }, largura);
   }
 
   const texto = renderizarTexto(linhas);
@@ -234,9 +252,10 @@ export async function emitirDocumento(
     p_order_id: pedidoId,
     p_tipo: tipo,
     p_conteudo: texto,
-    // O transporte ainda não foi escolhido (A-08). Registrar `tela` é a
-    // verdade: hoje o documento é conferido na tela pela operação.
-    p_transporte: "tela",
+    // `tela`: conferido na tela, sem impressora configurada no aparelho.
+    // `sistema-80mm`/`sistema-58mm`: enviado à impressora padrão do sistema
+    // operacional pelo navegador (D-2026-10-08-116).
+    p_transporte: modo === "tela" ? "tela" : `sistema-${papel}mm`,
   });
 
   if (error) {

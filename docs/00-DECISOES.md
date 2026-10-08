@@ -4011,6 +4011,62 @@ entregas, notificações, financeiro, preços ou catálogo.
 
 ---
 
+## D-2026-10-08-116 — Impressora de 80 mm no balcão e configuração por aparelho
+
+**Contexto.** A Shalon tem uma térmica 58 mm (KD-1025, Bluetooth) que imprime
+bem no Android pelo RawBT, mas não está funcionando direito para o balcão. A
+operação passa a ter uma **térmica convencional de 80 mm**, ligada por USB ao
+notebook do balcão. A exigência da dona: ao clicar em imprimir, imprimir —
+sem escolher a impressora toda vez. Se precisar trocar, troca-se na
+configuração.
+
+**Decisão.**
+1. **Duas larguras de papel.** A comanda e o documento ALTERAÇÃO saem em
+   58 mm (32 colunas) ou 80 mm (48 colunas). O domínio
+   (`montarComanda`/`montarAlteracao`) recebe a largura; o conteúdo é o mesmo,
+   muda só a quebra. Cupom do PDV, segunda via e fechamento de caixa seguem a
+   mesma largura.
+2. **Configuração por aparelho, não por loja.** Papel e modo ("imprimir
+   direto" ou "só mostrar na tela") ficam no navegador do aparelho
+   (Configurações → Impressora). A impressora está fisicamente ligada ao
+   aparelho; gravar no banco faria um aparelho tentar usar o papel do outro.
+   Não passa por `settings.manage` nem por auditoria: não muda nada para
+   ninguém além de quem está naquele aparelho. Sem configuração, vale o
+   comportamento anterior (58 mm, conferir na tela).
+3. **Sem janela de escolha no notebook:** o navegador do balcão é aberto com
+   `--kiosk-printing` e imprime na impressora padrão do Windows. É o único
+   jeito de um site imprimir sem perguntar; a tela de configuração explica o
+   passo a passo. Não instala programa nenhum além do driver da impressora.
+4. **O sistema não afirma que imprimiu.** No modo direto, o registro passa de
+   `requested` a `sent` (o navegador entregou ao sistema). `confirmed` e
+   `error` continuam dependendo de a pessoa dizer se saiu no papel.
+   `order_prints.transport` registra `tela`, `sistema-58mm` ou `sistema-80mm`.
+   **Não houve migration**: a coluna já era texto livre.
+
+**Entregas seguintes, aprovadas mas não feitas:**
+- **Entrega 2:** 58 mm direto pela Web Serial (Bluetooth Clássico), com a
+  impressora escolhida uma vez. Falta provar no Android se o Chrome lembra a
+  impressora entre sessões. O RawBT continua como plano B.
+- **Entrega 3:** o celular pede a impressão e o notebook do balcão, com o
+  painel aberto, imprime na 80 mm. **Condição aceita pela dona:** o notebook
+  precisa estar ligado e com o painel aberto. Vai precisar de migration.
+
+Prioridade definida pela dona: **o notebook funcionar**.
+
+**Onde foi formalizada:** `04-REGRAS-NEGOCIO.md` RN-PRINT-006,
+`01-DOCUMENTO-MESTRE.md` §79.16, `05-PLANO-IMPLEMENTACAO.md` §10.5,
+`02-MODELO-DADOS-SUPABASE.md` §16, `CLAUDE.md` §32,
+`06-PENDENCIAS-VALIDACAO-PRODUCAO.md` (POC da impressora),
+`src/domain/pedidos/comanda.ts`, `src/ui/impressao/`,
+`src/app/(admin)/admin/configuracoes/_ui/SecaoImpressora.tsx`.
+
+**Impacto no design.** A aba "Impressora" do design aprovado, que tinha ficado
+de fora por falta de equipamento, entrou. Em vez de pares somente leitura,
+tem a escolha do papel e do modo deste aparelho e o "Teste de impressão",
+que imprime uma régua de colunas e os acentos.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.
