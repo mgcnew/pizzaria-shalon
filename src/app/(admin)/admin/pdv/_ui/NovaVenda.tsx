@@ -9,7 +9,8 @@ import type { ItemCatalogoPdv, VarianteDoPdv } from "@/application/pdv/tipos";
 import type { ItemDoRascunho } from "@/application/pedidos/tipos";
 import type { FormaParaRecebimento } from "@/app/(admin)/admin/pedidos/_ui/Recebimento";
 import type { AreaComTeclado } from "./PdvComTeclado";
-import { useImpressoraDoAparelho } from "@/ui/impressao/impressoraDoAparelho";
+import { useImprimirDocumento } from "@/ui/impressao/useImprimirDocumento";
+import { montarCupomDeVenda } from "@/domain/impressao/cupons";
 
 /**
  * Nova venda de balcão — Fase 12, Etapa 6.
@@ -1009,7 +1010,7 @@ function CupomDaVenda({
   venda: VendaConcluida;
   aoNovaVenda: () => void;
 }) {
-  const { papel } = useImpressoraDoAparelho();
+  const { imprimir, enviando, erro: erroDeImpressao, papel } = useImprimirDocumento();
   const [emitir, setEmitir] = useState<boolean | null>(null);
   const quantidade = venda.itens.reduce((soma, item) => soma + item.quantidade, 0);
 
@@ -1081,10 +1082,25 @@ function CupomDaVenda({
       <div className="mt-3 flex flex-wrap gap-2 print:hidden">
         <button
           type="button"
-          onClick={() => window.print()}
-          className="min-h-touch cursor-pointer rounded-11 border-0 bg-cta px-4 text-[13.5px] font-semibold text-cta-fg"
+          disabled={enviando}
+          onClick={() =>
+            void imprimir((largura) =>
+              montarCupomDeVenda(
+                {
+                  numero: venda.numero,
+                  itens: venda.itens.map((i) => ({ quantidade: i.quantidade, nome: i.nome, total: i.total })),
+                  total: venda.total,
+                  pagamento: venda.forma,
+                  recebido: venda.recebido,
+                  troco: venda.troco,
+                },
+                largura,
+              ),
+            )
+          }
+          className="min-h-touch cursor-pointer rounded-11 border-0 bg-cta px-4 text-[13.5px] font-semibold text-cta-fg disabled:opacity-60"
         >
-          Imprimir em {papel} mm
+          {enviando ? "Enviando…" : `Imprimir em ${papel} mm`}
         </button>
         <button
           type="button"
@@ -1094,6 +1110,11 @@ function CupomDaVenda({
           Nova venda
         </button>
       </div>
+      {erroDeImpressao ? (
+        <p role="alert" className="m-0 mt-2 rounded-10 bg-td px-3 py-2 text-[13px] font-semibold text-tdf print:hidden">
+          {erroDeImpressao}
+        </p>
+      ) : null}
       <style>{`
         @media print {
           @page { size: ${papel}mm auto; margin: 0; }

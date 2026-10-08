@@ -14,6 +14,8 @@ import {
 import type { ResumoDeFechamento } from "@/application/caixa/tipos";
 import { HistoricoDeVendas } from "./HistoricoDeVendas";
 import { useImpressoraDoAparelho } from "@/ui/impressao/impressoraDoAparelho";
+import { useImprimirDocumento } from "@/ui/impressao/useImprimirDocumento";
+import { montarFechamentoDeCaixa } from "@/domain/impressao/cupons";
 
 type Operacao = "abrir" | "reforco" | "sangria" | "fechar" | null;
 
@@ -300,6 +302,7 @@ function FormularioDeFechamento({ erroExterno, aoErro, aoCancelar }: {
   const [contadoTexto, setContadoTexto] = useState("");
   const [conferencia, setConferencia] = useState<ConferenciaDoFechamento | null>(null);
   const [conferindo, iniciarConferencia] = useTransition();
+  const { imprimir, enviando, erro: erroDeImpressao } = useImprimirDocumento();
   useAvisarOperacaoEmVoo(conferindo);
   const contado = paraNumero(contadoTexto);
   const diferenca = conferencia?.diferenca ?? null;
@@ -366,14 +369,45 @@ function FormularioDeFechamento({ erroExterno, aoErro, aoCancelar }: {
         <p className="m-0 rounded-12 border border-twb bg-tw p-3 text-[13.5px] font-semibold text-twf">Há {diferenca !== null && diferenca > 0 ? "sobra" : "falta"} de {formatBRL(Math.abs(diferenca ?? 0))}.</p>
       )}
       {erroExterno ? <Aviso erro={erroExterno} /> : null}
+      {erroDeImpressao ? <Aviso erro={erroDeImpressao} /> : null}
       {precisaJustificar ? <Textarea name="justificativa" label="Justificativa da diferença" rows={3} required autoFocus /> : null}
       <div className="flex flex-wrap gap-2">
         {conferencia.fechado ? (
           <>
             <Button type="button" onClick={aoCancelar}>Concluir</Button>
             {conferencia.resumo ? (
-              <Button type="button" variante="secundario" onClick={() => window.print()}>
-                Imprimir fechamento
+              <Button
+                type="button"
+                variante="secundario"
+                disabled={enviando}
+                onClick={() => {
+                  const resumo = conferencia.resumo;
+                  if (resumo === null) return;
+                  void imprimir((largura) =>
+                    montarFechamentoDeCaixa(
+                      {
+                        data: new Date(`${resumo.data_operacional}T12:00:00`).toLocaleDateString("pt-BR"),
+                        contado: conferencia.contado,
+                        esperado: conferencia.esperado,
+                        diferenca: conferencia.diferenca,
+                        recebimentos: resumo.recebimentos_por_metodo.map((r) => ({ metodo: r.metodo, total: r.total })),
+                        movimentos: {
+                          fundoInicial: resumo.fundo_inicial,
+                          reforcos: resumo.reforcos,
+                          sangrias: resumo.sangrias,
+                          despesas: resumo.despesas_pelo_caixa,
+                          entradas: resumo.entradas_pelo_caixa,
+                          estornos: resumo.estornos,
+                          diferencasDeMotoboy: resumo.diferencas_de_motoboy ?? 0,
+                        },
+                        dinheiroForaDaGaveta: resumo.dinheiro_fora_da_gaveta,
+                      },
+                      largura,
+                    ),
+                  );
+                }}
+              >
+                {enviando ? "Enviando…" : "Imprimir fechamento"}
               </Button>
             ) : null}
           </>

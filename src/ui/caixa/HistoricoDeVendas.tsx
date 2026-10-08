@@ -10,7 +10,8 @@ import {
 import type { VendaNoHistoricoDoPdv } from "@/application/pdv/tipos";
 import { formatBRL } from "@/lib/format";
 import { Button, Input, StatusBadge } from "@/ui/components";
-import { useImpressoraDoAparelho } from "@/ui/impressao/impressoraDoAparelho";
+import { useImprimirDocumento } from "@/ui/impressao/useImprimirDocumento";
+import { montarCupomDeVenda } from "@/domain/impressao/cupons";
 
 const ROTULOS_ORIGEM: Record<string, string> = {
   counter: "PDV / Balcão",
@@ -321,7 +322,7 @@ function PreviaSegundaVia({
   itens: ItemDaSegundaVia[];
   aoFechar: () => void;
 }) {
-  const { papel } = useImpressoraDoAparelho();
+  const { imprimir, enviando, erro: erroDeImpressao, papel } = useImprimirDocumento();
   const quantidade = itens.reduce((total, item) => total + item.quantidade, 0);
   const estornada = venda.situacao_pagamento === "reversed";
 
@@ -389,13 +390,39 @@ function PreviaSegundaVia({
         </div>
 
         <div className="mt-4 flex gap-2 print:hidden">
-          <Button onClick={() => window.print()} tamanho="md" className="flex-1">
-            Imprimir em {papel} mm
+          <Button
+            disabled={enviando}
+            onClick={() =>
+              void imprimir((largura) =>
+                montarCupomDeVenda(
+                  {
+                    numero: venda.numero,
+                    data: formatarData(venda.pago_em),
+                    cliente: venda.cliente ?? "",
+                    itens,
+                    total: venda.valor_pago,
+                    pagamento: venda.formas || "—",
+                    segundaVia: true,
+                    estornado: estornada,
+                  },
+                  largura,
+                ),
+              )
+            }
+            tamanho="md"
+            className="flex-1"
+          >
+            {enviando ? "Enviando…" : `Imprimir em ${papel} mm`}
           </Button>
           <Button variante="secundario" onClick={aoFechar} tamanho="md">
             Fechar
           </Button>
         </div>
+        {erroDeImpressao ? (
+          <p role="alert" className="m-0 mt-2 rounded-10 bg-td px-3 py-2 text-[13px] font-semibold text-tdf print:hidden">
+            {erroDeImpressao}
+          </p>
+        ) : null}
         <style>{`
           @media print {
             @page { size: ${papel}mm auto; margin: 0; }

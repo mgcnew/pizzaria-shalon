@@ -4055,9 +4055,14 @@ configuração.
   técnica. Registra `serial-58mm`/`serial-80mm`. Um aparelho em Bluetooth
   direto com papel de 80 mm também pode ser o balcão. **Falta provar no
   Android** se o Chrome lembra a impressora entre sessões. O RawBT continua
-  como plano B. **Limite:** cupom do PDV, segunda via e fechamento de caixa
-  continuam pela impressão do sistema, porque são HTML e não linhas de
-  texto. Neste modo, eles abrem a janela de impressão.
+  como plano B.
+- **Cupons pelo Bluetooth — feito em 08/10/2026:** cupom do PDV, segunda via
+  e fechamento de caixa ganharam versão em linhas de texto
+  (`src/domain/impressao/cupons.ts`), com o mesmo conteúdo do HTML. No modo
+  Bluetooth direto, saem por ESC/POS, sem janela. Nos outros modos,
+  continuam pelo HTML aprovado e `window.print()`, como antes. O módulo só
+  organiza em colunas valores que o servidor já calculou: não calcula nada
+  de dinheiro.
 - **Entrega 3 — feita em 08/10/2026 (migration 0147):** o celular pede a
   impressão e o notebook do balcão, com o painel aberto, imprime na 80 mm.
   **Condição aceita pela dona:** o notebook precisa estar ligado e com o
