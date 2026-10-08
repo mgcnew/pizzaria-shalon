@@ -323,6 +323,16 @@ teste de impressão.
 | 6 | Impressora desligada | o que o Windows faz (fila parada); o sistema fica em "enviada" e a pessoa registra "Não saiu" |
 | 7 | Comprimento do papel | o driver não força folha de tamanho fixo, o que deixaria papel em branco no fim |
 
+**Entrega 3 (celular → balcão), também a validar com o equipamento:**
+
+| # | Teste | O que observar |
+|---|---|---|
+| 8 | Celular pede, notebook imprime | sai em segundos, sem janela no notebook |
+| 9 | Notebook com o painel em outra aba ou minimizado | continua imprimindo |
+| 10 | Notebook fechado e reaberto dentro de 2 min | imprime o que ficou esperando |
+| 11 | Notebook fechado por mais de 2 min | o celular vê o aviso; nada sai depois |
+| 12 | Dois pedidos seguidos do celular | saem os dois, em ordem, sem embaralhar |
+
 A POC da 58 mm abaixo continua aberta: é a **entrega 2** (Web Serial).
 
 > **OBRIGATÓRIA ANTES DE PRODUÇÃO — BLOQUEIA APENAS O TRANSPORTE FÍSICO DA

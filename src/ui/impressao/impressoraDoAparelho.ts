@@ -22,11 +22,24 @@ export type ModoDeImpressao =
   /** Mostra o documento na tela. Quem imprime é a pessoa, por fora. */
   | "tela"
   /** Manda para a impressora padrão do sistema operacional deste aparelho. */
-  | "sistema";
+  | "sistema"
+  /**
+   * Pede ao aparelho do balcão que imprima na 80 mm dele. Para o celular,
+   * que não alcança a impressora USB do notebook.
+   */
+  | "balcao";
 
-export type ImpressoraDoAparelho = { papel: Papel; modo: ModoDeImpressao };
+export type ImpressoraDoAparelho = {
+  papel: Papel;
+  modo: ModoDeImpressao;
+  /**
+   * Este aparelho É a impressora do balcão: com o painel aberto, imprime o
+   * que os outros aparelhos pedirem. Só vale imprimindo direto no sistema.
+   */
+  estacao: boolean;
+};
 
-export const PADRAO: ImpressoraDoAparelho = { papel: "58", modo: "tela" };
+export const PADRAO: ImpressoraDoAparelho = { papel: "58", modo: "tela", estacao: false };
 
 const CHAVE = "shalon:impressora";
 
@@ -36,10 +49,13 @@ function interpretar(bruto: string | null): ImpressoraDoAparelho {
   try {
     const valor: unknown = JSON.parse(bruto);
     if (typeof valor !== "object" || valor === null) return PADRAO;
-    const { papel, modo } = valor as Record<string, unknown>;
+    const { papel, modo, estacao } = valor as Record<string, unknown>;
+    const modoLido: ModoDeImpressao =
+      modo === "sistema" || modo === "balcao" ? modo : "tela";
     return {
       papel: papel === "80" ? "80" : "58",
-      modo: modo === "sistema" ? "sistema" : "tela",
+      modo: modoLido,
+      estacao: estacao === true && modoLido === "sistema",
     };
   } catch {
     return PADRAO;
@@ -60,7 +76,10 @@ function ler(): ImpressoraDoAparelho {
 }
 
 /** Grava e avisa quem está olhando. Devolve falso se o navegador recusou. */
-export function salvarImpressoraDoAparelho(nova: ImpressoraDoAparelho): boolean {
+export function salvarImpressoraDoAparelho(pedida: ImpressoraDoAparelho): boolean {
+  // Ser o balcão sem imprimir direto não faz sentido: o pedido seria pego e
+  // nada sairia no papel.
+  const nova = { ...pedida, estacao: pedida.estacao && pedida.modo === "sistema" };
   atual = nova;
   ouvintes.forEach((avisar) => avisar());
   try {

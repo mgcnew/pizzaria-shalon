@@ -4047,9 +4047,24 @@ configuração.
 - **Entrega 2:** 58 mm direto pela Web Serial (Bluetooth Clássico), com a
   impressora escolhida uma vez. Falta provar no Android se o Chrome lembra a
   impressora entre sessões. O RawBT continua como plano B.
-- **Entrega 3:** o celular pede a impressão e o notebook do balcão, com o
-  painel aberto, imprime na 80 mm. **Condição aceita pela dona:** o notebook
-  precisa estar ligado e com o painel aberto. Vai precisar de migration.
+- **Entrega 3 — feita em 08/10/2026 (migration 0147):** o celular pede a
+  impressão e o notebook do balcão, com o painel aberto, imprime na 80 mm.
+  **Condição aceita pela dona:** o notebook precisa estar ligado e com o
+  painel aberto. Como funciona:
+  - o celular, no modo "Imprimir na impressora do balcão", registra a
+    impressão com transporte `balcao-80mm` e as linhas completas em
+    `order_prints.content_lines`. A comanda sai sempre em 48 colunas;
+  - o aparelho marcado em Configurações → Impressora como "este é o balcão"
+    escuta `order_prints` pelo Realtime, com uma consulta de reserva a cada
+    30 s, e chama `pegar_impressao_do_balcao`. A função trava a linha e só
+    deixa um aparelho passar de `requested` para `sent`, registrando quem
+    pegou em `sent_by`;
+  - **prazo de 2 minutos:** pedido de impressão mais velho que isso não é
+    impresso e vira `error`. Sem prazo, ligar o notebook horas depois
+    imprimiria comandas antigas como se fossem novas. Prazo escolhido na
+    implementação, reversível; ajustar se a operação pedir;
+  - o celular acompanha a situação e só oferece "Saiu no papel" depois que
+    o balcão pegou.
 
 Prioridade definida pela dona: **o notebook funcionar**.
 

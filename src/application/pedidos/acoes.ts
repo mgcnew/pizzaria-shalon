@@ -165,13 +165,16 @@ export type DocumentoParaImpressao =
  */
 const impressaoSchema = z.object({
   papel: z.enum(["58", "80"]),
-  modo: z.enum(["tela", "sistema"]),
+  modo: z.enum(["tela", "sistema", "balcao"]),
 });
 
 export async function emitirDocumento(
   pedidoId: string,
   tipo: "comanda" | "alteracao",
-  impressao: { papel: "58" | "80"; modo: "tela" | "sistema" } = { papel: "58", modo: "tela" },
+  impressao: { papel: "58" | "80"; modo: "tela" | "sistema" | "balcao" } = {
+    papel: "58",
+    modo: "tela",
+  },
 ): Promise<DocumentoParaImpressao> {
   if (!z.string().uuid().safeParse(pedidoId).success) {
     return { ok: false, erro: "Pedido inválido." };
@@ -180,7 +183,9 @@ export async function emitirDocumento(
   if (!configuracao.success) {
     return { ok: false, erro: "Configuração de impressora inválida." };
   }
-  const { papel, modo } = configuracao.data;
+  const { modo } = configuracao.data;
+  // Pedindo ao balcão, quem imprime é a 80 mm de lá, não o papel deste aparelho.
+  const papel = modo === "balcao" ? "80" : configuracao.data.papel;
   const largura = COLUNAS[papel];
 
   const [pedido, loja, pagamento] = await Promise.all([
@@ -255,7 +260,12 @@ export async function emitirDocumento(
     // `tela`: conferido na tela, sem impressora configurada no aparelho.
     // `sistema-80mm`/`sistema-58mm`: enviado à impressora padrão do sistema
     // operacional pelo navegador (D-2026-10-08-116).
-    p_transporte: modo === "tela" ? "tela" : `sistema-${papel}mm`,
+    // `balcao-80mm`: o aparelho do balcão pega e imprime; vai com as linhas.
+    p_transporte:
+      modo === "tela" ? "tela" : modo === "balcao" ? "balcao-80mm" : `sistema-${papel}mm`,
+    // Só vai quando é para o balcão: assim os outros modos continuam
+    // funcionando mesmo num banco ainda sem a migration 0147.
+    ...(modo === "balcao" ? { p_linhas: linhas } : {}),
   });
 
   if (error) {

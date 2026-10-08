@@ -33,10 +33,25 @@ const MODOS: { valor: ModoDeImpressao; titulo: string; detalhe: string }[] = [
     detalhe: "Manda para a impressora padrão deste aparelho assim que a comanda é emitida.",
   },
   {
+    valor: "balcao",
+    titulo: "Imprimir na impressora do balcão",
+    detalhe:
+      "Para o celular: a comanda sai na 80 mm do notebook. O notebook precisa estar ligado, com o painel aberto.",
+  },
+  {
     valor: "tela",
     titulo: "Só mostrar na tela",
     detalhe: "A comanda aparece para conferir; a impressão é feita por fora do sistema.",
   },
+];
+
+const ESTACAO: { valor: "sim" | "nao"; titulo: string; detalhe: string }[] = [
+  {
+    valor: "sim",
+    titulo: "Sim, este é o balcão",
+    detalhe: "Com o painel aberto, imprime as comandas que os celulares pedirem.",
+  },
+  { valor: "nao", titulo: "Não", detalhe: "Imprime só o que for emitido neste aparelho." },
 ];
 
 const ATALHO_CHROME = '"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --kiosk-printing';
@@ -148,6 +163,20 @@ export function SecaoImpressora() {
             atual={impressora.modo}
             aoEscolher={(modo) => salvar({ ...impressora, modo })}
           />
+          {impressora.modo === "sistema" ? (
+            <Opcoes
+              rotulo="Imprimir também o que os celulares pedirem?"
+              opcoes={ESTACAO}
+              atual={impressora.estacao ? "sim" : "nao"}
+              aoEscolher={(v) => salvar({ ...impressora, estacao: v === "sim" })}
+            />
+          ) : null}
+          {impressora.estacao ? (
+            <p className="m-0 rounded-12 border border-tib bg-ti px-3 py-[10px] text-[13px] font-semibold text-tif">
+              Deixe o Chrome aberto pelo atalho do balcão (abaixo). Sem ele, cada pedido dos celulares abre a
+              janela de impressão e fica parado esperando alguém clicar.
+            </p>
+          ) : null}
 
           <div>
             <ParDeDados chave="Documento" valor="Comanda não fiscal" />

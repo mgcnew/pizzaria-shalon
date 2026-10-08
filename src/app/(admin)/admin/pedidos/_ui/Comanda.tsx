@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { confirmarImpressao, emitirDocumento } from "@/application/pedidos/acoes";
+import { situacaoDaImpressao } from "@/application/pedidos/impressaoDoBalcao";
 import type { ImpressaoDoPedido } from "@/application/pedidos/tipos";
 import type { LinhaComanda } from "@/domain/pedidos/comanda";
 import { useImpressoraDoAparelho } from "@/ui/impressao/impressoraDoAparelho";
@@ -52,6 +53,45 @@ export function Comanda({
   const [ocupado, iniciar] = useTransition();
   const impressora = useImpressoraDoAparelho();
   const direto = impressora.modo === "sistema";
+  const peloBalcao = impressora.modo === "balcao";
+  /**
+   * Pedindo ao balcão: em que pé está. `esperando` até o notebook pegar;
+   * `demorando` quando passa do normal — o pedido continua valendo até o
+   * prazo de 2 minutos do banco, mas a pessoa precisa saber que pode haver
+   * algo errado do lado de lá.
+   */
+  const [balcao, setBalcao] = useState<"esperando" | "demorando" | "pegou" | null>(null);
+
+  const documentoId = documento?.id ?? null;
+  useEffect(() => {
+    if (!peloBalcao || documentoId === null) return;
+    let vivo = true;
+    const inicio = Date.now();
+
+    const consultar = async () => {
+      const situacao = await situacaoDaImpressao(documentoId);
+      if (!vivo || situacao === null) return;
+      if (situacao.status === "requested") {
+        setBalcao(Date.now() - inicio > 15_000 ? "demorando" : "esperando");
+        return;
+      }
+      window.clearInterval(timer);
+      if (situacao.status === "error") {
+        setErro(situacao.erro ?? "O balcão não imprimiu.");
+        setBalcao(null);
+        setDocumento(null);
+        return;
+      }
+      setBalcao("pegou");
+    };
+
+    const timer = window.setInterval(() => void consultar(), 2_000);
+    void consultar();
+    return () => {
+      vivo = false;
+      window.clearInterval(timer);
+    };
+  }, [peloBalcao, documentoId]);
 
   /**
    * Quantas vias de comanda este pedido já tem.
@@ -75,6 +115,7 @@ export function Comanda({
     setErro(null);
     setDocumento(null);
     setPedindoFalha(false);
+    setBalcao(peloBalcao ? "esperando" : null);
     iniciar(async () => {
       const r = await emitirDocumento(pedidoId, tipo, impressora);
       if (!r.ok) {
@@ -107,6 +148,7 @@ export function Comanda({
         return;
       }
       setDocumento(null);
+      setBalcao(null);
       setPedindoFalha(false);
       setMotivoFalha("");
     });
@@ -124,7 +166,9 @@ export function Comanda({
           {comandasEmitidas === 0
             ? direto
               ? "Imprimir comanda"
-              : "Emitir comanda"
+              : peloBalcao
+                ? "Imprimir no balcão"
+                : "Emitir comanda"
             : `Reimprimir comanda (via ${comandasEmitidas + 1})`}
         </button>
 
@@ -160,21 +204,34 @@ export function Comanda({
           <p className="m-0 mb-2 text-[13px] font-semibold text-ink">
             {direto
               ? `Via ${documento.via} enviada à impressora de ${impressora.papel} mm — saiu no papel?`
-              : `Via ${documento.via} — confira antes de registrar o resultado`}
+              : peloBalcao
+                ? balcao === "pegou"
+                  ? `Via ${documento.via} impressa no balcão — saiu no papel?`
+                  : `Via ${documento.via} aguardando a impressora do balcão…`
+                : `Via ${documento.via} — confira antes de registrar o resultado`}
           </p>
+          {peloBalcao && balcao === "demorando" ? (
+            <p role="status" className="m-0 mb-2 rounded-10 border border-twb bg-tw px-3 py-2 text-[13px] font-semibold text-twf">
+              O balcão ainda não pegou. Confira se o notebook está ligado, com o painel aberto. Depois de 2
+              minutos o pedido de impressão é descartado.
+            </p>
+          ) : null}
           <pre className="m-0 max-h-[360px] overflow-auto whitespace-pre rounded-10 bg-surface p-3 font-mono text-[12px] leading-[1.35] text-ink">
             {documento.linhas.map((l) => l.texto).join("\n")}
           </pre>
 
           <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={ocupado}
-              onClick={() => registrar("confirmed")}
-              className="min-h-touch cursor-pointer rounded-11 border-0 bg-cta px-4 text-[14px] font-semibold text-cta-fg disabled:opacity-60"
-            >
-              Saiu no papel
-            </button>
+            {/* Pedindo ao balcão, só dá para dizer que saiu depois que ele pegou. */}
+            {!peloBalcao || balcao === "pegou" ? (
+              <button
+                type="button"
+                disabled={ocupado}
+                onClick={() => registrar("confirmed")}
+                className="min-h-touch cursor-pointer rounded-11 border-0 bg-cta px-4 text-[14px] font-semibold text-cta-fg disabled:opacity-60"
+              >
+                Saiu no papel
+              </button>
+            ) : null}
             <button
               type="button"
               disabled={ocupado}

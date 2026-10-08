@@ -10,6 +10,7 @@ import { MenuUsuarioAdmin } from "@/ui/components/MenuUsuarioAdmin";
 import { SeletorDeTema } from "@/ui/components/SeletorDeTema";
 import { RegistrarPwaAdmin } from "@/ui/components/RegistrarPwaAdmin";
 import { SinoNotificacoesAdmin } from "@/ui/notificacoes/SinoNotificacoesAdmin";
+import { EstacaoDeImpressao } from "@/ui/impressao/EstacaoDeImpressao";
 import { listarNotificacoes, type ResumoNotificacoes } from "@/application/notificacoes/acoes";
 import { COOKIE_TEMA, temaDoCookie } from "@/ui/tema";
 import { obterSessaoInterna } from "@/application/auth/sessao";
@@ -57,6 +58,8 @@ export default async function LayoutAdmin({
   return (
     <div data-acento="vermelho" className="flex min-h-screen bg-bg">
       <RegistrarPwaAdmin />
+      {/* Só age no aparelho marcado como impressora do balcão (D-2026-10-08-116). */}
+      {podeNaUI(sessao, "orders.view") ? <EstacaoDeImpressao /> : null}
       <aside
         aria-label="Navegação principal do administrativo"
         className="sticky top-0 hidden h-screen w-sidebar shrink-0 flex-col overflow-hidden border-r border-admin-nav-border bg-admin-nav-bg shadow-[4px_0_18px_rgb(41_37_36/0.06)] lg:flex"
