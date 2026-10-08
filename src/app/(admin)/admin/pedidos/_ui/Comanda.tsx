@@ -5,8 +5,9 @@ import { confirmarImpressao, emitirDocumento } from "@/application/pedidos/acoes
 import { situacaoDaImpressao } from "@/application/pedidos/impressaoDoBalcao";
 import type { ImpressaoDoPedido } from "@/application/pedidos/tipos";
 import type { LinhaComanda } from "@/domain/pedidos/comanda";
-import { useImpressoraDoAparelho } from "@/ui/impressao/impressoraDoAparelho";
-import { imprimirLinhas } from "@/ui/impressao/imprimir";
+import { imprimeDireto, useImpressoraDoAparelho } from "@/ui/impressao/impressoraDoAparelho";
+import { imprimirNoAparelho } from "@/ui/impressao/imprimirNoAparelho";
+import { ErroDaImpressora } from "@/ui/impressao/serial";
 
 /**
  * Comanda — emissão, impressão, conferência e registro do desfecho.
@@ -52,7 +53,7 @@ export function Comanda({
   const [viaLocalDaComanda, setViaLocalDaComanda] = useState(0);
   const [ocupado, iniciar] = useTransition();
   const impressora = useImpressoraDoAparelho();
-  const direto = impressora.modo === "sistema";
+  const direto = imprimeDireto(impressora.modo);
   const peloBalcao = impressora.modo === "balcao";
   /**
    * Pedindo ao balcão: em que pé está. `esperando` até o notebook pegar;
@@ -117,7 +118,10 @@ export function Comanda({
     setPedindoFalha(false);
     setBalcao(peloBalcao ? "esperando" : null);
     iniciar(async () => {
-      const r = await emitirDocumento(pedidoId, tipo, impressora);
+      const r = await emitirDocumento(pedidoId, tipo, {
+        papel: impressora.papel,
+        modo: impressora.modo,
+      });
       if (!r.ok) {
         setErro(r.erro);
         return;
@@ -127,11 +131,15 @@ export function Comanda({
       if (!direto) return;
 
       try {
-        await imprimirLinhas(r.linhas, impressora.papel);
-      } catch {
+        await imprimirNoAparelho(r.linhas, impressora);
+      } catch (falha) {
         // A via já está registrada; fica `solicitada` e a pessoa decide se
         // saiu ou não. Não marcamos erro sozinhos: o papel pode ter saído.
-        setErro("O navegador não conseguiu enviar para a impressora. Confira e registre o resultado.");
+        setErro(
+          falha instanceof ErroDaImpressora
+            ? `${falha.message} Depois registre o resultado abaixo.`
+            : "O navegador não conseguiu enviar para a impressora. Confira e registre o resultado.",
+        );
         return;
       }
       const enviado = await confirmarImpressao(r.impressao_id, "sent");

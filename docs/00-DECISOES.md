@@ -4044,9 +4044,20 @@ configuração.
    **Não houve migration**: a coluna já era texto livre.
 
 **Entregas seguintes, aprovadas mas não feitas:**
-- **Entrega 2:** 58 mm direto pela Web Serial (Bluetooth Clássico), com a
-  impressora escolhida uma vez. Falta provar no Android se o Chrome lembra a
-  impressora entre sessões. O RawBT continua como plano B.
+- **Entrega 2 — feita em 08/10/2026 (sem migration):** modo "Bluetooth
+  direto". O aparelho fala com a impressora pela Web Serial (Bluetooth
+  Clássico, perfil SPP) e manda ESC/POS: iniciar, tabela de caracteres,
+  negrito e avanço de papel, **sem comando de corte**. A impressora é
+  escolhida uma vez em Configurações → Impressora (`requestPort`, que exige
+  toque). Depois disso `getPorts` a devolve sem perguntar. Trocar esquece a
+  anterior. A **tabela de acentos** é escolhida pelo teste de impressão:
+  CP860 (padrão), CP850 ou "sem acentos", porque o modelo não tem ficha
+  técnica. Registra `serial-58mm`/`serial-80mm`. Um aparelho em Bluetooth
+  direto com papel de 80 mm também pode ser o balcão. **Falta provar no
+  Android** se o Chrome lembra a impressora entre sessões. O RawBT continua
+  como plano B. **Limite:** cupom do PDV, segunda via e fechamento de caixa
+  continuam pela impressão do sistema, porque são HTML e não linhas de
+  texto. Neste modo, eles abrem a janela de impressão.
 - **Entrega 3 — feita em 08/10/2026 (migration 0147):** o celular pede a
   impressão e o notebook do balcão, com o painel aberto, imprime na 80 mm.
   **Condição aceita pela dona:** o notebook precisa estar ligado e com o
@@ -4064,7 +4075,9 @@ configuração.
     imprimiria comandas antigas como se fossem novas. Prazo escolhido na
     implementação, reversível; ajustar se a operação pedir;
   - o celular acompanha a situação e só oferece "Saiu no papel" depois que
-    o balcão pegou.
+    o balcão pegou;
+  - só aparelho com papel de **80 mm** pode ser o balcão: a comanda chega
+    em 48 colunas.
 
 Prioridade definida pela dona: **o notebook funcionar**.
 

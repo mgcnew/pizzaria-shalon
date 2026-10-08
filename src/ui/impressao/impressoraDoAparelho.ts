@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import type { Papel } from "@/domain/pedidos/comanda";
+import type { TabelaDeAcentos } from "./escpos";
 
 /**
  * Impressora DESTE aparelho (D-2026-10-08-116).
@@ -23,6 +24,8 @@ export type ModoDeImpressao =
   | "tela"
   /** Manda para a impressora padrão do sistema operacional deste aparelho. */
   | "sistema"
+  /** Fala direto com a impressora Bluetooth pela Web Serial (ESC/POS). */
+  | "serial"
   /**
    * Pede ao aparelho do balcão que imprima na 80 mm dele. Para o celular,
    * que não alcança a impressora USB do notebook.
@@ -34,12 +37,33 @@ export type ImpressoraDoAparelho = {
   modo: ModoDeImpressao;
   /**
    * Este aparelho É a impressora do balcão: com o painel aberto, imprime o
-   * que os outros aparelhos pedirem. Só vale imprimindo direto no sistema.
+   * que os outros aparelhos pedirem. Só vale imprimindo direto (sistema ou
+   * Bluetooth).
    */
   estacao: boolean;
+  /** Tabela de acentos do Bluetooth direto. Escolhida pelo teste de impressão. */
+  tabela: TabelaDeAcentos;
 };
 
-export const PADRAO: ImpressoraDoAparelho = { papel: "58", modo: "tela", estacao: false };
+export const PADRAO: ImpressoraDoAparelho = {
+  papel: "58",
+  modo: "tela",
+  estacao: false,
+  tabela: "cp860",
+};
+
+/** Modos em que este próprio aparelho manda para uma impressora. */
+export function imprimeDireto(modo: ModoDeImpressao): boolean {
+  return modo === "sistema" || modo === "serial";
+}
+
+/**
+ * Pode ser o balcão: imprime direto e em 80 mm. O celular manda a comanda
+ * já quebrada em 48 colunas, que não cabe num papel de 58.
+ */
+export function podeSerBalcao(i: Pick<ImpressoraDoAparelho, "modo" | "papel">): boolean {
+  return imprimeDireto(i.modo) && i.papel === "80";
+}
 
 const CHAVE = "shalon:impressora";
 
@@ -49,13 +73,15 @@ function interpretar(bruto: string | null): ImpressoraDoAparelho {
   try {
     const valor: unknown = JSON.parse(bruto);
     if (typeof valor !== "object" || valor === null) return PADRAO;
-    const { papel, modo, estacao } = valor as Record<string, unknown>;
+    const { papel, modo, estacao, tabela } = valor as Record<string, unknown>;
     const modoLido: ModoDeImpressao =
-      modo === "sistema" || modo === "balcao" ? modo : "tela";
+      modo === "sistema" || modo === "serial" || modo === "balcao" ? modo : "tela";
+    const papelLido = papel === "80" ? "80" : "58";
     return {
-      papel: papel === "80" ? "80" : "58",
+      papel: papelLido,
       modo: modoLido,
-      estacao: estacao === true && modoLido === "sistema",
+      estacao: estacao === true && podeSerBalcao({ modo: modoLido, papel: papelLido }),
+      tabela: tabela === "cp850" || tabela === "sem-acento" ? tabela : "cp860",
     };
   } catch {
     return PADRAO;
@@ -79,7 +105,7 @@ function ler(): ImpressoraDoAparelho {
 export function salvarImpressoraDoAparelho(pedida: ImpressoraDoAparelho): boolean {
   // Ser o balcão sem imprimir direto não faz sentido: o pedido seria pego e
   // nada sairia no papel.
-  const nova = { ...pedida, estacao: pedida.estacao && pedida.modo === "sistema" };
+  const nova = { ...pedida, estacao: pedida.estacao && podeSerBalcao(pedida) };
   atual = nova;
   ouvintes.forEach((avisar) => avisar());
   try {

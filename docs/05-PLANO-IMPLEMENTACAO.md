@@ -571,8 +571,8 @@ Alteração após impressão gera documento **ALTERAÇÃO**.
 > configurado por aparelho. Entrega 1 (feita): comanda em 48 colunas,
 > impressão direta na impressora padrão do sistema e a aba Configurações →
 > Impressora. Entrega 3 (feita, migration 0147): o celular pede impressão na
-> 80 mm do balcão, com o notebook ligado e o painel aberto. Entrega 2
-> (pendente): 58 mm direto pela Web Serial.
+> 80 mm do balcão, com o notebook ligado e o painel aberto. Entrega 2 (feita):
+> 58 mm direto por Bluetooth (Web Serial, ESC/POS).
 
 ## 10.6 Critério de saída
 

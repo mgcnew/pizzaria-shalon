@@ -165,13 +165,13 @@ export type DocumentoParaImpressao =
  */
 const impressaoSchema = z.object({
   papel: z.enum(["58", "80"]),
-  modo: z.enum(["tela", "sistema", "balcao"]),
+  modo: z.enum(["tela", "sistema", "serial", "balcao"]),
 });
 
 export async function emitirDocumento(
   pedidoId: string,
   tipo: "comanda" | "alteracao",
-  impressao: { papel: "58" | "80"; modo: "tela" | "sistema" | "balcao" } = {
+  impressao: { papel: "58" | "80"; modo: "tela" | "sistema" | "serial" | "balcao" } = {
     papel: "58",
     modo: "tela",
   },
@@ -260,9 +260,10 @@ export async function emitirDocumento(
     // `tela`: conferido na tela, sem impressora configurada no aparelho.
     // `sistema-80mm`/`sistema-58mm`: enviado à impressora padrão do sistema
     // operacional pelo navegador (D-2026-10-08-116).
+    // `serial-58mm`/`serial-80mm`: Bluetooth direto, ESC/POS (entrega 2).
     // `balcao-80mm`: o aparelho do balcão pega e imprime; vai com as linhas.
     p_transporte:
-      modo === "tela" ? "tela" : modo === "balcao" ? "balcao-80mm" : `sistema-${papel}mm`,
+      modo === "tela" ? "tela" : modo === "balcao" ? "balcao-80mm" : `${modo}-${papel}mm`,
     // Só vai quando é para o balcão: assim os outros modos continuam
     // funcionando mesmo num banco ainda sem a migration 0147.
     ...(modo === "balcao" ? { p_linhas: linhas } : {}),

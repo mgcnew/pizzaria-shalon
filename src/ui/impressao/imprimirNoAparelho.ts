@@ -1,0 +1,26 @@
+"use client";
+
+import type { LinhaComanda } from "@/domain/pedidos/comanda";
+import { montarEscPos } from "./escpos";
+import type { ImpressoraDoAparelho } from "./impressoraDoAparelho";
+import { imprimirLinhas } from "./imprimir";
+import { imprimirSerial } from "./serial";
+
+/**
+ * Manda o documento pela impressora configurada NESTE aparelho
+ * (D-2026-10-08-116). Um ponto só para a comanda, o balcão e o teste de
+ * impressão não decidirem o caminho cada um do seu jeito.
+ *
+ * Só para os modos que imprimem aqui (`sistema` e `serial`). Lança erro se
+ * não conseguiu entregar à impressora.
+ */
+export async function imprimirNoAparelho(
+  linhas: LinhaComanda[],
+  impressora: ImpressoraDoAparelho,
+): Promise<void> {
+  if (impressora.modo === "serial") {
+    await imprimirSerial(montarEscPos(linhas, impressora.tabela));
+    return;
+  }
+  await imprimirLinhas(linhas, impressora.papel);
+}

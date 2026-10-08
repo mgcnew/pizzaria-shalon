@@ -1,15 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/ui/components";
 import { Aviso, Cartao, ParDeDados } from "@/ui/patterns";
 import { COLUNAS, type Papel } from "@/domain/pedidos/comanda";
 import {
+  imprimeDireto,
+  podeSerBalcao,
   salvarImpressoraDoAparelho,
   useImpressoraDoAparelho,
+  type ImpressoraDoAparelho,
   type ModoDeImpressao,
 } from "@/ui/impressao/impressoraDoAparelho";
 import { imprimirLinhas, linhasDeTeste } from "@/ui/impressao/imprimir";
+import { imprimirNoAparelho } from "@/ui/impressao/imprimirNoAparelho";
+import type { TabelaDeAcentos } from "@/ui/impressao/escpos";
+import {
+  ErroDaImpressora,
+  escolherImpressoraSerial,
+  esquecerImpressoraSerial,
+  impressoraLembrada,
+  serialDisponivel,
+} from "@/ui/impressao/serial";
 
 /**
  * "Impressora" — seção do design aprovado, que ficou de fora enquanto não
@@ -33,6 +45,12 @@ const MODOS: { valor: ModoDeImpressao; titulo: string; detalhe: string }[] = [
     detalhe: "Manda para a impressora padrão deste aparelho assim que a comanda é emitida.",
   },
   {
+    valor: "serial",
+    titulo: "Bluetooth direto",
+    detalhe:
+      "Fala direto com a impressora Bluetooth, como a de 58 mm, sem RawBT. A impressora é escolhida uma vez, aqui.",
+  },
+  {
     valor: "balcao",
     titulo: "Imprimir na impressora do balcão",
     detalhe:
@@ -52,6 +70,16 @@ const ESTACAO: { valor: "sim" | "nao"; titulo: string; detalhe: string }[] = [
     detalhe: "Com o painel aberto, imprime as comandas que os celulares pedirem.",
   },
   { valor: "nao", titulo: "Não", detalhe: "Imprime só o que for emitido neste aparelho." },
+];
+
+const TABELAS: { valor: TabelaDeAcentos; titulo: string; detalhe: string }[] = [
+  { valor: "cp860", titulo: "Português (CP860)", detalhe: "A primeira a tentar." },
+  { valor: "cp850", titulo: "Multilíngue (CP850)", detalhe: "Se a CP860 trocar letras acentuadas." },
+  {
+    valor: "sem-acento",
+    titulo: "Sem acentos",
+    detalhe: "Se nenhuma funcionar: \"Açúcar\" sai \"Acucar\", mas sempre legível.",
+  },
 ];
 
 const ATALHO_CHROME = '"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --kiosk-printing';
@@ -125,10 +153,17 @@ export function SecaoImpressora() {
     setAviso({});
     setImprimindo(true);
     try {
-      await imprimirLinhas(linhasDeTeste(impressora.papel), impressora.papel);
+      const linhas = linhasDeTeste(impressora.papel);
+      if (imprimeDireto(impressora.modo)) await imprimirNoAparelho(linhas, impressora);
+      else await imprimirLinhas(linhas, impressora.papel);
       setAviso({ ok: "Teste enviado. Confira se a régua coube numa linha só e se os acentos saíram certos." });
-    } catch {
-      setAviso({ erro: "O navegador não conseguiu enviar o teste para a impressora." });
+    } catch (falha) {
+      setAviso({
+        erro:
+          falha instanceof ErroDaImpressora
+            ? falha.message
+            : "O navegador não conseguiu enviar o teste para a impressora.",
+      });
     } finally {
       setImprimindo(false);
     }
@@ -163,7 +198,14 @@ export function SecaoImpressora() {
             atual={impressora.modo}
             aoEscolher={(modo) => salvar({ ...impressora, modo })}
           />
-          {impressora.modo === "sistema" ? (
+          {impressora.modo === "serial" ? (
+            <BluetoothDireto
+              impressora={impressora}
+              aoSalvar={salvar}
+              aoAvisar={setAviso}
+            />
+          ) : null}
+          {podeSerBalcao(impressora) ? (
             <Opcoes
               rotulo="Imprimir também o que os celulares pedirem?"
               opcoes={ESTACAO}
@@ -171,7 +213,7 @@ export function SecaoImpressora() {
               aoEscolher={(v) => salvar({ ...impressora, estacao: v === "sim" })}
             />
           ) : null}
-          {impressora.estacao ? (
+          {impressora.estacao && impressora.modo === "sistema" ? (
             <p className="m-0 rounded-12 border border-tib bg-ti px-3 py-[10px] text-[13px] font-semibold text-tif">
               Deixe o Chrome aberto pelo atalho do balcão (abaixo). Sem ele, cada pedido dos celulares abre a
               janela de impressão e fica parado esperando alguém clicar.
@@ -194,6 +236,7 @@ export function SecaoImpressora() {
         </div>
       </Cartao>
 
+      {impressora.modo !== "serial" ? (
       <Cartao
         titulo="Imprimir sem a janela de escolha (Windows)"
         descricao="Por segurança, o navegador sempre pergunta a impressora — a não ser que seja aberto por um atalho preparado para o balcão. Faz-se uma vez só."
@@ -229,6 +272,102 @@ export function SecaoImpressora() {
           atalho não muda mais nada no navegador: só tira a janela de escolha da impressão.
         </p>
       </Cartao>
+      ) : null}
+    </div>
+  );
+}
+
+
+async function situacaoDoBluetooth(): Promise<"sem-suporte" | "nenhuma" | "escolhida"> {
+  if (!serialDisponivel()) return "sem-suporte";
+  return (await impressoraLembrada()) === null ? "nenhuma" : "escolhida";
+}
+
+/**
+ * A impressora Bluetooth deste aparelho: escolher (uma vez), trocar,
+ * esquecer, e a tabela de acentos.
+ */
+function BluetoothDireto({
+  impressora,
+  aoSalvar,
+  aoAvisar,
+}: {
+  impressora: ImpressoraDoAparelho;
+  aoSalvar: (nova: ImpressoraDoAparelho) => void;
+  aoAvisar: (aviso: { erro?: string; ok?: string }) => void;
+}) {
+  const [situacao, setSituacao] = useState<"verificando" | "sem-suporte" | "nenhuma" | "escolhida">(
+    "verificando",
+  );
+
+  const verificar = useCallback(async () => {
+    setSituacao(await situacaoDoBluetooth());
+  }, []);
+
+  useEffect(() => {
+    let vivo = true;
+    void situacaoDoBluetooth().then((s) => {
+      if (vivo) setSituacao(s);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  async function escolher() {
+    try {
+      await escolherImpressoraSerial();
+      aoAvisar({ ok: "Impressora escolhida. Faça o teste de impressão." });
+    } catch (falha) {
+      aoAvisar({ erro: falha instanceof ErroDaImpressora ? falha.message : "Não foi possível escolher." });
+    }
+    await verificar();
+  }
+
+  async function esquecer() {
+    await esquecerImpressoraSerial();
+    aoAvisar({ ok: "Este aparelho esqueceu a impressora." });
+    await verificar();
+  }
+
+  if (situacao === "sem-suporte") {
+    return (
+      <p role="alert" className="m-0 rounded-12 border border-twb bg-tw px-3 py-[10px] text-[13px] font-semibold text-twf">
+        Este navegador não fala com impressora Bluetooth. Use o Google Chrome atualizado — no Android, no
+        Windows ou no Mac. No iPhone não funciona.
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4 rounded-12 border border-border-shalon bg-elev p-3">
+      <div>
+        <p className="m-0 text-[12px] font-bold uppercase tracking-[0.06em] text-muted">Impressora Bluetooth</p>
+        <p className="m-0 mt-1 text-[13.5px] text-ink" role="status">
+          {situacao === "verificando"
+            ? "Verificando…"
+            : situacao === "escolhida"
+              ? "Escolhida neste aparelho. Imprimir não pergunta mais nada."
+              : "Nenhuma escolhida ainda. Pareie a impressora no Bluetooth do aparelho e depois escolha aqui."}
+        </p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <Button type="button" variante="secundario" onClick={escolher} disabled={situacao === "verificando"}>
+            {situacao === "escolhida" ? "Trocar impressora" : "Escolher impressora"}
+          </Button>
+          {situacao === "escolhida" ? (
+            <Button type="button" variante="fantasma" onClick={esquecer}>
+              Esquecer
+            </Button>
+          ) : null}
+        </div>
+      </div>
+
+      <Opcoes
+        rotulo="Acentos"
+        opcoes={TABELAS}
+        atual={impressora.tabela}
+        aoEscolher={(tabela) => aoSalvar({ ...impressora, tabela })}
+      />
     </div>
   );
 }

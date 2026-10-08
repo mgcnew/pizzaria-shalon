@@ -2,15 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
-import type { Papel } from "@/domain/pedidos/comanda";
 import { carregarClienteRealtime } from "@/infrastructure/supabase/realtimeSobDemanda";
 import { confirmarImpressao } from "@/application/pedidos/acoes";
 import {
   listarEsperandoBalcao,
   pegarImpressaoDoBalcao,
 } from "@/application/pedidos/impressaoDoBalcao";
-import { useImpressoraDoAparelho } from "./impressoraDoAparelho";
-import { imprimirLinhas } from "./imprimir";
+import { useImpressoraDoAparelho, type ImpressoraDoAparelho } from "./impressoraDoAparelho";
+import { imprimirNoAparelho } from "./imprimirNoAparelho";
 
 /**
  * O APARELHO DO BALCÃO IMPRIMINDO PARA OS OUTROS (D-2026-10-08-116, entrega 3).
@@ -34,18 +33,18 @@ const AVISO_MS = 6_000;
 type Aviso = { tipo: "ok" | "erro"; texto: string } | null;
 
 export function EstacaoDeImpressao() {
-  const { estacao, papel } = useImpressoraDoAparelho();
-  if (!estacao) return null;
-  return <Estacao papel={papel} />;
+  const impressora = useImpressoraDoAparelho();
+  if (!impressora.estacao) return null;
+  return <Estacao impressora={impressora} />;
 }
 
-function Estacao({ papel }: { papel: Papel }) {
+function Estacao({ impressora }: { impressora: ImpressoraDoAparelho }) {
   const [aviso, setAviso] = useState<Aviso>(null);
-  // O papel pode mudar na configuração sem religar o canal.
-  const papelAtual = useRef(papel);
+  // A configuração pode mudar sem religar o canal.
+  const impressoraAtual = useRef(impressora);
   useEffect(() => {
-    papelAtual.current = papel;
-  }, [papel]);
+    impressoraAtual.current = impressora;
+  }, [impressora]);
 
   useEffect(() => {
     let vivo = true;
@@ -77,7 +76,7 @@ function Estacao({ papel }: { papel: Papel }) {
         }
         const nome = pega.tipo === "alteracao" ? "ALTERAÇÃO" : "Comanda";
         try {
-          await imprimirLinhas(pega.linhas, papelAtual.current);
+          await imprimirNoAparelho(pega.linhas, impressoraAtual.current);
           avisar({ tipo: "ok", texto: `${nome} do pedido #${pega.numero} (via ${pega.via}) enviada à impressora.` });
         } catch {
           await confirmarImpressao(id, "error", "O balcão não conseguiu enviar à impressora.");

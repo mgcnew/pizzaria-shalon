@@ -333,7 +333,22 @@ teste de impressão.
 | 11 | Notebook fechado por mais de 2 min | o celular vê o aviso; nada sai depois |
 | 12 | Dois pedidos seguidos do celular | saem os dois, em ordem, sem embaralhar |
 
-A POC da 58 mm abaixo continua aberta: é a **entrega 2** (Web Serial).
+**Entrega 2 (58 mm por Bluetooth direto, Web Serial).** Implementada e
+testada sem equipamento: os bytes ESC/POS têm testes unitários, e na tela
+uma impressora simulada recebeu o documento esperado ("Açúcar" em CP860 =
+`41 87 a3 63 61 72`). A falha de conexão mostra a mensagem certa. Ainda
+**não foi exercitada na KD-1025**. O roteiro abaixo continua valendo,
+com estes pontos específicos:
+
+| # | Teste | O que observar |
+|---|---|---|
+| 13 | Escolher a impressora no Chrome do Android | ela aparece no seletor (precisa estar pareada antes no Bluetooth do celular) |
+| 14 | **Fechar o Chrome, abrir de novo e imprimir** | imprime sem pedir para escolher de novo. **É o teste que decide se este caminho serve** |
+| 15 | Acentos | qual tabela (CP860, CP850 ou sem acentos) sai certa; deixar essa marcada |
+| 16 | Impressora desligada | a mensagem "Não conectou na impressora" aparece e nada é marcado como impresso |
+| 17 | RawBT aberto ao mesmo tempo | se o RawBT segura a conexão, a Web Serial pode não conectar; testar com ele fechado |
+
+Se o teste 14 falhar no Android, o caminho é o RawBT (E2), que já funciona.
 
 > **OBRIGATÓRIA ANTES DE PRODUÇÃO — BLOQUEIA APENAS O TRANSPORTE FÍSICO DA
 > IMPRESSÃO, NÃO O RESTO DA FASE 6.**
