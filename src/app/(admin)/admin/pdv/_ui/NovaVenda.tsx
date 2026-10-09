@@ -1121,6 +1121,13 @@ function CupomDaVenda({
           @page { size: ${papel}mm auto; margin: 0; }
           body * { visibility: hidden !important; }
           #cupom-venda-pdv, #cupom-venda-pdv * { visibility: visible !important; }
+          /* A térmica deixa traço fino apagado: tudo em negrito e preto puro. */
+          #cupom-venda-pdv, #cupom-venda-pdv * {
+            font-weight: 700 !important;
+            color: #000 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
           #cupom-venda-pdv {
             position: absolute !important;
             inset: 0 auto auto 0 !important;

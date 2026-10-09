@@ -10,6 +10,10 @@ import { COLUNAS, type LinhaComanda, type Papel } from "@/domain/pedidos/comanda
  * com o documento, sem herdar nada do CSS do painel, e a página em uso não
  * pisca.
  *
+ * TUDO EM NEGRITO. A Courier New tem traço fino, e na térmica saía apagada
+ * (08/10/2026). Títulos e destaques ganham um contorno a mais
+ * (`text-stroke`), que engrossa o traço sem mudar a largura das colunas.
+ *
  * SEM JANELA DE ESCOLHA só quando o navegador foi aberto com
  * `--kiosk-printing` (o atalho do balcão, explicado em Configurações →
  * Impressora). Sem ele, o navegador mostra a janela de impressão — que é o
@@ -49,11 +53,13 @@ function montarHtml(linhas: LinhaComanda[], papel: Papel): string {
 
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Impressão</title><style>
 @page { size: ${papel}mm auto; margin: 0; }
-html, body { margin: 0; padding: 0; background: #fff; color: #000; }
+html, body { margin: 0; padding: 0; background: #fff; color: #000;
+  -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 body { width: ${util}mm; padding: 2mm 0 6mm; box-sizing: border-box;
-  font-family: "Courier New", Courier, monospace; font-size: ${fonte}mm; line-height: 1.3; }
+  font-family: "Courier New", Courier, monospace; font-size: ${fonte}mm; line-height: 1.3;
+  font-weight: 700; }
 div { white-space: pre; overflow: hidden; }
-.b { font-weight: 700; }
+.b { -webkit-text-stroke: 0.35px #000; }
 </style></head><body>${corpo}</body></html>`;
 }
 

@@ -429,6 +429,13 @@ function PreviaSegundaVia({
             @page { size: ${papel}mm auto; margin: 0; }
             body * { visibility: hidden !important; }
             #cupom-segunda-via, #cupom-segunda-via * { visibility: visible !important; }
+            /* A térmica deixa traço fino apagado: tudo em negrito e preto puro. */
+            #cupom-segunda-via, #cupom-segunda-via * {
+              font-weight: 700 !important;
+              color: #000 !important;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
             #cupom-segunda-via {
               position: absolute !important;
               inset: 0 auto auto 0 !important;

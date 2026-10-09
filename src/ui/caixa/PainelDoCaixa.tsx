@@ -505,6 +505,13 @@ function ResumoVisualDoFechamento({
           body * { visibility: hidden !important; }
           #resumo-impressao-fechamento,
           #resumo-impressao-fechamento * { visibility: visible !important; }
+          /* A térmica deixa traço fino apagado: tudo em negrito e preto puro. */
+          #resumo-impressao-fechamento, #resumo-impressao-fechamento * {
+            font-weight: 700 !important;
+            color: #000 !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
           #resumo-impressao-fechamento {
             position: absolute !important;
             inset: 0 auto auto 0 !important;
