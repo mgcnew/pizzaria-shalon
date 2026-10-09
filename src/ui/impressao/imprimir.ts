@@ -19,8 +19,15 @@ import { COLUNAS, type LinhaComanda, type Papel } from "@/domain/pedidos/comanda
  * entregou ao sistema. Quem confirma é a pessoa que olhou para a impressora.
  */
 
-/** Área imprimível típica: 48 mm no papel de 58, 72 mm no de 80. */
-const AREA_UTIL_MM: Record<Papel, number> = { "58": 48, "80": 72 };
+/**
+ * Área que a cabeça térmica alcança: 48 mm no papel de 58, 72 mm no de 80.
+ *
+ * Todo documento impresso pelo sistema operacional cabe AQUI, encostado à
+ * esquerda. Desenhar na largura do papel corta a direita: o driver começa a
+ * imprimir na borda do papel e para nos 72 mm — e o que fica à direita é o
+ * valor em reais (defeito visto na 80 mm do balcão em 08/10/2026).
+ */
+export const AREA_UTIL_MM: Record<Papel, number> = { "58": 48, "80": 72 };
 
 function escapar(texto: string): string {
   return texto.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -28,7 +35,6 @@ function escapar(texto: string): string {
 
 function montarHtml(linhas: LinhaComanda[], papel: Papel): string {
   const util = AREA_UTIL_MM[papel];
-  const margem = (Number(papel) - util) / 2;
   // Courier New avança 0,6 em por caractere. O divisor um pouco maior deixa
   // ~3% de folga: uma fonte substituta levemente mais larga não corta a
   // última coluna.
@@ -44,7 +50,7 @@ function montarHtml(linhas: LinhaComanda[], papel: Papel): string {
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Impressão</title><style>
 @page { size: ${papel}mm auto; margin: 0; }
 html, body { margin: 0; padding: 0; background: #fff; color: #000; }
-body { width: ${papel}mm; padding: 2mm ${margem}mm 6mm; box-sizing: border-box;
+body { width: ${util}mm; padding: 2mm 0 6mm; box-sizing: border-box;
   font-family: "Courier New", Courier, monospace; font-size: ${fonte}mm; line-height: 1.3; }
 div { white-space: pre; overflow: hidden; }
 .b { font-weight: 700; }

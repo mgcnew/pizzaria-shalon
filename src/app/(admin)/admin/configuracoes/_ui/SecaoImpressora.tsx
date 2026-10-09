@@ -251,20 +251,43 @@ export function SecaoImpressora() {
             Nas preferências da impressora, confira que o papel é o <strong>rolo de 80 mm</strong>.
           </li>
           <li>
-            Clique com o botão direito no atalho do Chrome → Propriedades. No campo{" "}
-            <strong>Destino</strong>, deixe assim:
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <code className="min-w-0 break-all rounded-10 bg-elev px-3 py-2 font-mono text-[12px] text-ink">
-                {ATALHO_CHROME}
-              </code>
-              <Button type="button" variante="fantasma" tamanho="sm" onClick={copiarAtalho}>
-                {copiado ? "Copiado" : "Copiar"}
-              </Button>
-            </div>
+            Desligue o Chrome em segundo plano: abra <code className="font-mono">chrome://settings/system</code>{" "}
+            e desligue <strong>&quot;Continuar executando apps em segundo plano quando o Google Chrome for
+            fechado&quot;</strong>. Se o Chrome continuar rodando escondido, o atalho é ignorado.
           </li>
           <li>
-            Feche <strong>todas</strong> as janelas do Chrome e abra pelo atalho. Aqui, escolha 80 mm e
-            &quot;Imprimir direto&quot;, e faça o teste de impressão.
+            Coloque <code className="font-mono">--kiosk-printing</code> no fim do campo <strong>Destino</strong>{" "}
+            do atalho que você usa para abrir o sistema (botão direito → Propriedades):
+            <ul className="mt-2 flex list-disc flex-col gap-1 pl-5">
+              <li>
+                <strong>Sistema instalado como app</strong> (ícone próprio da Shalon): edite o atalho do app,
+                na Área de Trabalho e no Menu Iniciar. O Destino já tem algo como{" "}
+                <code className="font-mono">--app-id=…</code>; acrescente um espaço e{" "}
+                <code className="font-mono">--kiosk-printing</code> depois disso. Se o app estiver fixado na
+                barra de tarefas, desafixe e fixe de novo a partir do atalho já editado.
+              </li>
+              <li>
+                <strong>Pelo Chrome comum:</strong> o atalho do Chrome fica assim:
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <code className="min-w-0 break-all rounded-10 bg-elev px-3 py-2 font-mono text-[12px] text-ink">
+                    {ATALHO_CHROME}
+                  </code>
+                  <Button type="button" variante="fantasma" tamanho="sm" onClick={copiarAtalho}>
+                    {copiado ? "Copiado" : "Copiar"}
+                  </Button>
+                </div>
+              </li>
+            </ul>
+          </li>
+          <li>
+            Feche <strong>todas</strong> as janelas do Chrome e do app (confira também o ícone perto do relógio) e
+            abra pelo atalho editado. Aqui, escolha 80 mm e &quot;Imprimir direto&quot;, e faça o teste de
+            impressão.
+          </li>
+          <li>
+            Ainda abriu a janela? Abra <code className="font-mono">chrome://version</code> numa aba e veja a linha{" "}
+            <strong>Linha de comando</strong>. Se <code className="font-mono">--kiosk-printing</code> não estiver
+            lá, o Chrome foi aberto por outro atalho ou já estava rodando.
           </li>
         </ol>
         <p className="mb-0 mt-3 text-[12.5px] text-muted">

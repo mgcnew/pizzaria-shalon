@@ -11,6 +11,7 @@ import type { VendaNoHistoricoDoPdv } from "@/application/pdv/tipos";
 import { formatBRL } from "@/lib/format";
 import { Button, Input, StatusBadge } from "@/ui/components";
 import { useImprimirDocumento } from "@/ui/impressao/useImprimirDocumento";
+import { AREA_UTIL_MM } from "@/ui/impressao/imprimir";
 import { montarCupomDeVenda } from "@/domain/impressao/cupons";
 
 const ROTULOS_ORIGEM: Record<string, string> = {
@@ -431,9 +432,12 @@ function PreviaSegundaVia({
             #cupom-segunda-via {
               position: absolute !important;
               inset: 0 auto auto 0 !important;
-              width: ${papel}mm !important;
-              max-width: ${papel}mm !important;
+              /* Área que a impressora alcança, não a largura do papel: o valor fica à
+                 direita e era cortado (AREA_UTIL_MM). */
+              width: ${AREA_UTIL_MM[papel]}mm !important;
+              max-width: ${AREA_UTIL_MM[papel]}mm !important;
               margin: 0 !important;
+              padding: 2mm 0 6mm !important;
             }
           }
         `}</style>

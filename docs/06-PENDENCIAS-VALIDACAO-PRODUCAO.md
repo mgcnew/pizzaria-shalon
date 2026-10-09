@@ -323,6 +323,20 @@ teste de impressão.
 | 6 | Impressora desligada | o que o Windows faz (fila parada); o sistema fica em "enviada" e a pessoa registra "Não saiu" |
 | 7 | Comprimento do papel | o driver não força folha de tamanho fixo, o que deixaria papel em branco no fim |
 
+**Primeiro teste real na 80 mm (08/10/2026), dois defeitos:**
+
+1. **Valor cortado à direita.** Os documentos eram desenhados com a largura
+   do papel (80 mm), mas a impressora só alcança cerca de 72 mm. Corrigido:
+   comanda, cupom do PDV, segunda via e fechamento passam a caber em
+   `AREA_UTIL_MM` (72 mm no 80, 48 mm no 58), encostados à esquerda. A
+   comanda de teste termina agora em 69,5 mm. **Revalidar no papel.**
+2. **Janela de escolha continuou aparecendo** com o sistema instalado como
+   app (PWA). Causa provável: o `--kiosk-printing` só vale se estiver no
+   atalho usado para abrir, e é ignorado se já houver um Chrome rodando,
+   inclusive em segundo plano. As instruções em Configurações → Impressora
+   passaram a cobrir o atalho do app, o Chrome em segundo plano e a
+   conferência em `chrome://version`. **Revalidar.**
+
 **Entrega 3 (celular → balcão), também a validar com o equipamento:**
 
 | # | Teste | O que observar |

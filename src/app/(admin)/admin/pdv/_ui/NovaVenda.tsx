@@ -10,6 +10,7 @@ import type { ItemDoRascunho } from "@/application/pedidos/tipos";
 import type { FormaParaRecebimento } from "@/app/(admin)/admin/pedidos/_ui/Recebimento";
 import type { AreaComTeclado } from "./PdvComTeclado";
 import { useImprimirDocumento } from "@/ui/impressao/useImprimirDocumento";
+import { AREA_UTIL_MM } from "@/ui/impressao/imprimir";
 import { montarCupomDeVenda } from "@/domain/impressao/cupons";
 
 /**
@@ -1123,9 +1124,12 @@ function CupomDaVenda({
           #cupom-venda-pdv {
             position: absolute !important;
             inset: 0 auto auto 0 !important;
-            width: ${papel}mm !important;
-            max-width: ${papel}mm !important;
+            /* Área que a impressora alcança, não a largura do papel: o valor fica à
+               direita e era cortado (AREA_UTIL_MM). */
+            width: ${AREA_UTIL_MM[papel]}mm !important;
+            max-width: ${AREA_UTIL_MM[papel]}mm !important;
             margin: 0 !important;
+            padding: 2mm 0 6mm !important;
           }
         }
       `}</style>

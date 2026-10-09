@@ -15,6 +15,7 @@ import type { ResumoDeFechamento } from "@/application/caixa/tipos";
 import { HistoricoDeVendas } from "./HistoricoDeVendas";
 import { useImpressoraDoAparelho } from "@/ui/impressao/impressoraDoAparelho";
 import { useImprimirDocumento } from "@/ui/impressao/useImprimirDocumento";
+import { AREA_UTIL_MM } from "@/ui/impressao/imprimir";
 import { montarFechamentoDeCaixa } from "@/domain/impressao/cupons";
 
 type Operacao = "abrir" | "reforco" | "sangria" | "fechar" | null;
@@ -428,7 +429,7 @@ function ResumoVisualDoFechamento({
   const { papel } = useImpressoraDoAparelho();
   const resumo = conferencia.resumo;
   return (
-    <div id="resumo-impressao-fechamento" className="flex flex-col gap-3 bg-surface print:p-[3mm]">
+    <div id="resumo-impressao-fechamento" className="flex flex-col gap-3 bg-surface">
       <div className="hidden text-center font-mono text-[11px] text-black print:block">
         <p className="m-0 text-[13px] font-bold">PIZZARIA SHALON</p>
         <p className="m-0">FECHAMENTO DE CAIXA</p>
@@ -500,14 +501,17 @@ function ResumoVisualDoFechamento({
 
       <style>{`
         @media print {
-          @page { size: auto; margin: 3mm; }
+          @page { size: ${papel}mm auto; margin: 0; }
           body * { visibility: hidden !important; }
           #resumo-impressao-fechamento,
           #resumo-impressao-fechamento * { visibility: visible !important; }
           #resumo-impressao-fechamento {
             position: absolute !important;
             inset: 0 auto auto 0 !important;
-            width: ${papel}mm !important;
+            /* Área que a impressora alcança (AREA_UTIL_MM): na largura do papel
+               os valores, à direita, eram cortados. */
+            width: ${AREA_UTIL_MM[papel]}mm !important;
+            padding: 2mm 0 6mm !important;
             color: #000 !important;
             font-family: ui-monospace, monospace !important;
             font-size: 11px !important;
