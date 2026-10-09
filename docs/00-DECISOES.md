@@ -4100,6 +4100,34 @@ que imprime uma régua de colunas e os acentos.
 
 ---
 
+## D-2026-10-08-117 — Convite para o app, com QR code, no cupom do cliente
+
+**Contexto.** A dona quer usar o cupom para divulgar o app: uma chamada e um
+QR code que leva ao cardápio.
+
+**Decisão.**
+1. **Onde:** só no cupom do PDV e na segunda via, que vão para a mão do
+   cliente. A comanda é da cozinha e não leva convite.
+2. **O quê:** no fim do cupom, depois de "Obrigado pela preferencia!", vêm
+   "Peça pelo nosso app!", o QR code, "Aponte a câmera do celular" e o
+   endereço por extenso, para quem não lê o QR.
+3. **Endereço temporário:** `https://pizzariashalon.vercel.app/?origem=cupom`,
+   definido pela dona até haver domínio próprio. Fica num lugar só
+   (`src/ui/impressao/convite.ts`). `origem=cupom` marca a visita. O
+   cardápio ignora o parâmetro hoje; os relatórios poderão contá-lo depois.
+4. **Como o QR é desenhado:** no cupom em HTML (notebook), como SVG gerado
+   pela `qrcode-generator` (dependência nova, aprovada). No Bluetooth direto,
+   pelo comando nativo da impressora (`GS ( k`, modelo 2). Se a KD-1025 não
+   o conhecer, sai só o texto: por isso o endereço vai por extenso.
+5. O teste de impressão em Configurações → Impressora também imprime o
+   convite, para mostrar se a impressora desenha o QR.
+
+**Onde foi formalizada:** `CLAUDE.md` §44-A (versões),
+`src/ui/impressao/convite.ts`, `ConviteDoApp.tsx`, `escpos.ts`,
+`src/domain/impressao/cupons.ts`.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.

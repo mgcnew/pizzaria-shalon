@@ -11,6 +11,8 @@ import type { VendaNoHistoricoDoPdv } from "@/application/pdv/tipos";
 import { formatBRL } from "@/lib/format";
 import { Button, Input, StatusBadge } from "@/ui/components";
 import { useImprimirDocumento } from "@/ui/impressao/useImprimirDocumento";
+import { ConviteDoApp } from "@/ui/impressao/ConviteDoApp";
+import { CONVITE } from "@/ui/impressao/convite";
 import { AREA_UTIL_MM } from "@/ui/impressao/imprimir";
 import { montarCupomDeVenda } from "@/domain/impressao/cupons";
 
@@ -388,6 +390,7 @@ function PreviaSegundaVia({
             <p className="m-0 flex justify-between gap-2"><span>Pagamento</span><span className="text-right">{venda.formas || "—"}</span></p>
           </div>
           <p className="mb-0 mt-3 text-center">Obrigado pela preferencia!</p>
+          <ConviteDoApp />
         </div>
 
         <div className="mt-4 flex gap-2 print:hidden">
@@ -405,6 +408,7 @@ function PreviaSegundaVia({
                     pagamento: venda.formas || "—",
                     segundaVia: true,
                     estornado: estornada,
+                    convite: CONVITE,
                   },
                   largura,
                 ),

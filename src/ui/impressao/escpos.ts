@@ -44,9 +44,34 @@ const INICIAR = [ESC, 0x40];
 const NEGRITO = (ligado: boolean) => [ESC, 0x45, ligado ? 1 : 0];
 const AVANCAR = (linhas: number) => [ESC, 0x64, linhas];
 const LF = 0x0a;
+const GS = 0x1d;
+const ALINHAR = (como: "esquerda" | "centro") => [ESC, 0x61, como === "centro" ? 1 : 0];
+
+/**
+ * QR code nativo da impressora (`GS ( k`, modelo 2, padrão Epson). A
+ * impressora desenha; nós só mandamos o texto. Quem não conhece o comando
+ * costuma ignorá-lo — por isso o endereço sempre vai por extenso embaixo.
+ */
+function qrNativo(texto: string): number[] {
+  const dados = Array.from(texto, (c) => {
+    const codigo = c.charCodeAt(0);
+    return codigo >= 0x20 && codigo < 0x7f ? codigo : 0x3f;
+  });
+  const total = dados.length + 3;
+  return [
+    ...ALINHAR("centro"),
+    GS, 0x28, 0x6b, 4, 0, 0x31, 0x41, 0x32, 0x00, // modelo 2
+    GS, 0x28, 0x6b, 3, 0, 0x31, 0x43, 6, // tamanho do módulo
+    GS, 0x28, 0x6b, 3, 0, 0x31, 0x45, 0x31, // correção M
+    GS, 0x28, 0x6b, total & 0xff, total >> 8, 0x31, 0x50, 0x30, ...dados, // guarda
+    GS, 0x28, 0x6b, 3, 0, 0x31, 0x51, 0x30, // imprime
+    LF,
+    ...ALINHAR("esquerda"),
+  ];
+}
 
 function semAcento(caractere: string): string {
-  return caractere.normalize("NFD").replace(/[̀-ͯ]/g, "");
+  return caractere.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
 /** Um caractere vira um byte. Nada fora do ASCII imprimível passa cru. */
@@ -74,6 +99,10 @@ export function montarEscPos(linhas: LinhaComanda[], tabela: TabelaDeAcentos): U
   if (tabela !== "sem-acento") bytes.push(ESC, 0x74, NUMERO_DA_TABELA[tabela]);
 
   for (const linha of linhas) {
+    if (linha.estilo === "qrcode") {
+      bytes.push(...qrNativo(linha.texto));
+      continue;
+    }
     const forte = linha.estilo === "titulo" || linha.estilo === "destaque";
     if (forte) bytes.push(...NEGRITO(true));
     bytes.push(...codificarTexto(linha.texto, tabela), LF);

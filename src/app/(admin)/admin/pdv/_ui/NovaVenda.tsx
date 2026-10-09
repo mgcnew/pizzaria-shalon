@@ -10,6 +10,8 @@ import type { ItemDoRascunho } from "@/application/pedidos/tipos";
 import type { FormaParaRecebimento } from "@/app/(admin)/admin/pedidos/_ui/Recebimento";
 import type { AreaComTeclado } from "./PdvComTeclado";
 import { useImprimirDocumento } from "@/ui/impressao/useImprimirDocumento";
+import { ConviteDoApp } from "@/ui/impressao/ConviteDoApp";
+import { CONVITE } from "@/ui/impressao/convite";
 import { AREA_UTIL_MM } from "@/ui/impressao/imprimir";
 import { montarCupomDeVenda } from "@/domain/impressao/cupons";
 
@@ -1079,6 +1081,7 @@ function CupomDaVenda({
           {venda.troco !== null ? <p className="m-0 flex justify-between"><span>Troco</span><span>{formatBRL(venda.troco)}</span></p> : null}
         </div>
         <p className="mb-0 mt-3 text-center">Obrigado pela preferencia!</p>
+        <ConviteDoApp />
       </div>
       <div className="mt-3 flex flex-wrap gap-2 print:hidden">
         <button
@@ -1094,6 +1097,7 @@ function CupomDaVenda({
                   pagamento: venda.forma,
                   recebido: venda.recebido,
                   troco: venda.troco,
+                  convite: CONVITE,
                 },
                 largura,
               ),

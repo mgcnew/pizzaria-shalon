@@ -46,7 +46,12 @@ export type EstiloLinha =
   /** Régua divisória. */
   | "separador"
   /** Espaço em branco. */
-  | "vazio";
+  | "vazio"
+  /**
+   * QR code. `texto` é o endereço codificado; cada transporte o desenha
+   * (ESC/POS nativo, SVG no sistema). Só no convite do cupom do cliente.
+   */
+  | "qrcode";
 
 export type LinhaComanda = { texto: string; estilo: EstiloLinha };
 

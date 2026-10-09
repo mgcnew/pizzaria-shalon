@@ -76,6 +76,8 @@ export type CupomDeVenda = {
   troco?: number | null;
   segundaVia?: boolean;
   estornado?: boolean;
+  /** Convite para o app no fim do cupom: chamada, QR e endereço por extenso. */
+  convite?: { url: string; endereco: string; chamada: string; instrucao: string };
 };
 
 export function montarCupomDeVenda(cupom: CupomDeVenda, largura: number = LARGURA): LinhaComanda[] {
@@ -104,6 +106,16 @@ export function montarCupomDeVenda(cupom: CupomDeVenda, largura: number = LARGUR
   if (cupom.troco != null) saida.push(...comValor("Troco", formatBRL(cupom.troco), largura));
 
   saida.push(VAZIO, centro("Obrigado pela preferencia!", largura));
+
+  if (cupom.convite) {
+    saida.push(
+      separador(largura),
+      centro(cupom.convite.chamada, largura, "titulo"),
+      { texto: cupom.convite.url, estilo: "qrcode" },
+      centro(cupom.convite.instrucao, largura),
+      centro(cupom.convite.endereco, largura, "titulo"),
+    );
+  }
   return saida;
 }
 

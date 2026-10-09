@@ -98,3 +98,24 @@ describe("fechamento de caixa em texto", () => {
     for (const l of montarFechamentoDeCaixa(FECHAMENTO, COLUNAS["58"])) expect(l.texto.length).toBeLessThanOrEqual(32);
   });
 });
+
+describe("convite para o app no cupom", () => {
+  const CONVITE = {
+    url: "https://pizzariashalon.vercel.app/?origem=cupom",
+    endereco: "pizzariashalon.vercel.app",
+    chamada: "Peça pelo nosso app!",
+    instrucao: "Aponte a câmera do celular",
+  };
+
+  it("sai no fim: chamada, QR com o endereço completo e o endereço por extenso", () => {
+    const linhas = montarCupomDeVenda({ ...VENDA, convite: CONVITE });
+    const qr = linhas.findIndex((l) => l.estilo === "qrcode");
+    expect(linhas[qr]?.texto).toBe(CONVITE.url);
+    expect(linhas[qr - 1]?.texto.trim()).toBe(CONVITE.chamada);
+    expect(linhas.at(-1)?.texto.trim()).toBe(CONVITE.endereco);
+  });
+
+  it("sem convite, não há QR", () => {
+    expect(montarCupomDeVenda(VENDA).some((l) => l.estilo === "qrcode")).toBe(false);
+  });
+});

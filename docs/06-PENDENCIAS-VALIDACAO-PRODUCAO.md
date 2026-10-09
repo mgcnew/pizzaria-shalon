@@ -337,6 +337,14 @@ teste de impressão.
    passaram a cobrir o atalho do app, o Chrome em segundo plano e a
    conferência em `chrome://version`. **Revalidar.**
 
+**Convite com QR code no cupom (D-2026-10-08-117), a validar no papel:**
+
+| # | Teste | O que observar |
+|---|---|---|
+| 18 | QR no cupom impresso pela 80 mm | o celular lê e abre `pizzariashalon.vercel.app/?origem=cupom` |
+| 19 | QR pelo Bluetooth direto (KD-1025) | a impressora desenha o QR (comando `GS ( k`); se sair lixo ou nada, registrar aqui |
+| 20 | Domínio próprio | quando existir, trocar `ENDERECO_DO_APP` em `src/ui/impressao/convite.ts` |
+
 **Entrega 3 (celular → balcão), também a validar com o equipamento:**
 
 | # | Teste | O que observar |

@@ -997,6 +997,16 @@ Acrescentada na Fase 3:
 |---|---|
 | sharp | 0.35.4 |
 
+Acrescentada em 08/10/2026 (D-2026-10-08-117):
+
+| Pacote | Versão |
+|---|---|
+| qrcode-generator | 2.0.4 |
+
+`qrcode-generator` desenha o QR code do convite para o app no cupom do
+cliente. MIT, sem dependências, ~50 KB sem compressão; entra só no bundle do
+PDV/caixa. Aprovada pela dona em 08/10/2026.
+
 `sharp` é o processador de imagem do pipeline do catálogo — validação do tipo
 real do arquivo, redimensionamento, compressão e remoção de metadados
 (03-RLS-RBAC-SEGURANCA.md §24). Já vinha na árvore como dependência

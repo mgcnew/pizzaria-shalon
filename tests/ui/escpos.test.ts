@@ -45,3 +45,19 @@ describe("ESC/POS da 58 mm (D-2026-10-08-116, entrega 2)", () => {
     expect(bytes.slice(0, 3)).toEqual([0x1b, 0x40, "x".charCodeAt(0)]);
   });
 });
+
+describe("QR code nativo (GS ( k)", () => {
+  it("centraliza, guarda o endereço com o tamanho certo, imprime e volta à esquerda", () => {
+    const url = "https://pizzariashalon.vercel.app/?origem=cupom";
+    const bytes = Array.from(montarEscPos([{ texto: url, estilo: "qrcode" }], "cp860"));
+    const inicio = bytes.indexOf(0x1d);
+    expect(bytes.slice(inicio - 3, inicio)).toEqual([0x1b, 0x61, 1]);
+    // guarda: GS ( k pL pH 49 80 48 dados — pL/pH = dados + 3
+    const guarda = bytes.findIndex((b, i) => b === 0x1d && bytes[i + 5] === 0x31 && bytes[i + 6] === 0x50);
+    expect(bytes[guarda + 3]).toBe(url.length + 3);
+    expect(String.fromCharCode(...bytes.slice(guarda + 8, guarda + 8 + url.length))).toBe(url);
+    // imprime: GS ( k 3 0 49 81 48
+    expect(bytes.join(",")).toContain([0x1d, 0x28, 0x6b, 3, 0, 0x31, 0x51, 0x30].join(","));
+    expect(bytes.slice(-6, -3)).toEqual([0x1b, 0x61, 0]);
+  });
+});

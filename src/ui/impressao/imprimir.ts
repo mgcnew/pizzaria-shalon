@@ -1,6 +1,7 @@
 "use client";
 
 import { COLUNAS, type LinhaComanda, type Papel } from "@/domain/pedidos/comanda";
+import { CHAMADA_DO_CONVITE, ENDERECO_DO_APP, INSTRUCAO_DO_CONVITE, URL_DO_CONVITE, svgDoQr } from "./convite";
 
 /**
  * Envia linhas de texto à impressora padrão do sistema operacional
@@ -46,6 +47,7 @@ function montarHtml(linhas: LinhaComanda[], papel: Papel): string {
 
   const corpo = linhas
     .map((l) => {
+      if (l.estilo === "qrcode") return `<p class="qr">${svgDoQr(l.texto, 28)}</p>`;
       const classe = l.estilo === "titulo" || l.estilo === "destaque" ? ' class="b"' : "";
       return `<div${classe}>${l.texto === "" ? "&nbsp;" : escapar(l.texto)}</div>`;
     })
@@ -60,6 +62,7 @@ body { width: ${util}mm; padding: 2mm 0 6mm; box-sizing: border-box;
   font-weight: 700; }
 div { white-space: pre; overflow: hidden; }
 .b { -webkit-text-stroke: 0.35px #000; }
+.qr { margin: 1mm 0; text-align: center; width: ${util}mm; }
 </style></head><body>${corpo}</body></html>`;
 }
 
@@ -118,5 +121,11 @@ export function linhasDeTeste(papel: Papel): LinhaComanda[] {
     { texto: "-".repeat(colunas), estilo: "separador" },
     { texto: "Se a regua coube numa linha so,", estilo: "normal" },
     { texto: "a largura esta certa.", estilo: "normal" },
+    { texto: "-".repeat(colunas), estilo: "separador" },
+    // O mesmo convite do cupom: mostra se a impressora desenha QR code.
+    { texto: CHAMADA_DO_CONVITE, estilo: "titulo" },
+    { texto: URL_DO_CONVITE, estilo: "qrcode" },
+    { texto: INSTRUCAO_DO_CONVITE, estilo: "normal" },
+    { texto: ENDERECO_DO_APP, estilo: "titulo" },
   ];
 }
