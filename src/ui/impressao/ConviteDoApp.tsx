@@ -4,6 +4,7 @@ import {
   INSTRUCAO_DO_CONVITE,
   URL_DO_CONVITE,
   caminhoDoQr,
+  larguraDoQrMm,
 } from "./convite";
 
 /**
@@ -13,6 +14,8 @@ import {
  */
 export function ConviteDoApp() {
   const { tamanho, d } = caminhoDoQr(URL_DO_CONVITE);
+  // Em milímetros exatos: cada módulo cai num número inteiro de pontos.
+  const lado = `${larguraDoQrMm(tamanho)}mm`;
   return (
     <div className="mt-3 flex flex-col items-center border-t border-dashed border-black pt-2 text-center">
       <p className="m-0 text-[12px] font-bold">{CHAMADA_DO_CONVITE}</p>
@@ -21,7 +24,8 @@ export function ConviteDoApp() {
         aria-label={`QR code para ${ENDERECO_DO_APP}`}
         viewBox={`0 0 ${tamanho} ${tamanho}`}
         shapeRendering="crispEdges"
-        className="my-1 h-[28mm] w-[28mm]"
+        className="my-1 max-w-full"
+        style={{ width: lado, height: lado }}
       >
         <rect width={tamanho} height={tamanho} fill="#fff" />
         <path d={d} fill="#000" />

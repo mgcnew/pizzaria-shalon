@@ -4121,6 +4121,11 @@ QR code que leva ao cardápio.
    o conhecer, sai só o texto: por isso o endereço vai por extenso.
 5. O teste de impressão em Configurações → Impressora também imprime o
    convite, para mostrar se a impressora desenha o QR.
+6. **Ajuste após o primeiro teste (08/10/2026): o celular não lia.** O QR
+   tinha 28 mm com 41 módulos, ou seja, 0,68 mm = 5,5 pontos por módulo, e
+   a térmica arredondava de forma desigual. Agora a correção é "L" (29
+   módulos em vez de 33), cada módulo tem 1,25 mm = 10 pontos exatos, e o
+   QR tem 46,25 mm com a margem. No Bluetooth, módulo de 8 pontos.
 
 **Onde foi formalizada:** `CLAUDE.md` §44-A (versões),
 `src/ui/impressao/convite.ts`, `ConviteDoApp.tsx`, `escpos.ts`,

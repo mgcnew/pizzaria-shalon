@@ -341,7 +341,7 @@ teste de impressão.
 
 | # | Teste | O que observar |
 |---|---|---|
-| 18 | QR no cupom impresso pela 80 mm | o celular lê e abre `pizzariashalon.vercel.app/?origem=cupom` |
+| 18 | QR no cupom impresso pela 80 mm | o celular lê e abre `pizzariashalon.vercel.app/?origem=cupom`. **1º teste: imprimiu e não leu** (módulo de 5,5 pontos); corrigido para 10 pontos exatos, revalidar |
 | 19 | QR pelo Bluetooth direto (KD-1025) | a impressora desenha o QR (comando `GS ( k`); se sair lixo ou nada, registrar aqui |
 | 20 | Domínio próprio | quando existir, trocar `ENDERECO_DO_APP` em `src/ui/impressao/convite.ts` |
 

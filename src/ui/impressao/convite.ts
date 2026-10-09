@@ -28,14 +28,26 @@ export const CONVITE = {
 };
 
 /**
+ * Tamanho de cada módulo no papel: 1,25 mm = 10 pontos exatos da térmica
+ * (203 dpi = 8 pontos/mm).
+ *
+ * Na primeira versão o QR tinha 28 mm, e o módulo dava 0,68 mm = 5,5 pontos:
+ * a impressora arredondava uns para 5 e outros para 6, e o celular não lia
+ * (08/10/2026). Módulo em número inteiro de pontos sai todo igual.
+ */
+export const MODULO_MM = 1.25;
+
+/**
  * O QR como um único caminho SVG: um quadrado por módulo escuro, numa grade
  * de `tamanho` × `tamanho` (já com a margem branca de 4 módulos que os
  * leitores exigem). Um caminho só sai nítido na térmica, sem frestas entre
  * quadrados vizinhos.
  */
 export function caminhoDoQr(texto: string): { tamanho: number; d: string } {
-  // Correção "M": aguenta borrão e dobra do papel sem engordar demais o código.
-  const qr = qrcode(0, "M");
+  // Correção "L": a térmica imprime nítido, e cada nível a mais engorda o
+  // código — com "M" o endereço pedia 33 módulos; com "L", 29, e cada
+  // módulo fica maior no mesmo papel.
+  const qr = qrcode(0, "L");
   qr.addData(texto);
   qr.make();
 
@@ -50,9 +62,15 @@ export function caminhoDoQr(texto: string): { tamanho: number; d: string } {
   return { tamanho: modulos + margem * 2, d: partes.join("") };
 }
 
+/** Largura do QR no papel, com a margem branca. */
+export function larguraDoQrMm(tamanho: number): number {
+  return tamanho * MODULO_MM;
+}
+
 /** O mesmo QR como texto SVG, para documentos montados como string. */
-export function svgDoQr(texto: string, larguraMm: number): string {
+export function svgDoQr(texto: string): string {
   const { tamanho, d } = caminhoDoQr(texto);
+  const larguraMm = larguraDoQrMm(tamanho);
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${tamanho} ${tamanho}" ` +
     `width="${larguraMm}mm" height="${larguraMm}mm" shape-rendering="crispEdges">` +

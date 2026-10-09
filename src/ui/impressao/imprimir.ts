@@ -47,7 +47,7 @@ function montarHtml(linhas: LinhaComanda[], papel: Papel): string {
 
   const corpo = linhas
     .map((l) => {
-      if (l.estilo === "qrcode") return `<p class="qr">${svgDoQr(l.texto, 28)}</p>`;
+      if (l.estilo === "qrcode") return `<p class="qr">${svgDoQr(l.texto)}</p>`;
       const classe = l.estilo === "titulo" || l.estilo === "destaque" ? ' class="b"' : "";
       return `<div${classe}>${l.texto === "" ? "&nbsp;" : escapar(l.texto)}</div>`;
     })
