@@ -345,6 +345,11 @@ teste de impressão.
 | 19 | QR pelo Bluetooth direto (KD-1025) | a impressora desenha o QR (comando `GS ( k`); se sair lixo ou nada, registrar aqui |
 | 20 | Domínio próprio | quando existir, trocar `ENDERECO_DO_APP` em `src/ui/impressao/convite.ts` |
 
+**Diebold IM433TP no balcão (13/10/2026):** a guilhotina cortava o fim do
+cupom (o QR code). Criada a opção "Espaço no fim do papel"
+(D-2026-10-13-118). **Revalidar com "Grande" (20 mm)**; se ainda cortar,
+ajustar também o avanço antes do corte no driver da Diebold.
+
 **Entrega 3 (celular → balcão), também a validar com o equipamento:**
 
 | # | Teste | O que observar |

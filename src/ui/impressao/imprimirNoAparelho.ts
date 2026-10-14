@@ -2,7 +2,7 @@
 
 import type { LinhaComanda } from "@/domain/pedidos/comanda";
 import { montarEscPos } from "./escpos";
-import type { ImpressoraDoAparelho } from "./impressoraDoAparelho";
+import { ESPACO_FINAL_MM, type ImpressoraDoAparelho } from "./impressoraDoAparelho";
 import { imprimirLinhas } from "./imprimir";
 import { imprimirSerial } from "./serial";
 
@@ -18,9 +18,10 @@ export async function imprimirNoAparelho(
   linhas: LinhaComanda[],
   impressora: ImpressoraDoAparelho,
 ): Promise<void> {
+  const espaco = ESPACO_FINAL_MM[impressora.espacoFinal];
   if (impressora.modo === "serial") {
-    await imprimirSerial(montarEscPos(linhas, impressora.tabela));
+    await imprimirSerial(montarEscPos(linhas, impressora.tabela, espaco));
     return;
   }
-  await imprimirLinhas(linhas, impressora.papel);
+  await imprimirLinhas(linhas, impressora.papel, espaco);
 }

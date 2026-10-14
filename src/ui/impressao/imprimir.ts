@@ -38,7 +38,7 @@ function escapar(texto: string): string {
   return texto.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function montarHtml(linhas: LinhaComanda[], papel: Papel): string {
+function montarHtml(linhas: LinhaComanda[], papel: Papel, espacoFinalMm: number): string {
   const util = AREA_UTIL_MM[papel];
   // Courier New avança 0,6 em por caractere. O divisor um pouco maior deixa
   // ~3% de folga: uma fonte substituta levemente mais larga não corta a
@@ -57,7 +57,7 @@ function montarHtml(linhas: LinhaComanda[], papel: Papel): string {
 @page { size: ${papel}mm auto; margin: 0; }
 html, body { margin: 0; padding: 0; background: #fff; color: #000;
   -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-body { width: ${util}mm; padding: 2mm 0 6mm; box-sizing: border-box;
+body { width: ${util}mm; padding: 2mm 0 ${espacoFinalMm}mm; box-sizing: border-box;
   font-family: "Courier New", Courier, monospace; font-size: ${fonte}mm; line-height: 1.3;
   font-weight: 700; }
 div { white-space: pre; overflow: hidden; }
@@ -66,7 +66,11 @@ div { white-space: pre; overflow: hidden; }
 </style></head><body>${corpo}</body></html>`;
 }
 
-export function imprimirLinhas(linhas: LinhaComanda[], papel: Papel): Promise<void> {
+export function imprimirLinhas(
+  linhas: LinhaComanda[],
+  papel: Papel,
+  espacoFinalMm = 6,
+): Promise<void> {
   return new Promise((resolver, rejeitar) => {
     const quadro = document.createElement("iframe");
     quadro.setAttribute("aria-hidden", "true");
@@ -98,7 +102,7 @@ export function imprimirLinhas(linhas: LinhaComanda[], papel: Papel): Promise<vo
       }
     };
 
-    quadro.srcdoc = montarHtml(linhas, papel);
+    quadro.srcdoc = montarHtml(linhas, papel, espacoFinalMm);
     document.body.appendChild(quadro);
   });
 }

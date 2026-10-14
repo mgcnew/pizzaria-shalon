@@ -61,3 +61,16 @@ describe("QR code nativo (GS ( k)", () => {
     expect(bytes.slice(-6, -3)).toEqual([0x1b, 0x61, 0]);
   });
 });
+
+describe("espaço no fim do papel", () => {
+  const avanco = (mm?: number) => Array.from(montarEscPos([{ texto: "x", estilo: "normal" }], "cp860", mm)).slice(-3);
+
+  it("padrão continua avançando 4 linhas, como antes", () => {
+    expect(avanco()).toEqual([0x1b, 0x64, 4]);
+    expect(avanco(12)).toEqual([0x1b, 0x64, 4]);
+  });
+
+  it("espaço grande avança mais, para a guilhotina não cortar o fim", () => {
+    expect(avanco(20)).toEqual([0x1b, 0x64, 6]);
+  });
+});

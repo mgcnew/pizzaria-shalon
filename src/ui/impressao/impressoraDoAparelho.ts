@@ -43,13 +43,26 @@ export type ImpressoraDoAparelho = {
   estacao: boolean;
   /** Tabela de acentos do Bluetooth direto. Escolhida pelo teste de impressão. */
   tabela: TabelaDeAcentos;
+  /** Papel em branco depois do documento, antes do corte. */
+  espacoFinal: EspacoFinal;
 };
+
+/**
+ * Espaço no fim do papel (13/10/2026). Impressora com guilhotina, como a
+ * Diebold IM433TP do balcão, tem a lâmina alguns milímetros acima da cabeça
+ * de impressão: sem papel em branco depois da última linha, o corte passa
+ * por cima do fim do documento — que é o QR code do convite.
+ */
+export type EspacoFinal = "normal" | "medio" | "grande";
+
+export const ESPACO_FINAL_MM: Record<EspacoFinal, number> = { normal: 6, medio: 12, grande: 20 };
 
 export const PADRAO: ImpressoraDoAparelho = {
   papel: "58",
   modo: "tela",
   estacao: false,
   tabela: "cp860",
+  espacoFinal: "normal",
 };
 
 /** Modos em que este próprio aparelho manda para uma impressora. */
@@ -73,7 +86,7 @@ function interpretar(bruto: string | null): ImpressoraDoAparelho {
   try {
     const valor: unknown = JSON.parse(bruto);
     if (typeof valor !== "object" || valor === null) return PADRAO;
-    const { papel, modo, estacao, tabela } = valor as Record<string, unknown>;
+    const { papel, modo, estacao, tabela, espacoFinal } = valor as Record<string, unknown>;
     const modoLido: ModoDeImpressao =
       modo === "sistema" || modo === "serial" || modo === "balcao" ? modo : "tela";
     const papelLido = papel === "80" ? "80" : "58";
@@ -82,6 +95,7 @@ function interpretar(bruto: string | null): ImpressoraDoAparelho {
       modo: modoLido,
       estacao: estacao === true && podeSerBalcao({ modo: modoLido, papel: papelLido }),
       tabela: tabela === "cp850" || tabela === "sem-acento" ? tabela : "cp860",
+      espacoFinal: espacoFinal === "medio" || espacoFinal === "grande" ? espacoFinal : "normal",
     };
   } catch {
     return PADRAO;

@@ -94,7 +94,11 @@ export function codificarTexto(texto: string, tabela: TabelaDeAcentos): number[]
 }
 
 /** Documento inteiro, pronto para mandar à impressora. */
-export function montarEscPos(linhas: LinhaComanda[], tabela: TabelaDeAcentos): Uint8Array {
+export function montarEscPos(
+  linhas: LinhaComanda[],
+  tabela: TabelaDeAcentos,
+  espacoFinalMm = 6,
+): Uint8Array {
   const bytes: number[] = [...INICIAR];
   if (tabela !== "sem-acento") bytes.push(ESC, 0x74, NUMERO_DA_TABELA[tabela]);
 
@@ -109,7 +113,8 @@ export function montarEscPos(linhas: LinhaComanda[], tabela: TabelaDeAcentos): U
     if (forte) bytes.push(...NEGRITO(false));
   }
 
-  // Espaço para destacar o papel na serrilha sem rasgar a última linha.
-  bytes.push(...AVANCAR(4));
+  // Espaço para destacar o papel sem rasgar a última linha. `ESC d` avança em
+  // linhas (~3,75 mm cada); nunca menos de 4, que era o fixo de antes.
+  bytes.push(...AVANCAR(Math.max(4, Math.ceil(espacoFinalMm / 3.75))));
   return Uint8Array.from(bytes);
 }

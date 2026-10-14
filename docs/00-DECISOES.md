@@ -4133,6 +4133,25 @@ QR code que leva ao cardápio.
 
 ---
 
+## D-2026-10-13-118 — Espaço no fim do papel, por aparelho
+
+**Contexto.** No balcão entrou uma Diebold IM433TP, que tem guilhotina. A
+lâmina fica alguns milímetros acima da cabeça de impressão. Com os 6 mm
+fixos de papel em branco no fim, o corte passava por cima do fim do
+documento, que é o QR code do convite (D-2026-10-08-117).
+
+**Decisão.** Configurações → Impressora ganha "Espaço no fim do papel",
+guardado por aparelho como o resto (D-2026-10-08-116): Normal (6 mm, o
+comportamento anterior e padrão), Médio (12 mm) e Grande (20 mm). Vale para
+a comanda, os cupons, o fechamento e o teste de impressão. No Bluetooth
+direto vira avanço de linhas (`ESC d`), nunca menos que as 4 de antes.
+Configuração antiga, sem o campo, continua valendo como Normal.
+
+**Onde foi formalizada:** `src/ui/impressao/impressoraDoAparelho.ts`
+(`ESPACO_FINAL_MM`), `imprimir.ts`, `escpos.ts`, `SecaoImpressora.tsx`.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.

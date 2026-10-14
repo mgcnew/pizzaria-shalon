@@ -13,7 +13,7 @@ import {
 } from "@/application/caixa/acoes";
 import type { ResumoDeFechamento } from "@/application/caixa/tipos";
 import { HistoricoDeVendas } from "./HistoricoDeVendas";
-import { useImpressoraDoAparelho } from "@/ui/impressao/impressoraDoAparelho";
+import { ESPACO_FINAL_MM, useImpressoraDoAparelho } from "@/ui/impressao/impressoraDoAparelho";
 import { useImprimirDocumento } from "@/ui/impressao/useImprimirDocumento";
 import { AREA_UTIL_MM } from "@/ui/impressao/imprimir";
 import { montarFechamentoDeCaixa } from "@/domain/impressao/cupons";
@@ -426,7 +426,8 @@ function ResumoVisualDoFechamento({
 }: {
   conferencia: ConferenciaDoFechamento;
 }) {
-  const { papel } = useImpressoraDoAparelho();
+  const { papel, espacoFinal } = useImpressoraDoAparelho();
+  const espacoFinalMm = ESPACO_FINAL_MM[espacoFinal];
   const resumo = conferencia.resumo;
   return (
     <div id="resumo-impressao-fechamento" className="flex flex-col gap-3 bg-surface">
@@ -518,7 +519,7 @@ function ResumoVisualDoFechamento({
             /* Área que a impressora alcança (AREA_UTIL_MM): na largura do papel
                os valores, à direita, eram cortados. */
             width: ${AREA_UTIL_MM[papel]}mm !important;
-            padding: 2mm 0 6mm !important;
+            padding: 2mm 0 ${espacoFinalMm}mm !important;
             color: #000 !important;
             font-family: ui-monospace, monospace !important;
             font-size: 11px !important;

@@ -5,10 +5,12 @@ import { Button } from "@/ui/components";
 import { Aviso, Cartao, ParDeDados } from "@/ui/patterns";
 import { COLUNAS, type Papel } from "@/domain/pedidos/comanda";
 import {
+  ESPACO_FINAL_MM,
   imprimeDireto,
   podeSerBalcao,
   salvarImpressoraDoAparelho,
   useImpressoraDoAparelho,
+  type EspacoFinal,
   type ImpressoraDoAparelho,
   type ModoDeImpressao,
 } from "@/ui/impressao/impressoraDoAparelho";
@@ -79,6 +81,16 @@ const TABELAS: { valor: TabelaDeAcentos; titulo: string; detalhe: string }[] = [
     valor: "sem-acento",
     titulo: "Sem acentos",
     detalhe: "Se nenhuma funcionar: \"Açúcar\" sai \"Acucar\", mas sempre legível.",
+  },
+];
+
+const ESPACOS: { valor: EspacoFinal; titulo: string; detalhe: string }[] = [
+  { valor: "normal", titulo: "Normal", detalhe: `${ESPACO_FINAL_MM.normal} mm. Para impressora sem guilhotina.` },
+  { valor: "medio", titulo: "Médio", detalhe: `${ESPACO_FINAL_MM.medio} mm.` },
+  {
+    valor: "grande",
+    titulo: "Grande",
+    detalhe: `${ESPACO_FINAL_MM.grande} mm. Para impressora com guilhotina que corta o fim do documento, como a Diebold.`,
   },
 ];
 
@@ -155,7 +167,7 @@ export function SecaoImpressora() {
     try {
       const linhas = linhasDeTeste(impressora.papel);
       if (imprimeDireto(impressora.modo)) await imprimirNoAparelho(linhas, impressora);
-      else await imprimirLinhas(linhas, impressora.papel);
+      else await imprimirLinhas(linhas, impressora.papel, ESPACO_FINAL_MM[impressora.espacoFinal]);
       setAviso({ ok: "Teste enviado. Confira se a régua coube numa linha só e se os acentos saíram certos." });
     } catch (falha) {
       setAviso({
@@ -218,6 +230,15 @@ export function SecaoImpressora() {
               Deixe o Chrome aberto pelo atalho do balcão (abaixo). Sem ele, cada pedido dos celulares abre a
               janela de impressão e fica parado esperando alguém clicar.
             </p>
+          ) : null}
+
+          {impressora.modo !== "balcao" ? (
+            <Opcoes
+              rotulo="Espaço no fim do papel"
+              opcoes={ESPACOS}
+              atual={impressora.espacoFinal}
+              aoEscolher={(espacoFinal) => salvar({ ...impressora, espacoFinal })}
+            />
           ) : null}
 
           <div>

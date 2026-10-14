@@ -325,7 +325,7 @@ function PreviaSegundaVia({
   itens: ItemDaSegundaVia[];
   aoFechar: () => void;
 }) {
-  const { imprimir, enviando, erro: erroDeImpressao, papel } = useImprimirDocumento();
+  const { imprimir, enviando, erro: erroDeImpressao, papel, espacoFinalMm } = useImprimirDocumento();
   const quantidade = itens.reduce((total, item) => total + item.quantidade, 0);
   const estornada = venda.situacao_pagamento === "reversed";
 
@@ -448,7 +448,7 @@ function PreviaSegundaVia({
               width: ${AREA_UTIL_MM[papel]}mm !important;
               max-width: ${AREA_UTIL_MM[papel]}mm !important;
               margin: 0 !important;
-              padding: 2mm 0 6mm !important;
+              padding: 2mm 0 ${espacoFinalMm}mm !important;
             }
           }
         `}</style>
