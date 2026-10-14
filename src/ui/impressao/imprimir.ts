@@ -11,6 +11,11 @@ import { CHAMADA_DO_CONVITE, ENDERECO_DO_APP, INSTRUCAO_DO_CONVITE, URL_DO_CONVI
  * com o documento, sem herdar nada do CSS do painel, e a página em uso não
  * pisca.
  *
+ * PONTO NO FIM. O espaço em branco antes do corte termina num ponto
+ * discreto: driver de térmica costuma descartar o papel branco depois da
+ * última coisa impressa e cortar ali — e o espaço sumia, cortando o QR
+ * (Diebold IM433TP, 13/10/2026). Com o ponto, o branco é conteúdo.
+ *
  * TUDO EM NEGRITO. A Courier New tem traço fino, e na térmica saía apagada
  * (08/10/2026). Títulos e destaques ganham um contorno a mais
  * (`text-stroke`), que engrossa o traço sem mudar a largura das colunas.
@@ -57,13 +62,14 @@ function montarHtml(linhas: LinhaComanda[], papel: Papel, espacoFinalMm: number)
 @page { size: ${papel}mm auto; margin: 0; }
 html, body { margin: 0; padding: 0; background: #fff; color: #000;
   -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-body { width: ${util}mm; padding: 2mm 0 ${espacoFinalMm}mm; box-sizing: border-box;
+body { width: ${util}mm; padding: 2mm 0 1mm; box-sizing: border-box;
   font-family: "Courier New", Courier, monospace; font-size: ${fonte}mm; line-height: 1.3;
   font-weight: 700; }
 div { white-space: pre; overflow: hidden; }
 .b { -webkit-text-stroke: 0.35px #000; }
 .qr { margin: 1mm 0; text-align: center; width: ${util}mm; }
-</style></head><body>${corpo}</body></html>`;
+.fim { padding-top: ${espacoFinalMm}mm; text-align: center; font-size: 2mm; line-height: 1; }
+</style></head><body>${corpo}<div class="fim">.</div></body></html>`;
 }
 
 export function imprimirLinhas(

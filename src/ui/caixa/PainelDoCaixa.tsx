@@ -519,10 +519,21 @@ function ResumoVisualDoFechamento({
             /* Área que a impressora alcança (AREA_UTIL_MM): na largura do papel
                os valores, à direita, eram cortados. */
             width: ${AREA_UTIL_MM[papel]}mm !important;
-            padding: 2mm 0 ${espacoFinalMm}mm !important;
+            padding: 2mm 0 1mm !important;
             color: #000 !important;
             font-family: ui-monospace, monospace !important;
             font-size: 11px !important;
+          }
+          /* Termina num ponto depois do espaço: o driver da térmica descarta papel
+             branco no fim e cortava o QR (ver imprimir.ts). */
+          #resumo-impressao-fechamento::after {
+            content: ".";
+            display: block;
+            padding-top: ${espacoFinalMm}mm;
+            text-align: center;
+            font-size: 8px;
+            line-height: 1;
+            visibility: visible !important;
           }
         }
       `}</style>

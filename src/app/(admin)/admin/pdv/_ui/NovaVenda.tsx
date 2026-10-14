@@ -1140,7 +1140,18 @@ function CupomDaVenda({
             width: ${AREA_UTIL_MM[papel]}mm !important;
             max-width: ${AREA_UTIL_MM[papel]}mm !important;
             margin: 0 !important;
-            padding: 2mm 0 ${espacoFinalMm}mm !important;
+            padding: 2mm 0 1mm !important;
+          }
+          /* Termina num ponto depois do espaço: o driver da térmica descarta papel
+             branco no fim e cortava o QR (ver imprimir.ts). */
+          #cupom-venda-pdv::after {
+            content: ".";
+            display: block;
+            padding-top: ${espacoFinalMm}mm;
+            text-align: center;
+            font-size: 8px;
+            line-height: 1;
+            visibility: visible !important;
           }
         }
       `}</style>
