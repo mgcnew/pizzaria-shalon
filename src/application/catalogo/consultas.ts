@@ -178,7 +178,7 @@ export async function listarSaboresParaFogazza(
   const { data, error } = await supabase
     .from("products")
     .select(
-      "id, name, short_description, base_price, is_active, sort_order, product_variants(price, is_active, size_id, pizza_sizes(sold_as))",
+      "id, name, short_description, base_price, is_active, sort_order, product_variants(price, weekend_price, is_active, size_id, pizza_sizes(sold_as))",
     )
     .eq("category_id", categoriaId)
     .eq("product_type", "pizza")
@@ -194,6 +194,7 @@ export async function listarSaboresParaFogazza(
     is_active: boolean;
     product_variants: {
       price: number;
+      weekend_price: number | null;
       is_active: boolean;
       size_id: string;
       pizza_sizes: { sold_as: string } | null;
@@ -218,6 +219,8 @@ export async function listarSaboresParaFogazza(
             ? null
             : Number(p.base_price),
       preco_fogazza: fogazza ? Number(fogazza.price) : null,
+      preco_fogazza_fim_de_semana:
+        fogazza && fogazza.weekend_price !== null ? Number(fogazza.weekend_price) : null,
       entra: fogazza?.is_active ?? false,
     };
   });

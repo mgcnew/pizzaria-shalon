@@ -4198,6 +4198,37 @@ Configuração antiga, sem o campo, continua valendo como Normal.
 
 ---
 
+## D-2026-10-14-119 — Preço de fim de semana da fogazza por sabor
+
+**Contexto.** A Shalon cobra mais pela fogazza no fim de semana.
+
+**Decisão, da dona, em 14/10/2026** (formalizada em RN-FOG-010):
+1. cada sabor ganha um **preço de fim de semana opcional**, digitado no
+   cadastro ao lado do preço de fogazza. Em branco = o mesmo preço todo dia;
+2. fim de semana é **sexta, sábado e domingo**;
+3. vale o **relógio** no fuso da loja, não o turno;
+4. só a **fogazza por sabor**. A fogazza comum não muda;
+5. promoção continua valendo por cima. Isso não foi perguntado: é a regra
+   que já existia (RN-PIZZA-005), mantida.
+
+**Como.** Migration 0148: `product_variants.weekend_price` (só em tamanho de
+fogazza, por gatilho), `e_fim_de_semana()` e `preco_regular_variante()`.
+`preco_efetivo_variante` passa a usar o preço do momento. Como
+`montar_item` usa essa função, o preço cobrado muda sem tocar no cálculo.
+As funções que mostram "de R$ X" ou marcam promoção (vitrine, sabores da
+fogazza, tamanhos, busca e código de barras do PDV) passam a usar o preço
+de tabela do momento. Assim a vitrine não chama de promoção o preço de
+semana num sábado. Elas foram redefinidas a partir da última versão no
+repositório, com só as linhas de preço trocadas. `montar_fogazza` grava o
+preço de fim de semana.
+
+**Onde foi formalizada:** `04-REGRAS-NEGOCIO.md` RN-FOG-010,
+`02-MODELO-DADOS-SUPABASE.md` §5.4,
+`supabase/migrations/20261014100000_preco_de_fim_de_semana_da_fogazza.sql`,
+`supabase/tests/fogazza_fim_de_semana.sql`.
+
+---
+
 # Como registrar uma nova decisão
 
 1. A decisão é tomada e confirmada pelo responsável pelo produto.

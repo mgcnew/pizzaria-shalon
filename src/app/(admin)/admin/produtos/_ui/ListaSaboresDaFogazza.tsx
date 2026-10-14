@@ -9,8 +9,9 @@ import type { SaborParaFogazza } from "@/application/catalogo/tipos";
  * Os sabores da categoria, para marcar quem entra na fogazza e por quanto
  * (RN-FOG-003, D-2026-09-30-102).
  *
- * Vive DENTRO do formulário do card: cada linha manda `sabor`, `entra_<id>` e
- * `preco_<id>`, e quem salva é `montar_fogazza`, tudo numa operação. O filtro
+ * Vive DENTRO do formulário do card: cada linha manda `sabor`, `entra_<id>`,
+ * `preco_<id>` e `preco_fds_<id>` (fim de semana, opcional —
+ * D-2026-10-14-119), e quem salva é `montar_fogazza`, tudo numa operação. O filtro
  * só esconde linhas (com CSS, não desmonta): linha escondida continua indo no
  * envio, senão filtrar e salvar tiraria sabores da fogazza sem ninguém ver.
  */
@@ -126,6 +127,22 @@ export function ListaSaboresDaFogazza({
                   placeholder="0,00"
                   disabled={!podeGerenciar || !entra}
                   aria-label={`Preço de fogazza de ${s.nome}`}
+                  className="min-h-touch w-24 rounded-11 border-[1.5px] border-border-shalon bg-surface px-2 text-right text-[15px] tabular-nums text-ink focus:border-brand-orange focus:outline-none disabled:opacity-50"
+                />
+              </label>
+              <label className="flex items-center gap-2 text-[13px] text-ink-2">
+                <span title="Sexta, sábado e domingo">Fim de semana R$</span>
+                <input
+                  name={`preco_fds_${s.id}`}
+                  inputMode="decimal"
+                  defaultValue={
+                    s.preco_fogazza_fim_de_semana !== null
+                      ? s.preco_fogazza_fim_de_semana.toFixed(2).replace(".", ",")
+                      : ""
+                  }
+                  placeholder="igual"
+                  disabled={!podeGerenciar || !entra}
+                  aria-label={`Preço de fogazza de ${s.nome} na sexta, sábado e domingo`}
                   className="min-h-touch w-24 rounded-11 border-[1.5px] border-border-shalon bg-surface px-2 text-right text-[15px] tabular-nums text-ink focus:border-brand-orange focus:outline-none disabled:opacity-50"
                 />
               </label>

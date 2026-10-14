@@ -296,13 +296,13 @@ export async function EdicaoProduto({
 
   const categoriaDosSabores = escolhaDeSabor?.categoria_sabores_id ?? "";
   const assinaturaDosSabores = saboresParaFogazza
-    .map((s) => `${s.id}:${s.entra ? 1 : 0}:${s.preco_fogazza ?? ""}`)
+    .map((s) => `${s.id}:${s.entra ? 1 : 0}:${s.preco_fogazza ?? ""}:${s.preco_fogazza_fim_de_semana ?? ""}`)
     .join("|");
   const saboresDaFogazza =
     escolhaDeSabor !== null ? (
       <Cartao
         titulo="Sabores da fogazza"
-        descricao="Escolha de qual categoria de pizza vêm os sabores e marque quais entram, com o preço de fogazza de cada um. O preço fica guardado no próprio sabor. Em branco, é uma fogazza comum, com preço próprio."
+        descricao="Escolha de qual categoria de pizza vêm os sabores e marque quais entram, com o preço de fogazza de cada um. O preço de fim de semana vale sexta, sábado e domingo; em branco, cobra o mesmo preço todo dia. Os preços ficam guardados no próprio sabor. Sem categoria, é uma fogazza comum, com preço próprio."
         largura="cheio"
       >
         {podeGerenciar ? (

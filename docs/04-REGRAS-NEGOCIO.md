@@ -250,6 +250,17 @@ Produto do tipo fogazza nunca recebe tamanho: a fogazza comum tem preço
 próprio, e o card de entrada vende os sabores. Um produto com tamanhos não
 vira fogazza. O servidor recusa as duas coisas. *(D-2026-09-30-102.)*
 
+### RN-FOG-010 — Preço de fim de semana da fogazza por sabor
+Cada sabor pode ter, além do preço de fogazza, um **preço de fim de semana**,
+opcional. Fim de semana é **sexta, sábado e domingo**, pelo **relógio** no
+fuso da loja: um pedido às 00:30 de segunda já paga o preço de semana, e às
+00:30 de sexta já paga o de fim de semana. Não segue o turno. Sem preço de
+fim de semana, o sabor cobra o mesmo preço todos os dias. Vale só para a
+fogazza por sabor; a fogazza comum, de preço próprio, não muda. Promoção
+vigente continua valendo por cima de qualquer um dos dois (RN-PIZZA-005).
+Como todo preço, é recalculado pelo servidor, e o carrinho não reserva o
+preço de um dia para o outro. *(D-2026-10-14-119.)*
+
 ### RN-FOG-008 — Fogazza nos relatórios
 Nos relatórios e no ranking do painel, a fogazza de cada sabor é linha
 própria ("Calabresa · Fogazza"), separada da pizza do sabor e na categoria

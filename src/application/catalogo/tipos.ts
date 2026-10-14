@@ -145,6 +145,11 @@ export type SaborParaFogazza = {
   preco_pizza: number | null;
   /** O preço de fogazza gravado, mesmo quando o sabor está fora. */
   preco_fogazza: number | null;
+  /**
+   * Preço de sexta, sábado e domingo (D-2026-10-14-119). Nulo = o mesmo
+   * preço todo dia.
+   */
+  preco_fogazza_fim_de_semana: number | null;
   /** Está à venda como fogazza. */
   entra: boolean;
 };

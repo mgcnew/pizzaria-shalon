@@ -272,7 +272,11 @@ export async function montarFogazza(
   const categoriaDaLista = String(form.get("categoria_da_lista") ?? "");
   if (!produtoId) return { erro: "Produto não informado." };
 
-  const sabores: { produto_id: string; preco: number | null }[] = [];
+  const sabores: {
+    produto_id: string;
+    preco: number | null;
+    preco_fim_de_semana?: number | null;
+  }[] = [];
   if (categoria && categoria === categoriaDaLista) {
     for (const id of form.getAll("sabor").map(String)) {
       const nome = String(form.get(`nome_${id}`) ?? "sabor");
@@ -284,7 +288,13 @@ export async function montarFogazza(
       if (!preco) return { erro: `Informe o preço de fogazza de ${nome}.` };
       if (!preco.ok) return { erro: `${nome}: ${preco.erro}` };
       if (preco.valor <= 0) return { erro: `O preço de ${nome} precisa ser maior que zero.` };
-      sabores.push({ produto_id: id, preco: preco.valor });
+      // Fim de semana (D-2026-10-14-119): opcional; em branco = mesmo preço todo dia.
+      const fds = lerValorOpcionalBR(String(form.get(`preco_fds_${id}`) ?? ""));
+      if (fds && !fds.ok) return { erro: `${nome}, fim de semana: ${fds.erro}` };
+      if (fds && fds.valor <= 0) {
+        return { erro: `O preço de fim de semana de ${nome} precisa ser maior que zero, ou fique em branco.` };
+      }
+      sabores.push({ produto_id: id, preco: preco.valor, preco_fim_de_semana: fds ? fds.valor : null });
     }
   }
 

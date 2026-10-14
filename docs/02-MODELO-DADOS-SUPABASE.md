@@ -303,6 +303,9 @@ Variação comercial produto+tamanho. Principalmente pizzas.
 - `product_id uuid FK -> products.id`
 - `size_id uuid FK -> pizza_sizes.id`
 - `price numeric(12,2)`
+- `weekend_price numeric(10,2) nullable` — preço de sexta, sábado e domingo
+  da fogazza por sabor (RN-FOG-010, 0148). Só em tamanho vendido como
+  fogazza (gatilho); nulo = mesmo preço todo dia
 - `is_active boolean`
 - `is_temporarily_available boolean`
 - `temporary_unavailable_note text nullable`
