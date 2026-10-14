@@ -5,7 +5,7 @@
  * 05-PLANO-IMPLEMENTACAO.md §10.5
  *
  * ESTE MÓDULO NÃO IMPRIME. Ele decide o que a comanda DIZ e como ela se
- * organiza em 32 ou 48 colunas — nada mais. Nenhum byte de ESC/POS, nenhum
+ * organiza em 32 ou 42 colunas — nada mais. Nenhum byte de ESC/POS, nenhum
  * Bluetooth, nenhuma chamada de rede.
  *
  * A separação é deliberada: o transporte físico ainda não foi escolhido
@@ -28,10 +28,12 @@
 export type Papel = "58" | "80";
 
 /**
- * Colunas úteis em fonte A: 58 mm dá 32, 80 mm dá 48. Confirmar no
+ * Colunas úteis: 58 mm dá 32 (fonte A). No 80 mm são 42, e não as 48 da
+ * fonte A: a pedido da dona (13/10/2026), letra maior na comanda, que é lida
+ * de longe na cozinha. Confirmar no
  * equipamento é o teste 4 da POC.
  */
-export const COLUNAS: Record<Papel, number> = { "58": 32, "80": 48 };
+export const COLUNAS: Record<Papel, number> = { "58": 32, "80": 42 };
 
 /** Largura padrão: a comanda de 58 mm, que é o que existia antes do 80 mm. */
 export const LARGURA = COLUNAS["58"];

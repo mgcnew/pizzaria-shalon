@@ -218,21 +218,21 @@ describe("papel de 80 mm (D-2026-10-08-116)", () => {
     );
   });
 
-  it("80 mm usa 48 colunas e nenhuma linha passa disso", () => {
-    expect(COLUNAS["80"]).toBe(48);
+  it("80 mm usa 42 colunas e nenhuma linha passa disso", () => {
+    expect(COLUNAS["80"]).toBe(42);
     for (const linha of montarComanda(PEDIDO, COLUNAS["80"])) {
-      expect(linha.texto.length).toBeLessThanOrEqual(48);
+      expect(linha.texto.length).toBeLessThanOrEqual(42);
     }
     for (const linha of montarAlteracao(alteracao, COLUNAS["80"])) {
-      expect(linha.texto.length).toBeLessThanOrEqual(48);
+      expect(linha.texto.length).toBeLessThanOrEqual(42);
     }
   });
 
   it("separadores ocupam a largura inteira do papel", () => {
     const linhas = montarComanda(PEDIDO, COLUNAS["80"]);
-    expect(linhas.some((l) => l.estilo === "separador" && l.texto === "-".repeat(48))).toBe(true);
+    expect(linhas.some((l) => l.estilo === "separador" && l.texto === "-".repeat(42))).toBe(true);
     const alt = montarAlteracao(alteracao, COLUNAS["80"]);
-    expect(alt[0]?.texto).toBe("*".repeat(48));
+    expect(alt[0]?.texto).toBe("*".repeat(42));
   });
 
   it("o conteúdo é o mesmo nas duas larguras; muda só a quebra", () => {

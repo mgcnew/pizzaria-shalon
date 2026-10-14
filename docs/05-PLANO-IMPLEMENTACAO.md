@@ -568,7 +568,7 @@ Reimpressão auditada.
 Alteração após impressão gera documento **ALTERAÇÃO**.
 
 > **D-2026-10-08-116:** a impressão passou a aceitar também papel de 80 mm,
-> configurado por aparelho. Entrega 1 (feita): comanda em 48 colunas,
+> configurado por aparelho. Entrega 1 (feita): comanda em 48 colunas (42 desde 13/10),
 > impressão direta na impressora padrão do sistema e a aba Configurações →
 > Impressora. Entrega 3 (feita, migration 0147): o celular pede impressão na
 > 80 mm do balcão, com o notebook ligado e o painel aberto. Entrega 2 (feita):

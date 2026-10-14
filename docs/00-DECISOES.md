@@ -4159,7 +4159,11 @@ Configuração antiga, sem o campo, continua valendo como Normal.
   Bluetooth direto não precisa;
 - a pedido da dona, fonte maior no cupom do PDV, na segunda via e no
   fechamento de caixa (corpo de 10 para 12 px no cupom e de 11 para 13 px no
-  fechamento). A comanda continua em 48 colunas no papel de 80.
+  fechamento);
+- logo depois, também a pedido da dona, **a comanda no papel de 80 mm passou
+  de 48 para 42 colunas** (`COLUNAS["80"]`), com letra cerca de 14% maior.
+  Isso supera as menções a 48 colunas em D-2026-10-08-116, inclusive a
+  comanda que o celular manda ao balcão, que agora chega em 42.
 
 **Onde foi formalizada:** `src/ui/impressao/impressoraDoAparelho.ts`
 (`ESPACO_FINAL_MM`, `MARGEM_ESQUERDA_MM`), `imprimir.ts`, `escpos.ts`,

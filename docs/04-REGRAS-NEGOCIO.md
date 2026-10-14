@@ -900,7 +900,8 @@ Alteração posterior à impressão preserva a impressão anterior e gera docume
 A impressão é não fiscal e direcionada ao equipamento 58 mm previsto no escopo.
 
 > **Ampliada por D-2026-10-08-116.** A impressão é não fiscal e pode sair em
-> papel de **58 mm (32 colunas)** ou de **80 mm (48 colunas)**. A largura e o
+> papel de **58 mm (32 colunas)** ou de **80 mm (42 colunas** — eram 48 até
+> 13/10/2026, reduzidas para a letra ficar maior). A largura e o
 > caminho até a impressora são configurados **por aparelho**, não por loja. O
 > conteúdo da comanda é o mesmo nas duas larguras; muda só a quebra das linhas.
 

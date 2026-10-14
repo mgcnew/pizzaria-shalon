@@ -315,7 +315,7 @@ teste de impressão.
 
 | # | Teste | O que observar |
 |---|---|---|
-| 1 | Teste de impressão em 80 mm | a régua de 48 colunas cabe numa linha; acentos saem certos |
+| 1 | Teste de impressão em 80 mm | a régua de 42 colunas (eram 48 até 13/10) cabe numa linha; acentos saem certos |
 | 2 | Sem janela de escolha | com o atalho `--kiosk-printing`, imprimir não abre janela nenhuma |
 | 3 | Margens e largura | o driver está com papel de rolo 80 mm; não sobra margem grande nem corta à direita |
 | 4 | Comanda real | pedido com meio a meio, borda, adicionais e observação longa |

@@ -86,7 +86,7 @@ export function imprimeDireto(modo: ModoDeImpressao): boolean {
 
 /**
  * Pode ser o balcão: imprime direto e em 80 mm. O celular manda a comanda
- * já quebrada em 48 colunas, que não cabe num papel de 58.
+ * já quebrada em 42 colunas, que não cabe num papel de 58.
  */
 export function podeSerBalcao(i: Pick<ImpressoraDoAparelho, "modo" | "papel">): boolean {
   return imprimeDireto(i.modo) && i.papel === "80";

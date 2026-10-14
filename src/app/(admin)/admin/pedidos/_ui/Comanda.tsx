@@ -21,7 +21,7 @@ import { ErroDaImpressora } from "@/ui/impressao/serial";
  * confirmação do equipamento. Quem diz se saiu no papel é a pessoa que
  * olhou para a impressora.
  *
- * O documento em si é gerado pelo domínio (`montarComanda`), em 32 ou 48
+ * O documento em si é gerado pelo domínio (`montarComanda`), em 32 ou 42
  * colunas conforme o papel, de forma determinística. O que aparece aqui em
  * fonte monoespaçada é exatamente o que foi enviado.
  */
