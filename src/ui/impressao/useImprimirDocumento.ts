@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { COLUNAS, type LinhaComanda } from "@/domain/pedidos/comanda";
+import type { LinhaComanda } from "@/domain/pedidos/comanda";
 import { useImpressoraDoAparelho } from "./impressoraDoAparelho";
-import { imprimirNoAparelho } from "./imprimirNoAparelho";
+import { colunasDoAparelho, imprimirNoAparelho } from "./imprimirNoAparelho";
 import { ErroDaImpressora } from "./serial";
 
 /**
@@ -29,7 +29,7 @@ export function useImprimirDocumento() {
     setErro(null);
     setEnviando(true);
     try {
-      await imprimirNoAparelho(montar(COLUNAS[impressora.papel]), impressora);
+      await imprimirNoAparelho(montar(colunasDoAparelho(impressora)), impressora);
     } catch (falha) {
       setErro(falha instanceof ErroDaImpressora ? falha.message : "Não foi possível enviar para a impressora.");
     } finally {

@@ -6,7 +6,7 @@ import { situacaoDaImpressao } from "@/application/pedidos/impressaoDoBalcao";
 import type { ImpressaoDoPedido } from "@/application/pedidos/tipos";
 import type { LinhaComanda } from "@/domain/pedidos/comanda";
 import { imprimeDireto, useImpressoraDoAparelho } from "@/ui/impressao/impressoraDoAparelho";
-import { imprimirNoAparelho } from "@/ui/impressao/imprimirNoAparelho";
+import { colunasDoAparelho, imprimirNoAparelho } from "@/ui/impressao/imprimirNoAparelho";
 import { ErroDaImpressora } from "@/ui/impressao/serial";
 
 /**
@@ -121,6 +121,7 @@ export function Comanda({
       const r = await emitirDocumento(pedidoId, tipo, {
         papel: impressora.papel,
         modo: impressora.modo,
+        colunas: colunasDoAparelho(impressora),
       });
       if (!r.ok) {
         setErro(r.erro);

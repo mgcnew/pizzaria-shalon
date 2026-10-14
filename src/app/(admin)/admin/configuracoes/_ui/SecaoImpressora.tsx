@@ -7,7 +7,6 @@ import { COLUNAS, type Papel } from "@/domain/pedidos/comanda";
 import {
   ESPACO_FINAL_MM,
   MARGEM_ESQUERDA_MM,
-  imprimeDireto,
   podeSerBalcao,
   salvarImpressoraDoAparelho,
   useImpressoraDoAparelho,
@@ -16,8 +15,8 @@ import {
   type ImpressoraDoAparelho,
   type ModoDeImpressao,
 } from "@/ui/impressao/impressoraDoAparelho";
-import { imprimirLinhas, linhasDeTeste } from "@/ui/impressao/imprimir";
-import { imprimirNoAparelho } from "@/ui/impressao/imprimirNoAparelho";
+import { linhasDeTeste } from "@/ui/impressao/imprimir";
+import { colunasDoAparelho, imprimirNoAparelho } from "@/ui/impressao/imprimirNoAparelho";
 import type { TabelaDeAcentos } from "@/ui/impressao/escpos";
 import {
   ErroDaImpressora,
@@ -104,6 +103,7 @@ const MARGENS: { valor: MargemEsquerda; titulo: string; detalhe: string }[] = [
     detalhe: `${MARGEM_ESQUERDA_MM.pequena} mm de cada lado. Se o começo ou o fim das linhas sai cortado.`,
   },
   { valor: "media", titulo: "Média", detalhe: `${MARGEM_ESQUERDA_MM.media} mm de cada lado. Se com a pequena ainda corta.` },
+  { valor: "grande", titulo: "Grande", detalhe: `${MARGEM_ESQUERDA_MM.grande} mm de cada lado. Se com a média ainda corta.` },
 ];
 
 const ATALHO_CHROME = '"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --kiosk-printing';
@@ -177,15 +177,8 @@ export function SecaoImpressora() {
     setAviso({});
     setImprimindo(true);
     try {
-      const linhas = linhasDeTeste(impressora.papel);
-      if (imprimeDireto(impressora.modo)) await imprimirNoAparelho(linhas, impressora);
-      else
-        await imprimirLinhas(
-          linhas,
-          impressora.papel,
-          ESPACO_FINAL_MM[impressora.espacoFinal],
-          MARGEM_ESQUERDA_MM[impressora.margemEsquerda],
-        );
+      // Mesmo caminho e mesmas colunas da comanda e dos cupons deste aparelho.
+      await imprimirNoAparelho(linhasDeTeste(impressora.papel, colunasDoAparelho(impressora)), impressora);
       setAviso({ ok: "Teste enviado. Confira se a régua coube numa linha só e se os acentos saíram certos." });
     } catch (falha) {
       setAviso({

@@ -4172,7 +4172,18 @@ Configuração antiga, sem o campo, continua valendo como Normal.
   isso cada ajuste de margem dava um resultado diferente. **Agora os três
   imprimem a versão em linhas** (`src/domain/impressao/cupons.ts`), pelo
   mesmo documento próprio da comanda. O HTML virou só a prévia na tela, com
-  o QR menor. Os botões dos modais ficaram fixos no rodapé.
+  o QR menor. Os botões dos modais ficaram fixos no rodapé;
+- **letra fixa, colunas calculadas** (segunda foto, 13/10): com 42 colunas
+  espremidas na largura a letra ficava pequena e ainda cortava na Diebold.
+  Na impressão pelo sistema a letra passou a ser fixa (1,9 mm por
+  caractere, a da prévia), e as colunas saem do que cabe na largura menos
+  as margens: 37 sem margem, 35/33/31 com Pequena/Média/Grande (nova, 6 mm
+  de cada lado). O documento fica centralizado. A comanda pede essas
+  colunas ao servidor (faixa 24–48, validada). Se uma linha vier mais larga
+  do que cabe (comanda do celular para o balcão), a letra encolhe só nela.
+  Isso substitui as 42 colunas fixas do item anterior na impressão pelo
+  sistema. O Bluetooth direto continua com as colunas da fonte da
+  impressora.
 
 **Onde foi formalizada:** `src/ui/impressao/impressoraDoAparelho.ts`
 (`ESPACO_FINAL_MM`, `MARGEM_ESQUERDA_MM`), `imprimir.ts`, `escpos.ts`,

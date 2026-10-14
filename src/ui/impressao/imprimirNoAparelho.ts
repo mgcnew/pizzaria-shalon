@@ -1,9 +1,9 @@
 "use client";
 
-import type { LinhaComanda } from "@/domain/pedidos/comanda";
+import { COLUNAS, type LinhaComanda } from "@/domain/pedidos/comanda";
 import { montarEscPos } from "./escpos";
 import { ESPACO_FINAL_MM, MARGEM_ESQUERDA_MM, type ImpressoraDoAparelho } from "./impressoraDoAparelho";
-import { imprimirLinhas } from "./imprimir";
+import { AREA_UTIL_MM, colunasNaLargura, imprimirLinhas } from "./imprimir";
 import { imprimirSerial } from "./serial";
 
 /**
@@ -14,6 +14,19 @@ import { imprimirSerial } from "./serial";
  * Só para os modos que imprimem aqui (`sistema` e `serial`). Lança erro se
  * não conseguiu entregar à impressora.
  */
+/**
+ * Quantas colunas o documento deve ter para ESTE aparelho.
+ *
+ * - Bluetooth direto: as colunas da fonte da impressora (32 no 58 mm);
+ * - impressão pelo sistema: as que cabem, com a letra fixa, na largura que
+ *   sobra depois das margens (`colunasNaLargura`).
+ */
+export function colunasDoAparelho(impressora: ImpressoraDoAparelho): number {
+  if (impressora.modo === "serial") return COLUNAS[impressora.papel];
+  const margem = MARGEM_ESQUERDA_MM[impressora.margemEsquerda];
+  return colunasNaLargura(AREA_UTIL_MM[impressora.papel] - 2 * margem);
+}
+
 export async function imprimirNoAparelho(
   linhas: LinhaComanda[],
   impressora: ImpressoraDoAparelho,

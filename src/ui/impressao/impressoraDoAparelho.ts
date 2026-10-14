@@ -56,9 +56,14 @@ export type ImpressoraDoAparelho = {
  * "VENDA"), e só deslocado para a direita passava a cortar do outro lado.
  * A margem vale dos dois lados: o documento fica afastado das duas bordas.
  */
-export type MargemEsquerda = "nenhuma" | "pequena" | "media";
+export type MargemEsquerda = "nenhuma" | "pequena" | "media" | "grande";
 
-export const MARGEM_ESQUERDA_MM: Record<MargemEsquerda, number> = { nenhuma: 0, pequena: 2, media: 4 };
+export const MARGEM_ESQUERDA_MM: Record<MargemEsquerda, number> = {
+  nenhuma: 0,
+  pequena: 2,
+  media: 4,
+  grande: 6,
+};
 
 /**
  * Espaço no fim do papel (13/10/2026). Impressora com guilhotina, como a
@@ -110,7 +115,10 @@ function interpretar(bruto: string | null): ImpressoraDoAparelho {
       estacao: estacao === true && podeSerBalcao({ modo: modoLido, papel: papelLido }),
       tabela: tabela === "cp850" || tabela === "sem-acento" ? tabela : "cp860",
       espacoFinal: espacoFinal === "medio" || espacoFinal === "grande" ? espacoFinal : "normal",
-      margemEsquerda: margemEsquerda === "pequena" || margemEsquerda === "media" ? margemEsquerda : "nenhuma",
+      margemEsquerda:
+        margemEsquerda === "pequena" || margemEsquerda === "media" || margemEsquerda === "grande"
+          ? margemEsquerda
+          : "nenhuma",
     };
   } catch {
     return PADRAO;

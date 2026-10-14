@@ -39,6 +39,25 @@ import { CHAMADA_DO_CONVITE, ENDERECO_DO_APP, INSTRUCAO_DO_CONVITE, URL_DO_CONVI
  */
 export const AREA_UTIL_MM: Record<Papel, number> = { "58": 48, "80": 72 };
 
+/**
+ * Largura de um caractere impresso pelo sistema: 1,9 mm, a letra da prévia
+ * na tela (12 px de Courier New).
+ *
+ * FONTE FIXA, COLUNAS CALCULADAS (13/10/2026). Antes era o contrário: um
+ * número fixo de colunas espremido na largura — a letra encolhia a cada
+ * margem a mais, e ainda cortava na Diebold. Agora a letra não muda, e o
+ * documento é montado com as colunas que cabem na largura que sobra.
+ */
+export const LARGURA_DO_CARACTERE_MM = 1.9;
+
+/** Courier New avança 0,6 em por caractere. */
+const AVANCO_DA_FONTE = 0.6;
+
+/** Colunas que cabem numa largura, com a letra fixa. Nunca menos de 24. */
+export function colunasNaLargura(larguraMm: number): number {
+  return Math.max(24, Math.floor(larguraMm / LARGURA_DO_CARACTERE_MM));
+}
+
 function escapar(texto: string): string {
   return texto.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
@@ -50,12 +69,15 @@ function montarHtml(
   margemEsquerdaMm: number,
 ): string {
   const util = AREA_UTIL_MM[papel];
-  // A margem vale dos dois lados: afasta o documento das duas bordas.
+  // A margem vale dos dois lados: o documento fica centralizado no papel.
   const largura = util - 2 * margemEsquerdaMm;
-  // Courier New avança 0,6 em por caractere. O divisor um pouco maior deixa
-  // ~3% de folga: uma fonte substituta levemente mais larga não corta a
-  // última coluna.
-  const fonte = (largura / COLUNAS[papel] / 0.62).toFixed(3);
+  // Letra fixa — a não ser que alguma linha venha mais larga do que cabe
+  // (a comanda que o celular manda ao balcão, montada noutro aparelho):
+  // aí encolhe o necessário para ela não ser cortada. 3% de folga para
+  // fonte substituta um pouco mais larga.
+  const maisLonga = Math.max(1, ...linhas.filter((l) => l.estilo !== "qrcode").map((l) => l.texto.length));
+  const caractere = Math.min(LARGURA_DO_CARACTERE_MM, largura / maisLonga / 1.03);
+  const fonte = (caractere / AVANCO_DA_FONTE).toFixed(3);
 
   const corpo = linhas
     .map((l) => {
@@ -122,8 +144,7 @@ export function imprimirLinhas(
 }
 
 /** Página de teste: régua de colunas e os acentos que mais dão problema. */
-export function linhasDeTeste(papel: Papel): LinhaComanda[] {
-  const colunas = COLUNAS[papel];
+export function linhasDeTeste(papel: Papel, colunas: number = COLUNAS[papel]): LinhaComanda[] {
   const regua = Array.from({ length: colunas }, (_, i) => String((i + 1) % 10)).join("");
   return [
     { texto: "PIZZARIA SHALON", estilo: "titulo" },

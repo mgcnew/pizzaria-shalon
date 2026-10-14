@@ -166,12 +166,19 @@ export type DocumentoParaImpressao =
 const impressaoSchema = z.object({
   papel: z.enum(["58", "80"]),
   modo: z.enum(["tela", "sistema", "serial", "balcao"]),
+  // Colunas que cabem na impressora deste aparelho com a letra fixa
+  // (`colunasDoAparelho`). Faixa fechada: só muda a quebra das linhas.
+  colunas: z.number().int().min(24).max(48).optional(),
 });
 
 export async function emitirDocumento(
   pedidoId: string,
   tipo: "comanda" | "alteracao",
-  impressao: { papel: "58" | "80"; modo: "tela" | "sistema" | "serial" | "balcao" } = {
+  impressao: {
+    papel: "58" | "80";
+    modo: "tela" | "sistema" | "serial" | "balcao";
+    colunas?: number;
+  } = {
     papel: "58",
     modo: "tela",
   },
@@ -184,9 +191,11 @@ export async function emitirDocumento(
     return { ok: false, erro: "Configuração de impressora inválida." };
   }
   const { modo } = configuracao.data;
-  // Pedindo ao balcão, quem imprime é a 80 mm de lá, não o papel deste aparelho.
+  // Pedindo ao balcão, quem imprime é a 80 mm de lá, não o papel deste
+  // aparelho — e as colunas também são as de lá (o balcão ajusta a letra se
+  // precisar).
   const papel = modo === "balcao" ? "80" : configuracao.data.papel;
-  const largura = COLUNAS[papel];
+  const largura = modo === "balcao" ? COLUNAS["80"] : (configuracao.data.colunas ?? COLUNAS[papel]);
 
   const [pedido, loja, pagamento] = await Promise.all([
     obterPedido(pedidoId),
