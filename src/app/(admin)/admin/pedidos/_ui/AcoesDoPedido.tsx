@@ -18,15 +18,16 @@ import { estiloDoComando } from "./estiloDasAcoes";
  * "aceitar" só vale em `waiting_store_confirmation`: essa regra vive no
  * banco, e duplicá-la aqui criaria uma segunda verdade (CLAUDE.md §21).
  *
- * Comando destrutivo pede motivo antes, e o motivo é obrigatório de verdade:
- * o banco recusa sem ele (RN-STATE-009 e RN-STATE-010).
+ * Comando destrutivo pede motivo antes, num modal (`ModalDeMotivo`), e o
+ * motivo é obrigatório de verdade: o banco recusa sem ele (RN-STATE-009 e
+ * RN-STATE-010).
  *
  * DOIS LAYOUTS, UM CAMINHO SÓ. Em `"lista"` (cartão e tela do pedido) todos os
  * comandos viram botões lado a lado. Em `"linha"` (a tabela do desktop) só o
  * primeiro não destrutivo fica visível e o resto vai para um menu `⋯`.
  *
  * O motivo de ser uma prop, e não um segundo componente: o caminho destrutivo
- * — abrir o campo de motivo, exigir 3 caracteres, disparar, mostrar a recusa —
+ * — abrir o modal de motivo, exigir 3 caracteres, disparar, mostrar a recusa —
  * precisa existir UMA vez. Duplicá-lo para ganhar um layout é exatamente como
  * se perde a confirmação de um cancelamento numa das cópias.
  *
@@ -258,49 +259,28 @@ export function AcoesDoPedido({
         </div>
       )}
 
-      {pedindoMotivo !== null ? (
-        <div className="rounded-12 border border-border-shalon bg-elev p-3">
-          <label
-            htmlFor={`motivo-${pedidoId}`}
-            className="mb-[6px] block text-[13.5px] font-semibold text-ink"
-          >
-            Motivo — {pedindoMotivo.rotulo}
-          </label>
-          <textarea
-            id={`motivo-${pedidoId}`}
-            value={motivo}
-            onChange={(e) => setMotivo(e.target.value)}
-            rows={2}
-            maxLength={400}
-            className="w-full resize-y rounded-11 border-[1.5px] border-border-shalon bg-surface px-3 py-2 text-[14px] text-ink focus:border-brand-orange focus:outline-none"
-          />
-          <p className="m-0 mt-1 text-[12px] text-muted">
-            Fica registrado no histórico do pedido e na auditoria.
-          </p>
-          <div className="mt-2 flex gap-2">
-            <button
-              type="button"
-              disabled={executando || motivo.trim().length < 3}
-              onClick={() => disparar(pedindoMotivo, motivo.trim())}
-              className="min-h-touch cursor-pointer rounded-11 border-0 bg-cta px-4 text-[14px] font-semibold text-cta-fg disabled:cursor-not-allowed disabled:bg-tn disabled:text-muted"
-            >
-              {executando ? "Registrando…" : "Confirmar"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
+      {pedindoMotivo !== null
+        ? createPortal(
+            <ModalDeMotivo
+              acao={pedindoMotivo}
+              campoId={`motivo-${pedidoId}`}
+              motivo={motivo}
+              aoMudarMotivo={setMotivo}
+              executando={executando}
+              erro={erro}
+              aoConfirmar={() => disparar(pedindoMotivo, motivo.trim())}
+              aoFechar={() => {
+                if (executando) return;
                 setPedindoMotivo(null);
                 setMotivo("");
+                setErro(null);
               }}
-              className="min-h-touch cursor-pointer rounded-11 border-[1.5px] border-border-shalon bg-surface px-4 text-[14px] font-semibold text-ink"
-            >
-              Voltar
-            </button>
-          </div>
-        </div>
-      ) : null}
+            />,
+            document.body,
+          )
+        : null}
 
-      {erro !== null ? (
+      {erro !== null && pedindoMotivo === null ? (
         <p
           role="alert"
           className="m-0 rounded-10 bg-td px-3 py-2 text-[13px] font-semibold text-tdf"
@@ -308,6 +288,136 @@ export function AcoesDoPedido({
           {erro}
         </p>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Motivo de um comando destrutivo (rejeitar, cancelar), num modal.
+ *
+ * Antes o campo abria embaixo dos botões. Na tabela, isso esticava a linha e,
+ * em notebook de tela menor, empurrava o campo para fora da coluna de ações
+ * (14/10/2026). O caminho continua o mesmo: motivo de pelo menos 3
+ * caracteres, e o banco recusa sem ele (RN-STATE-009 e RN-STATE-010).
+ */
+function ModalDeMotivo({
+  acao,
+  campoId,
+  motivo,
+  aoMudarMotivo,
+  executando,
+  erro,
+  aoConfirmar,
+  aoFechar,
+}: {
+  acao: AcaoDoPedido;
+  campoId: string;
+  motivo: string;
+  aoMudarMotivo: (motivo: string) => void;
+  executando: boolean;
+  erro: string | null;
+  aoConfirmar: () => void;
+  aoFechar: () => void;
+}) {
+  const campo = useRef<HTMLTextAreaElement>(null);
+  const tituloId = `${campoId}-titulo`;
+  // Ref para o efeito rodar UMA vez: `aoFechar` é recriada a cada tecla, e
+  // reexecutar o efeito perderia o foco anterior que ele devolve ao fechar.
+  const fechar = useRef(aoFechar);
+  useEffect(() => {
+    fechar.current = aoFechar;
+  }, [aoFechar]);
+
+  useEffect(() => {
+    const anterior = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    campo.current?.focus();
+    function aoTeclar(evento: KeyboardEvent) {
+      if (evento.key === "Escape") fechar.current();
+    }
+    document.addEventListener("keydown", aoTeclar);
+    return () => {
+      document.removeEventListener("keydown", aoTeclar);
+      document.body.style.overflow = overflow;
+      anterior?.focus();
+    };
+  }, []);
+
+  return (
+    <div
+      className="fixed inset-0 z-[95] flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-4"
+      onMouseDown={(evento) => {
+        if (evento.target === evento.currentTarget) aoFechar();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={tituloId}
+        className="max-h-[92dvh] w-full overflow-y-auto rounded-t-20 border border-border-shalon bg-surface p-5 shadow-2xl sm:max-w-[480px] sm:rounded-20"
+      >
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 id={tituloId} className="m-0 font-display text-[19px] font-bold text-ink">
+            {acao.rotulo}
+          </h2>
+          <button
+            type="button"
+            aria-label="Fechar"
+            onClick={aoFechar}
+            className="flex size-10 cursor-pointer items-center justify-center rounded-full border border-border-shalon bg-elev text-[20px] text-ink"
+          >
+            ×
+          </button>
+        </div>
+
+        <form
+          onSubmit={(evento) => {
+            evento.preventDefault();
+            if (!executando && motivo.trim().length >= 3) aoConfirmar();
+          }}
+        >
+          <label htmlFor={campoId} className="mb-[6px] block text-[13.5px] font-semibold text-ink">
+            Motivo
+          </label>
+          <textarea
+            ref={campo}
+            id={campoId}
+            value={motivo}
+            onChange={(e) => aoMudarMotivo(e.target.value)}
+            rows={3}
+            maxLength={400}
+            className="w-full resize-y rounded-11 border-[1.5px] border-border-shalon bg-surface px-3 py-2 text-[14px] text-ink focus:border-brand-orange focus:outline-none"
+          />
+          <p className="m-0 mt-1 text-[12px] text-muted">
+            Fica registrado no histórico do pedido e na auditoria.
+          </p>
+
+          {erro !== null ? (
+            <p role="alert" className="m-0 mt-3 rounded-10 bg-td px-3 py-2 text-[13px] font-semibold text-tdf">
+              {erro}
+            </p>
+          ) : null}
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="submit"
+              disabled={executando || motivo.trim().length < 3}
+              className="min-h-touch cursor-pointer rounded-11 border-0 bg-cta px-4 text-[14px] font-semibold text-cta-fg disabled:cursor-not-allowed disabled:bg-tn disabled:text-muted"
+            >
+              {executando ? "Registrando…" : "Confirmar"}
+            </button>
+            <button
+              type="button"
+              onClick={aoFechar}
+              disabled={executando}
+              className="min-h-touch cursor-pointer rounded-11 border-[1.5px] border-border-shalon bg-surface px-4 text-[14px] font-semibold text-ink disabled:opacity-60"
+            >
+              Voltar
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
