@@ -17,6 +17,8 @@ import { Badge } from "@/ui/components";
 import { Cartao, EmptyState, Skeleton } from "@/ui/patterns";
 import { formatBRL } from "@/lib/format";
 import { recorteDeMenorMovimentacao } from "@/domain/analitico/ranking";
+import { rotuloDeModalidade, rotuloDeOrigem } from "@/domain/pedidos/estados";
+import { GraficoDeBarras, GraficoDeColunas } from "./_ui/Graficos";
 import { CentralDeAtencao } from "./_ui/CentralDeAtencao";
 import { Indicador } from "./_ui/Indicador";
 import { SeletorDePeriodo } from "./_ui/SeletorDePeriodo";
@@ -30,6 +32,17 @@ export const metadata: Metadata = { title: "Dashboard" };
 
 const CHAVES: ChaveDePeriodo[] = ["hoje", "ontem", "7d", "30d", "mes_atual"];
 const DIAS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+const DIAS_CURTOS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+/** "12 pedidos" / "1 pedido". */
+function pedidos(n: number): string {
+  return `${n} ${n === 1 ? "pedido" : "pedidos"}`;
+}
+
+/** Parte de um total, em %, sem casas: o gráfico já mostra a proporção. */
+function parte(n: number, total: number): string {
+  return total > 0 ? `${Math.round((n / total) * 100)}%` : "";
+}
 
 const COMPARACAO: Record<ChaveDePeriodo, string> = {
   hoje: "vs. ontem",
@@ -210,6 +223,8 @@ async function BlocoDoResumo({
           </div>
         </Cartao>
 
+        <QuebrasDoPeriodo medidas={resumo.atual} />
+
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           <Cartao titulo="Pedidos que não viraram venda" largura="cheio">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -273,7 +288,9 @@ async function BlocoDoResumo({
 
 async function BlocoDoRanking({ ranking: consulta }: { ranking: Promise<RankingDeProdutos | null> }) {
   const ranking = await consulta;
-  const maisVendidos = ranking?.produtos.slice(0, 5) ?? [];
+  // Só quem vendeu: o ranking traz o catálogo inteiro, inclusive com zero, e
+  // um gráfico de "mais vendidos" cheio de R$ 0,00 não diz nada.
+  const maisVendidos = (ranking?.produtos ?? []).filter((p) => p.quantidade > 0).slice(0, 5);
   // RN-REL-005: a regra do recorte vive no domínio, com teste próprio. Aqui
   // fica só a decisão de QUAIS listas entram — o ranking do período e o grupo
   // de mais vendidos exibido logo ao lado.
@@ -287,19 +304,17 @@ async function BlocoDoRanking({ ranking: consulta }: { ranking: Promise<RankingD
           {maisVendidos.length === 0 ? (
             <EmptyState titulo="Nenhuma venda no período" />
           ) : (
-            <ul className="m-0 flex list-none flex-col gap-2 p-0">
-              {maisVendidos.map((p) => (
-                <li key={p.chave} className="flex items-center justify-between gap-3">
-                  <span className="flex flex-col">
-                    <span className="text-[13.5px] font-semibold text-ink">{p.nome}</span>
-                    <span className="text-[12px] text-muted">{p.categoria}</span>
-                  </span>
-                  <span className="text-right text-[13px] text-muted">
-                    {p.quantidade} un · {formatBRL(p.valor)}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <GraficoDeBarras
+              descricao="Mais vendidos no período, por valor"
+              itens={maisVendidos.map((p) => ({
+                chave: p.chave,
+                rotulo: p.nome,
+                subtitulo: p.categoria,
+                valor: p.valor,
+                valorTexto: formatBRL(p.valor),
+                detalhe: `${p.quantidade} un`,
+              }))}
+            />
           )}
         </Cartao>
 
@@ -339,37 +354,131 @@ async function BlocoDoRanking({ ranking: consulta }: { ranking: Promise<RankingD
     ) : null;
 }
 
+/**
+ * Horas na ordem do expediente, e não do relógio: a pizzaria vende à noite e
+ * passa da meia-noite. Começa às 6h (fora de qualquer turno) e corta as horas
+ * vazias das pontas, para o gráfico mostrar o turno e não 24 colunas.
+ */
+function horasDoTurno(faixas: { hora: number; pedidos: number; valor: number }[]) {
+  const porHora = new Map(faixas.map((f) => [f.hora, f]));
+  const ordem = Array.from({ length: 24 }, (_, i) => (i + 6) % 24);
+  const comMovimento = ordem.filter((h) => (porHora.get(h)?.pedidos ?? 0) > 0);
+  if (comMovimento.length === 0) return [];
+  const de = ordem.indexOf(comMovimento[0] as number);
+  const ate = ordem.indexOf(comMovimento[comMovimento.length - 1] as number);
+  return ordem.slice(de, ate + 1).map((hora) => ({
+    hora,
+    pedidos: porHora.get(hora)?.pedidos ?? 0,
+    valor: porHora.get(hora)?.valor ?? 0,
+  }));
+}
+
+/**
+ * As três quebras do período que já vinham do servidor e não apareciam:
+ * como pagaram, de onde veio o pedido e entrega × retirada.
+ */
+function QuebrasDoPeriodo({ medidas }: { medidas: ResumoAnalitico["atual"] }) {
+  const formas = [...medidas.por_forma].sort((a, b) => b.valor - a.valor);
+  const origens = [...medidas.por_origem].sort((a, b) => b.pedidos - a.pedidos);
+  const modalidades = [...medidas.por_modalidade].sort((a, b) => b.pedidos - a.pedidos);
+  const totalDePedidos = origens.reduce((t, o) => t + o.pedidos, 0);
+  const totalPorModalidade = modalidades.reduce((t, m) => t + m.pedidos, 0);
+
+  return (
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+      <Cartao titulo="Como o cliente pagou" descricao="Pagamentos confirmados no período." largura="cheio">
+        {formas.length === 0 ? (
+          <EmptyState titulo="Nenhum pagamento no período" />
+        ) : (
+          <GraficoDeBarras
+            descricao="Valor recebido por forma de pagamento"
+            itens={formas.map((f) => ({
+              chave: `${f.forma}-${f.familia}`,
+              rotulo: f.forma,
+              valor: f.valor,
+              valorTexto: formatBRL(f.valor),
+              detalhe: `${f.pagamentos}×`,
+            }))}
+          />
+        )}
+      </Cartao>
+
+      <Cartao titulo="De onde vieram os pedidos" descricao="Pedidos concluídos, por canal." largura="cheio">
+        {origens.length === 0 ? (
+          <EmptyState titulo="Nenhum pedido no período" />
+        ) : (
+          <GraficoDeBarras
+            descricao="Pedidos concluídos por canal"
+            itens={origens.map((o) => ({
+              chave: o.origem,
+              rotulo: rotuloDeOrigem(o.origem),
+              subtitulo: formatBRL(o.valor),
+              valor: o.pedidos,
+              valorTexto: pedidos(o.pedidos),
+              detalhe: parte(o.pedidos, totalDePedidos),
+            }))}
+          />
+        )}
+      </Cartao>
+
+      <Cartao titulo="Entrega ou retirada" descricao="Pedidos concluídos, por modalidade." largura="cheio">
+        {modalidades.length === 0 ? (
+          <EmptyState titulo="Nenhum pedido no período" />
+        ) : (
+          <GraficoDeBarras
+            descricao="Pedidos concluídos por modalidade"
+            itens={modalidades.map((m) => ({
+              chave: m.modalidade,
+              rotulo: rotuloDeModalidade(m.modalidade),
+              subtitulo: formatBRL(m.valor),
+              valor: m.pedidos,
+              valorTexto: pedidos(m.pedidos),
+              detalhe: parte(m.pedidos, totalPorModalidade),
+            }))}
+          />
+        )}
+      </Cartao>
+    </div>
+  );
+}
+
 async function BlocoDoMovimento({
   movimento: consulta,
 }: {
   movimento: Promise<MovimentoDoPeriodo | null>;
 }) {
   const movimento = await consulta;
-  const semanaOrdenada = [...(movimento?.por_dia_da_semana ?? [])].sort(
-    (a, b) => b.valor - a.valor,
-  );
+  const porDia = new Map((movimento?.por_dia_da_semana ?? []).map((d) => [d.dia_semana, d]));
+  // O servidor manda os 7 dias mesmo sem venda: gráfico só com algum pedido.
+  const temDia = [...porDia.values()].some((d) => d.pedidos > 0);
+  const horas = horasDoTurno(movimento?.por_faixa_de_horario ?? []);
     return movimento ? (
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <Cartao titulo="Dias de maior movimento" largura="cheio">
-          {semanaOrdenada.length === 0 ? (
+        <Cartao
+          titulo="Venda por dia da semana"
+          descricao="Soma do período. Toque ou passe o mouse numa coluna para ver os pedidos."
+          largura="cheio"
+        >
+          {!temDia ? (
             <EmptyState titulo="Sem movimento no período" />
           ) : (
-            <ul className="m-0 flex list-none flex-col gap-2 p-0">
-              {semanaOrdenada.map((d) => (
-                <li key={d.dia_semana} className="flex items-center justify-between gap-3">
-                  <span className="text-[13.5px] text-ink">{DIAS[d.dia_semana]}</span>
-                  <span className="text-right text-[12.5px] text-muted">
-                    {d.pedidos} {d.pedidos === 1 ? "pedido" : "pedidos"} ·{" "}
-                    {formatBRL(d.valor)}
-                    {/* Amostra pequena não vira veredicto. */}
-                    <span className="block text-[11.5px]">
-                      {d.dias_com_amostra}{" "}
-                      {d.dias_com_amostra === 1 ? "dia no período" : "dias no período"}
-                    </span>
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <GraficoDeColunas
+              descricao="Venda registrada por dia da semana"
+              itens={DIAS.map((nome, dia) => {
+                const d = porDia.get(dia);
+                return {
+                  chave: String(dia),
+                  rotulo: DIAS_CURTOS[dia] as string,
+                  rotuloCompleto: nome,
+                  valor: d?.valor ?? 0,
+                  valorTexto: formatBRL(d?.valor ?? 0),
+                  // Amostra pequena não vira veredicto: quantos dias somaram.
+                  detalhe: d
+                    ? `${pedidos(d.pedidos)} em ${d.dias_com_amostra} ${d.dias_com_amostra === 1 ? "dia" : "dias"}`
+                    : "sem pedidos",
+                };
+              })}
+            />
           )}
         </Cartao>
 
@@ -378,25 +487,21 @@ async function BlocoDoMovimento({
           descricao="Hora em que o pedido foi concluído, no fuso da loja."
           largura="cheio"
         >
-          {movimento.por_faixa_de_horario.length === 0 ? (
+          {horas.length === 0 ? (
             <EmptyState titulo="Sem movimento no período" />
           ) : (
-            <ul className="m-0 flex list-none flex-col gap-2 p-0">
-              {[...movimento.por_faixa_de_horario]
-                .sort((a, b) => b.pedidos - a.pedidos)
-                .slice(0, 6)
-                .map((f) => (
-                  <li key={f.hora} className="flex items-center justify-between gap-3">
-                    <span className="text-[13.5px] text-ink">
-                      {String(f.hora).padStart(2, "0")}h
-                    </span>
-                    <span className="text-[12.5px] text-muted">
-                      {f.pedidos} {f.pedidos === 1 ? "pedido" : "pedidos"} ·{" "}
-                      {formatBRL(f.valor)}
-                    </span>
-                  </li>
-                ))}
-            </ul>
+            <GraficoDeColunas
+              descricao="Pedidos concluídos por hora do dia"
+              rotulosACada={horas.length > 12 ? 3 : horas.length > 8 ? 2 : 1}
+              itens={horas.map((h) => ({
+                chave: String(h.hora),
+                rotulo: `${String(h.hora).padStart(2, "0")}h`,
+                rotuloCompleto: `${String(h.hora).padStart(2, "0")}h às ${String((h.hora + 1) % 24).padStart(2, "0")}h`,
+                valor: h.pedidos,
+                valorTexto: pedidos(h.pedidos),
+                detalhe: formatBRL(h.valor),
+              }))}
+            />
           )}
         </Cartao>
       </div>

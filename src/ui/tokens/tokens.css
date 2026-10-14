@@ -41,6 +41,13 @@
   --shalon-cta-bg: var(--shalon-brand-yellow);
   --shalon-cta-fg: var(--shalon-ink);
 
+  /* Barras dos gráficos do dashboard (14/10/2026): uma série, uma cor da
+     marca. Contraste medido contra o cartão: vermelho 5,7:1 no claro; no
+     escuro o vermelho cai para 3,0:1 e entra o laranja (6,1:1). A trilha é
+     o fundo onde a barra cresce. */
+  --shalon-grafico: var(--shalon-brand-red);
+  --shalon-grafico-trilha: #f3ebe0;
+
   /* --- Tonais (usados sobretudo no administrativo) ----------------------
    * Cada família tem fundo / borda / texto:
    *   tw = warning · tg = success · td = danger · ti = info · tn = neutro
@@ -159,6 +166,8 @@
  * ========================================================================= */
 
 [data-tema="escuro"] {
+  --shalon-grafico: var(--shalon-brand-orange);
+  --shalon-grafico-trilha: #2e241d;
   --shalon-bg: #16110e;
   --shalon-surface: #201a15;
   --shalon-elev: #291f19;
