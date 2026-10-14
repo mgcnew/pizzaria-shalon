@@ -70,6 +70,13 @@ insert into public.products (id, category_id, product_type, name, slug, base_pri
   ('e9797979-0000-0000-0000-000000000002','c7979797-0000-0000-0000-000000000001','pizza','Mussarela F97','mussarela-f97', null, 2, true),
   ('e9797979-0000-0000-0000-000000000009','c7979797-0000-0000-0000-000000000002','fogazza','Fogazza salgada F97','fogazza-salgada-f97', null, 1, true);
 
+-- O card já nasce apontando para a categoria e o tamanho do teste: sem isso,
+-- `montar_fogazza` pegaria o primeiro tamanho de fogazza do banco.
+update public.products
+   set flavor_category_id = 'c7979797-0000-0000-0000-000000000001',
+       flavor_size_id = 'd9797979-0000-0000-0000-000000000002'
+ where id = 'e9797979-0000-0000-0000-000000000009';
+
 insert into public.product_variants (id, product_id, size_id, price, weekend_price) values
   -- pizza: sem preço de fim de semana
   ('f9797979-0000-0000-0000-000000000011','e9797979-0000-0000-0000-000000000001','d9797979-0000-0000-0000-000000000001', 50.00, null),
@@ -199,6 +206,17 @@ select pg_temp.checar('anon le se e fim de semana', 'true',
   has_function_privilege('anon', 'public.e_fim_de_semana(timestamptz)', 'execute')::text);
 select pg_temp.checar('anon le o preco de tabela', 'true',
   has_function_privilege('anon', 'public.preco_regular_variante(uuid, timestamptz)', 'execute')::text);
+
+-- O que a migration alterou "no lugar" continua inteiro (ver o cabeçalho dela).
+select pg_temp.checar('vitrine continua respondendo', 'true',
+  ((select count(*) from public.vitrine_do_catalogo()) > 0)::text);
+select pg_temp.checar('montar_item, busca do PDV e codigo de barras foram alterados', '3',
+  (select count(*)::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname in ('montar_item','buscar_catalogo_pdv','resolver_codigo_de_barras')
+      and p.prosrc like '%preco_regular_variante%'));
+select pg_temp.checar('busca do PDV manteve o exige_producao', 'true',
+  (select (p.prosrc like '%requires_production%')::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = 'buscar_catalogo_pdv'));
 
 -- =============================================================================
 select n, cenario, esperado, obtido, case when passou then 'OK' else 'FALHOU' end

@@ -4218,9 +4218,15 @@ fogazza, por gatilho), `e_fim_de_semana()` e `preco_regular_variante()`.
 As funções que mostram "de R$ X" ou marcam promoção (vitrine, sabores da
 fogazza, tamanhos, busca e código de barras do PDV) passam a usar o preço
 de tabela do momento. Assim a vitrine não chama de promoção o preço de
-semana num sábado. Elas foram redefinidas a partir da última versão no
-repositório, com só as linhas de preço trocadas. `montar_fogazza` grava o
-preço de fim de semana.
+semana num sábado. Elas são alteradas **no próprio banco**
+(`pg_get_functiondef` + troca só das linhas de preço, conferindo quantas
+vezes cada trecho aparece), e não recriadas a partir dos arquivos: a
+`20260927200000_exige_producao` alterou `buscar_catalogo_pdv` e
+`resolver_codigo_de_barras` desse jeito, e recriar a partir dos arquivos
+teria apagado o `exige_producao` do PDV. Isso foi achado ao comparar o md5
+das funções do banco com o dos arquivos, antes de aplicar. `montar_fogazza`
+grava o preço de fim de semana. Aplicada no DEV em 14/10/2026 depois de
+ensaio com 28/28 verificações. A produção estava pausada.
 
 **Onde foi formalizada:** `04-REGRAS-NEGOCIO.md` RN-FOG-010,
 `02-MODELO-DADOS-SUPABASE.md` §5.4,
