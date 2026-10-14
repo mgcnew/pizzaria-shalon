@@ -256,13 +256,10 @@ export function PdvComTeclado({
            * ou sem conexão, receber continua possível e continua seguro, porque
            * quem recusa a segunda cobrança é `registrar_pagamento`.
            */
-          <p
-            role="status"
-            className="m-0 rounded-12 border-[1.5px] border-twb bg-tw px-3 py-2 text-[12.5px] font-semibold text-twf"
-          >
+          <p role="status" className="m-0 text-[12.5px] text-muted">
             {realtime.estado === "conectando"
-              ? "Conectando para atualizar em tempo real…"
-              : "Sem atualização automática no momento — a fila e o caixa podem estar alguns segundos atrasados."}
+              ? "Conectando para atualizar sozinho…"
+              : "Sem atualização automática: a fila pode estar alguns segundos atrasada."}
           </p>
         ) : null}
 

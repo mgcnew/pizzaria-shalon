@@ -805,8 +805,8 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
           </button>
 
           <p className="m-0 mt-3 text-[12px] text-muted">
-            Enviar não confirma o pedido: a pizzaria confere e aceita. Todos os valores são
-            recalculados no servidor no momento do envio.
+            Seu pedido vai para a Shalon conferir. Você recebe a confirmação pelo WhatsApp
+            assim que a pizzaria aceitar.
           </p>
         </aside>
       </div>

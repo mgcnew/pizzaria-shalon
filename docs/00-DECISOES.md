@@ -4233,6 +4233,31 @@ ensaio com 28/28 verificações. A produção estava pausada.
 `supabase/migrations/20261014100000_preco_de_fim_de_semana_da_fogazza.sql`,
 `supabase/tests/fogazza_fim_de_semana.sql`.
 
+## D-2026-10-14-120 — Contraste e prioridades da crítica visual
+
+**Contexto.** A crítica visual (Impeccable, 14/10/2026) deu 26/40 e apontou
+três prioridades altas. A dona escolheu começar por contraste e tema escuro,
+e resolver as três altas.
+
+**Decisão.**
+1. Texto secundário no tema claro passa de `#8b8077` (3,85:1 no cartão) para
+   `#71665e` (5,6:1). Um token só, `--shalon-muted`.
+2. Texto sobre o amarelo da marca é fixo (`--shalon-sobre-amarelo`, escuro
+   nos dois temas). Corrige o selo "Destaque" e o favorito no tema escuro
+   (1,5:1).
+3. PDV com caixa fechado: "Abrir caixa" é a ação principal. O aviso de
+   conexão deixa de ser amarelo e fica curto.
+4. Checkout e carrinho: o texto sobre "recalcular no servidor" sai. Nenhuma
+   regra de cálculo muda.
+
+**Fica para a próxima rodada:** barra de total fixa no celular no checkout;
+cardápio no celular em duas colunas; aviso de loja fechada único; e mudanças
+de identidade no painel (aprovadas em princípio, "aos poucos").
+
+**Onde foi formalizada:** `src/ui/tokens/tokens.css`, `Badge.tsx`,
+`BotaoFavorito.tsx`, `PainelDoCaixa.tsx`, `PdvComTeclado.tsx`, `Checkout.tsx`,
+`Carrinho.tsx`. Relatório em `.impeccable/critique/`.
+
 ---
 
 # Como registrar uma nova decisão

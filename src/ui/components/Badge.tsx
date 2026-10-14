@@ -12,7 +12,7 @@ import type { ReactNode } from "react";
 type Tom = "destaque" | "promocao" | "indisponivel" | "atencao";
 
 const TONS: Record<Tom, string> = {
-  destaque: "bg-brand-yellow text-ink rounded-pill",
+  destaque: "bg-brand-yellow text-sobre-amarelo rounded-pill",
   promocao: "bg-td text-tdf rounded-6",
   indisponivel: "bg-tn text-ink-2 rounded-6",
   atencao: "bg-tw text-twf rounded-6",

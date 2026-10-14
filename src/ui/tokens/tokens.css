@@ -28,7 +28,13 @@
   /* --- Texto ------------------------------------------------------------ */
   --shalon-ink: #1e1814;
   --shalon-ink-2: #584e45;
-  --shalon-muted: #8b8077;
+  /* Texto sobre o amarelo da marca. Fixo nos dois temas: o amarelo não muda,
+     então o texto também não pode mudar (no escuro, --shalon-ink vira claro
+     e ficava ilegível sobre o amarelo: 1,5:1). */
+  --shalon-sobre-amarelo: #1e1814;
+  /* Texto secundário no tema claro: 5,6:1 no cartão e 5,0:1 no fundo (WCAG AA).
+     Era #8b8077, com 3,85:1 no cartão. */
+  --shalon-muted: #71665e;
 
   /* --- Semânticas ------------------------------------------------------- */
   --shalon-success: #1b7a4f;

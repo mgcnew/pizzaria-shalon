@@ -52,7 +52,7 @@ export default async function Page() {
           </p>
         ) : (
           <p className="m-0 rounded-12 border-[1.5px] border-twb bg-tw px-3 py-2 text-[13px] font-semibold text-twf">
-            Caixa fechado · abra pela barra de operações abaixo
+            Caixa fechado · abra o caixa para começar a vender
           </p>
         )}
       </header>

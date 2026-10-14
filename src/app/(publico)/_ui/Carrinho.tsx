@@ -346,8 +346,8 @@ export function Carrinho() {
           )}
 
           <p className="m-0 mt-3 text-[12px] text-muted">
-            Os valores são conferidos no servidor a cada abertura do carrinho. Não guardamos
-            preço nem promoção reservada.
+            Os preços são atualizados sempre que você abre o carrinho. Não guardamos preço
+            nem promoção reservada.
           </p>
         </aside>
       </div>

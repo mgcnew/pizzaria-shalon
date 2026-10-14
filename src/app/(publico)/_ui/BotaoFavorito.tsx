@@ -56,7 +56,7 @@ export function BotaoFavorito({
           className={[
             "motion-interactive flex h-[30px] w-[30px] items-center justify-center rounded-pill shadow-[0_1px_4px_rgb(0_0_0/0.18)] transition-colors",
             marcado
-              ? "bg-brand-yellow text-ink"
+              ? "bg-brand-yellow text-sobre-amarelo"
               : "bg-surface/85 text-ink-2 backdrop-blur-[6px]",
           ].join(" ")}
         >
@@ -76,7 +76,7 @@ export function BotaoFavorito({
       className={[
         "inline-flex min-h-touch items-center justify-center gap-2 rounded-pill border-[1.5px] px-[14px] text-[13px] font-semibold",
         marcado
-          ? "border-brand-yellow bg-brand-yellow text-ink"
+          ? "border-brand-yellow bg-brand-yellow text-sobre-amarelo"
           : "border-border-shalon bg-surface text-ink-2",
       ].join(" ")}
     >

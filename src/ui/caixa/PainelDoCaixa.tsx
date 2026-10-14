@@ -129,13 +129,15 @@ export function PainelDoCaixa({
             </div>
           ) : (
             <div className="flex flex-1 flex-wrap justify-end gap-2 sm:flex-none">
+              {/* Com o caixa fechado, abrir é o primeiro gesto do turno: vira a
+                  ação principal, e Concluir venda fica como está (sem venda). */}
+              <Button tamanho="sm" onClick={() => abrir("abrir")}>
+                Abrir caixa
+              </Button>
               <HistoricoDeVendas podeEstornar={podeEstornar} />
-              <Button tamanho="sm" disabled={venda.quantidade === 0} onClick={aoConcluirVenda}>
+              <Button tamanho="sm" variante="secundario" disabled={venda.quantidade === 0} onClick={aoConcluirVenda}>
                 Concluir venda
                 {venda.quantidade > 0 ? ` · ${venda.quantidade} · ${formatBRL(venda.total)}` : ""}
-              </Button>
-              <Button tamanho="sm" variante="secundario" onClick={() => abrir("abrir")}>
-                Abrir caixa
               </Button>
             </div>
           )}
