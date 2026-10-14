@@ -4147,8 +4147,18 @@ a comanda, os cupons, o fechamento e o teste de impressão. No Bluetooth
 direto vira avanço de linhas (`ESC d`), nunca menos que as 4 de antes.
 Configuração antiga, sem o campo, continua valendo como Normal.
 
+**Complementos do mesmo dia, ainda na Diebold:**
+- o espaço em branco sumia porque o driver descarta papel branco no fim.
+  Agora o espaço termina num ponto discreto, e o corte passa depois dele;
+- a área que a cabeça alcança começa uns 2 mm para dentro, e o documento
+  encostado à esquerda perdia a primeira letra. Nova opção por aparelho,
+  "Margem à esquerda": Nenhuma (0 mm, padrão), Pequena (2 mm) ou Média
+  (4 mm). O documento desloca e encolhe na mesma medida. Vale para a
+  impressão pelo sistema; o Bluetooth direto não precisa.
+
 **Onde foi formalizada:** `src/ui/impressao/impressoraDoAparelho.ts`
-(`ESPACO_FINAL_MM`), `imprimir.ts`, `escpos.ts`, `SecaoImpressora.tsx`.
+(`ESPACO_FINAL_MM`, `MARGEM_ESQUERDA_MM`), `imprimir.ts`, `escpos.ts`,
+`SecaoImpressora.tsx`.
 
 ---
 

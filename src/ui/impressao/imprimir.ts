@@ -43,12 +43,19 @@ function escapar(texto: string): string {
   return texto.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function montarHtml(linhas: LinhaComanda[], papel: Papel, espacoFinalMm: number): string {
+function montarHtml(
+  linhas: LinhaComanda[],
+  papel: Papel,
+  espacoFinalMm: number,
+  margemEsquerdaMm: number,
+): string {
   const util = AREA_UTIL_MM[papel];
+  // A margem à esquerda desloca o documento e tira a mesma medida da largura.
+  const largura = util - margemEsquerdaMm;
   // Courier New avança 0,6 em por caractere. O divisor um pouco maior deixa
   // ~3% de folga: uma fonte substituta levemente mais larga não corta a
   // última coluna.
-  const fonte = (util / COLUNAS[papel] / 0.62).toFixed(3);
+  const fonte = (largura / COLUNAS[papel] / 0.62).toFixed(3);
 
   const corpo = linhas
     .map((l) => {
@@ -62,12 +69,12 @@ function montarHtml(linhas: LinhaComanda[], papel: Papel, espacoFinalMm: number)
 @page { size: ${papel}mm auto; margin: 0; }
 html, body { margin: 0; padding: 0; background: #fff; color: #000;
   -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-body { width: ${util}mm; padding: 2mm 0 1mm; box-sizing: border-box;
+body { width: ${util}mm; padding: 2mm 0 1mm ${margemEsquerdaMm}mm; box-sizing: border-box;
   font-family: "Courier New", Courier, monospace; font-size: ${fonte}mm; line-height: 1.3;
   font-weight: 700; }
 div { white-space: pre; overflow: hidden; }
 .b { -webkit-text-stroke: 0.35px #000; }
-.qr { margin: 1mm 0; text-align: center; width: ${util}mm; }
+.qr { margin: 1mm 0; text-align: center; width: ${largura}mm; }
 .fim { padding-top: ${espacoFinalMm}mm; text-align: center; font-size: 2mm; line-height: 1; }
 </style></head><body>${corpo}<div class="fim">.</div></body></html>`;
 }
@@ -76,6 +83,7 @@ export function imprimirLinhas(
   linhas: LinhaComanda[],
   papel: Papel,
   espacoFinalMm = 6,
+  margemEsquerdaMm = 0,
 ): Promise<void> {
   return new Promise((resolver, rejeitar) => {
     const quadro = document.createElement("iframe");
@@ -108,7 +116,7 @@ export function imprimirLinhas(
       }
     };
 
-    quadro.srcdoc = montarHtml(linhas, papel, espacoFinalMm);
+    quadro.srcdoc = montarHtml(linhas, papel, espacoFinalMm, margemEsquerdaMm);
     document.body.appendChild(quadro);
   });
 }

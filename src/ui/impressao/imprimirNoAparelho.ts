@@ -2,7 +2,7 @@
 
 import type { LinhaComanda } from "@/domain/pedidos/comanda";
 import { montarEscPos } from "./escpos";
-import { ESPACO_FINAL_MM, type ImpressoraDoAparelho } from "./impressoraDoAparelho";
+import { ESPACO_FINAL_MM, MARGEM_ESQUERDA_MM, type ImpressoraDoAparelho } from "./impressoraDoAparelho";
 import { imprimirLinhas } from "./imprimir";
 import { imprimirSerial } from "./serial";
 
@@ -23,5 +23,5 @@ export async function imprimirNoAparelho(
     await imprimirSerial(montarEscPos(linhas, impressora.tabela, espaco));
     return;
   }
-  await imprimirLinhas(linhas, impressora.papel, espaco);
+  await imprimirLinhas(linhas, impressora.papel, espaco, MARGEM_ESQUERDA_MM[impressora.margemEsquerda]);
 }

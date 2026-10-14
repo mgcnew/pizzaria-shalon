@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { COLUNAS, type LinhaComanda } from "@/domain/pedidos/comanda";
-import { ESPACO_FINAL_MM, useImpressoraDoAparelho } from "./impressoraDoAparelho";
+import { ESPACO_FINAL_MM, MARGEM_ESQUERDA_MM, useImpressoraDoAparelho } from "./impressoraDoAparelho";
 import { imprimirNoAparelho } from "./imprimirNoAparelho";
 import { ErroDaImpressora } from "./serial";
 
@@ -45,5 +45,6 @@ export function useImprimirDocumento() {
     papel: impressora.papel,
     /** Papel em branco no fim, para o CSS de impressão do HTML. */
     espacoFinalMm: ESPACO_FINAL_MM[impressora.espacoFinal],
+    margemEsquerdaMm: MARGEM_ESQUERDA_MM[impressora.margemEsquerda],
   };
 }

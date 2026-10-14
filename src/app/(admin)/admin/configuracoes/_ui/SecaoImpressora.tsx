@@ -6,11 +6,13 @@ import { Aviso, Cartao, ParDeDados } from "@/ui/patterns";
 import { COLUNAS, type Papel } from "@/domain/pedidos/comanda";
 import {
   ESPACO_FINAL_MM,
+  MARGEM_ESQUERDA_MM,
   imprimeDireto,
   podeSerBalcao,
   salvarImpressoraDoAparelho,
   useImpressoraDoAparelho,
   type EspacoFinal,
+  type MargemEsquerda,
   type ImpressoraDoAparelho,
   type ModoDeImpressao,
 } from "@/ui/impressao/impressoraDoAparelho";
@@ -94,6 +96,12 @@ const ESPACOS: { valor: EspacoFinal; titulo: string; detalhe: string }[] = [
   },
 ];
 
+const MARGENS: { valor: MargemEsquerda; titulo: string; detalhe: string }[] = [
+  { valor: "nenhuma", titulo: "Nenhuma", detalhe: "O documento começa na borda do papel." },
+  { valor: "pequena", titulo: "Pequena", detalhe: `${MARGEM_ESQUERDA_MM.pequena} mm. Se a primeira letra sai cortada.` },
+  { valor: "media", titulo: "Média", detalhe: `${MARGEM_ESQUERDA_MM.media} mm. Se com a pequena ainda corta.` },
+];
+
 const ATALHO_CHROME = '"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --kiosk-printing';
 
 function Opcoes<T extends string>({
@@ -167,7 +175,13 @@ export function SecaoImpressora() {
     try {
       const linhas = linhasDeTeste(impressora.papel);
       if (imprimeDireto(impressora.modo)) await imprimirNoAparelho(linhas, impressora);
-      else await imprimirLinhas(linhas, impressora.papel, ESPACO_FINAL_MM[impressora.espacoFinal]);
+      else
+        await imprimirLinhas(
+          linhas,
+          impressora.papel,
+          ESPACO_FINAL_MM[impressora.espacoFinal],
+          MARGEM_ESQUERDA_MM[impressora.margemEsquerda],
+        );
       setAviso({ ok: "Teste enviado. Confira se a régua coube numa linha só e se os acentos saíram certos." });
     } catch (falha) {
       setAviso({
@@ -238,6 +252,14 @@ export function SecaoImpressora() {
               opcoes={ESPACOS}
               atual={impressora.espacoFinal}
               aoEscolher={(espacoFinal) => salvar({ ...impressora, espacoFinal })}
+            />
+          ) : null}
+          {impressora.modo === "sistema" || impressora.modo === "tela" ? (
+            <Opcoes
+              rotulo="Margem à esquerda"
+              opcoes={MARGENS}
+              atual={impressora.margemEsquerda}
+              aoEscolher={(margemEsquerda) => salvar({ ...impressora, margemEsquerda })}
             />
           ) : null}
 

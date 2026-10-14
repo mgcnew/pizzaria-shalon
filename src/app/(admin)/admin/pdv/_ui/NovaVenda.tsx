@@ -1013,7 +1013,8 @@ function CupomDaVenda({
   venda: VendaConcluida;
   aoNovaVenda: () => void;
 }) {
-  const { imprimir, enviando, erro: erroDeImpressao, papel, espacoFinalMm } = useImprimirDocumento();
+  const { imprimir, enviando, erro: erroDeImpressao, papel, espacoFinalMm, margemEsquerdaMm } =
+    useImprimirDocumento();
   const [emitir, setEmitir] = useState<boolean | null>(null);
   const quantidade = venda.itens.reduce((soma, item) => soma + item.quantidade, 0);
 
@@ -1140,7 +1141,8 @@ function CupomDaVenda({
             width: ${AREA_UTIL_MM[papel]}mm !important;
             max-width: ${AREA_UTIL_MM[papel]}mm !important;
             margin: 0 !important;
-            padding: 2mm 0 1mm !important;
+            padding: 2mm 0 1mm ${margemEsquerdaMm}mm !important;
+            box-sizing: border-box !important;
           }
           /* Termina num ponto depois do espaço: o driver da térmica descarta papel
              branco no fim e cortava o QR (ver imprimir.ts). */

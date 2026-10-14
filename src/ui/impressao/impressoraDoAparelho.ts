@@ -45,7 +45,20 @@ export type ImpressoraDoAparelho = {
   tabela: TabelaDeAcentos;
   /** Papel em branco depois do documento, antes do corte. */
   espacoFinal: EspacoFinal;
+  /** Deslocamento do documento para a direita. */
+  margemEsquerda: MargemEsquerda;
 };
+
+/**
+ * Margem à esquerda (13/10/2026). A área que a cabeça alcança nem sempre
+ * começa na borda do papel: na Diebold IM433TP começa uns 2 mm para dentro,
+ * e o documento encostado à esquerda perdia a primeira letra ("enda" em vez
+ * de "VENDA"). O documento desloca e encolhe na mesma medida, para não voltar
+ * a cortar à direita.
+ */
+export type MargemEsquerda = "nenhuma" | "pequena" | "media";
+
+export const MARGEM_ESQUERDA_MM: Record<MargemEsquerda, number> = { nenhuma: 0, pequena: 2, media: 4 };
 
 /**
  * Espaço no fim do papel (13/10/2026). Impressora com guilhotina, como a
@@ -63,6 +76,7 @@ export const PADRAO: ImpressoraDoAparelho = {
   estacao: false,
   tabela: "cp860",
   espacoFinal: "normal",
+  margemEsquerda: "nenhuma",
 };
 
 /** Modos em que este próprio aparelho manda para uma impressora. */
@@ -86,7 +100,7 @@ function interpretar(bruto: string | null): ImpressoraDoAparelho {
   try {
     const valor: unknown = JSON.parse(bruto);
     if (typeof valor !== "object" || valor === null) return PADRAO;
-    const { papel, modo, estacao, tabela, espacoFinal } = valor as Record<string, unknown>;
+    const { papel, modo, estacao, tabela, espacoFinal, margemEsquerda } = valor as Record<string, unknown>;
     const modoLido: ModoDeImpressao =
       modo === "sistema" || modo === "serial" || modo === "balcao" ? modo : "tela";
     const papelLido = papel === "80" ? "80" : "58";
@@ -96,6 +110,7 @@ function interpretar(bruto: string | null): ImpressoraDoAparelho {
       estacao: estacao === true && podeSerBalcao({ modo: modoLido, papel: papelLido }),
       tabela: tabela === "cp850" || tabela === "sem-acento" ? tabela : "cp860",
       espacoFinal: espacoFinal === "medio" || espacoFinal === "grande" ? espacoFinal : "normal",
+      margemEsquerda: margemEsquerda === "pequena" || margemEsquerda === "media" ? margemEsquerda : "nenhuma",
     };
   } catch {
     return PADRAO;
