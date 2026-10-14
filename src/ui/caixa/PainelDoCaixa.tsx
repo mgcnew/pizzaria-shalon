@@ -13,9 +13,7 @@ import {
 } from "@/application/caixa/acoes";
 import type { ResumoDeFechamento } from "@/application/caixa/tipos";
 import { HistoricoDeVendas } from "./HistoricoDeVendas";
-import { ESPACO_FINAL_MM, MARGEM_ESQUERDA_MM, useImpressoraDoAparelho } from "@/ui/impressao/impressoraDoAparelho";
 import { useImprimirDocumento } from "@/ui/impressao/useImprimirDocumento";
-import { AREA_UTIL_MM } from "@/ui/impressao/imprimir";
 import { montarFechamentoDeCaixa } from "@/domain/impressao/cupons";
 
 type Operacao = "abrir" | "reforco" | "sangria" | "fechar" | null;
@@ -426,9 +424,6 @@ function ResumoVisualDoFechamento({
 }: {
   conferencia: ConferenciaDoFechamento;
 }) {
-  const { papel, espacoFinal, margemEsquerda } = useImpressoraDoAparelho();
-  const espacoFinalMm = ESPACO_FINAL_MM[espacoFinal];
-  const margemEsquerdaMm = MARGEM_ESQUERDA_MM[margemEsquerda];
   const resumo = conferencia.resumo;
   return (
     <div id="resumo-impressao-fechamento" className="flex flex-col gap-3 bg-surface">
@@ -501,44 +496,6 @@ function ResumoVisualDoFechamento({
         </>
       ) : null}
 
-      <style>{`
-        @media print {
-          @page { size: ${papel}mm auto; margin: 0; }
-          body * { visibility: hidden !important; }
-          #resumo-impressao-fechamento,
-          #resumo-impressao-fechamento * { visibility: visible !important; }
-          /* A térmica deixa traço fino apagado: tudo em negrito e preto puro. */
-          #resumo-impressao-fechamento, #resumo-impressao-fechamento * {
-            font-weight: 700 !important;
-            color: #000 !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
-          #resumo-impressao-fechamento {
-            position: absolute !important;
-            inset: 0 auto auto 0 !important;
-            /* Área que a impressora alcança (AREA_UTIL_MM): na largura do papel
-               os valores, à direita, eram cortados. */
-            width: ${AREA_UTIL_MM[papel]}mm !important;
-            padding: 2mm ${margemEsquerdaMm}mm 1mm ${margemEsquerdaMm}mm !important;
-            box-sizing: border-box !important;
-            color: #000 !important;
-            font-family: ui-monospace, monospace !important;
-            font-size: 13px !important;
-          }
-          /* Termina num ponto depois do espaço: o driver da térmica descarta papel
-             branco no fim e cortava o QR (ver imprimir.ts). */
-          #resumo-impressao-fechamento::after {
-            content: ".";
-            display: block;
-            padding-top: ${espacoFinalMm}mm;
-            text-align: center;
-            font-size: 8px;
-            line-height: 1;
-            visibility: visible !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }

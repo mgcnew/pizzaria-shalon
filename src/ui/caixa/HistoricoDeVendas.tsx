@@ -13,7 +13,6 @@ import { Button, Input, StatusBadge } from "@/ui/components";
 import { useImprimirDocumento } from "@/ui/impressao/useImprimirDocumento";
 import { ConviteDoApp } from "@/ui/impressao/ConviteDoApp";
 import { CONVITE } from "@/ui/impressao/convite";
-import { AREA_UTIL_MM } from "@/ui/impressao/imprimir";
 import { montarCupomDeVenda } from "@/domain/impressao/cupons";
 
 const ROTULOS_ORIGEM: Record<string, string> = {
@@ -325,8 +324,7 @@ function PreviaSegundaVia({
   itens: ItemDaSegundaVia[];
   aoFechar: () => void;
 }) {
-  const { imprimir, enviando, erro: erroDeImpressao, papel, espacoFinalMm, margemEsquerdaMm } =
-    useImprimirDocumento();
+  const { imprimir, enviando, erro: erroDeImpressao, papel } = useImprimirDocumento();
   const quantidade = itens.reduce((total, item) => total + item.quantidade, 0);
   const estornada = venda.situacao_pagamento === "reversed";
 
@@ -394,77 +392,45 @@ function PreviaSegundaVia({
           <ConviteDoApp />
         </div>
 
-        <div className="mt-4 flex gap-2 print:hidden">
-          <Button
-            disabled={enviando}
-            onClick={() =>
-              void imprimir((largura) =>
-                montarCupomDeVenda(
-                  {
-                    numero: venda.numero,
-                    data: formatarData(venda.pago_em),
-                    cliente: venda.cliente ?? "",
-                    itens,
-                    total: venda.valor_pago,
-                    pagamento: venda.formas || "—",
-                    segundaVia: true,
-                    estornado: estornada,
-                    convite: CONVITE,
-                  },
-                  largura,
-                ),
-              )
-            }
-            tamanho="md"
-            className="flex-1"
-          >
-            {enviando ? "Enviando…" : `Imprimir em ${papel} mm`}
-          </Button>
-          <Button variante="secundario" onClick={aoFechar} tamanho="md">
-            Fechar
-          </Button>
+        {/* Rodapé fixo: com a prévia alta (fonte maior e QR), o botão de
+            imprimir ia para fora da área visível do modal. */}
+        <div className="sticky bottom-0 -mx-4 -mb-4 mt-4 border-t border-border-shalon bg-surface px-4 pb-4 pt-3 sm:-mx-5 sm:-mb-5 sm:px-5 sm:pb-5">
+          <div className="flex gap-2">
+            <Button
+              disabled={enviando}
+              onClick={() =>
+                void imprimir((largura) =>
+                  montarCupomDeVenda(
+                    {
+                      numero: venda.numero,
+                      data: formatarData(venda.pago_em),
+                      cliente: venda.cliente ?? "",
+                      itens,
+                      total: venda.valor_pago,
+                      pagamento: venda.formas || "—",
+                      segundaVia: true,
+                      estornado: estornada,
+                      convite: CONVITE,
+                    },
+                    largura,
+                  ),
+                )
+              }
+              tamanho="md"
+              className="flex-1"
+            >
+              {enviando ? "Enviando…" : `Imprimir em ${papel} mm`}
+            </Button>
+            <Button variante="secundario" onClick={aoFechar} tamanho="md">
+              Fechar
+            </Button>
+          </div>
+          {erroDeImpressao ? (
+            <p role="alert" className="m-0 mt-2 rounded-10 bg-td px-3 py-2 text-[13px] font-semibold text-tdf print:hidden">
+              {erroDeImpressao}
+            </p>
+          ) : null}
         </div>
-        {erroDeImpressao ? (
-          <p role="alert" className="m-0 mt-2 rounded-10 bg-td px-3 py-2 text-[13px] font-semibold text-tdf print:hidden">
-            {erroDeImpressao}
-          </p>
-        ) : null}
-        <style>{`
-          @media print {
-            @page { size: ${papel}mm auto; margin: 0; }
-            body * { visibility: hidden !important; }
-            #cupom-segunda-via, #cupom-segunda-via * { visibility: visible !important; }
-            /* A térmica deixa traço fino apagado: tudo em negrito e preto puro. */
-            #cupom-segunda-via, #cupom-segunda-via * {
-              font-weight: 700 !important;
-              color: #000 !important;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            #cupom-segunda-via {
-              position: absolute !important;
-              inset: 0 auto auto 0 !important;
-              /* Área que a impressora alcança, não a largura do papel: o valor fica à
-                 direita e era cortado (AREA_UTIL_MM). */
-              width: ${AREA_UTIL_MM[papel]}mm !important;
-              max-width: ${AREA_UTIL_MM[papel]}mm !important;
-              margin: 0 !important;
-              padding: 2mm ${margemEsquerdaMm}mm 1mm ${margemEsquerdaMm}mm !important;
-              box-sizing: border-box !important;
-            }
-            /* Termina num ponto depois do espaço: o driver da térmica descarta papel
-               branco no fim e cortava o QR (ver imprimir.ts). */
-            #cupom-segunda-via::after {
-              content: ".";
-              display: block;
-              padding-top: ${espacoFinalMm}mm;
-              text-align: center;
-              font-size: 8px;
-              line-height: 1;
-              visibility: visible !important;
-            }
-          }
-        `}</style>
       </section>
     </div>
   );

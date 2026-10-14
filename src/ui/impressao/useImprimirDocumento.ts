@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { COLUNAS, type LinhaComanda } from "@/domain/pedidos/comanda";
-import { ESPACO_FINAL_MM, MARGEM_ESQUERDA_MM, useImpressoraDoAparelho } from "./impressoraDoAparelho";
+import { useImpressoraDoAparelho } from "./impressoraDoAparelho";
 import { imprimirNoAparelho } from "./imprimirNoAparelho";
 import { ErroDaImpressora } from "./serial";
 
@@ -10,12 +10,15 @@ import { ErroDaImpressora } from "./serial";
  * Botão "Imprimir" dos cupons do PDV, da segunda via e do fechamento de
  * caixa (D-2026-10-08-116).
  *
- * - Bluetooth direto: manda as linhas em ESC/POS, sem janela nenhuma;
- * - qualquer outro modo: `window.print()` do HTML aprovado, como sempre foi
- *   (com o atalho do balcão, também sem janela).
+ * Imprime SEMPRE a versão em linhas do documento, pelo mesmo caminho da
+ * comanda (`imprimirNoAparelho`): ESC/POS no Bluetooth direto, documento
+ * próprio num iframe em qualquer outro modo.
  *
- * As linhas só são montadas quando vão ser usadas, e na largura do papel
- * deste aparelho.
+ * Até 13/10/2026 os cupons eram impressos com `window.print()` da própria
+ * página, escondendo tudo menos o cupom. Mas o cupom vive dentro de um modal
+ * centralizado, e na impressão a posição dele era medida a partir do modal:
+ * saía deslocado para a direita e cortado (Diebold IM433TP), num valor que
+ * mudava com o tamanho da tela. O HTML continua sendo a prévia na tela.
  */
 export function useImprimirDocumento() {
   const impressora = useImpressoraDoAparelho();
@@ -24,10 +27,6 @@ export function useImprimirDocumento() {
 
   async function imprimir(montar: (largura: number) => LinhaComanda[]) {
     setErro(null);
-    if (impressora.modo !== "serial") {
-      window.print();
-      return;
-    }
     setEnviando(true);
     try {
       await imprimirNoAparelho(montar(COLUNAS[impressora.papel]), impressora);
@@ -38,13 +37,5 @@ export function useImprimirDocumento() {
     }
   }
 
-  return {
-    imprimir,
-    enviando,
-    erro,
-    papel: impressora.papel,
-    /** Papel em branco no fim, para o CSS de impressão do HTML. */
-    espacoFinalMm: ESPACO_FINAL_MM[impressora.espacoFinal],
-    margemEsquerdaMm: MARGEM_ESQUERDA_MM[impressora.margemEsquerda],
-  };
+  return { imprimir, enviando, erro, papel: impressora.papel };
 }

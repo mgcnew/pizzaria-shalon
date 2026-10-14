@@ -4163,7 +4163,16 @@ Configuração antiga, sem o campo, continua valendo como Normal.
 - logo depois, também a pedido da dona, **a comanda no papel de 80 mm passou
   de 48 para 42 colunas** (`COLUNAS["80"]`), com letra cerca de 14% maior.
   Isso supera as menções a 48 colunas em D-2026-10-08-116, inclusive a
-  comanda que o celular manda ao balcão, que agora chega em 42.
+  comanda que o celular manda ao balcão, que agora chega em 42;
+- **causa real do corte dos cupons** (foto da dona, 13/10): o cupom do PDV,
+  a segunda via e o fechamento eram impressos com `window.print()` da
+  própria página, e o cupom fica dentro de um modal centralizado. Na
+  impressão, a posição dele era medida a partir do modal, e ele saía
+  deslocado para a direita, num valor que mudava com o tamanho da tela. Por
+  isso cada ajuste de margem dava um resultado diferente. **Agora os três
+  imprimem a versão em linhas** (`src/domain/impressao/cupons.ts`), pelo
+  mesmo documento próprio da comanda. O HTML virou só a prévia na tela, com
+  o QR menor. Os botões dos modais ficaram fixos no rodapé.
 
 **Onde foi formalizada:** `src/ui/impressao/impressoraDoAparelho.ts`
 (`ESPACO_FINAL_MM`, `MARGEM_ESQUERDA_MM`), `imprimir.ts`, `escpos.ts`,

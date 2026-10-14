@@ -4,18 +4,20 @@ import {
   INSTRUCAO_DO_CONVITE,
   URL_DO_CONVITE,
   caminhoDoQr,
-  larguraDoQrMm,
 } from "./convite";
 
 /**
- * Chamada + QR code para o cardápio, no fim do cupom do cliente (PDV e
- * segunda via). Herda a fonte e a cor do cupom. O endereço por extenso
- * fica embaixo para quem não consegue ler o QR.
+ * Chamada + QR code para o cardápio, no fim da PRÉVIA do cupom do cliente
+ * (PDV e segunda via). Herda a fonte e a cor do cupom. O endereço por
+ * extenso fica embaixo para quem não consegue ler o QR.
+ *
+ * Só prévia: o papel sai da versão em linhas (`montarCupomDeVenda`), com o
+ * QR no tamanho certo para a térmica. Aqui ele é menor, para a prévia não
+ * empurrar os botões para fora do modal.
  */
 export function ConviteDoApp() {
   const { tamanho, d } = caminhoDoQr(URL_DO_CONVITE);
-  // Em milímetros exatos: cada módulo cai num número inteiro de pontos.
-  const lado = `${larguraDoQrMm(tamanho)}mm`;
+  const lado = "30mm";
   return (
     <div className="mt-3 flex flex-col items-center border-t border-dashed border-black pt-2 text-center">
       <p className="m-0 text-[14px] font-bold">{CHAMADA_DO_CONVITE}</p>

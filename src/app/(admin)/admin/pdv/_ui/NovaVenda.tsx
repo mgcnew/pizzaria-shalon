@@ -12,7 +12,6 @@ import type { AreaComTeclado } from "./PdvComTeclado";
 import { useImprimirDocumento } from "@/ui/impressao/useImprimirDocumento";
 import { ConviteDoApp } from "@/ui/impressao/ConviteDoApp";
 import { CONVITE } from "@/ui/impressao/convite";
-import { AREA_UTIL_MM } from "@/ui/impressao/imprimir";
 import { montarCupomDeVenda } from "@/domain/impressao/cupons";
 
 /**
@@ -1013,8 +1012,7 @@ function CupomDaVenda({
   venda: VendaConcluida;
   aoNovaVenda: () => void;
 }) {
-  const { imprimir, enviando, erro: erroDeImpressao, papel, espacoFinalMm, margemEsquerdaMm } =
-    useImprimirDocumento();
+  const { imprimir, enviando, erro: erroDeImpressao, papel } = useImprimirDocumento();
   const [emitir, setEmitir] = useState<boolean | null>(null);
   const quantidade = venda.itens.reduce((soma, item) => soma + item.quantidade, 0);
 
@@ -1084,7 +1082,9 @@ function CupomDaVenda({
         <p className="mb-0 mt-3 text-center">Obrigado pela preferencia!</p>
         <ConviteDoApp />
       </div>
-      <div className="mt-3 flex flex-wrap gap-2 print:hidden">
+      {/* Fixo no rodapé do modal: a prévia ficou alta (fonte maior e QR) e o
+          botão de imprimir ia para fora da área visível. */}
+      <div className="sticky bottom-0 -mx-3 mt-3 flex flex-wrap gap-2 bg-tg px-3 py-2">
         <button
           type="button"
           disabled={enviando}
@@ -1121,42 +1121,6 @@ function CupomDaVenda({
           {erroDeImpressao}
         </p>
       ) : null}
-      <style>{`
-        @media print {
-          @page { size: ${papel}mm auto; margin: 0; }
-          body * { visibility: hidden !important; }
-          #cupom-venda-pdv, #cupom-venda-pdv * { visibility: visible !important; }
-          /* A térmica deixa traço fino apagado: tudo em negrito e preto puro. */
-          #cupom-venda-pdv, #cupom-venda-pdv * {
-            font-weight: 700 !important;
-            color: #000 !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
-          #cupom-venda-pdv {
-            position: absolute !important;
-            inset: 0 auto auto 0 !important;
-            /* Área que a impressora alcança, não a largura do papel: o valor fica à
-               direita e era cortado (AREA_UTIL_MM). */
-            width: ${AREA_UTIL_MM[papel]}mm !important;
-            max-width: ${AREA_UTIL_MM[papel]}mm !important;
-            margin: 0 !important;
-            padding: 2mm ${margemEsquerdaMm}mm 1mm ${margemEsquerdaMm}mm !important;
-            box-sizing: border-box !important;
-          }
-          /* Termina num ponto depois do espaço: o driver da térmica descarta papel
-             branco no fim e cortava o QR (ver imprimir.ts). */
-          #cupom-venda-pdv::after {
-            content: ".";
-            display: block;
-            padding-top: ${espacoFinalMm}mm;
-            text-align: center;
-            font-size: 8px;
-            line-height: 1;
-            visibility: visible !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }
