@@ -47,6 +47,18 @@
      o fundo onde a barra cresce. */
   --shalon-grafico: var(--shalon-brand-red);
   --shalon-grafico-trilha: #f3ebe0;
+  /* O que não é o destaque: tom neutro quente, 3,3:1 contra o cartão. */
+  --shalon-grafico-neutro: #9a8b7c;
+  /* Categorias (forma de pagamento, canal, modalidade): seis cores, a
+     primeira é o vermelho da marca. Ordem e tons passaram no validador de
+     paleta (faixa de luminosidade, saturação, separação para daltonismo,
+     visão normal e contraste >= 3:1) contra o cartão branco. */
+  --shalon-serie-1: #c4291c;
+  --shalon-serie-2: #2a78d6;
+  --shalon-serie-3: #0d9a72;
+  --shalon-serie-4: #c98500;
+  --shalon-serie-5: #b5457f;
+  --shalon-serie-6: #5b4bb0;
 
   /* --- Tonais (usados sobretudo no administrativo) ----------------------
    * Cada família tem fundo / borda / texto:
@@ -168,6 +180,15 @@
 [data-tema="escuro"] {
   --shalon-grafico: var(--shalon-brand-orange);
   --shalon-grafico-trilha: #2e241d;
+  --shalon-grafico-neutro: #7a6c5f;
+  /* As mesmas seis, com tons próprios para o fundo escuro (#201a15),
+     validadas de novo contra ele — não é uma inversão automática. */
+  --shalon-serie-1: #e2584a;
+  --shalon-serie-2: #3987e5;
+  --shalon-serie-3: #1fae7c;
+  --shalon-serie-4: #c98500;
+  --shalon-serie-5: #d55181;
+  --shalon-serie-6: #9085e9;
   --shalon-bg: #16110e;
   --shalon-surface: #201a15;
   --shalon-elev: #291f19;

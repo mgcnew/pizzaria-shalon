@@ -18,7 +18,7 @@ import { Cartao, EmptyState, Skeleton } from "@/ui/patterns";
 import { formatBRL } from "@/lib/format";
 import { recorteDeMenorMovimentacao } from "@/domain/analitico/ranking";
 import { rotuloDeModalidade, rotuloDeOrigem } from "@/domain/pedidos/estados";
-import { GraficoDeBarras, GraficoDeColunas } from "./_ui/Graficos";
+import { GraficoDeBarras, GraficoDeColunas, type CorDoGrafico } from "./_ui/Graficos";
 import { CentralDeAtencao } from "./_ui/CentralDeAtencao";
 import { Indicador } from "./_ui/Indicador";
 import { SeletorDePeriodo } from "./_ui/SeletorDePeriodo";
@@ -33,6 +33,31 @@ export const metadata: Metadata = { title: "Dashboard" };
 const CHAVES: ChaveDePeriodo[] = ["hoje", "ontem", "7d", "30d", "mes_atual"];
 const DIAS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 const DIAS_CURTOS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+/**
+ * A cor segue a categoria, não a posição: "Pix na maquininha" é sempre a
+ * mesma cor, esteja em primeiro ou em último. O que não está no mapa (forma
+ * ou canal novo) fica no neutro — nunca uma cor inventada.
+ */
+const COR_DA_FORMA: Record<string, CorDoGrafico> = {
+  pix_machine: "serie-3",
+  cash: "serie-4",
+  credit: "serie-2",
+  debit: "serie-5",
+  pix_key: "serie-6",
+  voucher: "serie-1",
+};
+const COR_DO_CANAL: Record<string, CorDoGrafico> = {
+  shalon_link: "serie-1",
+  counter: "serie-2",
+  whatsapp: "serie-3",
+  phone: "serie-4",
+  ifood: "serie-5",
+};
+const COR_DA_MODALIDADE: Record<string, CorDoGrafico> = {
+  delivery: "serie-2",
+  pickup: "serie-4",
+};
 
 /** "12 pedidos" / "1 pedido". */
 function pedidos(n: number): string {
@@ -395,6 +420,7 @@ function QuebrasDoPeriodo({ medidas }: { medidas: ResumoAnalitico["atual"] }) {
             itens={formas.map((f) => ({
               chave: `${f.forma}-${f.familia}`,
               rotulo: f.forma,
+              cor: COR_DA_FORMA[f.familia] ?? "neutro",
               valor: f.valor,
               valorTexto: formatBRL(f.valor),
               detalhe: `${f.pagamentos}×`,
@@ -412,6 +438,7 @@ function QuebrasDoPeriodo({ medidas }: { medidas: ResumoAnalitico["atual"] }) {
             itens={origens.map((o) => ({
               chave: o.origem,
               rotulo: rotuloDeOrigem(o.origem),
+              cor: COR_DO_CANAL[o.origem] ?? "neutro",
               subtitulo: formatBRL(o.valor),
               valor: o.pedidos,
               valorTexto: pedidos(o.pedidos),
@@ -430,6 +457,7 @@ function QuebrasDoPeriodo({ medidas }: { medidas: ResumoAnalitico["atual"] }) {
             itens={modalidades.map((m) => ({
               chave: m.modalidade,
               rotulo: rotuloDeModalidade(m.modalidade),
+              cor: COR_DA_MODALIDADE[m.modalidade] ?? "neutro",
               subtitulo: formatBRL(m.valor),
               valor: m.pedidos,
               valorTexto: pedidos(m.pedidos),

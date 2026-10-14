@@ -5,10 +5,15 @@
  * feitos de HTML e CSS. A interação (destacar a barra e mostrar a dica) é
  * `:hover`/`:focus` puro. Nada a baixar, nada a hidratar.
  *
- * UMA SÉRIE POR GRÁFICO, UMA COR (`--shalon-grafico`): vermelho da marca no
- * tema claro, laranja no escuro — contraste medido contra o cartão. Sem
- * legenda, porque o título do cartão já diz o que é; sem paleta de categorias
- * para confundir.
+ * COR COM FUNÇÃO, NÃO DECORAÇÃO (14/10/2026: "tudo vermelho disputa
+ * atenção"):
+ *   - ranking e tempo (mais vendidos, dias, horas): SÓ O MAIOR leva a cor da
+ *     marca (`destaque`); o resto fica no neutro. O olho vai direto ao pico;
+ *   - categorias (forma de pagamento, canal, modalidade): cada categoria tem
+ *     a SUA cor (`serie-1`…`serie-6`), sempre a mesma — a cor segue a coisa,
+ *     não a posição no ranking. Paleta validada para daltonismo nos dois
+ *     temas. O nome fica escrito ao lado de cada barra: a cor nunca é o único
+ *     jeito de saber o que é.
  *
  * O NÚMERO NUNCA DEPENDE DO MOUSE. Na barra horizontal o valor fica escrito na
  * ponta. Na coluna, o maior valor fica escrito e os outros aparecem na dica —
@@ -18,6 +23,28 @@
  * Os textos chegam já formatados do servidor: valor monetário é formatado por
  * `formatBRL`, e este arquivo não decide nada de dinheiro.
  */
+
+export type CorDoGrafico =
+  | "destaque"
+  | "neutro"
+  | "serie-1"
+  | "serie-2"
+  | "serie-3"
+  | "serie-4"
+  | "serie-5"
+  | "serie-6";
+
+// Classes escritas por extenso: o Tailwind só gera o que encontra no código.
+const FUNDO: Record<CorDoGrafico, string> = {
+  destaque: "bg-grafico",
+  neutro: "bg-grafico-neutro",
+  "serie-1": "bg-serie-1",
+  "serie-2": "bg-serie-2",
+  "serie-3": "bg-serie-3",
+  "serie-4": "bg-serie-4",
+  "serie-5": "bg-serie-5",
+  "serie-6": "bg-serie-6",
+};
 
 export type ItemDeColuna = {
   chave: string;
@@ -34,8 +61,9 @@ export type ItemDeColuna = {
 };
 
 /**
- * Colunas verticais (horário, dia da semana). Dica acima da coluna sob o
- * ponteiro ou o foco; o maior valor fica escrito sobre a coluna.
+ * Colunas verticais (horário, dia da semana). A maior leva o destaque e o
+ * valor escrito; as outras ficam no neutro, com o valor na dica (ponteiro,
+ * toque ou foco).
  */
 export function GraficoDeColunas({
   itens,
@@ -78,7 +106,10 @@ export function GraficoDeColunas({
               ) : null}
               <span
                 aria-hidden="true"
-                className="block w-full max-w-[24px] rounded-t-[4px] bg-grafico transition-opacity duration-150 group-hover:opacity-80 group-focus:opacity-80"
+                className={[
+                  "block w-full max-w-[24px] rounded-t-[4px] transition-opacity duration-150 group-hover:opacity-80 group-focus:opacity-80",
+                  indice === indiceDoMaior ? FUNDO.destaque : FUNDO.neutro,
+                ].join(" ")}
                 style={{ height: `${altura}%` }}
               />
               <span
@@ -118,18 +149,24 @@ export type ItemDeBarra = {
   valorTexto: string;
   /** Texto pequeno ao lado do valor (ex.: "12 un", "48%"). */
   detalhe?: string;
+  /**
+   * Cor da categoria (`serie-*`). Sem ela, o gráfico é de ranking: o maior
+   * leva o destaque e o resto, o neutro.
+   */
+  cor?: CorDoGrafico;
 };
 
 /**
- * Barras horizontais, ordenadas por quem chama (ranking, formas de
- * pagamento, origem). O valor fica escrito na ponta de cada linha — são
+ * Barras horizontais. Ranking: ordenado por quem chama, o primeiro é o
+ * destaque. Categorias: cada item traz a própria `cor`. O valor fica escrito na ponta de cada linha — são
  * poucas linhas, e o número é o que se procura.
  */
 export function GraficoDeBarras({ itens, descricao }: { itens: ItemDeBarra[]; descricao: string }) {
   const maximo = Math.max(0, ...itens.map((i) => i.valor));
   return (
     <ul aria-label={descricao} className="m-0 flex list-none flex-col gap-3 p-0">
-      {itens.map((item) => {
+      {itens.map((item, indice) => {
+        const cor = item.cor ?? (indice === 0 && item.valor > 0 ? "destaque" : "neutro");
         const largura = maximo > 0 ? Math.max(item.valor > 0 ? 1.5 : 0, (item.valor / maximo) * 100) : 0;
         return (
           <li key={item.chave} className="group">
@@ -147,7 +184,10 @@ export function GraficoDeBarras({ itens, descricao }: { itens: ItemDeBarra[]; de
             </div>
             <div aria-hidden="true" className="h-2.5 w-full overflow-hidden rounded-[4px] bg-grafico-trilha">
               <div
-                className="h-full rounded-[4px] bg-grafico transition-opacity duration-150 group-hover:opacity-80"
+                className={[
+                  "h-full rounded-[4px] transition-opacity duration-150 group-hover:opacity-80",
+                  FUNDO[cor],
+                ].join(" ")}
                 style={{ width: `${largura}%` }}
               />
             </div>
