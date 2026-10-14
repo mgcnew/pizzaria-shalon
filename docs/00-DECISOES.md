@@ -4183,7 +4183,14 @@ Configuração antiga, sem o campo, continua valendo como Normal.
   do que cabe (comanda do celular para o balcão), a letra encolhe só nela.
   Isso substitui as 42 colunas fixas do item anterior na impressão pelo
   sistema. O Bluetooth direto continua com as colunas da fonte da
-  impressora.
+  impressora;
+- **régua de alinhamento e área medida** (13/10): em vez de adivinhar
+  margens, Configurações → Impressora imprime uma régua de 0 a 80 mm, de
+  borda a borda, com uma faixa preta contínua. A faixa falhada indica
+  cabeçote sujo ou com defeito. Digita-se onde a impressão começa e
+  termina, e a área fica guardada no aparelho (`areaMedida`, validada:
+  dentro do papel e com pelo menos 30 mm). Todo documento impresso pelo
+  sistema passa a ser desenhado nessa faixa, no lugar da margem.
 
 **Onde foi formalizada:** `src/ui/impressao/impressoraDoAparelho.ts`
 (`ESPACO_FINAL_MM`, `MARGEM_ESQUERDA_MM`), `imprimir.ts`, `escpos.ts`,

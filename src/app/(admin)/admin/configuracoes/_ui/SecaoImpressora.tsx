@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Button } from "@/ui/components";
+import { Button, Input } from "@/ui/components";
 import { Aviso, Cartao, ParDeDados } from "@/ui/patterns";
 import { COLUNAS, type Papel } from "@/domain/pedidos/comanda";
 import {
@@ -12,10 +12,11 @@ import {
   useImpressoraDoAparelho,
   type EspacoFinal,
   type MargemEsquerda,
+  areaValida,
   type ImpressoraDoAparelho,
   type ModoDeImpressao,
 } from "@/ui/impressao/impressoraDoAparelho";
-import { linhasDeTeste } from "@/ui/impressao/imprimir";
+import { imprimirReguaDeAlinhamento, linhasDeTeste } from "@/ui/impressao/imprimir";
 import { colunasDoAparelho, imprimirNoAparelho } from "@/ui/impressao/imprimirNoAparelho";
 import type { TabelaDeAcentos } from "@/ui/impressao/escpos";
 import {
@@ -251,13 +252,16 @@ export function SecaoImpressora() {
               aoEscolher={(espacoFinal) => salvar({ ...impressora, espacoFinal })}
             />
           ) : null}
-          {impressora.modo === "sistema" || impressora.modo === "tela" ? (
+          {(impressora.modo === "sistema" || impressora.modo === "tela") && impressora.areaMedida === null ? (
             <Opcoes
               rotulo="Margem nas laterais"
               opcoes={MARGENS}
               atual={impressora.margemEsquerda}
               aoEscolher={(margemEsquerda) => salvar({ ...impressora, margemEsquerda })}
             />
+          ) : null}
+          {impressora.modo === "sistema" || impressora.modo === "tela" ? (
+            <CalibrarComRegua impressora={impressora} aoSalvar={salvar} aoAvisar={setAviso} />
           ) : null}
 
           <div>
@@ -431,6 +435,109 @@ function BluetoothDireto({
         atual={impressora.tabela}
         aoEscolher={(tabela) => aoSalvar({ ...impressora, tabela })}
       />
+    </div>
+  );
+}
+
+/**
+ * Calibração pela régua de alinhamento (13/10/2026): em vez de adivinhar a
+ * margem, imprime-se uma régua de borda a borda e digita-se onde a
+ * impressora começa e termina. Todo documento passa a ser desenhado
+ * exatamente nessa faixa.
+ */
+function CalibrarComRegua({
+  impressora,
+  aoSalvar,
+  aoAvisar,
+}: {
+  impressora: ImpressoraDoAparelho;
+  aoSalvar: (nova: ImpressoraDoAparelho) => void;
+  aoAvisar: (aviso: { erro?: string; ok?: string }) => void;
+}) {
+  const atual = impressora.areaMedida;
+  const [inicio, setInicio] = useState(atual ? String(atual.inicioMm) : "");
+  const [fim, setFim] = useState(atual ? String(atual.fimMm) : "");
+  const [imprimindo, setImprimindo] = useState(false);
+
+  async function imprimirRegua() {
+    aoAvisar({});
+    setImprimindo(true);
+    try {
+      await imprimirReguaDeAlinhamento(impressora.papel);
+      aoAvisar({ ok: "Régua enviada. Anote o primeiro e o último número que saíram no papel." });
+    } catch {
+      aoAvisar({ erro: "O navegador não conseguiu enviar a régua para a impressora." });
+    } finally {
+      setImprimindo(false);
+    }
+  }
+
+  function salvarArea() {
+    const area = {
+      inicioMm: Number(inicio.replace(",", ".")),
+      fimMm: Number(fim.replace(",", ".")),
+    };
+    if (!areaValida(area, impressora.papel)) {
+      aoAvisar({
+        erro: `Confira os números: o início vem antes do fim, os dois ficam entre 0 e ${impressora.papel} mm, e a área tem pelo menos 30 mm.`,
+      });
+      return;
+    }
+    aoSalvar({ ...impressora, areaMedida: area });
+  }
+
+  function voltarAoAutomatico() {
+    setInicio("");
+    setFim("");
+    aoSalvar({ ...impressora, areaMedida: null });
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-12 border border-border-shalon bg-elev p-3">
+      <div>
+        <p className="m-0 text-[12px] font-bold uppercase tracking-[0.06em] text-muted">Calibrar com a régua</p>
+        <p className="m-0 mt-1 text-[13px] text-ink-2">
+          {atual
+            ? `Usando a área medida: de ${atual.inicioMm} a ${atual.fimMm} mm. A margem nas laterais fica desligada.`
+            : "Se o começo ou o fim das linhas sai cortado mesmo com margem, imprima a régua e digite onde a impressão começa e termina."}
+        </p>
+      </div>
+      <div>
+        <Button type="button" variante="secundario" disabled={imprimindo} onClick={imprimirRegua}>
+          {imprimindo ? "Enviando…" : "Imprimir régua de alinhamento"}
+        </Button>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Input
+          label="A impressão começa em (mm)"
+          inputMode="decimal"
+          placeholder="Ex.: 4"
+          value={inicio}
+          onChange={(e) => setInicio(e.target.value)}
+        />
+        <Input
+          label="A impressão termina em (mm)"
+          inputMode="decimal"
+          placeholder="Ex.: 70"
+          value={fim}
+          onChange={(e) => setFim(e.target.value)}
+        />
+      </div>
+      <p className="m-0 text-[12.5px] text-muted">
+        Para não pegar bem no limite, digite 1 mm para dentro do que a régua mostrou (começo +1, fim −1). A
+        faixa preta da régua saindo falhada ou com riscos brancos indica cabeçote sujo ou com defeito: limpe
+        com álcool isopropílico e cotonete, com a impressora desligada.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" onClick={salvarArea} disabled={inicio.trim() === "" || fim.trim() === ""}>
+          Usar esta área
+        </Button>
+        {atual ? (
+          <Button type="button" variante="fantasma" onClick={voltarAoAutomatico}>
+            Voltar à margem automática
+          </Button>
+        ) : null}
+      </div>
     </div>
   );
 }

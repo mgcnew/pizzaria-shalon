@@ -3,7 +3,7 @@
 import { COLUNAS, type LinhaComanda } from "@/domain/pedidos/comanda";
 import { montarEscPos } from "./escpos";
 import { ESPACO_FINAL_MM, MARGEM_ESQUERDA_MM, type ImpressoraDoAparelho } from "./impressoraDoAparelho";
-import { AREA_UTIL_MM, colunasNaLargura, imprimirLinhas } from "./imprimir";
+import { AREA_UTIL_MM, colunasNaLargura, imprimirLinhas, type FaixaDeImpressao } from "./imprimir";
 import { imprimirSerial } from "./serial";
 
 /**
@@ -23,8 +23,18 @@ import { imprimirSerial } from "./serial";
  */
 export function colunasDoAparelho(impressora: ImpressoraDoAparelho): number {
   if (impressora.modo === "serial") return COLUNAS[impressora.papel];
+  return colunasNaLargura(faixaDoAparelho(impressora).larguraMm);
+}
+
+/**
+ * Onde o documento é desenhado no papel: a área medida com a régua, se
+ * houver; senão, a área útil padrão menos a margem dos dois lados.
+ */
+export function faixaDoAparelho(impressora: ImpressoraDoAparelho): FaixaDeImpressao {
+  const area = impressora.areaMedida;
+  if (area !== null) return { inicioMm: area.inicioMm, larguraMm: area.fimMm - area.inicioMm };
   const margem = MARGEM_ESQUERDA_MM[impressora.margemEsquerda];
-  return colunasNaLargura(AREA_UTIL_MM[impressora.papel] - 2 * margem);
+  return { inicioMm: margem, larguraMm: AREA_UTIL_MM[impressora.papel] - 2 * margem };
 }
 
 export async function imprimirNoAparelho(
@@ -36,5 +46,5 @@ export async function imprimirNoAparelho(
     await imprimirSerial(montarEscPos(linhas, impressora.tabela, espaco));
     return;
   }
-  await imprimirLinhas(linhas, impressora.papel, espaco, MARGEM_ESQUERDA_MM[impressora.margemEsquerda]);
+  await imprimirLinhas(linhas, impressora.papel, espaco, faixaDoAparelho(impressora));
 }

@@ -66,11 +66,9 @@ function montarHtml(
   linhas: LinhaComanda[],
   papel: Papel,
   espacoFinalMm: number,
-  margemEsquerdaMm: number,
+  faixa: FaixaDeImpressao,
 ): string {
-  const util = AREA_UTIL_MM[papel];
-  // A margem vale dos dois lados: o documento fica centralizado no papel.
-  const largura = util - 2 * margemEsquerdaMm;
+  const largura = faixa.larguraMm;
   // Letra fixa — a não ser que alguma linha venha mais larga do que cabe
   // (a comanda que o celular manda ao balcão, montada noutro aparelho):
   // aí encolhe o necessário para ela não ser cortada. 3% de folga para
@@ -91,7 +89,7 @@ function montarHtml(
 @page { size: ${papel}mm auto; margin: 0; }
 html, body { margin: 0; padding: 0; background: #fff; color: #000;
   -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-body { width: ${util}mm; padding: 2mm ${margemEsquerdaMm}mm 1mm; box-sizing: border-box;
+body { width: ${faixa.inicioMm + largura}mm; padding: 2mm 0 1mm ${faixa.inicioMm}mm; box-sizing: border-box;
   font-family: "Courier New", Courier, monospace; font-size: ${fonte}mm; line-height: 1.3;
   font-weight: 700; }
 div { white-space: pre; overflow: hidden; }
@@ -101,12 +99,64 @@ div { white-space: pre; overflow: hidden; }
 </style></head><body>${corpo}<div class="fim">.</div></body></html>`;
 }
 
+/**
+ * Onde o documento é desenhado no papel, a partir da borda esquerda: começa
+ * em `inicioMm` e ocupa `larguraMm`. Vem das margens prontas ou da área
+ * medida com a régua de alinhamento (`faixaDoAparelho`).
+ */
+export type FaixaDeImpressao = { inicioMm: number; larguraMm: number };
+
 export function imprimirLinhas(
   linhas: LinhaComanda[],
   papel: Papel,
   espacoFinalMm = 6,
-  margemEsquerdaMm = 0,
+  faixa: FaixaDeImpressao = { inicioMm: 0, larguraMm: AREA_UTIL_MM[papel] },
 ): Promise<void> {
+  return imprimirHtml(montarHtml(linhas, papel, espacoFinalMm, faixa));
+}
+
+/**
+ * Régua de alinhamento (13/10/2026): ocupa o papel INTEIRO, de borda a
+ * borda, sem margem nenhuma. Pelo papel impresso se lê em que milímetro a
+ * impressora começa e termina de imprimir — é o que se digita em "Área de
+ * impressão medida". A faixa preta contínua mostra o cabeçote: falhas ou
+ * riscos brancos nela são sujeira ou defeito, não configuração.
+ */
+export function imprimirReguaDeAlinhamento(papel: Papel): Promise<void> {
+  const largura = Number(papel);
+  const marcas: string[] = [];
+  for (let mm = 0; mm <= largura; mm++) {
+    const altura = mm % 10 === 0 ? 7 : mm % 5 === 0 ? 5 : 3;
+    marcas.push(`<rect x="${mm - 0.15}" y="6" width="0.3" height="${altura}"/>`);
+    if (mm % 10 === 0 && mm > 0 && mm < largura) {
+      marcas.push(`<text x="${mm}" y="18" font-size="3.4" text-anchor="middle">${mm}</text>`);
+    }
+  }
+  // Números de 5 em 5 numa segunda linha, para ler com precisão perto das bordas.
+  for (let mm = 5; mm < largura; mm += 10) {
+    marcas.push(`<text x="${mm}" y="23" font-size="2.6" text-anchor="middle">${mm}</text>`);
+  }
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${largura} 32" width="${largura}mm" height="32mm" ` +
+    `font-family="Arial, sans-serif" font-weight="700">` +
+    `<rect x="0" y="0" width="${largura}" height="4"/>${marcas.join("")}` +
+    `<rect x="0" y="27" width="${largura}" height="4"/></svg>`;
+  const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Régua</title><style>
+@page { size: ${papel}mm auto; margin: 0; }
+html, body { margin: 0; padding: 0; background: #fff; color: #000;
+  -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { width: ${largura}mm; font-family: Arial, sans-serif; font-weight: 700; font-size: 3.2mm; }
+p { margin: 2mm 0 0; text-align: center; }
+.fim { padding-top: 20mm; text-align: center; font-size: 2mm; }
+</style></head><body><p>REGUA DE ALINHAMENTO - ${papel} mm</p>${svg}
+<p>Anote o primeiro e o ultimo numero que aparecem.</p>
+<p>Faixa preta falhada = cabecote sujo ou com defeito.</p>
+<div class="fim">.</div></body></html>`;
+  return imprimirHtml(html);
+}
+
+/** Imprime um documento HTML completo num iframe escondido. */
+function imprimirHtml(html: string): Promise<void> {
   return new Promise((resolver, rejeitar) => {
     const quadro = document.createElement("iframe");
     quadro.setAttribute("aria-hidden", "true");
@@ -138,7 +188,7 @@ export function imprimirLinhas(
       }
     };
 
-    quadro.srcdoc = montarHtml(linhas, papel, espacoFinalMm, margemEsquerdaMm);
+    quadro.srcdoc = html;
     document.body.appendChild(quadro);
   });
 }

@@ -47,7 +47,26 @@ export type ImpressoraDoAparelho = {
   espacoFinal: EspacoFinal;
   /** Margem nas duas laterais (o nome do campo ficou da primeira versão). */
   margemEsquerda: MargemEsquerda;
+  /**
+   * Área de impressão medida com a régua de alinhamento: onde a impressora
+   * começa e termina de imprimir, em mm a partir da borda esquerda. Quando
+   * existe, vale no lugar da margem.
+   */
+  areaMedida: AreaMedida | null;
 };
+
+export type AreaMedida = { inicioMm: number; fimMm: number };
+
+/** Área medida que faz sentido: dentro do papel e com pelo menos 30 mm. */
+export function areaValida(area: AreaMedida, papel: Papel): boolean {
+  return (
+    Number.isFinite(area.inicioMm) &&
+    Number.isFinite(area.fimMm) &&
+    area.inicioMm >= 0 &&
+    area.fimMm <= Number(papel) &&
+    area.fimMm - area.inicioMm >= 30
+  );
+}
 
 /**
  * Margem nas laterais (13/10/2026). A área que a cabeça alcança na Diebold
@@ -82,6 +101,7 @@ export const PADRAO: ImpressoraDoAparelho = {
   tabela: "cp860",
   espacoFinal: "normal",
   margemEsquerda: "nenhuma",
+  areaMedida: null,
 };
 
 /** Modos em que este próprio aparelho manda para uma impressora. */
@@ -105,7 +125,10 @@ function interpretar(bruto: string | null): ImpressoraDoAparelho {
   try {
     const valor: unknown = JSON.parse(bruto);
     if (typeof valor !== "object" || valor === null) return PADRAO;
-    const { papel, modo, estacao, tabela, espacoFinal, margemEsquerda } = valor as Record<string, unknown>;
+    const { papel, modo, estacao, tabela, espacoFinal, margemEsquerda, areaMedida } = valor as Record<
+      string,
+      unknown
+    >;
     const modoLido: ModoDeImpressao =
       modo === "sistema" || modo === "serial" || modo === "balcao" ? modo : "tela";
     const papelLido = papel === "80" ? "80" : "58";
@@ -119,10 +142,19 @@ function interpretar(bruto: string | null): ImpressoraDoAparelho {
         margemEsquerda === "pequena" || margemEsquerda === "media" || margemEsquerda === "grande"
           ? margemEsquerda
           : "nenhuma",
+      areaMedida: lerAreaMedida(areaMedida, papelLido),
     };
   } catch {
     return PADRAO;
   }
+}
+
+function lerAreaMedida(bruto: unknown, papel: Papel): AreaMedida | null {
+  if (typeof bruto !== "object" || bruto === null) return null;
+  const { inicioMm, fimMm } = bruto as Record<string, unknown>;
+  if (typeof inicioMm !== "number" || typeof fimMm !== "number") return null;
+  const area = { inicioMm, fimMm };
+  return areaValida(area, papel) ? area : null;
 }
 
 let atual: ImpressoraDoAparelho | null = null;
