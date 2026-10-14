@@ -4152,9 +4152,14 @@ Configuração antiga, sem o campo, continua valendo como Normal.
   Agora o espaço termina num ponto discreto, e o corte passa depois dele;
 - a área que a cabeça alcança começa uns 2 mm para dentro, e o documento
   encostado à esquerda perdia a primeira letra. Nova opção por aparelho,
-  "Margem à esquerda": Nenhuma (0 mm, padrão), Pequena (2 mm) ou Média
-  (4 mm). O documento desloca e encolhe na mesma medida. Vale para a
-  impressão pelo sistema; o Bluetooth direto não precisa.
+  "Margem nas laterais": Nenhuma (0 mm, padrão), Pequena (2 mm de cada
+  lado) ou Média (4 mm de cada lado). Na primeira versão a margem era só à
+  esquerda, e o documento passou a cortar do lado direito: a área útil da
+  Diebold é mais estreita que 72 mm. Vale para a impressão pelo sistema; o
+  Bluetooth direto não precisa;
+- a pedido da dona, fonte maior no cupom do PDV, na segunda via e no
+  fechamento de caixa (corpo de 10 para 12 px no cupom e de 11 para 13 px no
+  fechamento). A comanda continua em 48 colunas no papel de 80.
 
 **Onde foi formalizada:** `src/ui/impressao/impressoraDoAparelho.ts`
 (`ESPACO_FINAL_MM`, `MARGEM_ESQUERDA_MM`), `imprimir.ts`, `escpos.ts`,

@@ -432,8 +432,8 @@ function ResumoVisualDoFechamento({
   const resumo = conferencia.resumo;
   return (
     <div id="resumo-impressao-fechamento" className="flex flex-col gap-3 bg-surface">
-      <div className="hidden text-center font-mono text-[11px] text-black print:block">
-        <p className="m-0 text-[13px] font-bold">PIZZARIA SHALON</p>
+      <div className="hidden text-center font-mono text-[13px] text-black print:block">
+        <p className="m-0 text-[15px] font-bold">PIZZARIA SHALON</p>
         <p className="m-0">FECHAMENTO DE CAIXA</p>
         {resumo ? <p className="m-0">Data {new Date(`${resumo.data_operacional}T12:00:00`).toLocaleDateString("pt-BR")}</p> : null}
       </div>
@@ -520,11 +520,11 @@ function ResumoVisualDoFechamento({
             /* Área que a impressora alcança (AREA_UTIL_MM): na largura do papel
                os valores, à direita, eram cortados. */
             width: ${AREA_UTIL_MM[papel]}mm !important;
-            padding: 2mm 0 1mm ${margemEsquerdaMm}mm !important;
+            padding: 2mm ${margemEsquerdaMm}mm 1mm ${margemEsquerdaMm}mm !important;
             box-sizing: border-box !important;
             color: #000 !important;
             font-family: ui-monospace, monospace !important;
-            font-size: 11px !important;
+            font-size: 13px !important;
           }
           /* Termina num ponto depois do espaço: o driver da térmica descarta papel
              branco no fim e cortava o QR (ver imprimir.ts). */

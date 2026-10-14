@@ -365,8 +365,8 @@ function PreviaSegundaVia({
           </button>
         </div>
 
-        <div id="cupom-segunda-via" className={`mx-auto w-full ${papel === "80" ? "max-w-[80mm]" : "max-w-[58mm]"} bg-white p-[3mm] font-mono text-[10px] leading-[1.35] text-black shadow-[0_4px_18px_rgb(0_0_0/0.12)] print:shadow-none`}>
-          <p className="m-0 text-center text-[12px] font-bold">PIZZARIA SHALON</p>
+        <div id="cupom-segunda-via" className={`mx-auto w-full ${papel === "80" ? "max-w-[80mm]" : "max-w-[58mm]"} bg-white p-[3mm] font-mono text-[12px] leading-[1.35] text-black shadow-[0_4px_18px_rgb(0_0_0/0.12)] print:shadow-none`}>
+          <p className="m-0 text-center text-[14px] font-bold">PIZZARIA SHALON</p>
           <p className="m-0 text-center">COMPROVANTE NAO FISCAL</p>
           <p className="m-0 mt-1 text-center font-bold">*** SEGUNDA VIA ***</p>
           {estornada ? <p className="m-0 mt-1 border border-black p-1 text-center font-bold">PAGAMENTO ESTORNADO</p> : null}
@@ -382,7 +382,7 @@ function PreviaSegundaVia({
                 <span>{formatBRL(item.total)}</span>
               </div>
               {item.detalhes.map((detalhe, indice) => (
-                <p key={`${item.linha}-${indice}`} className="m-0 pl-2 text-[9px]">+ {detalhe}</p>
+                <p key={`${item.linha}-${indice}`} className="m-0 pl-2 text-[11px]">+ {detalhe}</p>
               ))}
             </div>
           ))}
@@ -449,7 +449,7 @@ function PreviaSegundaVia({
               width: ${AREA_UTIL_MM[papel]}mm !important;
               max-width: ${AREA_UTIL_MM[papel]}mm !important;
               margin: 0 !important;
-              padding: 2mm 0 1mm ${margemEsquerdaMm}mm !important;
+              padding: 2mm ${margemEsquerdaMm}mm 1mm ${margemEsquerdaMm}mm !important;
               box-sizing: border-box !important;
             }
             /* Termina num ponto depois do espaço: o driver da térmica descarta papel

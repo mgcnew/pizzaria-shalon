@@ -97,9 +97,13 @@ const ESPACOS: { valor: EspacoFinal; titulo: string; detalhe: string }[] = [
 ];
 
 const MARGENS: { valor: MargemEsquerda; titulo: string; detalhe: string }[] = [
-  { valor: "nenhuma", titulo: "Nenhuma", detalhe: "O documento começa na borda do papel." },
-  { valor: "pequena", titulo: "Pequena", detalhe: `${MARGEM_ESQUERDA_MM.pequena} mm. Se a primeira letra sai cortada.` },
-  { valor: "media", titulo: "Média", detalhe: `${MARGEM_ESQUERDA_MM.media} mm. Se com a pequena ainda corta.` },
+  { valor: "nenhuma", titulo: "Nenhuma", detalhe: "O documento ocupa toda a área da impressora." },
+  {
+    valor: "pequena",
+    titulo: "Pequena",
+    detalhe: `${MARGEM_ESQUERDA_MM.pequena} mm de cada lado. Se o começo ou o fim das linhas sai cortado.`,
+  },
+  { valor: "media", titulo: "Média", detalhe: `${MARGEM_ESQUERDA_MM.media} mm de cada lado. Se com a pequena ainda corta.` },
 ];
 
 const ATALHO_CHROME = '"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --kiosk-printing';
@@ -256,7 +260,7 @@ export function SecaoImpressora() {
           ) : null}
           {impressora.modo === "sistema" || impressora.modo === "tela" ? (
             <Opcoes
-              rotulo="Margem à esquerda"
+              rotulo="Margem nas laterais"
               opcoes={MARGENS}
               atual={impressora.margemEsquerda}
               aoEscolher={(margemEsquerda) => salvar({ ...impressora, margemEsquerda })}

@@ -1065,8 +1065,8 @@ function CupomDaVenda({
       <p className="m-0 mb-2 text-[12px] font-semibold uppercase tracking-wide text-ink-2">
         Prévia do cupom {papel} mm
       </p>
-      <div id="cupom-venda-pdv" className={`mx-auto w-full ${papel === "80" ? "max-w-[80mm]" : "max-w-[58mm]"} bg-white p-[3mm] font-mono text-[10px] leading-[1.35] text-black`}>
-        <p className="m-0 text-center text-[12px] font-bold">PIZZARIA SHALON</p>
+      <div id="cupom-venda-pdv" className={`mx-auto w-full ${papel === "80" ? "max-w-[80mm]" : "max-w-[58mm]"} bg-white p-[3mm] font-mono text-[12px] leading-[1.35] text-black`}>
+        <p className="m-0 text-center text-[14px] font-bold">PIZZARIA SHALON</p>
         <p className="m-0 text-center">COMPROVANTE NAO FISCAL</p>
         <p className="my-2 border-y border-dashed border-black py-1">VENDA #{venda.numero}</p>
         {venda.itens.map((item) => (
@@ -1141,7 +1141,7 @@ function CupomDaVenda({
             width: ${AREA_UTIL_MM[papel]}mm !important;
             max-width: ${AREA_UTIL_MM[papel]}mm !important;
             margin: 0 !important;
-            padding: 2mm 0 1mm ${margemEsquerdaMm}mm !important;
+            padding: 2mm ${margemEsquerdaMm}mm 1mm ${margemEsquerdaMm}mm !important;
             box-sizing: border-box !important;
           }
           /* Termina num ponto depois do espaço: o driver da térmica descarta papel

@@ -50,8 +50,8 @@ function montarHtml(
   margemEsquerdaMm: number,
 ): string {
   const util = AREA_UTIL_MM[papel];
-  // A margem à esquerda desloca o documento e tira a mesma medida da largura.
-  const largura = util - margemEsquerdaMm;
+  // A margem vale dos dois lados: afasta o documento das duas bordas.
+  const largura = util - 2 * margemEsquerdaMm;
   // Courier New avança 0,6 em por caractere. O divisor um pouco maior deixa
   // ~3% de folga: uma fonte substituta levemente mais larga não corta a
   // última coluna.
@@ -69,7 +69,7 @@ function montarHtml(
 @page { size: ${papel}mm auto; margin: 0; }
 html, body { margin: 0; padding: 0; background: #fff; color: #000;
   -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-body { width: ${util}mm; padding: 2mm 0 1mm ${margemEsquerdaMm}mm; box-sizing: border-box;
+body { width: ${util}mm; padding: 2mm ${margemEsquerdaMm}mm 1mm; box-sizing: border-box;
   font-family: "Courier New", Courier, monospace; font-size: ${fonte}mm; line-height: 1.3;
   font-weight: 700; }
 div { white-space: pre; overflow: hidden; }

@@ -45,16 +45,16 @@ export type ImpressoraDoAparelho = {
   tabela: TabelaDeAcentos;
   /** Papel em branco depois do documento, antes do corte. */
   espacoFinal: EspacoFinal;
-  /** Deslocamento do documento para a direita. */
+  /** Margem nas duas laterais (o nome do campo ficou da primeira versão). */
   margemEsquerda: MargemEsquerda;
 };
 
 /**
- * Margem à esquerda (13/10/2026). A área que a cabeça alcança nem sempre
- * começa na borda do papel: na Diebold IM433TP começa uns 2 mm para dentro,
- * e o documento encostado à esquerda perdia a primeira letra ("enda" em vez
- * de "VENDA"). O documento desloca e encolhe na mesma medida, para não voltar
- * a cortar à direita.
+ * Margem nas laterais (13/10/2026). A área que a cabeça alcança na Diebold
+ * IM433TP é mais estreita que os 72 mm previstos e não começa na borda: o
+ * documento encostado à esquerda perdia a primeira letra ("enda" em vez de
+ * "VENDA"), e só deslocado para a direita passava a cortar do outro lado.
+ * A margem vale dos dois lados: o documento fica afastado das duas bordas.
  */
 export type MargemEsquerda = "nenhuma" | "pequena" | "media";
 

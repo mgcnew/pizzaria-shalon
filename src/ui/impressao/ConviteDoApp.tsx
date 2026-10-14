@@ -18,7 +18,7 @@ export function ConviteDoApp() {
   const lado = `${larguraDoQrMm(tamanho)}mm`;
   return (
     <div className="mt-3 flex flex-col items-center border-t border-dashed border-black pt-2 text-center">
-      <p className="m-0 text-[12px] font-bold">{CHAMADA_DO_CONVITE}</p>
+      <p className="m-0 text-[14px] font-bold">{CHAMADA_DO_CONVITE}</p>
       <svg
         role="img"
         aria-label={`QR code para ${ENDERECO_DO_APP}`}
