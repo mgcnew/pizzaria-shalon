@@ -197,7 +197,7 @@ async function BlocoDoRelatorio({
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] border-collapse text-[13px]">
+            <table className="w-full min-w-[680px] border-collapse text-[13px]">
               <thead>
                 <tr className="text-left text-muted">
                   {relatorio.colunas.map((c) => (

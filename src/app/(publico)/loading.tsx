@@ -14,7 +14,7 @@ export default function LoadingPublico() {
       <div className="px-4 pt-4">
         <Skeleton className="h-[50px] w-full rounded-10" />
       </div>
-      <Skeleton className="mx-4 mt-4 aspect-[2/1] rounded-20" delay={0.04} />
+      <Skeleton className="mx-4 mt-4 aspect-[2/1] rounded-20 lg:mx-auto lg:w-[min(calc(100%-32px),calc(60svh*2))]" delay={0.04} />
       <div className="flex gap-4 overflow-hidden px-4 pb-2 pt-5">
         {[0, 1, 2, 3, 4].map((i) => (
           <div key={i} className="flex w-[74px] shrink-0 flex-col items-center gap-2">

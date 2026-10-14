@@ -66,7 +66,7 @@ export function CarrosselBanners({ banners }: { banners: BannerDoCarrossel[] }) 
       onBlurCapture={(evento) => {
         if (!evento.currentTarget.contains(evento.relatedTarget)) setPausado(false);
       }}
-      className="relative mx-4 mt-4 aspect-[2/1] overflow-hidden rounded-20 bg-sidebar shadow-[0_12px_30px_rgb(30_24_20/0.14)]"
+      className="relative mx-4 mt-4 aspect-[2/1] overflow-hidden rounded-20 bg-sidebar shadow-[0_12px_30px_rgb(30_24_20/0.14)] lg:mx-auto lg:w-[min(calc(100%-32px),calc(60svh*2))]"
     >
       <div key={banner.id} className="motion-tab-in absolute inset-0">
         <Image

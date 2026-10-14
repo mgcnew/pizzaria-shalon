@@ -101,9 +101,15 @@ export function TabelaPedidos({
 
   return (
     /* A tabela rola DENTRO de si. Sem isto, uma observação longa faria a
-       página inteira rolar na horizontal e levaria a barra lateral junto. */
+       página inteira rolar na horizontal e levaria a barra lateral junto.
+
+       NOTEBOOK (14/10/2026): com o Windows em 125–150%, o navegador tem de
+       1024 a 1280 px, e tirando o menu sobram ~760–1000 px. As 9 colunas
+       pediam 960 e a tabela rolava de lado. Abaixo de `xl`, Canal desce para
+       baixo do Cliente e Pagamento para baixo do Total — mesma informação,
+       7 colunas. De `xl` para cima, a tabela de sempre. */
     <div className="hidden overflow-x-auto rounded-16 border border-border-shalon bg-surface shadow-[0_4px_16px_rgb(41_37_36/0.035)] lg:block">
-      <table className="w-full min-w-[960px] border-collapse text-[13.5px]">
+      <table className="w-full min-w-[760px] border-collapse text-[13.5px] xl:min-w-[960px]">
         <caption className="sr-only">{rotulo}</caption>
         <thead>
           <tr className="border-b border-border-shalon bg-bg/60 text-left text-[11px] uppercase tracking-[0.05em] text-muted">
@@ -112,10 +118,10 @@ export function TabelaPedidos({
             </th>
             <th scope="col" className="px-3 py-2.5 font-bold">Pedido</th>
             <th scope="col" className="px-3 py-2.5 font-bold">Cliente</th>
-            <th scope="col" className="px-3 py-2.5 font-bold">Canal</th>
+            <th scope="col" className="hidden px-3 py-2.5 font-bold xl:table-cell">Canal</th>
             <th scope="col" className="px-3 py-2.5 text-center font-bold">Comanda</th>
             <th scope="col" className="px-3 py-2.5 text-right font-bold">Total</th>
-            <th scope="col" className="px-3 py-2.5 font-bold">Pagamento</th>
+            <th scope="col" className="hidden px-3 py-2.5 font-bold xl:table-cell">Pagamento</th>
             <th scope="col" className="px-3 py-2.5 font-bold">Situação</th>
             <th scope="col" className="px-4 py-2.5 text-right font-bold">Ações</th>
           </tr>
@@ -167,6 +173,10 @@ export function TabelaPedidos({
 
                 <td className="max-w-[220px] px-3 py-3">
                   <span className="block truncate text-ink">{p.cliente}</span>
+                  {/* Abaixo de xl, o canal vem aqui (a coluna própria some). */}
+                  <span className="block truncate text-[12px] text-ink-2 xl:hidden">
+                    {rotuloDeOrigem(p.origem)} · {rotuloDeModalidade(p.modalidade)}
+                  </span>
                   {/* A observação é operacional ("sem cebola") e não pode sumir
                       só porque virou tabela. Truncada, com o texto inteiro no
                       `title` para quem precisar conferir. */}
@@ -180,7 +190,7 @@ export function TabelaPedidos({
                   ) : null}
                 </td>
 
-                <td className="whitespace-nowrap px-3 py-3 text-ink-2">
+                <td className="hidden whitespace-nowrap px-3 py-3 text-ink-2 xl:table-cell">
                   {rotuloDeOrigem(p.origem)}
                   <span className="text-muted"> · </span>
                   {rotuloDeModalidade(p.modalidade)}
@@ -200,11 +210,18 @@ export function TabelaPedidos({
                   </Link>
                 </td>
 
-                <td className="px-3 py-3 text-right font-display text-[15px] font-extrabold tabular-nums text-ink">
-                  {formatBRL(p.total)}
+                <td className="px-3 py-3 text-right">
+                  <span className="block whitespace-nowrap font-display text-[15px] font-extrabold tabular-nums text-ink">
+                    {formatBRL(p.total)}
+                  </span>
+                  {/* Abaixo de xl, a forma de pagamento vem aqui. */}
+                  <span className="block text-[12px] text-ink-2 xl:hidden">
+                    {p.forma_pagamento ?? "—"}
+                    {p.troco !== null ? ` · troco ${formatBRL(p.troco)}` : ""}
+                  </span>
                 </td>
 
-                <td className="px-3 py-3 text-ink-2">
+                <td className="hidden px-3 py-3 text-ink-2 xl:table-cell">
                   {p.forma_pagamento ?? "—"}
                   {p.troco !== null ? (
                     <span className="block text-[12px] text-muted">

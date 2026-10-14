@@ -517,7 +517,8 @@ export function NucleoConfigurador({
 
       {ancoragem === "fixa" ? (
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border-shalon bg-surface px-4 pb-4 pt-3">
-          {barra}
+          {/* Na mesma coluna de 560 px da página do produto, no notebook. */}
+          <div className="lg:mx-auto lg:max-w-[528px]">{barra}</div>
         </div>
       ) : (
         <div className="mt-[22px] border-t border-border-shalon pt-3">{barra}</div>

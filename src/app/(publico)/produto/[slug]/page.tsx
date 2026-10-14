@@ -77,6 +77,11 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
     <>
       <AvisoLojaFechada loja={loja} />
 
+      {/* Notebook e computador: a coluna de 560 px do design (a "folha" do
+          produto). Esticado nos 1120 px, a foto virava uma faixa cortada e
+          o botão atravessava a tela. No celular, nada muda. */}
+      <div className="lg:mx-auto lg:max-w-[560px]">
+
       <div className="px-4 pt-4">
         <Link
           href={`/categoria/${produto.categoria_slug}`}
@@ -93,7 +98,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
               src={imagem}
               alt={produto.nome}
               fill
-              sizes="(max-width: 1120px) 100vw, 1120px"
+              sizes="(max-width: 1023px) 100vw, 560px"
               priority
               className="object-cover"
             />
@@ -173,6 +178,7 @@ export default async function Page({ params }: { params: Promise<{ slug: string 
           </div>
         )}
       </article>
+      </div>
     </>
   );
 }
