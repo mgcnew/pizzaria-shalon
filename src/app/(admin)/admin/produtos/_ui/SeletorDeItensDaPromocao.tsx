@@ -5,7 +5,7 @@ import { useState } from "react";
 /**
  * Escolha dos itens da promoção: busca + marcação de vários (15/10/2026).
  *
- * Os `<input type="checkbox" name="alvo">` ficam sempre montados — a busca só
+ * Os `<input type="checkbox" name={nomeDoCampo}>` ficam sempre montados — a busca só
  * esconde linhas —, então marcar, buscar outra coisa e marcar de novo não
  * perde nada. Cada marcado é um item da promoção.
  */
@@ -17,7 +17,18 @@ export type OpcaoDeItem = {
   grupo: string;
 };
 
-export function SeletorDeItensDaPromocao({ opcoes }: { opcoes: OpcaoDeItem[] }) {
+export function SeletorDeItensDaPromocao({
+  opcoes,
+  nomeDoCampo = "alvo",
+  titulo = "Quais itens entram?",
+  ajuda = "Marque quantos quiser. Todos recebem o mesmo preço promocional e as mesmas regras de dia e período.",
+}: {
+  opcoes: OpcaoDeItem[];
+  /** O `name` das caixas: `alvo` na promoção, `produto` no banner. */
+  nomeDoCampo?: string;
+  titulo?: string;
+  ajuda?: string;
+}) {
   const [termo, setTermo] = useState("");
   const [marcados, setMarcados] = useState<Set<string>>(new Set());
 
@@ -46,18 +57,15 @@ export function SeletorDeItensDaPromocao({ opcoes }: { opcoes: OpcaoDeItem[] }) 
 
   return (
     <fieldset className="m-0 min-w-0 border-0 p-0">
-      <legend className="mb-1 p-0 text-[14px] font-bold text-ink">Quais itens entram?</legend>
-      <p className="m-0 mb-2 text-[12.5px] text-muted">
-        Marque quantos quiser. Todos recebem o mesmo preço promocional e as mesmas regras de dia e
-        período.
-      </p>
+      <legend className="mb-1 p-0 text-[14px] font-bold text-ink">{titulo}</legend>
+      <p className="m-0 mb-2 text-[12.5px] text-muted">{ajuda}</p>
 
       <div className="mb-2 flex flex-wrap items-center gap-2">
-        <label htmlFor="busca-item-promocao" className="sr-only">
+        <label htmlFor={`busca-${nomeDoCampo}`} className="sr-only">
           Buscar item
         </label>
         <input
-          id="busca-item-promocao"
+          id={`busca-${nomeDoCampo}`}
           type="search"
           value={termo}
           onChange={(e) => setTermo(e.target.value)}
@@ -93,7 +101,7 @@ export function SeletorDeItensDaPromocao({ opcoes }: { opcoes: OpcaoDeItem[] }) 
                 >
                   <input
                     type="checkbox"
-                    name="alvo"
+                    name={nomeDoCampo}
                     value={o.valor}
                     checked={marcados.has(o.valor)}
                     onChange={() => alternar(o.valor)}

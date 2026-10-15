@@ -119,7 +119,7 @@ export type BannerPublico = {
   titulo: string | null;
   corpo: string | null;
   imagem_path: string;
-  destino_tipo: "product" | "category" | "promotion" | "external" | "none";
+  destino_tipo: "product" | "products" | "category" | "promotion" | "external" | "none";
   destino_slug: string | null;
   url_externa: string | null;
   ordem: number;

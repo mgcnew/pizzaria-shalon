@@ -65,6 +65,9 @@ function destino(b: BannerPublico): string | null {
       return b.destino_slug ? `/produto/${b.destino_slug}` : null;
     case "category":
       return b.destino_slug ? `/categoria/${b.destino_slug}` : null;
+    // Destaque com vários produtos: `destaque/<id do banner>`.
+    case "products":
+      return b.destino_slug ? `/${b.destino_slug}` : null;
     // Promoção de um item: o banco devolve o slug do produto. Promoção com
     // vários itens: devolve `promocao/<id>`, a página com todos eles.
     case "promotion":

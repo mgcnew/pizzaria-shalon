@@ -827,8 +827,11 @@ export async function salvarBanner(
   if (!imagemId) return { erro: "Escolha a imagem do banner." };
 
   const destino = String(form.get("destino") ?? "none");
-  // "product:<id>", "category:<id>", "promotion:<id>", "external", "none"
+  // "product:<id>", "category:<id>", "promotion:<id>", "products", "external", "none"
   const [tipo, alvoId] = destino.split(":");
+  if (!["none", "products", "external", "product", "category", "promotion"].includes(tipo ?? "")) {
+    return { erro: "Destino inválido." };
+  }
 
   const urlExterna = String(form.get("url_externa") ?? "").trim();
   if (tipo === "external" && !/^https?:\/\/\S+$/.test(urlExterna)) {
@@ -839,26 +842,70 @@ export async function salvarBanner(
     return { erro: "Escolha o destino do banner." };
   }
 
+  // Destaque: vários produtos, em uma tabela própria (D-2026-10-15-126).
+  const produtos = [...new Set(form.getAll("produto").map((v) => String(v)))].filter((v) =>
+    /^[0-9a-f-]{36}$/i.test(v),
+  );
+  if (tipo === "products") {
+    if (produtos.length === 0) return { erro: "Marque pelo menos um produto do destaque." };
+    if (produtos.length > 40) return { erro: "Escolha no máximo 40 produtos por banner." };
+  }
+
+  const dias = [...new Set(form.getAll("dia").map((d) => Number(d)))]
+    .filter((d) => Number.isInteger(d) && d >= 1 && d <= 7)
+    .sort((a, b) => a - b);
+
   const inicio = String(form.get("inicio") ?? "").trim();
   const fim = String(form.get("fim") ?? "").trim();
+  const inicioData = inicio ? dataDeParede(inicio) : null;
+  const fimData = fim ? dataDeParede(fim) : null;
+  if (inicioData && Number.isNaN(inicioData.getTime())) return { erro: "Data de início inválida." };
+  if (fimData && Number.isNaN(fimData.getTime())) return { erro: "Data de término inválida." };
+  if (inicioData && fimData && fimData <= inicioData) {
+    return { erro: "O banner precisa sair do ar depois de aparecer." };
+  }
 
   const supabase = await getSupabaseServerClient();
   try {
-    const { error } = await supabase.from("banners").insert({
-      title: String(form.get("titulo") ?? "").trim() || null,
-      body: String(form.get("corpo") ?? "").trim() || null,
-      image_asset_id: imagemId,
-      destination_type: tipo,
-      destination_product_id: tipo === "product" ? alvoId : null,
-      destination_category_id: tipo === "category" ? alvoId : null,
-      destination_promotion_id: tipo === "promotion" ? alvoId : null,
-      external_url: tipo === "external" ? urlExterna : null,
-      starts_at: inicio ? new Date(inicio).toISOString() : null,
-      ends_at: fim ? new Date(fim).toISOString() : null,
-      sort_order: Number(form.get("ordem") ?? 0),
-    });
+    const { data, error } = await supabase
+      .from("banners")
+      .insert({
+        title: String(form.get("titulo") ?? "").trim() || null,
+        body: String(form.get("corpo") ?? "").trim() || null,
+        image_asset_id: imagemId,
+        destination_type: tipo,
+        destination_product_id: tipo === "product" ? alvoId : null,
+        destination_category_id: tipo === "category" ? alvoId : null,
+        destination_promotion_id: tipo === "promotion" ? alvoId : null,
+        external_url: tipo === "external" ? urlExterna : null,
+        starts_at: inicioData ? inicioData.toISOString() : null,
+        ends_at: fimData ? fimData.toISOString() : null,
+        weekdays: dias.length > 0 && dias.length < 7 ? dias : null,
+        sort_order: Number(form.get("ordem") ?? 0),
+      })
+      .select("id")
+      .single();
     if (error) throw error;
-    return ok("Banner criado.");
+
+    if (tipo === "products") {
+      const { error: erroItens } = await supabase.from("banner_products").insert(
+        produtos.map((produto, i) => ({
+          banner_id: data.id as string,
+          product_id: produto,
+          sort_order: i,
+        })),
+      );
+      if (erroItens) {
+        // Sem os produtos o banner não faria sentido: desfaz, não deixa metade.
+        await supabase.from("banners").delete().eq("id", data.id as string);
+        throw erroItens;
+      }
+    }
+    return ok(
+      tipo === "products"
+        ? `Banner criado com ${produtos.length} ${produtos.length === 1 ? "produto" : "produtos"}.`
+        : "Banner criado.",
+    );
   } catch (erro) {
     return falha("salvarBanner", erro);
   }

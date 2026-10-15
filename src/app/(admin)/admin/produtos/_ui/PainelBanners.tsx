@@ -1,5 +1,6 @@
 import Image from "next/image";
-import { StatusBadge, Input, SelectMenu, CampoDataHora } from "@/ui/components";
+import { formatBRL } from "@/lib/format";
+import { StatusBadge, Input, SelectMenu } from "@/ui/components";
 import { Cartao, EmptyState, LinhaLista } from "@/ui/patterns";
 import {
   listarBanners,
@@ -13,6 +14,8 @@ import { enviarImagem, urlPublica } from "@/application/midia/imagem";
 import { FormularioAcao } from "./FormularioAcao";
 import { BotaoAcao } from "./BotaoAcao";
 import { NovoItem } from "./NovoItem";
+import { DestinoDoBanner } from "./DestinoDoBanner";
+import { QuandoValeAPromocao } from "./QuandoValeAPromocao";
 
 /**
  * Banners.
@@ -30,6 +33,10 @@ import { NovoItem } from "./NovoItem";
  * RN-BANNER-003/004: "Aparece agora" é derivado — período do banner E
  * validade/disponibilidade do destino. Não é um interruptor.
  */
+const DIA_CURTO: Record<number, string> = {
+  1: "seg", 2: "ter", 3: "qua", 4: "qui", 5: "sex", 6: "sáb", 7: "dom",
+};
+
 export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean }) {
   const [banners, imagens, produtos, categorias, promocoes] = await Promise.all([
     listarBanners(),
@@ -82,7 +89,12 @@ export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean 
                       ? "Sem destino"
                       : b.destino_tipo === "external"
                         ? `Link externo: ${b.url_externa}`
-                        : `Destino: ${b.destino_nome ?? "—"}`}
+                        : b.destino_tipo === "products"
+                          ? `${b.itens} ${b.itens === 1 ? "produto" : "produtos"}: ${b.destino_nome ?? "—"}`
+                          : `Destino: ${b.destino_nome ?? "—"}`}
+                    {b.dias && b.dias.length < 7
+                      ? ` · ${[...b.dias].sort((x, y) => x - y).map((n) => DIA_CURTO[n]).join(", ")}`
+                      : ""}
                   </p>
                 </div>
                 <StatusBadge tom={b.visivel_agora ? "sucesso" : "neutro"}>
@@ -172,43 +184,26 @@ export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean 
                   <Input label="Título (opcional)" name="titulo" />
                   <Input label="Texto (opcional)" name="corpo" />
 
-                  <SelectMenu
-                    label="Para onde o banner leva"
-                    name="destino"
-                    valorInicial="none"
-                    hint="Promoção com vários itens abre uma página com todos eles e some do ar junto com a promoção — nos dias em que ela não vale, o banner não aparece."
-                    opcoes={[
-                      { valor: "none", texto: "Lugar nenhum (só divulga)" },
-                      { valor: "external", texto: "Link externo" },
-                      ...campanhasParaBanner.map((c) => ({
-                        valor: `promotion:${c.idRepresentante}`,
-                        texto: c.itens > 1 ? `${c.nome} (${c.itens} itens)` : c.nome,
-                        grupo: "Promoção",
-                      })),
-                      ...categorias
-                        .filter((c) => c.is_active)
-                        .map((c) => ({ valor: `category:${c.id}`, texto: c.name, grupo: "Categoria" })),
-                      ...produtos
-                        .filter((p) => p.ativo)
-                        .map((p) => ({ valor: `product:${p.id}`, texto: p.nome, grupo: "Produto" })),
-                    ]}
+                  <DestinoDoBanner
+                    promocoes={campanhasParaBanner.map((c) => ({
+                      id: c.idRepresentante,
+                      texto: c.itens > 1 ? `${c.nome} (${c.itens} itens)` : c.nome,
+                    }))}
+                    categorias={categorias
+                      .filter((c) => c.is_active)
+                      .map((c) => ({ id: c.id, nome: c.name }))}
+                    produtos={produtos.filter((p) => p.ativo).map((p) => ({ id: p.id, nome: p.nome }))}
+                    produtosParaDestaque={produtos
+                      .filter((p) => p.ativo)
+                      .map((p) => ({
+                        valor: p.id,
+                        nome: p.nome,
+                        detalhe: p.preco_base === null ? "" : formatBRL(p.preco_base),
+                        grupo: p.categoria_nome,
+                      }))}
                   />
 
-                  <Input
-                    label="URL externa"
-                    name="url_externa"
-                    type="url"
-                    placeholder="https://..."
-                    hint="Preencha somente se o destino for Link externo."
-                  />
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <CampoDataHora
-                      label="Aparece a partir de (opcional)"
-                      name="inicio"
-                      modo="dataHora"
-                    />
-                    <CampoDataHora label="Sai do ar em (opcional)" name="fim" modo="dataHora" />
-                  </div>
+                  <QuandoValeAPromocao variante="banner" />
                   <Input label="Ordem no carrossel" name="ordem" type="number" defaultValue={0} min={0} />
                 </FormularioAcao>
               )}

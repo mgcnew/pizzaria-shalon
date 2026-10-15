@@ -104,7 +104,7 @@ export type BannerAdmin = {
   titulo: string | null;
   corpo: string | null;
   imagem_path: string;
-  destino_tipo: "product" | "category" | "promotion" | "external" | "none";
+  destino_tipo: "product" | "products" | "category" | "promotion" | "external" | "none";
   destino_nome: string | null;
   url_externa: string | null;
   inicio: string | null;
@@ -112,6 +112,10 @@ export type BannerAdmin = {
   ativo: boolean;
   visivel_agora: boolean;
   ordem: number;
+  /** ISO 1..7; nulo = todos os dias. */
+  dias: number[] | null;
+  /** Quantos produtos, quando o destino é "products". */
+  itens: number;
 };
 
 export type Categoria = {

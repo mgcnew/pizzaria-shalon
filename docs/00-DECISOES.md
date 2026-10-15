@@ -4380,3 +4380,20 @@ de um item na mesma promoção.
    um grupo de produtos sem promoção: usar Categoria.
 6. Datas do formulário (hora de parede) passam a ser lidas em Brasília
    (-03:00); antes eram lidas no fuso do servidor (UTC), deslocando 3 horas.
+
+## D-2026-10-15-126 — Banner com vários produtos e dias da semana
+
+**Pedido da dona:** o banner levar a vários produtos (o cliente toca em "Ver
+destaque" e vê todos), com dias da semana como na promoção.
+
+**Decisão (migration 0151):**
+1. Novo destino `products` (destaque): os produtos moram em `banner_products`
+   (entidade referenciada, nunca URL digitada — RN-BANNER-002). O banner abre
+   `/destaque/<id>`; o banner aparece enquanto ao menos um produto está
+   disponível (RN-BANNER-003 ampliada).
+2. `banners.weekdays` (ISO 1..7, nulo = todos os dias), mesma semântica da
+   promoção (D-2026-10-15-125): dias e período se combinam.
+3. O destino de um banner continua um só; para destacar um grupo, use
+   `products`. Promoção com vários itens segue em `/promocao/<id>`.
+4. Formulário: o destino escolhido define o que aparece (produtos, link
+   externo), no lugar dos dois campos sempre visíveis.

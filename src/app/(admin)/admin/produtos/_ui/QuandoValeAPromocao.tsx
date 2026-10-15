@@ -29,7 +29,14 @@ function listar(nomes: string[]): string {
   return `${nomes.slice(0, -1).join(", ")} e ${nomes.at(-1)}`;
 }
 
-export function QuandoValeAPromocao() {
+export function QuandoValeAPromocao({
+  variante = "promocao",
+}: {
+  /** `banner` troca os verbos: o banner "aparece", a promoção "vale". */
+  variante?: "promocao" | "banner";
+}) {
+  const banner = variante === "banner";
+  const verbo = banner ? "Aparece" : "Vale";
   const [dias, setDias] = useState<Set<number>>(new Set());
   const [temFim, setTemFim] = useState(false);
 
@@ -45,8 +52,8 @@ export function QuandoValeAPromocao() {
   const marcados = DIAS.filter((d) => dias.has(d.iso));
   const frase =
     marcados.length === 0 || marcados.length === 7
-      ? "Vale todos os dias"
-      : `Vale toda ${listar(marcados.map((d) => d.longo))}`.replace(
+      ? `${verbo} todos os dias`
+      : `${verbo} toda ${listar(marcados.map((d) => d.longo))}`.replace(
           /toda (.*)$/,
           (_t, resto: string) =>
             marcados.every((d) => d.iso === 6 || d.iso === 7)
@@ -65,8 +72,8 @@ export function QuandoValeAPromocao() {
       <fieldset className="m-0 min-w-0 border-0 p-0">
         <legend className="mb-1 p-0 text-[14px] font-bold text-ink">Dias da semana</legend>
         <p className="m-0 mb-2 text-[12.5px] text-muted">
-          A promoção se repete toda semana nos dias marcados — não precisa refazer. Sem nenhum dia
-          marcado, vale todos os dias.
+          {banner ? "O banner" : "A promoção"} se repete toda semana nos dias marcados — não precisa
+          refazer. Sem nenhum dia marcado, {banner ? "aparece" : "vale"} todos os dias.
         </p>
         <div className="flex flex-wrap gap-2">
           {DIAS.map((d) => {
@@ -111,18 +118,18 @@ export function QuandoValeAPromocao() {
       <fieldset className="m-0 min-w-0 border-0 p-0">
         <legend className="mb-1 p-0 text-[14px] font-bold text-ink">Período</legend>
         <p className="m-0 mb-2 text-[12.5px] text-muted">
-          De quando até quando a promoção existe. Fora deste período ela não vale, mesmo nos dias
-          marcados.
+          De quando até quando {banner ? "o banner existe" : "a promoção existe"}. Fora deste período{" "}
+          {banner ? "ele não aparece" : "ela não vale"}, mesmo nos dias marcados.
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
           <CampoDataHora
-            label="Começa em"
+            label={banner ? "Aparece a partir de" : "Começa em"}
             name="inicio"
             modo="dataHora"
-            hint="Em branco: começa agora."
+            hint={banner ? "Em branco: aparece agora." : "Em branco: começa agora."}
           />
           {temFim ? (
-            <CampoDataHora label="Termina em" name="fim" modo="dataHora" />
+            <CampoDataHora label={banner ? "Sai do ar em" : "Termina em"} name="fim" modo="dataHora" />
           ) : (
             <div className="flex flex-col justify-end">
               <p className="m-0 mb-1 text-[13px] text-ink">Sem data para acabar.</p>
