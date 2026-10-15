@@ -6,6 +6,7 @@ import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
 import { logger } from "@/lib/logger";
 import { lerValorBR } from "@/domain/catalogo/dinheiro";
 import type { EstadoFormulario } from "@/application/catalogo/tipos";
+import { DIAS_DA_SEMANA } from "@/application/configuracoes/tipos";
 
 /**
  * Escrita das configurações da loja.
@@ -334,6 +335,53 @@ export async function salvarHorario(
     return ok("Horário salvo.");
   } catch (erro) {
     return falha("salvarHorario", erro);
+  }
+}
+
+/**
+ * Os sete dias de uma vez (15/10/2026): um único "Salvar horários" no lugar de
+ * sete formulários. Valida TODOS antes de gravar — um dia aberto sem horário
+ * não deixa a semana pela metade. Mesma regra de `salvarHorario`: fechar
+ * depois da meia-noite é válido (02 §3.2).
+ */
+export async function salvarHorarios(
+  _estado: EstadoFormulario,
+  form: FormData,
+): Promise<EstadoFormulario> {
+  const hora = /^([01]\d|2[0-3]):[0-5]\d$/;
+  const linhas: {
+    weekday: number;
+    is_closed: boolean;
+    opens_at: string | null;
+    closes_at: string | null;
+    sort_order: number;
+  }[] = [];
+
+  for (let dia = 0; dia < 7; dia++) {
+    const fechado = form.get(`fechado_${dia}`) === "sim";
+    const abre = String(form.get(`abre_${dia}`) ?? "").trim();
+    const fecha = String(form.get(`fecha_${dia}`) ?? "").trim();
+    if (!fechado && (!hora.test(abre) || !hora.test(fecha))) {
+      return {
+        erro: `${DIAS_DA_SEMANA[dia]}: informe a hora de abrir e de fechar, ou marque como fechado.`,
+      };
+    }
+    linhas.push({
+      weekday: dia,
+      is_closed: fechado,
+      opens_at: fechado ? null : abre,
+      closes_at: fechado ? null : fecha,
+      sort_order: dia,
+    });
+  }
+
+  const supabase = await getSupabaseServerClient();
+  try {
+    const { error } = await supabase.from("store_hours").upsert(linhas, { onConflict: "weekday" });
+    if (error) throw error;
+    return ok("Horários salvos.");
+  } catch (erro) {
+    return falha("salvarHorarios", erro);
   }
 }
 
