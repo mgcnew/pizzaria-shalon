@@ -606,7 +606,7 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
                     Taxa de entrega: {formatBRL(cotacao.taxa)}
                   </p>
                   <p className="m-0 mt-1 text-[13px] text-ink-2">
-                    {cotacao.endereco_formatado} · {cotacao.distancia_km.toFixed(1)} km de rota
+                    {cotacao.endereco_formatado}
                   </p>
                   {cotacao.exige_aprovacao ? (
                     /* RN-ENT-011: segue, mas com aprovação da Shalon. */
