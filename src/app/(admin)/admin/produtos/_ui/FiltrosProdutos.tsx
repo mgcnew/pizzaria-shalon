@@ -52,7 +52,11 @@ export function FiltrosProdutos({
     if (!aberto) return;
 
     function fecharAoClicarFora(evento: PointerEvent) {
-      if (!filtrosRef.current?.contains(evento.target as Node)) setAberto(false);
+      const alvo = evento.target as Element;
+      // A lista de opções do SelectMenu é desenhada fora deste painel (portal):
+      // tocar numa opção NÃO é clicar fora, e fechar aqui descartava o filtro.
+      if (alvo.closest?.('[role="listbox"]')) return;
+      if (!filtrosRef.current?.contains(alvo)) setAberto(false);
     }
 
     function fecharComEscape(evento: KeyboardEvent) {
