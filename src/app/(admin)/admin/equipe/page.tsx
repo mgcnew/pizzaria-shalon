@@ -5,6 +5,7 @@ import {
   listarFuncionarios,
   listarMovimentos,
   listarPapeis,
+  listarPapeisComPermissoes,
   listarReferenciasSalariais,
   listarLancamentosParaConferencia,
   listarDiferencasDeAcerto,
@@ -49,8 +50,15 @@ export default async function Page({
    * A aba efetiva segue a mesma regra do painel: "livro" sem a permissão
    * financeira cai em movimentações.
    */
+  const podeGerirPermissoes = podeNaUI(sessao, "roles.manage");
   const abaEfetiva =
-    aba === "equipe" ? "equipe" : aba === "livro" && podeVerFinanceiro ? "livro" : "movimentos";
+    aba === "equipe"
+      ? "equipe"
+      : aba === "livro" && podeVerFinanceiro
+        ? "livro"
+        : aba === "permissoes" && podeGerirPermissoes
+          ? "permissoes"
+          : "movimentos";
   const partesMes = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit",
   }).formatToParts(new Date());
@@ -58,8 +66,13 @@ export default async function Page({
   const mesConferencia = /^\d{4}-(0[1-9]|1[0-2])$/.test(mes ?? "") ? mes! : mesAtual;
   const nenhum = <T,>(valor: T) => Promise.resolve(valor);
 
+  const permissoesDosPapeis =
+    abaEfetiva === "permissoes"
+      ? await listarPapeisComPermissoes()
+      : { catalogo: [], papeis: [] };
+
   const [funcionarios, equipe, papeis, movimentos, historico, caixa, referencias, lancamentosDoMes, diferencas] = await Promise.all([
-    abaEfetiva === "equipe" ? nenhum([]) : listarFuncionarios(),
+    abaEfetiva === "equipe" || abaEfetiva === "permissoes" ? nenhum([]) : listarFuncionarios(),
     abaEfetiva === "equipe" ? listarEquipe() : nenhum([]),
     // A lista já vem marcando o que ESTE usuário pode conceder (RN-RBAC-005).
     abaEfetiva === "equipe" && podeGerirEquipe ? listarPapeis() : nenhum([]),
@@ -88,7 +101,7 @@ export default async function Page({
       </header>
 
       <PainelDaEquipe
-        aba={aba === "livro" || aba === "equipe" ? aba : "movimentos"}
+        aba={abaEfetiva}
         funcionarios={funcionarios}
         equipe={equipe}
         papeis={papeis}
@@ -107,6 +120,8 @@ export default async function Page({
         // Dar acesso é transformar alguém em usuário: exige as duas permissões.
         podeGerirAcesso={podeGerirEquipe && podeNaUI(sessao, "roles.manage")}
         caixaAberto={caixa.aberto}
+        podeGerirPermissoes={podeGerirPermissoes}
+        permissoesDosPapeis={permissoesDosPapeis}
       />
     </div>
   );

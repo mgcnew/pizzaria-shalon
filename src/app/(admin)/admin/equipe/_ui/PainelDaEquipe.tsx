@@ -6,6 +6,7 @@ import { Badge, Button, Input, SelectMenu, Textarea } from "@/ui/components";
 import { Abas, Aviso, Cartao, EmptyState, LinhaLista, ParDeDados } from "@/ui/patterns";
 import { formatBRL } from "@/lib/format";
 import { EscolherProduto } from "../../pedidos/_ui/EscolherProduto";
+import { PermissoesDosPapeis } from "./PermissoesDosPapeis";
 import type { ItemDoRascunho } from "@/application/pedidos/tipos";
 import type { FuncionarioBasico } from "@/application/equipe/consultas";
 import { GestaoDaEquipe } from "./GestaoDaEquipe";
@@ -102,6 +103,8 @@ export function PainelDaEquipe({
   podeGerirSalario,
   podeGerirAcesso,
   caixaAberto,
+  podeGerirPermissoes = false,
+  permissoesDosPapeis = { catalogo: [], papeis: [] },
 }: {
   /** Aba corrente, vinda da URL: o estado de navegação mora lá, não aqui. */
   aba: string;
@@ -126,6 +129,12 @@ export function PainelDaEquipe({
   podeGerirAcesso: boolean;
   /** RN-EMPFIN-004: sem gaveta aberta, adiantamento em dinheiro não sai. */
   caixaAberto: boolean;
+  /** `roles.manage`: mostra a aba de permissões dos papéis. */
+  podeGerirPermissoes?: boolean;
+  permissoesDosPapeis?: {
+    catalogo: { id: string; codigo: string }[];
+    papeis: import("@/application/equipe/tipos").PapelComPermissoes[];
+  };
 }) {
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, iniciar] = useTransition();
@@ -614,6 +623,7 @@ export function PainelDaEquipe({
           ...(podeVerFinanceiro
             ? [{ nome: "Histórico financeiro", valor: "livro" }]
             : []),
+          ...(podeGerirPermissoes ? [{ nome: "Permissões", valor: "permissoes" }] : []),
         ]}
         atual={aba}
         parametro="aba"
@@ -628,6 +638,11 @@ export function PainelDaEquipe({
           podeGerir={podeGerirEquipe}
           podeGerirSalario={podeGerirSalario}
           podeGerirAcesso={podeGerirAcesso}
+        />
+      ) : aba === "permissoes" && podeGerirPermissoes ? (
+        <PermissoesDosPapeis
+          papeis={permissoesDosPapeis.papeis}
+          catalogo={permissoesDosPapeis.catalogo}
         />
       ) : aba === "livro" && podeVerFinanceiro ? (
         livro

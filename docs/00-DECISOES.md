@@ -4314,3 +4314,19 @@ envio real".
 3. Uma entrada é acrescentada aqui, em ordem cronológica, com: identificador `D-AAAA-MM-DD-NN`, decisão, motivo, onde foi formalizada e impacto no design.
 4. Se a decisão supera regra anterior, o texto antigo **não é apagado**: recebe marcador de supersessão apontando para a regra vigente.
 5. Decisões que deixam de estar em aberto saem da tabela acima e viram entrada datada.
+
+## D-2026-10-15-122 — A dona ajusta o que o Atendente vê e faz
+
+**Pedido:** só existem Atendente e Owner/Admin, e não havia como definir o que o
+Atendente pode ou não ver.
+
+**Decisão:**
+1. Nova aba **Permissões** em Funcionários/Equipe, só com `roles.manage`: a dona
+   marca, por papel, o que ele pode ver e fazer (agrupado por assunto, em
+   linguagem de balcão).
+2. Migration 0149: `definir_permissoes_do_papel` passa a aceitar papel de sistema,
+   **exceto Owner/Admin**, que continua completo (a dona não pode se trancar
+   fora). Regra anti-escalada (RN-RBAC-005, conjunto final + o que sai) e a
+   auditoria `papel_definir_permissoes` ficam como estavam.
+3. Vale para todos os usuários com o papel; a mudança aparece na próxima
+   leitura da sessão. Não há criação de papéis novos nesta entrega.

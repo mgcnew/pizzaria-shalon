@@ -355,6 +355,31 @@ export async function definirPapeis(entrada: unknown): Promise<Resultado> {
 }
 
 /**
+ * A dona decide o que um papel pode fazer (D-2026-10-15-122). A RPC valida o
+ * CONJUNTO FINAL contra o que quem pede possui (RN-RBAC-005) e recusa o papel
+ * da proprietária; esta função só repassa.
+ */
+export async function definirPermissoesDoPapel(entrada: unknown): Promise<Resultado> {
+  const v = z.object({
+    papel_id: z.string().uuid(),
+    permissoes: z.array(z.string().uuid()).max(200),
+    motivo: z.string().max(400).optional(),
+  }).safeParse(entrada);
+  if (!v.success) return { ok: false, erro: "Seleção de permissões inválida." };
+
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("definir_permissoes_do_papel", {
+    p_role_id: v.data.papel_id,
+    p_permissoes: v.data.permissoes,
+    p_motivo: v.data.motivo ?? null,
+  });
+  if (error) return falha("definirPermissoesDoPapel", error);
+
+  revalidatePath("/admin", "layout");
+  return resposta(data);
+}
+
+/**
  * "Não lançar" a diferença de um acerto no funcionário (RN-RUN-006, 0144).
  * Fica registrado, com quem decidiu e por quê; lançar depois é recusado.
  */

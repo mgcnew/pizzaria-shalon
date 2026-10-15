@@ -185,3 +185,17 @@ export type DiferencaDeAcerto = {
   dispensada_em: string | null;
   motivo_da_dispensa: string | null;
 };
+
+/** Uma permissão do catálogo, com o que ela libera em linguagem de balcão. */
+export type PermissaoDoCatalogo = { id: string; codigo: string };
+
+/** Um papel com o conjunto de permissões que ele concede hoje. */
+export type PapelComPermissoes = {
+  id: string;
+  nome: string;
+  descricao: string | null;
+  /** Papel da proprietária: sempre completo, não editável. */
+  somenteLeitura: boolean;
+  /** Códigos concedidos (ex.: `orders.view`). */
+  codigos: string[];
+};

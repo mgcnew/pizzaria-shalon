@@ -199,3 +199,46 @@ export async function listarPapeis(): Promise<PapelAtribuivel[]> {
   }
   return (data as PapelAtribuivel[]) ?? [];
 }
+
+/** Catálogo de permissões e papéis ativos com o que cada um concede. */
+export async function listarPapeisComPermissoes(): Promise<{
+  catalogo: { id: string; codigo: string }[];
+  papeis: import("./tipos").PapelComPermissoes[];
+}> {
+  const supabase = await getSupabaseServerClient();
+  const [cat, pap] = await Promise.all([
+    supabase.from("permissions").select("id, code").order("code"),
+    supabase
+      .from("roles")
+      .select("id, name, description, is_system, role_permissions(permissions(code))")
+      .eq("is_active", true)
+      .order("name"),
+  ]);
+
+  if (cat.error || pap.error) {
+    logger.error("equipe:listarPapeisComPermissoes", {
+      code: ((cat.error ?? pap.error) as { code?: string }).code,
+    });
+    return { catalogo: [], papeis: [] };
+  }
+
+  type Linha = {
+    id: string;
+    name: string;
+    description: string | null;
+    role_permissions: { permissions: { code: string } | { code: string }[] | null }[] | null;
+  };
+  return {
+    catalogo: (cat.data ?? []).map((p) => ({ id: p.id as string, codigo: p.code as string })),
+    papeis: ((pap.data ?? []) as unknown as Linha[]).map((r) => ({
+      id: r.id,
+      nome: r.name,
+      descricao: r.description,
+      somenteLeitura: r.name === "Owner/Admin",
+      codigos: (r.role_permissions ?? [])
+        .flatMap((rp) => (Array.isArray(rp.permissions) ? rp.permissions : rp.permissions ? [rp.permissions] : []))
+        .map((p) => p.code)
+        .sort(),
+    })),
+  };
+}
