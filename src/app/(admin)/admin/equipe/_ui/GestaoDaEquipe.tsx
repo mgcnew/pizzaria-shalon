@@ -253,6 +253,39 @@ export function GestaoDaEquipe({
                   Cancelar
                 </Button>
               </div>
+
+              {/* Acesso ao sistema, na própria edição do funcionário. */}
+              {rascunho.id && podeGerirAcesso ? (() => {
+                const membro = equipe.find((m) => m.funcionario_id === rascunho.id);
+                if (!membro || !membro.ativo) return null;
+                return (
+                  <div className="mt-4 flex flex-col gap-2 border-t border-border-shalon pt-4">
+                    <p className="m-0 text-[12px] font-bold uppercase tracking-[0.06em] text-muted">
+                      Acesso ao sistema
+                    </p>
+                    {membro.acesso === null ? (
+                      <FormularioDeAcesso
+                        funcionarioId={rascunho.id}
+                        email={email}
+                        setEmail={setEmail}
+                        senhaInicial={senhaInicial}
+                        setSenhaInicial={setSenhaInicial}
+                        enviando={enviando}
+                        executar={executar}
+                        aoCancelar={() => setEmail("")}
+                      />
+                    ) : (
+                      <p className="m-0 text-[13.5px] text-ink-2">
+                        Acesso {membro.acesso.ativo ? "ativo" : "desativado"} ·{" "}
+                        {membro.acesso.papeis.length === 0
+                          ? "sem papel"
+                          : membro.acesso.papeis.map((p) => p.nome).join(", ")}
+                        . Para trocar papéis, use a lista abaixo.
+                      </p>
+                    )}
+                  </div>
+                );
+              })() : null}
             </div>
           ) : null}
         </Cartao>
@@ -402,68 +435,16 @@ export function GestaoDaEquipe({
         ) : null}
 
         {vinculando ? (
-          <div className="mt-3 flex flex-col gap-2 border-t border-border-shalon pt-3">
-            <p className="m-0 text-[13px] text-muted">
-              Crie a conta com uma senha inicial que você define, ou envie um convite: a pessoa
-              recebe um e-mail e escolhe a própria senha. Se ela já tem conta, use “Vincular conta
-              existente”.
-            </p>
-            <Input
-              label="E-mail"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <Input
-              label="Senha inicial (mínimo 8 caracteres)"
-              type="password"
-              autoComplete="new-password"
-              value={senhaInicial}
-              onChange={(e) => setSenhaInicial(e.target.value)}
-            />
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variante="primario"
-                disabled={enviando || !email.includes("@") || senhaInicial.length < 8}
-                onClick={() =>
-                  executar(() =>
-                    criarContaComSenha({
-                      funcionario_id: vinculando,
-                      email: email.trim(),
-                      senha: senhaInicial,
-                    }),
-                  )
-                }
-              >
-                Criar conta com esta senha
-              </Button>
-              <Button
-                variante="secundario"
-                disabled={enviando || !email.includes("@")}
-                onClick={() =>
-                  executar(() =>
-                    convidarFuncionario({ funcionario_id: vinculando, email: email.trim() }),
-                  )
-                }
-              >
-                Enviar convite por e-mail
-              </Button>
-              <Button
-                variante="secundario"
-                disabled={enviando || !email.includes("@")}
-                onClick={() =>
-                  executar(() =>
-                    vincularAcesso({ funcionario_id: vinculando, email: email.trim() }),
-                  )
-                }
-              >
-                Vincular conta existente
-              </Button>
-              <Button variante="secundario" onClick={() => setVinculando(null)}>
-                Cancelar
-              </Button>
-            </div>
-          </div>
+          <FormularioDeAcesso
+            funcionarioId={vinculando}
+            email={email}
+            setEmail={setEmail}
+            senhaInicial={senhaInicial}
+            setSenhaInicial={setSenhaInicial}
+            enviando={enviando}
+            executar={executar}
+            aoCancelar={() => setVinculando(null)}
+          />
         ) : null}
 
         {/* RN-RBAC-005: a lista já esconde o que este usuário não pode conceder. */}
@@ -513,5 +494,94 @@ export function GestaoDaEquipe({
         ) : null}
       </Cartao>
     </div>
+  );
+}
+
+/**
+ * Acesso ao sistema de um funcionário: criar conta com senha inicial, enviar
+ * convite ou vincular conta existente. Usado na lista e na edição do funcionário.
+ */
+function FormularioDeAcesso({
+  funcionarioId,
+  email,
+  setEmail,
+  senhaInicial,
+  setSenhaInicial,
+  enviando,
+  executar,
+  aoCancelar,
+}: {
+  funcionarioId: string;
+  email: string;
+  setEmail: (valor: string) => void;
+  senhaInicial: string;
+  setSenhaInicial: (valor: string) => void;
+  enviando: boolean;
+  executar: (acao: () => Promise<{ ok: boolean; erro?: string }>) => void;
+  aoCancelar: () => void;
+}) {
+  return (
+    <div className="mt-3 flex flex-col gap-2 border-t border-border-shalon pt-3">
+          <p className="m-0 text-[13px] text-muted">
+            Crie a conta com uma senha inicial que você define, ou envie um convite: a pessoa
+            recebe um e-mail e escolhe a própria senha. Se ela já tem conta, use “Vincular conta
+            existente”.
+          </p>
+          <Input
+            label="E-mail"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <Input
+            label="Senha inicial (mínimo 8 caracteres)"
+            type="password"
+            autoComplete="new-password"
+            value={senhaInicial}
+            onChange={(e) => setSenhaInicial(e.target.value)}
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variante="primario"
+              disabled={enviando || !email.includes("@") || senhaInicial.length < 8}
+              onClick={() =>
+                executar(() =>
+                  criarContaComSenha({
+                    funcionario_id: funcionarioId,
+                    email: email.trim(),
+                    senha: senhaInicial,
+                  }),
+                )
+              }
+            >
+              Criar conta com esta senha
+            </Button>
+            <Button
+              variante="secundario"
+              disabled={enviando || !email.includes("@")}
+              onClick={() =>
+                executar(() =>
+                  convidarFuncionario({ funcionario_id: funcionarioId, email: email.trim() }),
+                )
+              }
+            >
+              Enviar convite por e-mail
+            </Button>
+            <Button
+              variante="secundario"
+              disabled={enviando || !email.includes("@")}
+              onClick={() =>
+                executar(() =>
+                  vincularAcesso({ funcionario_id: funcionarioId, email: email.trim() }),
+                )
+              }
+            >
+              Vincular conta existente
+            </Button>
+            <Button variante="secundario" onClick={() => aoCancelar()}>
+              Cancelar
+            </Button>
+          </div>
+        </div>
   );
 }
