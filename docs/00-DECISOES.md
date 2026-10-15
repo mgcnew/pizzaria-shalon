@@ -1964,7 +1964,7 @@ Nenhuma implementação que dependa destes pontos deve começar antes da decisã
 | ~~A-17~~ | ~~Busca pública sem acento e sem caixa~~ | — | ✅ Resolvida em D-2026-09-19-28: `unaccent` + filtrar antes de precificar; sem índice, por medição |
 | ~~A-18~~ | ~~Troca de motoboy com o pedido já na rua~~ | — | ✅ Resolvida em D-2026-09-22-58: virou **RN-RUN-008** e **RN-RUN-009** |
 | ~~A-19~~ | ~~Adiantamento pago pela gaveta~~ | — | ✅ Resolvida em D-2026-09-22-58: virou **RN-EMPFIN-004** |
-| **A-20** | **Criação da conta de login do funcionário** — `/admin/equipe` vincula uma conta que **já existe** no Auth, e o sistema não a cria. Criar exigiria `service_role` (CLAUDE.md §13) e uma política de senha inicial/recuperação que não está normatizada. Falta decidir o mecanismo: convite por e-mail, criação pelo painel do Supabase, ou outro | Onboarding de novo funcionário com acesso | `03-RLS-RBAC-SEGURANCA.md` §19.7 e §25 |
+| ~~A-20~~ | ~~Criação da conta de login do funcionário~~ | — | ✅ Em D-2026-10-15-121: convite por e-mail em `/admin/equipe`, com `service_role` restrito a uma função `server-only`. Falta validar o envio real |
 | ~~A-21~~ | ~~Conteúdo dos papéis (`role_permissions`)~~ | — | ✅ Resolvida em D-2026-09-23-69, na Fase 10. A escalada **era real e foi reproduzida**: ator com `roles.manage` e sem `finance.*` concedeu as duas à vítima por escrita direta, inclusive em papel **já atribuído**. Fechada a escrita direta e criada `definir_permissoes_do_papel`, que valida o **conjunto final** |
 | ~~A-22~~ | ~~Histórico de disponibilidade de produto~~ | — | ✅ Resolvida em D-2026-09-23-67: **não** na V1. O comportamento conservador fica: sem passado fabricado, sem presumir que o estado de hoje valeu o período, sem rótulo de baixa venda sem base, e a limitação dita em texto no ranking. Postergada para evolução futura |
 | **A-15** | **Política de senha, MFA e bloqueio por tentativa** do Supabase Auth — não configurados; a V1 usa o padrão do projeto. A **recuperação de senha** saiu desta pendência: foi implementada em D-2026-09-19-51, com o mínimo de 8 caracteres. O que resta é política de complexidade, MFA, expiração e bloqueio | Fase 10 (hardening) | `03-RLS-RBAC-SEGURANCA.md` §25 |
@@ -4257,6 +4257,37 @@ de identidade no painel (aprovadas em princípio, "aos poucos").
 **Onde foi formalizada:** `src/ui/tokens/tokens.css`, `Badge.tsx`,
 `BotaoFavorito.tsx`, `PainelDoCaixa.tsx`, `PdvComTeclado.tsx`, `Checkout.tsx`,
 `Carrinho.tsx`. Relatório em `.impeccable/critique/`.
+
+## D-2026-10-15-121 — Convite por e-mail para acesso de funcionário (fecha A-20)
+
+**Contexto.** Cadastrar funcionário com acesso exigia que alguém criasse a
+conta no painel do Supabase. Isso prendia a operação ao desenvolvedor e
+travava cadastros urgentes (caso da Julia, 14/10/2026).
+
+**Decisão, aprovada pelo Marcelo em 15/10/2026.**
+1. Em `/admin/equipe`, "Enviar convite": o funcionário recebe um e-mail,
+   define a própria senha em `/admin/redefinir-senha` e entra. Ninguém da
+   pizzaria escolhe nem vê a senha de outra pessoa.
+2. **Uso excepcional da chave `service_role`** (CLAUDE.md §13), com estas
+   condições: fica só em `src/infrastructure/supabase/admin.ts`, marcado
+   `server-only`; é usada só para enviar o convite; quem chama precisa de
+   `employees.manage` e `roles.manage`, checados antes; a chave nunca vai
+   para o navegador, para o Git, para log ou para o `.env.example`.
+3. O vínculo continua sendo feito pela função `vincular_acesso`, a mesma de
+   sempre, que refaz a checagem de permissão e grava auditoria. O acesso
+   nasce sem papel; os papéis são atribuídos depois, deliberadamente.
+4. "Vincular conta existente" continua disponível para quem já tem conta.
+
+**Operação.** Configurar no Supabase (Authentication → URL Configuration) o
+endereço `/admin/redefinir-senha` na lista de redirecionamentos, e no Vercel
+a variável `SUPABASE_SERVICE_ROLE_KEY`, em Production e Preview. Para envio
+confiável, configurar SMTP próprio: o padrão do Supabase tem limite baixo de
+e-mails por hora.
+
+**Onde foi formalizada:** `src/infrastructure/supabase/admin.ts`,
+`src/application/equipe/convite.ts`, `GestaoDaEquipe.tsx`. A-20 em
+`docs/06-PENDENCIAS-VALIDACAO-PRODUCAO.md` passa a "resolvido, a validar com
+envio real".
 
 ---
 

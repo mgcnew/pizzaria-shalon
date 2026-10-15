@@ -11,6 +11,7 @@ import {
   salvarFuncionario,
   vincularAcesso,
 } from "@/application/equipe/acoes";
+import { convidarFuncionario } from "@/application/equipe/convite";
 import type { MembroDaEquipe, PapelAtribuivel, ReferenciaSalarial } from "@/application/equipe/tipos";
 
 /**
@@ -401,18 +402,29 @@ export function GestaoDaEquipe({
         {vinculando ? (
           <div className="mt-3 flex flex-col gap-2 border-t border-border-shalon pt-3">
             <p className="m-0 text-[13px] text-muted">
-              A conta precisa existir antes. O sistema não cria login nem define senha — isso
-              depende de uma política de senha que ainda não foi decidida.
+              Envie um convite: a pessoa recebe um e-mail, define a própria senha e entra. Se ela
+              já tem uma conta no sistema, use “Vincular conta existente”.
             </p>
             <Input
-              label="E-mail da conta"
+              label="E-mail"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button
                 variante="primario"
+                disabled={enviando || !email.includes("@")}
+                onClick={() =>
+                  executar(() =>
+                    convidarFuncionario({ funcionario_id: vinculando, email: email.trim() }),
+                  )
+                }
+              >
+                Enviar convite
+              </Button>
+              <Button
+                variante="secundario"
                 disabled={enviando || !email.includes("@")}
                 onClick={() =>
                   executar(() =>
@@ -420,7 +432,7 @@ export function GestaoDaEquipe({
                   )
                 }
               >
-                Vincular acesso
+                Vincular conta existente
               </Button>
               <Button variante="secundario" onClick={() => setVinculando(null)}>
                 Cancelar
