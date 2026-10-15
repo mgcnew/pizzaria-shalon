@@ -123,6 +123,8 @@ export type BannerPublico = {
   destino_slug: string | null;
   url_externa: string | null;
   ordem: number;
+  /** Arte em retrato (1:2) do popup de abertura; nulo = sem popup. */
+  popup_imagem_path: string | null;
 };
 
 /** Projeção pública da loja (03 §7.1). Sem coordenadas e sem dado interno. */

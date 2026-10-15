@@ -46,6 +46,13 @@ export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean 
     listarPromocoes(),
   ]);
 
+  // Banner é peça larga (2:1); o popup é em retrato (1:2). Cada seletor mostra
+  // só o que serve, para não pôr uma arte vertical no carrossel.
+  const imagensLargas = imagens.filter((i) => (i.width ?? 1) >= (i.height ?? 0));
+  const imagensRetrato = imagens.filter((i) => (i.height ?? 0) > (i.width ?? 1));
+  const rotuloImagem = (i: (typeof imagens)[number]) =>
+    `${i.original_filename ?? i.storage_path} (${i.width}×${i.height})`;
+
   // Uma entrada por promoção (campanha), não por item.
   const porCampanha = new Map<string, { nome: string; idRepresentante: string; itens: number }>();
   for (const pr of promocoes) {
@@ -97,6 +104,7 @@ export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean 
                       : ""}
                   </p>
                 </div>
+                {b.tem_popup ? <StatusBadge tom="info">Popup</StatusBadge> : null}
                 <StatusBadge tom={b.visivel_agora ? "sucesso" : "neutro"}>
                   {b.visivel_agora ? "Aparece agora" : b.ativo ? "Fora do ar" : "Desativado"}
                 </StatusBadge>
@@ -136,7 +144,8 @@ export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean 
                 Passo 1 · Enviar a imagem
               </h4>
               <p className="m-0 text-[12.5px] text-muted">
-                Use uma imagem horizontal na proporção 2:1 para preencher corretamente o carrossel.
+                Envie a arte do carrossel na proporção 2:1 (horizontal). Para o popup de abertura,
+                envie também uma em retrato 1:2 (por exemplo 800×1600).
                 {imagens.length > 0
                   ? ` Você já tem ${imagens.length} ${imagens.length === 1 ? "imagem enviada" : "imagens enviadas"} — pode pular para o passo 2.`
                   : ""}
@@ -153,7 +162,7 @@ export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean 
                   name="arquivo"
                   type="file"
                   accept="image/jpeg,image/png,image/webp,image/avif"
-                  hint="Recomendado: 1600×800 px ou 1200×600 px (proporção 2:1). JPEG, PNG, WebP ou AVIF, até 8 MB. Imagens em outra proporção podem ser recortadas."
+                  hint="Carrossel: 1600×800 px (2:1). Popup: 800×1600 px (1:2). JPEG, PNG, WebP ou AVIF, até 8 MB. Imagens em outra proporção podem ser recortadas."
                   required
                 />
               </FormularioAcao>
@@ -176,10 +185,22 @@ export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean 
                     name="imagem_id"
                     required
                     placeholder="Escolha a imagem"
-                    opcoes={imagens.map((i) => ({
-                      valor: i.id,
-                      texto: `${i.original_filename ?? i.storage_path} (${i.width}×${i.height})`,
-                    }))}
+                    opcoes={imagensLargas.map((i) => ({ valor: i.id, texto: rotuloImagem(i) }))}
+                    hint="Arte horizontal (2:1) do carrossel."
+                  />
+                  <SelectMenu
+                    label="Imagem do popup (opcional)"
+                    name="popup_imagem_id"
+                    valorInicial=""
+                    hint={
+                      imagensRetrato.length === 0
+                        ? "Sem arte em retrato (1:2) enviada: sem ela, o banner não gera popup. Envie uma no passo 1."
+                        : "Arte em retrato (1:2). Com ela, o banner também aparece num popup quando o cliente abre o cardápio. Sem ela, não há popup."
+                    }
+                    opcoes={[
+                      { valor: "", texto: "Sem popup" },
+                      ...imagensRetrato.map((i) => ({ valor: i.id, texto: rotuloImagem(i) })),
+                    ]}
                   />
                   <Input label="Título (opcional)" name="titulo" />
                   <Input label="Texto (opcional)" name="corpo" />

@@ -4397,3 +4397,20 @@ destaque" e vê todos), com dias da semana como na promoção.
    `products`. Promoção com vários itens segue em `/promocao/<id>`.
 4. Formulário: o destino escolhido define o que aparece (produtos, link
    externo), no lugar dos dois campos sempre visíveis.
+
+## D-2026-10-15-127 — Popup de abertura com arte em retrato (1:2)
+
+**Pedido da dona:** além do banner 2:1, uma arte em retrato (1:2) que aparece
+como popup quando o cliente entra, com o botão para ir ao item; **sem a arte,
+sem popup**, para nunca aparecer aviso sem sentido.
+
+**Decisão (migration 0152):**
+1. `banners.popup_image_asset_id` (opcional). O popup é do próprio banner e
+   herda toda a sua visibilidade: ativo, período, dias da semana e destino
+   disponível (`banner_visivel`). Banner fora do ar não gera popup.
+2. Cardápio (`/`): exibe o popup do primeiro banner visível que tenha arte de
+   popup. Uma vez por dia, por banner, por aparelho (`localStorage`).
+3. O botão "Ver agora" segue o destino do banner (produto, categoria,
+   promoção, destaque, link externo). Banner sem destino mostra só a arte.
+4. No cadastro, o seletor do carrossel mostra só imagens horizontais e o do
+   popup só imagens em retrato.

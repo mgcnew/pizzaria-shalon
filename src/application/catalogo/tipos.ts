@@ -116,6 +116,8 @@ export type BannerAdmin = {
   dias: number[] | null;
   /** Quantos produtos, quando o destino é "products". */
   itens: number;
+  /** Tem imagem de popup (retrato 1:2)? */
+  tem_popup: boolean;
 };
 
 export type Categoria = {

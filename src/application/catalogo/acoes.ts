@@ -855,6 +855,9 @@ export async function salvarBanner(
     .filter((d) => Number.isInteger(d) && d >= 1 && d <= 7)
     .sort((a, b) => a - b);
 
+  // Imagem do popup (retrato 1:2): opcional. Sem ela, o banner não gera popup.
+  const popupId = String(form.get("popup_imagem_id") ?? "").trim() || null;
+
   const inicio = String(form.get("inicio") ?? "").trim();
   const fim = String(form.get("fim") ?? "").trim();
   const inicioData = inicio ? dataDeParede(inicio) : null;
@@ -873,6 +876,7 @@ export async function salvarBanner(
         title: String(form.get("titulo") ?? "").trim() || null,
         body: String(form.get("corpo") ?? "").trim() || null,
         image_asset_id: imagemId,
+        popup_image_asset_id: popupId,
         destination_type: tipo,
         destination_product_id: tipo === "product" ? alvoId : null,
         destination_category_id: tipo === "category" ? alvoId : null,

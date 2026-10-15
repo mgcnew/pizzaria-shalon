@@ -2,6 +2,7 @@ import Link from "next/link";
 import { listarBanners, urlDaImagem } from "@/application/publico/consultas";
 import { formatBRL } from "@/lib/format";
 import type { BannerPublico, ProdutoPublico } from "@/application/publico/tipos";
+import { PopupDeAbertura } from "./PopupDeAbertura";
 import { CarrosselBanners } from "./CarrosselBanners";
 
 /**
@@ -115,8 +116,24 @@ export async function Banners({
     banners.map(async (b) => ({ ...b, url: await urlDaImagem(b.imagem_path), href: destino(b) })),
   );
 
+  // Popup de abertura: só existe se o banner tem imagem de popup — sem arte
+  // não há aviso (D-2026-10-15-127). O primeiro da ordem do carrossel.
+  const comPopup = cartoes.find((b) => b.popup_imagem_path);
+  const popupUrl = comPopup?.popup_imagem_path
+    ? await urlDaImagem(comPopup.popup_imagem_path)
+    : null;
+
   return (
     <>
+      {comPopup && popupUrl ? (
+        <PopupDeAbertura
+          bannerId={comPopup.id}
+          imagemUrl={popupUrl}
+          titulo={comPopup.titulo}
+          href={comPopup.href}
+          externo={comPopup.destino_tipo === "external"}
+        />
+      ) : null}
       <CarrosselBanners banners={cartoes} />
       <FaixaCombos combos={combos} />
     </>
