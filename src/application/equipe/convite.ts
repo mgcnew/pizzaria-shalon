@@ -56,6 +56,25 @@ export async function convidarFuncionario(entrada: unknown): Promise<Resultado> 
   }
 }
 
+/**
+ * Traduz o erro do Supabase em instrução para quem opera. Só usa o código do
+ * erro, que não tem segredo; a chave nunca aparece aqui.
+ */
+function motivoDoConvite(erro: unknown): string {
+  const e = erro as { code?: string; status?: number; message?: string };
+  const codigo = e.code ?? "";
+  if (codigo === "over_email_send_rate_limit" || e.status === 429) {
+    return "Limite de envio de e-mails atingido. Tente de novo em alguns minutos, ou configure um SMTP próprio no Supabase.";
+  }
+  if (e.status === 401 || e.status === 403 || codigo === "bad_jwt" || codigo === "invalid_api_key") {
+    return "A chave de servidor (SUPABASE_SERVICE_ROLE_KEY) não corresponde a este projeto. Confira se é a chave do projeto que o site usa.";
+  }
+  if (codigo === "unexpected_failure" || /redirect|url/i.test(e.message ?? "")) {
+    return "O Supabase recusou o endereço de retorno. Confira em Authentication → URL Configuration se o redirecionamento está liberado.";
+  }
+  return `Não foi possível enviar o convite (${codigo || e.status || "erro desconhecido"}). Veja o log do servidor para detalhes.`;
+}
+
 async function convidar(entrada: unknown): Promise<Resultado> {
   const v = conviteSchema.safeParse(entrada);
   if (!v.success) return { ok: false, erro: "Informe um e-mail válido." };
@@ -92,7 +111,11 @@ async function convidar(entrada: unknown): Promise<Resultado> {
   // Conta que já existe não é erro aqui: segue para o vínculo normal.
   // Qualquer outra falha para o convite interrompe o fluxo.
   if (error && !/already|registered|exists/i.test(error.message ?? "")) {
-    return falha("inviteUserByEmail", error);
+    logger.error("equipe:convite:inviteUserByEmail", {
+      code: (error as { code?: string }).code,
+      status: (error as { status?: number }).status,
+    });
+    return { ok: false, erro: motivoDoConvite(error) };
   }
 
   // 4. Vínculo pela função normal, com a conta do próprio usuário.
