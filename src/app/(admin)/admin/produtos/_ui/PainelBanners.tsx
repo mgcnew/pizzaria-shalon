@@ -39,6 +39,15 @@ export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean 
     listarPromocoes(),
   ]);
 
+  // Uma entrada por promoção (campanha), não por item.
+  const porCampanha = new Map<string, { nome: string; idRepresentante: string; itens: number }>();
+  for (const pr of promocoes) {
+    const atual = porCampanha.get(pr.campanha_id);
+    if (atual) atual.itens += 1;
+    else porCampanha.set(pr.campanha_id, { nome: pr.nome, idRepresentante: pr.id, itens: 1 });
+  }
+  const campanhasParaBanner = [...porCampanha.values()];
+
   return (
     <div className="flex flex-col gap-4">
       <p className="m-0 max-w-[70ch] text-[13.5px] text-ink-2">
@@ -104,80 +113,108 @@ export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean 
       )}
 
       {podeGerenciar ? (
-      <>
-      <NovoItem
-        titulo="Enviar imagem de banner"
-        descricao="Use uma imagem horizontal na proporção 2:1 para preencher corretamente o carrossel promocional."
-        aberto={imagens.length === 0}
-      >
-        <FormularioAcao acao={enviarImagem} rotulo="Enviar imagem" variante="secundario" limparAoSalvar>
-          <input type="hidden" name="uso" value="banner" />
-          <Input
-            label="Arquivo"
-            name="arquivo"
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/avif"
-            hint="Recomendado: 1600×800 px ou 1200×600 px (proporção 2:1). JPEG, PNG, WebP ou AVIF, até 8 MB. Imagens em outra proporção podem ser recortadas."
-            required
-          />
-        </FormularioAcao>
-      </NovoItem>
+        <NovoItem
+          titulo="Novo banner"
+          descricao="Dois passos: primeiro a imagem, depois onde o banner leva."
+          aberto={banners.length === 0}
+        >
+          <div className="flex flex-col gap-5">
+            <section aria-labelledby="banner-passo-1" className="flex flex-col gap-2">
+              <h4 id="banner-passo-1" className="m-0 text-[14px] font-bold text-ink">
+                Passo 1 · Enviar a imagem
+              </h4>
+              <p className="m-0 text-[12.5px] text-muted">
+                Use uma imagem horizontal na proporção 2:1 para preencher corretamente o carrossel.
+                {imagens.length > 0
+                  ? ` Você já tem ${imagens.length} ${imagens.length === 1 ? "imagem enviada" : "imagens enviadas"} — pode pular para o passo 2.`
+                  : ""}
+              </p>
+              <FormularioAcao
+                acao={enviarImagem}
+                rotulo="Enviar imagem"
+                variante="secundario"
+                limparAoSalvar
+              >
+                <input type="hidden" name="uso" value="banner" />
+                <Input
+                  label="Arquivo"
+                  name="arquivo"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/avif"
+                  hint="Recomendado: 1600×800 px ou 1200×600 px (proporção 2:1). JPEG, PNG, WebP ou AVIF, até 8 MB. Imagens em outra proporção podem ser recortadas."
+                  required
+                />
+              </FormularioAcao>
+            </section>
 
-      <NovoItem
-        titulo="Novo banner"
-        descricao="Para divulgar uma promoção no carrossel, escolha Promoção no campo Destino. O banner sairá do ar junto com o fim da oferta."
-        aberto={banners.length === 0 && imagens.length > 0}
-      >
-        {imagens.length === 0 ? (
-          <p className="m-0 text-[13.5px] text-muted">
-            Envie uma imagem primeiro — banner sem imagem não é aceito.
-          </p>
-        ) : (
-          <FormularioAcao acao={salvarBanner} rotulo="Criar banner" limparAoSalvar>
-            <SelectMenu
-              label="Imagem"
-              name="imagem_id"
-              required
-              placeholder="Escolha a imagem"
-              opcoes={imagens.map((i) => ({
-                valor: i.id,
-                texto: `${i.original_filename ?? i.storage_path} (${i.width}×${i.height})`,
-              }))}
-            />
-            <Input label="Título (opcional)" name="titulo" />
-            <Input label="Texto (opcional)" name="corpo" />
+            <hr className="m-0 border-0 border-t border-border-shalon" />
 
-            <SelectMenu
-              label="Destino"
-              name="destino"
-              valorInicial="none"
-              opcoes={[
-                { valor: "none", texto: "Sem destino" },
-                { valor: "external", texto: "Link externo" },
-                ...produtos
-                  .filter((p) => p.ativo)
-                  .map((p) => ({ valor: `product:${p.id}`, texto: p.nome, grupo: "Produto" })),
-                ...categorias
-                  .filter((c) => c.is_active)
-                  .map((c) => ({ valor: `category:${c.id}`, texto: c.name, grupo: "Categoria" })),
-                ...promocoes.map((p) => ({ valor: `promotion:${p.id}`, texto: p.nome, grupo: "Promoção" })),
-              ]}
-            />
+            <section aria-labelledby="banner-passo-2" className="flex flex-col gap-2">
+              <h4 id="banner-passo-2" className="m-0 text-[14px] font-bold text-ink">
+                Passo 2 · Montar o banner
+              </h4>
+              {imagens.length === 0 ? (
+                <p className="m-0 text-[13.5px] text-muted">
+                  Envie uma imagem no passo 1 — banner sem imagem não é aceito.
+                </p>
+              ) : (
+                <FormularioAcao acao={salvarBanner} rotulo="Criar banner" limparAoSalvar>
+                  <SelectMenu
+                    label="Imagem"
+                    name="imagem_id"
+                    required
+                    placeholder="Escolha a imagem"
+                    opcoes={imagens.map((i) => ({
+                      valor: i.id,
+                      texto: `${i.original_filename ?? i.storage_path} (${i.width}×${i.height})`,
+                    }))}
+                  />
+                  <Input label="Título (opcional)" name="titulo" />
+                  <Input label="Texto (opcional)" name="corpo" />
 
-            <Input
-              label="URL externa"
-              name="url_externa"
-              type="url"
-              placeholder="https://..."
-              hint="Preencha somente se o destino for Link externo."
-            />
-            <CampoDataHora label="Começa em (opcional)" name="inicio" modo="dataHora" />
-            <CampoDataHora label="Termina em (opcional)" name="fim" modo="dataHora" />
-            <Input label="Ordem" name="ordem" type="number" defaultValue={0} min={0} />
-          </FormularioAcao>
-        )}
-      </NovoItem>
-      </>
+                  <SelectMenu
+                    label="Para onde o banner leva"
+                    name="destino"
+                    valorInicial="none"
+                    hint="Promoção com vários itens abre uma página com todos eles e some do ar junto com a promoção — nos dias em que ela não vale, o banner não aparece."
+                    opcoes={[
+                      { valor: "none", texto: "Lugar nenhum (só divulga)" },
+                      { valor: "external", texto: "Link externo" },
+                      ...campanhasParaBanner.map((c) => ({
+                        valor: `promotion:${c.idRepresentante}`,
+                        texto: c.itens > 1 ? `${c.nome} (${c.itens} itens)` : c.nome,
+                        grupo: "Promoção",
+                      })),
+                      ...categorias
+                        .filter((c) => c.is_active)
+                        .map((c) => ({ valor: `category:${c.id}`, texto: c.name, grupo: "Categoria" })),
+                      ...produtos
+                        .filter((p) => p.ativo)
+                        .map((p) => ({ valor: `product:${p.id}`, texto: p.nome, grupo: "Produto" })),
+                    ]}
+                  />
+
+                  <Input
+                    label="URL externa"
+                    name="url_externa"
+                    type="url"
+                    placeholder="https://..."
+                    hint="Preencha somente se o destino for Link externo."
+                  />
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <CampoDataHora
+                      label="Aparece a partir de (opcional)"
+                      name="inicio"
+                      modo="dataHora"
+                    />
+                    <CampoDataHora label="Sai do ar em (opcional)" name="fim" modo="dataHora" />
+                  </div>
+                  <Input label="Ordem no carrossel" name="ordem" type="number" defaultValue={0} min={0} />
+                </FormularioAcao>
+              )}
+            </section>
+          </div>
+        </NovoItem>
       ) : null}
     </div>
   );

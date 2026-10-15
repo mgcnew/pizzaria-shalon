@@ -65,9 +65,13 @@ function destino(b: BannerPublico): string | null {
       return b.destino_slug ? `/produto/${b.destino_slug}` : null;
     case "category":
       return b.destino_slug ? `/categoria/${b.destino_slug}` : null;
-    // Promoção não é página: o banco devolve o slug do produto alvo.
+    // Promoção de um item: o banco devolve o slug do produto. Promoção com
+    // vários itens: devolve `promocao/<id>`, a página com todos eles.
     case "promotion":
-      return b.destino_slug ? `/produto/${b.destino_slug}` : null;
+      if (!b.destino_slug) return null;
+      return b.destino_slug.startsWith("promocao/")
+        ? `/${b.destino_slug}`
+        : `/produto/${b.destino_slug}`;
     case "external":
       return b.url_externa;
     default:

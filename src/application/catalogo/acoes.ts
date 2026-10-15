@@ -705,6 +705,26 @@ export async function removerComponente(form: FormData): Promise<void> {
 }
 
 // ----------------------------------------------------------------- promoções
+/**
+ * "AAAA-MM-DDTHH:mm" do seletor é hora de parede da loja. O servidor roda em
+ * UTC; sem o fuso, "18:00" virava 15h em Brasília. O Brasil não tem horário de
+ * verão desde 2019, então o deslocamento fixo de São Paulo é exato.
+ */
+function dataDeParede(valor: string): Date {
+  return new Date(/[zZ]|[+-]\d{2}:?\d{2}$/.test(valor) ? valor : `${valor}-03:00`);
+}
+
+/**
+ * Cria a promoção para UM OU VÁRIOS itens (D-2026-10-15-125).
+ *
+ * Cada item vira uma linha em `promotions` — preço, limite e vigência
+ * continuam por alvo, e todas as regras de preço seguem intactas —, ligadas
+ * por `campaign_id`. É UM `insert` só: se um item conflitar com outra
+ * promoção, nenhum é criado.
+ *
+ * `dia` (repetido) são os dias da semana, ISO 1..7; nenhum marcado = todos os
+ * dias. Combina com o período: vale nos dias marcados, dentro das datas.
+ */
 export async function salvarPromocao(
   _estado: EstadoFormulario,
   form: FormData,
@@ -712,55 +732,88 @@ export async function salvarPromocao(
   const nome = texto.safeParse(form.get("nome"));
   if (!nome.success) return { erro: "Dê um nome à promoção." };
 
-  const alvo = String(form.get("alvo") ?? "");
-  // "variant:<id>" ou "product:<id>"
-  const [tipoAlvo, alvoId] = alvo.split(":");
-  if ((tipoAlvo !== "variant" && tipoAlvo !== "product") || !alvoId) {
-    return { erro: "Escolha o item em promoção." };
+  // "variant:<id>" ou "product:<id>", um por item marcado.
+  const alvos: { tipo: "variant" | "product"; id: string }[] = [];
+  for (const bruto of form.getAll("alvo")) {
+    const [tipo, id] = String(bruto).split(":");
+    if ((tipo !== "variant" && tipo !== "product") || !id) continue;
+    if (!alvos.some((a) => a.tipo === tipo && a.id === id)) alvos.push({ tipo, id });
   }
+  if (alvos.length === 0) return { erro: "Marque pelo menos um item em promoção." };
+  if (alvos.length > 60) return { erro: "Escolha no máximo 60 itens por promoção." };
 
   const preco = lerValorBR(String(form.get("preco") ?? ""));
   if (!preco.ok) return { erro: preco.erro };
 
-  const inicio = String(form.get("inicio") ?? "").trim();
-  if (!inicio) return { erro: "Informe quando a promoção começa." };
-  const fim = String(form.get("fim") ?? "").trim();
+  const dias = [...new Set(form.getAll("dia").map((d) => Number(d)))]
+    .filter((d) => Number.isInteger(d) && d >= 1 && d <= 7)
+    .sort((a, b) => a - b);
+
+  // Sem data de início, a promoção começa agora.
+  const inicioBruto = String(form.get("inicio") ?? "").trim();
+  const inicio = inicioBruto ? dataDeParede(inicioBruto) : new Date();
+  if (Number.isNaN(inicio.getTime())) return { erro: "Data de início inválida." };
+  const fimBruto = String(form.get("fim") ?? "").trim();
+  const fim = fimBruto ? dataDeParede(fimBruto) : null;
+  if (fim && Number.isNaN(fim.getTime())) return { erro: "Data de término inválida." };
+  if (fim && fim <= inicio) return { erro: "O término precisa ser depois do início." };
 
   const limite = String(form.get("limite") ?? "").trim();
 
   const supabase = await getSupabaseServerClient();
+  const campanha = crypto.randomUUID();
   try {
-    const { error } = await supabase.from("promotions").insert({
-      name: nome.data,
-      target_type: tipoAlvo,
-      product_id: tipoAlvo === "product" ? alvoId : null,
-      variant_id: tipoAlvo === "variant" ? alvoId : null,
-      promotional_price: preco.valor,
-      starts_at: new Date(inicio).toISOString(),
-      // RN-PROMO-002: sem fim = vale até desativação manual.
-      ends_at: fim ? new Date(fim).toISOString() : null,
-      max_quantity_per_order: limite ? Number(limite) : null,
-    });
-    if (error) throw error;
-    return ok("Promoção criada.");
+    const { error } = await supabase.from("promotions").insert(
+      alvos.map((a) => ({
+        name: nome.data,
+        target_type: a.tipo,
+        product_id: a.tipo === "product" ? a.id : null,
+        variant_id: a.tipo === "variant" ? a.id : null,
+        promotional_price: preco.valor,
+        starts_at: inicio.toISOString(),
+        // RN-PROMO-002: sem fim = vale até pausar ou excluir.
+        ends_at: fim ? fim.toISOString() : null,
+        weekdays: dias.length > 0 && dias.length < 7 ? dias : null,
+        campaign_id: campanha,
+        max_quantity_per_order: limite ? Number(limite) : null,
+      })),
+    );
+    if (error) {
+      if ((error as { code?: string }).code === "23P01") {
+        return {
+          erro:
+            "Algum dos itens já tem uma promoção ativa nesse período e nesses dias. Pause ou ajuste a outra primeiro (RN-PROMO-004).",
+        };
+      }
+      throw error;
+    }
+    return ok(
+      alvos.length === 1 ? "Promoção criada." : `Promoção criada para ${alvos.length} itens.`,
+    );
   } catch (erro) {
     return falha("salvarPromocao", erro);
   }
 }
 
+/** Pausa ou retoma a promoção INTEIRA (todos os itens), mantendo dias e datas. */
 export async function alternarAtivoPromocao(form: FormData): Promise<void> {
-  const id = String(form.get("id") ?? "");
+  const campanha = String(form.get("campanha") ?? "");
   const ativar = String(form.get("ativar")) === "true";
+  if (!campanha) return;
   const supabase = await getSupabaseServerClient();
-  const { error } = await supabase.from("promotions").update({ is_active: ativar }).eq("id", id);
+  const { error } = await supabase
+    .from("promotions")
+    .update({ is_active: ativar })
+    .eq("campaign_id", campanha);
   if (error) logger.error("catalogo:alternarAtivoPromocao", { code: (error as { code?: string }).code });
   revalidatePath(ROTA);
 }
 
 export async function removerPromocao(form: FormData): Promise<void> {
-  const id = String(form.get("id") ?? "");
+  const campanha = String(form.get("campanha") ?? "");
+  if (!campanha) return;
   const supabase = await getSupabaseServerClient();
-  const { error } = await supabase.from("promotions").delete().eq("id", id);
+  const { error } = await supabase.from("promotions").delete().eq("campaign_id", campanha);
   if (error) logger.error("catalogo:removerPromocao", { code: (error as { code?: string }).code });
   revalidatePath(ROTA);
 }

@@ -60,7 +60,13 @@ export type VariacaoAdmin = {
   em_promocao: boolean;
 };
 
-export type SituacaoPromocao = "vigente" | "agendada" | "encerrada" | "inativa";
+export type SituacaoPromocao =
+  | "vigente"
+  /** No período e ligada, mas hoje não é um dos dias da semana dela. */
+  | "fora_do_dia"
+  | "agendada"
+  | "encerrada"
+  | "inativa";
 
 export type PromocaoAdmin = {
   id: string;
@@ -74,6 +80,10 @@ export type PromocaoAdmin = {
   ativa: boolean;
   situacao: SituacaoPromocao;
   limite_por_pedido: number | null;
+  /** Linhas criadas juntas para vários itens; a tela trata como uma promoção. */
+  campanha_id: string;
+  /** ISO: 1 = segunda … 7 = domingo. Nulo = todos os dias. */
+  dias: number[] | null;
 };
 
 export type ComboAdmin = {

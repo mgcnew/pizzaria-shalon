@@ -4352,3 +4352,31 @@ Catupiry no tamanho, abre sem borda como antes.
 2. **Sugestão de bebida.** Ao adicionar pizza, fogazza ou combo, o painel
    "adicionado" lembra da bebida (link para `/categoria/bebidas`), exceto quando
    um item de um toque já entrou na visita.
+
+## D-2026-10-15-125 — Promoção por dias da semana e com vários itens
+
+**Pedido da dona:** promoção "toda terça, quarta e quinta" sem refazer a cada
+semana (hoje só havia datas); poder pausar mantendo as regras; e escolher mais
+de um item na mesma promoção.
+
+**Decisão (migration 0150):**
+1. `promotions.weekdays` (ISO 1..7, nulo = todos os dias). Dias da semana e
+   período **se combinam**: vale nos dias marcados, dentro das datas. Pausar
+   (`is_active`) continua separado e preserva dias e datas.
+2. `promotions.campaign_id`: itens criados juntos formam uma promoção para a
+   tela (pausar, retomar e excluir agem na promoção inteira). Cada item
+   continua sendo uma linha, com preço, limite e vigência por alvo — nenhuma
+   regra de preço mudou (CLAUDE.md §16/§19: preço promocional simples, um
+   preço igual para todos os itens marcados).
+3. RN-PROMO-004 ampliada: sobreposição só é recusada quando período **e dias**
+   se cruzam. A garantia deixou de ser `EXCLUDE` e virou gatilho com lock por
+   alvo (`promotions_sem_sobreposicao`), porque exclusion constraint não
+   expressa interseção de conjuntos de dias.
+4. A vigência por dia entra por `promocao_no_dia(dias, instante)`, no fuso da
+   loja (`store_settings.timezone`), aplicada às 8 funções que precificam,
+   limitam ou exibem promoção (patch no lugar).
+5. Banner de promoção com vários itens abre `/promocao/<id>`, com os itens que
+   valem agora; some do ar nos dias em que a promoção não vale. Banner para
+   um grupo de produtos sem promoção: usar Categoria.
+6. Datas do formulário (hora de parede) passam a ser lidas em Brasília
+   (-03:00); antes eram lidas no fuso do servidor (UTC), deslocando 3 horas.

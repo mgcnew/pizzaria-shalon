@@ -1,5 +1,5 @@
 import { formatBRL } from "@/lib/format";
-import { StatusBadge, Input, SelectMenu, CampoDataHora } from "@/ui/components";
+import { StatusBadge, Input } from "@/ui/components";
 import { EmptyState } from "@/ui/patterns";
 import {
   listarPromocoes,
@@ -12,10 +12,12 @@ import {
   alternarAtivoPromocao,
   removerPromocao,
 } from "@/application/catalogo/acoes";
-import type { SituacaoPromocao } from "@/application/catalogo/tipos";
+import type { PromocaoAdmin, SituacaoPromocao } from "@/application/catalogo/tipos";
 import { FormularioAcao } from "./FormularioAcao";
 import { BotaoAcao } from "./BotaoAcao";
 import { NovoItem } from "./NovoItem";
+import { SeletorDeItensDaPromocao, type OpcaoDeItem } from "./SeletorDeItensDaPromocao";
+import { QuandoValeAPromocao } from "./QuandoValeAPromocao";
 
 /**
  * Promoções — aba do design, com o cartão de nome, status, valor e período.
@@ -31,22 +33,27 @@ import { NovoItem } from "./NovoItem";
  * (RN-PROMO-004), não por validação de tela.
  */
 
-const TOM: Record<SituacaoPromocao, "sucesso" | "info" | "neutro"> = {
+const TOM: Record<SituacaoPromocao, "sucesso" | "info" | "neutro" | "atencao"> = {
   vigente: "sucesso",
+  fora_do_dia: "atencao",
   agendada: "info",
   encerrada: "neutro",
   inativa: "neutro",
 };
 
 const ROTULO: Record<SituacaoPromocao, string> = {
-  vigente: "Vigente",
+  vigente: "Valendo agora",
+  fora_do_dia: "Hoje não vale",
   agendada: "Agendada",
   encerrada: "Encerrada",
-  inativa: "Desativada",
+  inativa: "Pausada",
 };
 
-function formatarData(iso: string | null): string {
-  if (!iso) return "sem data de término";
+const DIA_LONGO: Record<number, string> = {
+  1: "segunda", 2: "terça", 3: "quarta", 4: "quinta", 5: "sexta", 6: "sábado", 7: "domingo",
+};
+
+function formatarData(iso: string): string {
   return new Date(iso).toLocaleString("pt-BR", {
     day: "2-digit",
     month: "2-digit",
@@ -54,6 +61,23 @@ function formatarData(iso: string | null): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function quandoVale(p: PromocaoAdmin): string {
+  const dias =
+    p.dias && p.dias.length < 7
+      ? `Toda ${[...p.dias].sort((a, b) => a - b).map((d) => DIA_LONGO[d]).join(", ")}`
+      : "Todos os dias";
+  const periodo = p.fim
+    ? `de ${formatarData(p.inicio)} até ${formatarData(p.fim)}`
+    : `a partir de ${formatarData(p.inicio)}, sem data para acabar`;
+  return `${dias} · ${periodo}`;
+}
+
+/** A situação da promoção inteira, a partir da de cada item. */
+function situacaoDaCampanha(itens: PromocaoAdmin[]): SituacaoPromocao {
+  const ordem: SituacaoPromocao[] = ["vigente", "fora_do_dia", "agendada", "encerrada", "inativa"];
+  return ordem.find((o) => itens.some((i) => i.situacao === o)) ?? "inativa";
 }
 
 export async function PainelPromocoes({ podeGerenciar }: { podeGerenciar: boolean }) {
@@ -87,126 +111,141 @@ export async function PainelPromocoes({ podeGerenciar }: { podeGerenciar: boolea
     (p) => p.ativo && p.preco_base !== null && (p.tamanhos === 0 || soFogazza.has(p.id)),
   );
 
+  const opcoes: OpcaoDeItem[] = [
+    ...variacoesPorProduto.flatMap(({ produto, variacoes }) =>
+      variacoes.map((v) => ({
+        valor: `variant:${v.id}`,
+        nome: `${produto.nome} · ${v.tamanho_nome}`,
+        detalhe: formatBRL(v.preco),
+        grupo: produto.categoria_nome,
+      })),
+    ),
+    ...comPrecoProprio.map((p) => ({
+      valor: `product:${p.id}`,
+      nome: p.nome,
+      detalhe: p.preco_base === null ? "—" : formatBRL(p.preco_base),
+      grupo: p.categoria_nome,
+    })),
+  ];
+
+  // Uma promoção = todas as linhas com a mesma campanha.
+  const campanhas = new Map<string, PromocaoAdmin[]>();
+  for (const p of promocoes) {
+    const lista = campanhas.get(p.campanha_id) ?? [];
+    lista.push(p);
+    campanhas.set(p.campanha_id, lista);
+  }
+  const grupos = [...campanhas.values()];
+  const vigentes = grupos.filter((g) => situacaoDaCampanha(g) === "vigente").length;
+
   return (
     <div className="flex flex-col gap-4">
-      {promocoes.length === 0 ? (
+      {podeGerenciar ? (
+        <NovoItem
+          titulo="Nova promoção"
+          descricao="Escolha os itens, o preço e quando vale. Um preço promocional simples — sem cupom nem desconto percentual."
+          aberto={grupos.length === 0}
+        >
+          <FormularioAcao acao={salvarPromocao} rotulo="Criar promoção" limparAoSalvar>
+            <Input label="Nome da promoção" name="nome" required placeholder="Ex.: Terça da Calabresa" />
+            <SeletorDeItensDaPromocao opcoes={opcoes} />
+            <Input
+              label="Preço promocional (cada item)"
+              name="preco"
+              inputMode="decimal"
+              required
+              placeholder="Ex.: 45,90"
+              hint="Este valor substitui o preço normal de cada item marcado."
+            />
+            <QuandoValeAPromocao />
+            <Input
+              label="Limite por pedido (opcional)"
+              name="limite"
+              type="number"
+              min={1}
+              hint="Quantas unidades de cada item podem sair em promoção por pedido."
+            />
+          </FormularioAcao>
+        </NovoItem>
+      ) : null}
+
+      {grupos.length === 0 ? (
         <EmptyState
           titulo="Nenhuma promoção cadastrada"
-          descricao="Uma promoção define um preço promocional para um item, com período programado ou até você desativar."
+          descricao="Uma promoção define um preço promocional para um ou mais itens, com dias da semana, período ou os dois."
         />
       ) : (
-        <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
-          {promocoes.map((p) => (
-            <article
-              key={p.id}
-              className="rounded-14 border border-border-shalon bg-surface p-[14px]"
-            >
-              <div className="flex items-center justify-between gap-[10px]">
-                <h3 className="m-0 text-[16px] font-bold text-ink">{p.nome}</h3>
-                <StatusBadge tom={TOM[p.situacao]}>{ROTULO[p.situacao]}</StatusBadge>
-              </div>
-
-              <p className="mt-[6px] text-[13.5px] text-ink-2">
-                {p.alvo_nome ?? "item removido"}
-              </p>
-
-              <div className="mt-[10px] flex items-baseline gap-2">
-                <span className="text-[15px] font-bold text-ink">
-                  {formatBRL(p.preco_promocional)}
-                </span>
-                {p.preco_normal !== null ? (
-                  <span className="text-[13px] text-muted line-through">
-                    {formatBRL(p.preco_normal)}
-                  </span>
-                ) : null}
-              </div>
-
-              <p className="mt-[4px] text-[12.5px] text-muted">
-                De {formatarData(p.inicio)} até {formatarData(p.fim)}
-              </p>
-              {p.limite_por_pedido !== null ? (
-                <p className="mt-[2px] text-[12.5px] text-muted">
-                  Limite de {p.limite_por_pedido} por pedido
-                </p>
-              ) : null}
-
-              {podeGerenciar ? (
-              <div className="mt-3 flex flex-wrap gap-2">
-                <BotaoAcao
-                  acao={alternarAtivoPromocao}
-                  campos={{ id: p.id, ativar: String(!p.ativa) }}
+        <>
+          <p className="m-0 text-[13.5px] text-ink-2">
+            {grupos.length === 1 ? "1 promoção" : `${grupos.length} promoções`}
+            {vigentes > 0 ? ` · ${vigentes} valendo agora` : " · nenhuma valendo agora"}
+          </p>
+          <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
+            {grupos.map((itens) => {
+              const primeiro = itens[0]!;
+              const situacao = situacaoDaCampanha(itens);
+              const pausada = situacao === "inativa";
+              return (
+                <article
+                  key={primeiro.campanha_id}
+                  className={[
+                    "rounded-14 border border-border-shalon bg-surface p-[14px]",
+                    pausada || situacao === "encerrada" ? "opacity-80" : "",
+                  ].join(" ")}
                 >
-                  {p.ativa ? "Desativar" : "Reativar"}
-                </BotaoAcao>
-                <BotaoAcao
-                  acao={removerPromocao}
-                  campos={{ id: p.id }}
-                  tom="perigo"
-                  confirmar="Excluir esta promoção?"
-                >
-                  Excluir
-                </BotaoAcao>
-              </div>
-              ) : null}
-            </article>
-          ))}
-        </div>
+                  <div className="flex items-start justify-between gap-[10px]">
+                    <h3 className="m-0 text-[16px] font-bold text-ink">{primeiro.nome}</h3>
+                    <StatusBadge tom={TOM[situacao]}>{ROTULO[situacao]}</StatusBadge>
+                  </div>
+
+                  <p className="m-0 mt-1 text-[13px] text-ink-2">{quandoVale(primeiro)}</p>
+
+                  <ul className="m-0 mt-3 flex list-none flex-col gap-1 p-0">
+                    {itens.map((i) => (
+                      <li key={i.id} className="flex items-baseline justify-between gap-3 text-[13.5px]">
+                        <span className="min-w-0 truncate text-ink">{i.alvo_nome ?? "item removido"}</span>
+                        <span className="shrink-0 tabular-nums">
+                          <span className="font-bold text-ink">{formatBRL(i.preco_promocional)}</span>
+                          {i.preco_normal !== null ? (
+                            <span className="ml-1.5 text-[12.5px] text-muted line-through">
+                              {formatBRL(i.preco_normal)}
+                            </span>
+                          ) : null}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {primeiro.limite_por_pedido !== null ? (
+                    <p className="m-0 mt-2 text-[12.5px] text-muted">
+                      Limite de {primeiro.limite_por_pedido} por pedido
+                    </p>
+                  ) : null}
+
+                  {podeGerenciar ? (
+                    <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border-shalon pt-3">
+                      <BotaoAcao
+                        acao={alternarAtivoPromocao}
+                        campos={{ campanha: primeiro.campanha_id, ativar: String(pausada) }}
+                      >
+                        {pausada ? "Retomar" : "Pausar"}
+                      </BotaoAcao>
+                      <BotaoAcao
+                        acao={removerPromocao}
+                        campos={{ campanha: primeiro.campanha_id }}
+                        tom="perigo"
+                        confirmar="Excluir esta promoção?"
+                      >
+                        Excluir
+                      </BotaoAcao>
+                    </div>
+                  ) : null}
+                </article>
+              );
+            })}
+          </div>
+        </>
       )}
-
-      {podeGerenciar ? (
-      <NovoItem
-        titulo="Nova promoção"
-        descricao="Sem data de término, a promoção vale até você desativá-la."
-        aberto={promocoes.length === 0}
-      >
-        <FormularioAcao acao={salvarPromocao} rotulo="Criar promoção" limparAoSalvar>
-          <Input label="Nome" name="nome" required placeholder="Ex.: Terça da Calabresa" />
-
-          <SelectMenu
-            label="Item em promoção"
-            name="alvo"
-            required
-            placeholder="Escolha o item"
-            opcoes={[
-              ...variacoesPorProduto.flatMap(({ produto, variacoes }) =>
-                variacoes.map((v) => ({
-                  valor: `variant:${v.id}`,
-                  texto: `${produto.nome} · ${v.tamanho_nome} (${formatBRL(v.preco)})`,
-                  grupo: produto.nome,
-                })),
-              ),
-              ...comPrecoProprio.map((p) => ({
-                valor: `product:${p.id}`,
-                texto: `${p.nome} (${p.preco_base === null ? "—" : formatBRL(p.preco_base)})`,
-                grupo: "Preço próprio (bebida, fogazza, combo, pizza de preço único)",
-              })),
-            ]}
-          />
-
-          <Input
-            label="Preço promocional"
-            name="preco"
-            inputMode="decimal"
-            required
-            placeholder="Ex.: 45,90"
-          />
-          <CampoDataHora label="Começa em" name="inicio" modo="dataHora" required />
-          <CampoDataHora
-            label="Termina em (opcional)"
-            name="fim"
-            modo="dataHora"
-            hint="Em branco: vale até desativação manual."
-          />
-          <Input
-            label="Limite por pedido (opcional)"
-            name="limite"
-            type="number"
-            min={1}
-            hint="Independente do limite normal do produto; quando os dois existem, vale o mais restritivo."
-          />
-        </FormularioAcao>
-      </NovoItem>
-      ) : null}
     </div>
   );
 }
