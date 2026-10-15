@@ -1,6 +1,6 @@
 import { formatBRL } from "@/lib/format";
 import { StatusBadge, Input, SelectMenu, CampoDataHora } from "@/ui/components";
-import { Cartao, EmptyState } from "@/ui/patterns";
+import { EmptyState } from "@/ui/patterns";
 import {
   listarPromocoes,
   listarProdutos,
@@ -15,6 +15,7 @@ import {
 import type { SituacaoPromocao } from "@/application/catalogo/tipos";
 import { FormularioAcao } from "./FormularioAcao";
 import { BotaoAcao } from "./BotaoAcao";
+import { NovoItem } from "./NovoItem";
 
 /**
  * Promoções — aba do design, com o cartão de nome, status, valor e período.
@@ -137,7 +138,12 @@ export async function PainelPromocoes({ podeGerenciar }: { podeGerenciar: boolea
                 >
                   {p.ativa ? "Desativar" : "Reativar"}
                 </BotaoAcao>
-                <BotaoAcao acao={removerPromocao} campos={{ id: p.id }} tom="perigo">
+                <BotaoAcao
+                  acao={removerPromocao}
+                  campos={{ id: p.id }}
+                  tom="perigo"
+                  confirmar="Excluir esta promoção?"
+                >
                   Excluir
                 </BotaoAcao>
               </div>
@@ -148,11 +154,12 @@ export async function PainelPromocoes({ podeGerenciar }: { podeGerenciar: boolea
       )}
 
       {podeGerenciar ? (
-      <Cartao largura="cheio"
+      <NovoItem
         titulo="Nova promoção"
         descricao="Sem data de término, a promoção vale até você desativá-la."
+        aberto={promocoes.length === 0}
       >
-        <FormularioAcao acao={salvarPromocao} rotulo="Criar promoção">
+        <FormularioAcao acao={salvarPromocao} rotulo="Criar promoção" limparAoSalvar>
           <Input label="Nome" name="nome" required placeholder="Ex.: Terça da Calabresa" />
 
           <SelectMenu
@@ -198,7 +205,7 @@ export async function PainelPromocoes({ podeGerenciar }: { podeGerenciar: boolea
             hint="Independente do limite normal do produto; quando os dois existem, vale o mais restritivo."
           />
         </FormularioAcao>
-      </Cartao>
+      </NovoItem>
       ) : null}
     </div>
   );

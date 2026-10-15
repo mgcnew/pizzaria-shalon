@@ -600,6 +600,67 @@ export async function salvarPrecoPorTamanho(
   }
 }
 
+/**
+ * Preços de UM item em TODOS os tamanhos, de uma vez (15/10/2026).
+ *
+ * Substitui o "salvar por tamanho": com 5 bordas e 4 tamanhos eram 20
+ * formulários e 20 botões. Mesma regra (RN-BORDA-002/RN-ADD-002): campo vazio
+ * remove a oferta naquele tamanho. Valida TUDO antes de gravar — um valor
+ * inválido não deixa metade dos tamanhos salvos.
+ */
+export async function salvarPrecosDoItem(
+  _estado: EstadoFormulario,
+  form: FormData,
+): Promise<EstadoFormulario> {
+  const tipo = String(form.get("tipo") ?? "");
+  const entidadeId = String(form.get("entidade_id") ?? "");
+  if (!entidadeId || (tipo !== "borda" && tipo !== "adicional")) return { erro: "Item inválido." };
+
+  const tabela = tipo === "borda" ? "crust_size_prices" : "addon_size_prices";
+  const coluna = tipo === "borda" ? "crust_id" : "addon_id";
+
+  const remover: string[] = [];
+  const gravar: { tamanho: string; valor: number }[] = [];
+  for (const [campo, bruto] of form.entries()) {
+    if (!campo.startsWith("preco_")) continue;
+    const tamanho = campo.slice("preco_".length);
+    const texto = String(bruto);
+    if (texto.trim() === "") {
+      remover.push(tamanho);
+      continue;
+    }
+    const preco = lerValorBR(texto);
+    if (!preco.ok) return { erro: preco.erro };
+    gravar.push({ tamanho, valor: preco.valor });
+  }
+
+  const supabase = await getSupabaseServerClient();
+  try {
+    if (gravar.length > 0) {
+      const { error } = await supabase.from(tabela).upsert(
+        gravar.map((g) => ({ [coluna]: entidadeId, size_id: g.tamanho, price: g.valor })),
+        { onConflict: `${coluna},size_id` },
+      );
+      if (error) throw error;
+    }
+    if (remover.length > 0) {
+      const { error } = await supabase
+        .from(tabela)
+        .delete()
+        .eq(coluna, entidadeId)
+        .in("size_id", remover);
+      if (error) throw error;
+    }
+    return ok(
+      `Preços salvos${gravar.length ? `: ${gravar.length} tamanho${gravar.length > 1 ? "s" : ""}` : ""}${
+        remover.length ? `. Removido de ${remover.length}` : ""
+      }.`,
+    );
+  } catch (erro) {
+    return falha("salvarPrecosDoItem", erro);
+  }
+}
+
 // -------------------------------------------------------------------- combos
 /** RN-COMBO-002/003: componente exato; pizza dentro do combo exige tamanho. */
 export async function adicionarComponente(

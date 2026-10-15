@@ -10,13 +10,14 @@ import {
 import {
   salvarAdicional,
   salvarBorda,
-  salvarPrecoPorTamanho,
+  salvarPrecosDoItem,
   copiarPrecosDeAdicionais,
   alternarAtivoSimples,
   alternarDisponibilidadeSimples,
 } from "@/application/catalogo/acoes";
 import { FormularioAcao } from "./FormularioAcao";
 import { BotaoAcao } from "./BotaoAcao";
+import { NovoItem } from "./NovoItem";
 
 /**
  * Bordas e adicionais — abas de lista do design.
@@ -111,81 +112,102 @@ export async function PainelBordasAdicionais({
         </Cartao>
       ) : null}
 
-      {itens.map((item) => (
-        <Cartao key={item.id} largura="cheio">
-          <div className="mb-2 flex flex-wrap items-center gap-3">
-            <p className="m-0 min-w-[140px] flex-1 text-[15px] font-semibold text-ink">
-              {item.name}
-            </p>
-            {!item.is_active ? (
-              <StatusBadge tom="neutro">Inativ{ehBorda ? "a" : "o"}</StatusBadge>
-            ) : item.is_temporarily_available ? (
-              <StatusBadge tom="sucesso">Disponível</StatusBadge>
-            ) : (
-              <StatusBadge tom="atencao">Indisponível hoje</StatusBadge>
-            )}
-            {podeGerenciar ? (
-              <>
-            <BotaoAcao
-              acao={alternarDisponibilidadeSimples}
-              campos={{
-                tabela,
-                id: item.id,
-                disponivel: String(!item.is_temporarily_available),
-              }}
-            >
-              Alternar disponibilidade
-            </BotaoAcao>
-            <BotaoAcao
-              acao={alternarAtivoSimples}
-              campos={{ tabela, id: item.id, ativar: String(!item.is_active) }}
-            >
-              {item.is_active ? "Inativar" : "Reativar"}
-            </BotaoAcao>
-              </>
-            ) : null}
-          </div>
-
-          {podeGerenciar ? (
-          <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(220px,1fr))]">
-            {tamanhosAtivos.map((t) => {
-              const preco = precoDe(item.id, t.id);
-              return (
-                <div
-                  key={t.id}
-                  className="rounded-11 border border-border-shalon bg-elev p-3"
-                >
-                  <FormularioAcao
-                    acao={salvarPrecoPorTamanho}
-                    rotulo={preco === null ? "Oferecer neste tamanho" : "Salvar"}
-                    variante="secundario"
-                    tamanho="sm"
+      {itens.map((item) => {
+        const oferecidoEm = tamanhosAtivos.filter((t) => precoDe(item.id, t.id) !== null).length;
+        return (
+          <Cartao key={item.id} largura="cheio">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <div className={["min-w-[140px] flex-1", item.is_active ? "" : "opacity-60"].join(" ")}>
+                <p className="m-0 text-[15px] font-semibold text-ink">{item.name}</p>
+                <p className="m-0 mt-[2px] text-[12.5px] text-muted">
+                  {oferecidoEm === 0
+                    ? "Não é oferecid" + (ehBorda ? "a" : "o") + " em nenhum tamanho"
+                    : `Oferecid${ehBorda ? "a" : "o"} em ${oferecidoEm} de ${tamanhosAtivos.length} tamanhos`}
+                </p>
+              </div>
+              {!item.is_active ? (
+                <StatusBadge tom="neutro">Inativ{ehBorda ? "a" : "o"}</StatusBadge>
+              ) : item.is_temporarily_available ? (
+                <StatusBadge tom="sucesso">Disponível</StatusBadge>
+              ) : (
+                <StatusBadge tom="atencao">Indisponível hoje</StatusBadge>
+              )}
+              {podeGerenciar ? (
+                <>
+                  <BotaoAcao
+                    acao={alternarDisponibilidadeSimples}
+                    campos={{
+                      tabela,
+                      id: item.id,
+                      disponivel: String(!item.is_temporarily_available),
+                    }}
                   >
-                    <input type="hidden" name="tipo" value={tipo} />
-                    <input type="hidden" name="entidade_id" value={item.id} />
-                    <input type="hidden" name="tamanho_id" value={t.id} />
-                    <Input
-                      label={t.name}
-                      name="preco"
-                      inputMode="decimal"
-                      defaultValue={preco === null ? "" : String(preco).replace(".", ",")}
-                      placeholder="Ex.: 8,00"
-                      hint={preco === null ? "Em branco: não oferecido" : "Apague para remover"}
-                    />
-                  </FormularioAcao>
+                    {item.is_temporarily_available ? "Em falta hoje" : "Voltou a ter"}
+                  </BotaoAcao>
+                  <BotaoAcao
+                    acao={alternarAtivoSimples}
+                    campos={{ tabela, id: item.id, ativar: String(!item.is_active) }}
+                    {...(item.is_active
+                      ? { confirmar: "Tirar do cardápio?", tom: "perigo" as const }
+                      : {})}
+                  >
+                    {item.is_active ? "Inativar" : "Reativar"}
+                  </BotaoAcao>
+                </>
+              ) : null}
+            </div>
+
+            {podeGerenciar && tamanhosAtivos.length > 0 ? (
+              <FormularioAcao
+                acao={salvarPrecosDoItem}
+                rotulo="Salvar preços"
+                variante="secundario"
+                tamanho="sm"
+                className="mt-3 border-t border-border-shalon pt-3"
+              >
+                <input type="hidden" name="tipo" value={tipo} />
+                <input type="hidden" name="entidade_id" value={item.id} />
+                <div className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-3 lg:grid-cols-4">
+                  {tamanhosAtivos.map((t) => {
+                    const preco = precoDe(item.id, t.id);
+                    return (
+                      <label key={t.id} className="flex min-w-0 flex-col gap-1">
+                        <span className="truncate text-[12.5px] font-semibold text-ink-2">
+                          {t.name}
+                        </span>
+                        <span className="flex min-h-[44px] items-center gap-1 rounded-11 border-[1.5px] border-border-shalon bg-surface px-3 focus-within:border-brand-orange">
+                          <span aria-hidden="true" className="text-[13px] text-muted">
+                            R$
+                          </span>
+                          <input
+                            name={`preco_${t.id}`}
+                            inputMode="decimal"
+                            defaultValue={preco === null ? "" : preco.toFixed(2).replace(".", ",")}
+                            placeholder="—"
+                            aria-label={`Preço no tamanho ${t.name}; em branco não oferece`}
+                            className="min-w-0 flex-1 border-0 bg-transparent text-[15px] tabular-nums text-ink outline-none placeholder:text-muted"
+                          />
+                        </span>
+                      </label>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
-          ) : null}
-        </Cartao>
-      ))}
+                <p className="m-0 text-[12.5px] text-muted">
+                  Em branco, {ehBorda ? "a borda" : "o adicional"} não é oferecid
+                  {ehBorda ? "a" : "o"} naquele tamanho.
+                </p>
+              </FormularioAcao>
+            ) : null}
+          </Cartao>
+        );
+      })}
 
       {podeGerenciar ? (
-      <Cartao largura="cheio" titulo={ehBorda ? "Nova borda" : "Novo adicional"}>
+      <NovoItem titulo={ehBorda ? "Nova borda" : "Novo adicional"} aberto={itens.length === 0}>
         <FormularioAcao
           acao={ehBorda ? salvarBorda : salvarAdicional}
           rotulo={ehBorda ? "Criar borda" : "Criar adicional"}
+          limparAoSalvar
         >
           <Input
             label="Nome"
@@ -195,7 +217,7 @@ export async function PainelBordasAdicionais({
           />
           <Input label="Ordem" name="ordem" type="number" defaultValue={0} min={0} />
         </FormularioAcao>
-      </Cartao>
+      </NovoItem>
       ) : null}
 
       {itens.length === 0 ? (

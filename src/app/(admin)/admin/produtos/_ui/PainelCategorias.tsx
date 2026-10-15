@@ -8,6 +8,7 @@ import {
 } from "@/application/catalogo/acoes";
 import { FormularioAcao } from "./FormularioAcao";
 import { BotaoAcao } from "./BotaoAcao";
+import { NovoItem } from "./NovoItem";
 
 /**
  * Categorias — aba de lista do design ("Listas dinâmicas: o cardápio público
@@ -32,7 +33,7 @@ export async function PainelCategorias({ podeGerenciar }: { podeGerenciar: boole
       <Cartao largura="cheio">
         {categorias.map((c) => (
           <LinhaLista key={c.id}>
-            <div className="min-w-[160px] flex-1">
+            <div className={["min-w-[160px] flex-1", c.is_active ? "" : "opacity-60"].join(" ")}>
               <p className="m-0 text-[15px] font-semibold text-ink">{c.name}</p>
               <p className="mt-[2px] text-[12.5px] text-muted">
                 /{c.slug}
@@ -54,11 +55,14 @@ export async function PainelCategorias({ podeGerenciar }: { podeGerenciar: boole
               acao={alternarPausaCategoria}
               campos={{ id: c.id, pausar: String(c.is_temporarily_available) }}
             >
-              {c.is_temporarily_available ? "Pausar" : "Despausar"}
+              {c.is_temporarily_available ? "Pausar vendas" : "Retomar vendas"}
             </BotaoAcao>
             <BotaoAcao
               acao={alternarAtivoCategoria}
               campos={{ id: c.id, ativar: String(!c.is_active) }}
+              {...(c.is_active
+                ? { confirmar: "Tirar do cardápio?", tom: "perigo" as const }
+                : {})}
             >
               {c.is_active ? "Inativar" : "Reativar"}
             </BotaoAcao>
@@ -69,13 +73,17 @@ export async function PainelCategorias({ podeGerenciar }: { podeGerenciar: boole
       </Cartao>
 
       {podeGerenciar ? (
-      <Cartao largura="cheio" titulo="Nova categoria" descricao="O endereço público é gerado a partir do nome.">
-        <FormularioAcao acao={salvarCategoria} rotulo="Criar categoria">
+      <NovoItem
+        titulo="Nova categoria"
+        descricao="O endereço público é gerado a partir do nome."
+        aberto={categorias.length === 0}
+      >
+        <FormularioAcao acao={salvarCategoria} rotulo="Criar categoria" limparAoSalvar>
           <Input label="Nome" name="nome" required placeholder="Ex.: Pizzas Doces" />
           <Textarea label="Descrição (opcional)" name="descricao" />
           <Input label="Ordem no cardápio" name="ordem" type="number" defaultValue={0} min={0} />
         </FormularioAcao>
-      </Cartao>
+      </NovoItem>
       ) : null}
     </div>
   );

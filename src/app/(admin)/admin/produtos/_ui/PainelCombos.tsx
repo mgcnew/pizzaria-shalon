@@ -119,6 +119,7 @@ export async function PainelCombos({ podeGerenciar }: { podeGerenciar: boolean }
                         acao={removerComponente}
                         campos={{ id: c.id, combo_id: combo.id }}
                         tom="perigo"
+                        confirmar="Remover do combo?"
                       >
                         Remover
                       </BotaoAcao>
@@ -133,6 +134,7 @@ export async function PainelCombos({ podeGerenciar }: { podeGerenciar: boolean }
                   acao={adicionarComponente}
                   rotulo="Adicionar item ao combo"
                   variante="secundario"
+                  limparAoSalvar
                 >
                   <input type="hidden" name="combo_id" value={combo.id} />
                   <SelectMenu

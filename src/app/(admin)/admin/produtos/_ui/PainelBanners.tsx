@@ -12,6 +12,7 @@ import { salvarBanner, alternarAtivoBanner, removerBanner } from "@/application/
 import { enviarImagem, urlPublica } from "@/application/midia/imagem";
 import { FormularioAcao } from "./FormularioAcao";
 import { BotaoAcao } from "./BotaoAcao";
+import { NovoItem } from "./NovoItem";
 
 /**
  * Banners.
@@ -86,7 +87,12 @@ export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean 
                     >
                       {b.ativo ? "Desativar" : "Ativar"}
                     </BotaoAcao>
-                    <BotaoAcao acao={removerBanner} campos={{ id: b.id }} tom="perigo">
+                    <BotaoAcao
+                      acao={removerBanner}
+                      campos={{ id: b.id }}
+                      tom="perigo"
+                      confirmar="Excluir este banner?"
+                    >
                       Excluir
                     </BotaoAcao>
                   </>
@@ -99,11 +105,12 @@ export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean 
 
       {podeGerenciar ? (
       <>
-      <Cartao largura="cheio"
+      <NovoItem
         titulo="Enviar imagem de banner"
         descricao="Use uma imagem horizontal na proporção 2:1 para preencher corretamente o carrossel promocional."
+        aberto={imagens.length === 0}
       >
-        <FormularioAcao acao={enviarImagem} rotulo="Enviar imagem" variante="secundario">
+        <FormularioAcao acao={enviarImagem} rotulo="Enviar imagem" variante="secundario" limparAoSalvar>
           <input type="hidden" name="uso" value="banner" />
           <Input
             label="Arquivo"
@@ -114,18 +121,19 @@ export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean 
             required
           />
         </FormularioAcao>
-      </Cartao>
+      </NovoItem>
 
-      <Cartao largura="cheio"
+      <NovoItem
         titulo="Novo banner"
         descricao="Para divulgar uma promoção no carrossel, escolha Promoção no campo Destino. O banner sairá do ar junto com o fim da oferta."
+        aberto={banners.length === 0 && imagens.length > 0}
       >
         {imagens.length === 0 ? (
           <p className="m-0 text-[13.5px] text-muted">
             Envie uma imagem primeiro — banner sem imagem não é aceito.
           </p>
         ) : (
-          <FormularioAcao acao={salvarBanner} rotulo="Criar banner">
+          <FormularioAcao acao={salvarBanner} rotulo="Criar banner" limparAoSalvar>
             <SelectMenu
               label="Imagem"
               name="imagem_id"
@@ -168,7 +176,7 @@ export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean 
             <Input label="Ordem" name="ordem" type="number" defaultValue={0} min={0} />
           </FormularioAcao>
         )}
-      </Cartao>
+      </NovoItem>
       </>
       ) : null}
     </div>

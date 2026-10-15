@@ -4,6 +4,7 @@ import { listarTamanhos } from "@/application/catalogo/consultas";
 import { salvarTamanho, alternarAtivoTamanho } from "@/application/catalogo/acoes";
 import { FormularioAcao } from "./FormularioAcao";
 import { BotaoAcao } from "./BotaoAcao";
+import { NovoItem } from "./NovoItem";
 
 /**
  * Tamanhos — RN-PIZZA-002.
@@ -36,7 +37,7 @@ export async function PainelTamanhos({ podeGerenciar }: { podeGerenciar: boolean
         ) : (
           tamanhos.map((t) => (
             <LinhaLista key={t.id}>
-              <div className="min-w-[160px] flex-1">
+              <div className={["min-w-[160px] flex-1", t.is_active ? "" : "opacity-60"].join(" ")}>
                 <p className="m-0 text-[15px] font-semibold text-ink">{t.name}</p>
                 <p className="mt-[2px] text-[12.5px] text-muted">
                   {t.sold_as === "fogazza"
@@ -56,6 +57,9 @@ export async function PainelTamanhos({ podeGerenciar }: { podeGerenciar: boolean
                 <BotaoAcao
                   acao={alternarAtivoTamanho}
                   campos={{ id: t.id, ativar: String(!t.is_active) }}
+                  {...(t.is_active
+                    ? { confirmar: "Inativar este tamanho?", tom: "perigo" as const }
+                    : {})}
                 >
                   {t.is_active ? "Inativar" : "Reativar"}
                 </BotaoAcao>
@@ -66,8 +70,8 @@ export async function PainelTamanhos({ podeGerenciar }: { podeGerenciar: boolean
       </Cartao>
 
       {podeGerenciar ? (
-      <Cartao largura="cheio" titulo="Novo tamanho">
-        <FormularioAcao acao={salvarTamanho} rotulo="Criar tamanho">
+      <NovoItem titulo="Novo tamanho" aberto={tamanhos.length === 0}>
+        <FormularioAcao acao={salvarTamanho} rotulo="Criar tamanho" limparAoSalvar>
           <Input label="Nome" name="nome" required placeholder="Ex.: Tradicional" />
           <SelectMenu
             label="Vendido como"
@@ -91,7 +95,7 @@ export async function PainelTamanhos({ podeGerenciar }: { podeGerenciar: boolean
           />
           <Input label="Ordem" name="ordem" type="number" defaultValue={0} min={0} />
         </FormularioAcao>
-      </Cartao>
+      </NovoItem>
       ) : null}
     </div>
   );
