@@ -167,12 +167,12 @@ export function NucleoConfigurador({
   }
 
   /**
-   * No balcão (`embutida`) a lista do meio a meio vira busca: com dezenas de
-   * sabores, rolar a lista inteira atrasa o atendimento. O atendente digita e
-   * só aparece o que bate; os sabores já escolhidos ficam sempre à vista. O
-   * cardápio público segue com a lista completa do design aprovado.
+   * A lista do meio a meio é uma BUSCA, no balcão e no cardápio público
+   * (15/10/2026): com dezenas de sabores, rolar a lista inteira cansa. A
+   * pessoa digita e só aparece o que bate; os sabores já escolhidos ficam
+   * sempre à vista.
    */
-  const buscaDeSabor = ancoragem === "embutida";
+  const buscaDeSabor = true;
   const [termoDoSabor, setTermoDoSabor] = useState("");
 
   const outrosSabores = (dadosDoTamanho?.sabores ?? []).filter(
@@ -288,7 +288,7 @@ export function NucleoConfigurador({
     <div className={ancoragem === "fixa" ? "pb-[150px]" : ""}>
       {/* 1 · Tamanho — RN-PIZZA-003. Fixo na fogazza (RN-FOG-004). */}
       {tamanhos.length > 0 && !tamanhoFixo ? (
-        <fieldset className="mt-5 border-0 p-0">
+        <fieldset className="min-w-0 mt-5 border-0 p-0">
           <legend className="mb-1 text-[16px] font-bold text-ink">Escolha o tamanho</legend>
           <p className="m-0 mb-[10px] text-[13px] text-muted">Obrigatório</p>
           <div className="flex flex-col gap-2">
@@ -338,7 +338,7 @@ export function NucleoConfigurador({
 
       {/* 2 · Sabores — só quando o tamanho permite (RN-PIZZA-004) */}
       {aceitaMeioAMeio && dadosDoTamanho ? (
-        <fieldset className="mt-[22px] border-0 p-0">
+        <fieldset className="min-w-0 mt-[22px] border-0 p-0">
           <legend className="mb-1 text-[16px] font-bold text-ink">
             Escolha até {tamanho?.max_sabores} sabores
           </legend>
@@ -432,7 +432,7 @@ export function NucleoConfigurador({
 
       {/* 3 · Borda — RN-BORDA-001: no máximo uma, ou nenhuma */}
       {dadosDoTamanho && dadosDoTamanho.bordas.length > 0 ? (
-        <fieldset className="mt-[22px] border-0 p-0">
+        <fieldset className="min-w-0 mt-[22px] border-0 p-0">
           <legend className="mb-[10px] text-[16px] font-bold text-ink">Escolha sua borda</legend>
           <div className="flex flex-col gap-2">
             {[{ id: "", nome: "Sem borda", preco: 0 }, ...dadosDoTamanho.bordas].map((b) => {
@@ -471,7 +471,7 @@ export function NucleoConfigurador({
 
       {/* 4 · Adicionais — RN-ADD-003: entra ou não entra, sem quantidade */}
       {produto.adicionais_ligados && dadosDoTamanho && dadosDoTamanho.adicionais.length > 0 ? (
-        <fieldset className="mt-[22px] border-0 p-0">
+        <fieldset className="min-w-0 mt-[22px] border-0 p-0">
           <legend className="mb-1 text-[16px] font-bold text-ink">Adicionais</legend>
           <p className="m-0 mb-[10px] text-[13px] text-muted">
             Opcional
