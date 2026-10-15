@@ -4339,3 +4339,16 @@ compartilhado (cardápio e balcão/PDV): a borda cujo nome contém "Catupiry",
 quando o tamanho a oferece, vem selecionada ao abrir e ao trocar de tamanho. O
 preço é recalculado pelo servidor com a borda incluída (CLAUDE.md §16). Sem
 Catupiry no tamanho, abre sem borda como antes.
+
+## D-2026-10-15-124 — Aviso do pedido por pergunta única e sugestão de bebida
+
+1. **Pergunta de avisos.** Na página de acompanhamento do pedido, uma única vez
+   por aparelho (`localStorage` `shalon:aviso-do-pedido`), um diálogo pergunta se
+   o cliente quer ser avisado. "Ativar" liga o som e pede a permissão de aviso do
+   navegador; com ela, a página confere o pedido também em segundo plano e chama
+   o cliente quando o estado muda. **Não é push**: só funciona com a página
+   aberta (em outra aba ou aplicativo). Push com a página fechada exigiria
+   service worker e servidor de push — fora do escopo, decisão futura.
+2. **Sugestão de bebida.** Ao adicionar pizza, fogazza ou combo, o painel
+   "adicionado" lembra da bebida (link para `/categoria/bebidas`), exceto quando
+   um item de um toque já entrou na visita.

@@ -23,7 +23,15 @@ export type AvisoAdicionado = {
    * volta ao cardápio. `cardapio`: veio do card — o cliente já está nele.
    */
   origem: "produto" | "cardapio";
+  /** Pizza, fogazza ou combo sem bebida no carrinho: o painel lembra da bebida. */
+  sugerirBebida: boolean;
 };
+
+/**
+ * Já entrou uma bebida (ou item de um toque) nesta visita? Então não se
+ * lembra de novo. Vive só na memória da aba, como o aviso.
+ */
+let bebidaNaVisita = false;
 
 let atual: AvisoAdicionado | null = null;
 let sequencia = 0;
@@ -33,9 +41,15 @@ function avisar() {
   for (const ouvinte of ouvintes) ouvinte();
 }
 
-export function anunciarAdicionado(nome: string, origem: AvisoAdicionado["origem"]) {
+export function anunciarAdicionado(
+  nome: string,
+  origem: AvisoAdicionado["origem"],
+  /** `refeicao`: pizza, fogazza ou combo. `rapido`: item de um toque (bebida). */
+  natureza: "refeicao" | "rapido" | "outro" = "outro",
+) {
+  if (natureza === "rapido") bebidaNaVisita = true;
   sequencia += 1;
-  atual = { id: sequencia, nome, origem };
+  atual = { id: sequencia, nome, origem, sugerirBebida: natureza === "refeicao" && !bebidaNaVisita };
   avisar();
 }
 

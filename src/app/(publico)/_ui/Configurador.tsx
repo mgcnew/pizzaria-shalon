@@ -61,7 +61,11 @@ export function Configurador({
           rotulos: item.montado.rotulos,
           limite: item.montado.limite,
         });
-        anunciarAdicionado(item.montado.nome, "produto");
+        anunciarAdicionado(
+          item.montado.nome,
+          "produto",
+          ["pizza", "fogazza", "combo"].includes(dados.produto.tipo) ? "refeicao" : "outro",
+        );
       }}
     />
   );

@@ -104,7 +104,7 @@ export function LinhaDeCompra({
         rotulos: r.item.rotulos,
         limite: r.item.limite,
       });
-      anunciarAdicionado(r.item.nome, "cardapio");
+      anunciarAdicionado(r.item.nome, "cardapio", "rapido");
     });
   }
 

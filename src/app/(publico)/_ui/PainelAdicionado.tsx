@@ -103,6 +103,21 @@ export function PainelAdicionado() {
           </div>
         </div>
 
+        {aviso.sugerirBebida ? (
+          <div className="mt-3 flex items-center justify-between gap-3 rounded-12 bg-elev px-3 py-[10px]">
+            <p className="m-0 text-[13.5px] text-ink">
+              Que tal levar uma <span className="font-semibold">bebida</span> para acompanhar?
+            </p>
+            <Link
+              href="/categoria/bebidas"
+              onClick={dispensarAviso}
+              className="shrink-0 text-[13.5px] font-bold text-brand-red no-underline"
+            >
+              Ver bebidas
+            </Link>
+          </div>
+        ) : null}
+
         <div className="mt-4 grid grid-cols-2 gap-[10px]">
           <button
             type="button"

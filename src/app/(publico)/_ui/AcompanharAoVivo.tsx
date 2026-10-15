@@ -32,6 +32,34 @@ function lerPreferenciaDeSom(): boolean {
 
 const semInscricao = () => () => {};
 
+/**
+ * A decisão do cliente sobre os avisos fica neste aparelho (15/10/2026): quem
+ * escolheu "ativar" ou "agora não" não é perguntado de novo. O sino continua
+ * disponível para mudar de ideia.
+ */
+const CHAVE_DECISAO = "shalon:aviso-do-pedido";
+
+function lerDecisao(): string | null {
+  try {
+    return window.localStorage.getItem(CHAVE_DECISAO);
+  } catch {
+    return null;
+  }
+}
+
+function gravarDecisao(valor: "ativado" | "recusado"): void {
+  try {
+    window.localStorage.setItem(CHAVE_DECISAO, valor);
+  } catch {
+    // Sem armazenamento, só não se lembra na próxima visita.
+  }
+}
+
+/** O navegador só oferece aviso do sistema onde a API existe (iOS fora do app, não). */
+function avisoDoSistemaDisponivel(): boolean {
+  return typeof window !== "undefined" && "Notification" in window;
+}
+
 function gravarPreferenciaDeSom(ligado: boolean): void {
   try {
     window.localStorage.setItem(CHAVE_SOM, ligado ? "1" : "0");
@@ -82,6 +110,11 @@ export function AcompanharAoVivo({
   const [somEscolhido, setSomEscolhido] = useState<boolean | null>(null);
   const som = somEscolhido ?? somGuardado;
   const audio = useRef<AudioContext | null>(null);
+
+  const decisaoGuardada = useSyncExternalStore(semInscricao, lerDecisao, () => "pendente");
+  const [decisaoNaVisita, setDecisaoNaVisita] = useState<string | null>(null);
+  const decisao = decisaoNaVisita ?? decisaoGuardada;
+  const perguntar = !encerrado && decisao === null;
   const tituloOriginal = useRef<string | null>(null);
 
   // A página recarregada traz a assinatura nova: ela passa a ser a base.
@@ -124,13 +157,27 @@ export function AcompanharAoVivo({
     let ativo = true;
 
     async function conferir() {
-      if (document.visibilityState !== "visible") return;
+      // Em segundo plano só se confere se o cliente liberou o aviso do
+      // sistema: é ele que o chama de volta.
+      const avisoDoSistema =
+        avisoDoSistemaDisponivel() && Notification.permission === "granted";
+      if (document.visibilityState !== "visible" && !avisoDoSistema) return;
       const r = await conferirPedido(token);
       if (!ativo || !r.ok || r.assinatura === ultima.current) return;
 
       ultima.current = r.assinatura;
       const titulo = descreverEstado(r.status).titulo;
       setAviso(titulo);
+      if (avisoDoSistema && document.visibilityState !== "visible") {
+        try {
+          new Notification(`Pedido #${numero}: ${titulo}`, {
+            tag: `pedido-${token}`,
+            body: "Toque para ver o andamento do seu pedido.",
+          });
+        } catch {
+          // Alguns navegadores móveis só aceitam aviso por service worker.
+        }
+      }
       navigator.vibrate?.([180, 90, 180]);
       if (audio.current) {
         void audio.current.resume().then(() => {
@@ -169,6 +216,21 @@ export function AcompanharAoVivo({
     }
   }
 
+  /** O toque em "Ativar" é o gesto que libera o áudio e a permissão. */
+  function ativarAvisos() {
+    gravarDecisao("ativado");
+    setDecisaoNaVisita("ativado");
+    if (!som) alternarSom();
+    if (avisoDoSistemaDisponivel() && Notification.permission === "default") {
+      void Notification.requestPermission();
+    }
+  }
+
+  function recusarAvisos() {
+    gravarDecisao("recusado");
+    setDecisaoNaVisita("recusado");
+  }
+
   function dispensarAviso() {
     setAviso(null);
     if (tituloOriginal.current) document.title = tituloOriginal.current;
@@ -176,6 +238,50 @@ export function AcompanharAoVivo({
 
   return (
     <>
+      {perguntar ? (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
+          onKeyDown={(e) => {
+            if (e.key === "Escape") recusarAvisos();
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="titulo-aviso-pedido"
+            className="motion-popover-in w-full max-w-[400px] rounded-16 bg-surface p-5 shadow-[0_16px_42px_rgb(30_24_20/0.24)]"
+          >
+            <h2 id="titulo-aviso-pedido" className="m-0 font-display text-[19px] font-bold text-ink">
+              Quer ser avisado sobre o seu pedido?
+            </h2>
+            <p className="m-0 mt-2 text-[14.5px] text-ink-2">
+              Avisamos quando a pizzaria aceitar, quando estiver pronto e quando sair para entrega.
+              Funciona com esta página aberta, mesmo que você esteja em outra aba ou aplicativo.
+            </p>
+            <div className="mt-4 flex flex-col gap-2">
+              <button
+                type="button"
+                autoFocus
+                onClick={ativarAvisos}
+                className="min-h-[50px] cursor-pointer rounded-13 border-0 bg-cta px-4 text-[15px] font-bold text-cta-fg"
+              >
+                Ativar avisos
+              </button>
+              <button
+                type="button"
+                onClick={recusarAvisos}
+                className="min-h-touch cursor-pointer rounded-13 border border-border-shalon bg-surface px-4 text-[14px] font-semibold text-ink"
+              >
+                Agora não
+              </button>
+            </div>
+            <p className="m-0 mt-3 text-[12.5px] text-muted">
+              Você pode mudar isso depois pelo botão de som nesta página.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
       {aviso !== null ? (
         <div
           role="status"
