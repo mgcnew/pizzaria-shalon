@@ -7,6 +7,7 @@ import { obterSessaoInterna, podeNaUI } from "@/application/auth/sessao";
 import { getSupabaseAdminClient } from "@/infrastructure/supabase/admin";
 import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
 import { logger } from "@/lib/logger";
+import { AppError } from "@/lib/errors";
 import type { Resultado } from "./tipos";
 
 /**
@@ -38,6 +39,24 @@ function falha(contexto: string, erro: unknown): Resultado {
 }
 
 export async function convidarFuncionario(entrada: unknown): Promise<Resultado> {
+  // Nada pode escapar daqui como exceção: uma exceção de servidor cai na tela
+  // de erro geral da página. O motivo real vai para o log; a pessoa vê uma
+  // mensagem que diz o que fazer.
+  try {
+    return await convidar(entrada);
+  } catch (erro) {
+    if (erro instanceof AppError && erro.kind === "config") {
+      logger.error("equipe:convite:configuracao", { motivo: erro.message });
+      return {
+        ok: false,
+        erro: "Convites ainda não estão configurados neste ambiente. Avise quem cuida do sistema.",
+      };
+    }
+    return falha("inesperado", erro);
+  }
+}
+
+async function convidar(entrada: unknown): Promise<Resultado> {
   const v = conviteSchema.safeParse(entrada);
   if (!v.success) return { ok: false, erro: "Informe um e-mail válido." };
   const email = v.data.email.trim().toLowerCase();
