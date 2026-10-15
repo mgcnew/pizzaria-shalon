@@ -75,10 +75,23 @@ export function NucleoConfigurador({
     disponiveis[0]?.variacao_id ??
     null;
 
+  /**
+   * Borda padrão (15/10/2026): a pizza já abre com Catupiry; trocar ou tirar
+   * continua a um toque ("Sem borda"). Vem do NOME da borda cadastrada no
+   * tamanho — se o tamanho não tem Catupiry, abre sem borda como antes. O
+   * preço segue sendo do servidor: a abertura repergunta com a borda marcada.
+   */
+  function bordaPadraoDoTamanho(variacaoId: string | null): string | null {
+    const t = tamanhos.find((x) => x.variacao_id === variacaoId);
+    const bordas = t ? porTamanho[t.tamanho_id]?.bordas ?? [] : [];
+    return bordas.find((b) => /catupiry/i.test(b.nome))?.id ?? null;
+  }
+  const bordaInicial = bordaPadraoDoTamanho(inicial);
+
   const [config, setConfig] = useState<Escolhas>({
     variacaoId: inicial,
     sabores: [],
-    bordaId: null,
+    bordaId: bordaInicial,
     adicionais: [],
     observacao: "",
     quantidade: 1,
@@ -96,8 +109,11 @@ export function NucleoConfigurador({
   useEffect(() => {
     if (jaAjustou.current) return;
     jaAjustou.current = true;
-    if (inicial !== null && inicial !== (disponiveis[0]?.variacao_id ?? null)) {
-      aplicar({ variacaoId: inicial });
+    if (
+      bordaInicial !== null ||
+      (inicial !== null && inicial !== (disponiveis[0]?.variacao_id ?? null))
+    ) {
+      aplicar({ variacaoId: inicial, bordaId: bordaInicial });
     }
     // Uma vez, na montagem: é ajuste de abertura, não reação a mudança.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -147,7 +163,7 @@ export function NucleoConfigurador({
    * levaria a uma combinação que o servidor recusaria.
    */
   function escolherTamanho(variacaoId: string) {
-    aplicar({ variacaoId, sabores: [], bordaId: null, adicionais: [] });
+    aplicar({ variacaoId, sabores: [], bordaId: bordaPadraoDoTamanho(variacaoId), adicionais: [] });
   }
 
   /**

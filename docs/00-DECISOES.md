@@ -4330,3 +4330,12 @@ Atendente pode ou não ver.
    auditoria `papel_definir_permissoes` ficam como estavam.
 3. Vale para todos os usuários com o papel; a mudança aparece na próxima
    leitura da sessão. Não há criação de papéis novos nesta entrega.
+
+## D-2026-10-15-123 — Pizza abre com borda de Catupiry
+
+Pedido da dona: toda pizza já vem com borda de Catupiry marcada; trocar ou
+escolher "Sem borda" continua a um toque. Implementado no configurador
+compartilhado (cardápio e balcão/PDV): a borda cujo nome contém "Catupiry",
+quando o tamanho a oferece, vem selecionada ao abrir e ao trocar de tamanho. O
+preço é recalculado pelo servidor com a borda incluída (CLAUDE.md §16). Sem
+Catupiry no tamanho, abre sem borda como antes.
