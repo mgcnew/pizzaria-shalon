@@ -4436,3 +4436,20 @@ cliente escolhe os ingredientes **sem alterar o valor final**.
 **Dados (DEV):** 39 adicionais; "cebola" já existia e foi renomeado "Cebola".
 Foi removido o preço antigo de R$ 3,00 da Cebola no Broto, por não fazer parte
 do pedido (adicionais só na Tradicional).
+
+## D-2026-10-15-129 — Adicionais inclusos: o excedente é cobrado
+
+**Pedido da dona:** em "À sua escolha" e "X-tudo", se o cliente escolher
+adicionais a mais, cobra-se o preço de cada um (R$ 5,00 na Tradicional) além
+do valor da pizza. **Revisa a D-2026-10-15-128**, em que o limite era teto.
+
+**Decisão (migration 0154):**
+1. Com `addons_included`, `max_addons` deixa de ser teto e passa a ser a
+   **quantidade inclusa** (5 e 6). Sem teto: cada adicional além dela soma o
+   seu preço ao preço unitário.
+2. Os inclusos são os de **maior** preço da escolha (conta mais favorável ao
+   cliente); o excedente são os mais baratos. Com preços iguais é indiferente.
+3. Produto sem `addons_included`: nada muda; `max_addons` segue como teto.
+4. Tela: "5 ingredientes inclusos no preço · cada um a mais soma o seu valor";
+   cada ingrediente mostra "Incluso" ou "+ R$ 5,00" conforme a escolha. O
+   total é sempre o do servidor (`montar_item`).

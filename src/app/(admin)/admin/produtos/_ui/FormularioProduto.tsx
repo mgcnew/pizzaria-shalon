@@ -104,9 +104,10 @@ export function FormularioProduto({
             Adicionais inclusos no preço?
           </legend>
           <p className="m-0 mb-2 text-[12.5px] text-muted">
-            Sim: o cliente escolhe os adicionais (até o limite acima) sem acréscimo. Use em
-            produtos como &ldquo;À sua escolha&rdquo; e &ldquo;X-tudo&rdquo;. Não: cada adicional
-            soma o seu preço.
+            Sim: o &ldquo;Limite de adicionais&rdquo; acima vira a quantidade INCLUSA — os primeiros
+            não custam nada e cada adicional a mais soma o seu preço. Use em produtos como
+            &ldquo;À sua escolha&rdquo; (5) e &ldquo;X-tudo&rdquo; (6). Não: cada adicional soma o
+            seu preço e o limite é um teto.
           </p>
           <div className="flex gap-4">
             {(["nao", "sim"] as const).map((valor) => (

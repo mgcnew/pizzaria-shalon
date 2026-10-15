@@ -474,8 +474,10 @@ export function NucleoConfigurador({
         <fieldset className="min-w-0 mt-[22px] border-0 p-0">
           <legend className="mb-1 text-[16px] font-bold text-ink">Adicionais</legend>
           <p className="m-0 mb-[10px] text-[13px] text-muted">
-            {produto.adicionais_inclusos ? "Incluso no preço" : "Opcional"}
-            {produto.limite_adicionais !== null
+            {produto.adicionais_inclusos
+              ? `${produto.limite_adicionais ?? 0} ingredientes inclusos no preço · cada um a mais soma o seu valor`
+              : "Opcional"}
+            {!produto.adicionais_inclusos && produto.limite_adicionais !== null
               ? ` · até ${produto.limite_adicionais}`
               : ""}
             {config.sabores.length > 0 ? " · valem para a pizza inteira" : ""}
@@ -505,7 +507,13 @@ export function NucleoConfigurador({
                   </span>
                   <span className="flex-1 text-[15px] font-semibold text-ink">{a.nome}</span>
                   <span className="text-[14px] font-semibold text-ink-2">
-                    {produto.adicionais_inclusos ? "Incluso" : `+ ${formatBRL(a.preco)}`}
+                    {(() => {
+                      if (!produto.adicionais_inclusos) return `+ ${formatBRL(a.preco)}`;
+                      // Os primeiros N escolhidos não custam; do N+1 em diante soma.
+                      const inclusos = produto.limite_adicionais ?? 0;
+                      const posicao = ativo ? config.adicionais.indexOf(a.id) : config.adicionais.length;
+                      return posicao < inclusos ? "Incluso" : `+ ${formatBRL(a.preco)}`;
+                    })()}
                   </span>
                 </button>
               );
