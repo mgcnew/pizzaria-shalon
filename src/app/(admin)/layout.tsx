@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
 import { DrawerAdmin } from "@/ui/components/DrawerAdmin";
+import { BarreiraDePermissao } from "@/ui/components/BarreiraDePermissao";
 import { MenuLateralAdmin } from "@/ui/components/MenuLateralAdmin";
 import { MenuUsuarioAdmin } from "@/ui/components/MenuUsuarioAdmin";
 import { SeletorDeTema } from "@/ui/components/SeletorDeTema";
@@ -70,12 +71,12 @@ export default async function LayoutAdmin({
           </p>
         </div>
 
-        <MenuLateralAdmin />
+        <MenuLateralAdmin permissoes={sessao.permissoes} />
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex min-h-[53px] flex-nowrap items-center gap-2 border-b border-admin-nav-border bg-admin-nav-bg px-3 py-1 sm:gap-3 sm:px-4">
-          <DrawerAdmin />
+          <DrawerAdmin permissoes={sessao.permissoes} />
           <Link
             href="/admin"
             aria-label="Ir para o painel administrativo"
@@ -99,7 +100,9 @@ export default async function LayoutAdmin({
           <MenuUsuarioAdmin nome={sessao.nome} papeis={sessao.papeis} acaoSair={sair} />
         </header>
 
-        <main className="flex-1 px-4 pb-10 pt-[18px]">{children}</main>
+        <main className="flex-1 px-4 pb-10 pt-[18px]">
+          <BarreiraDePermissao permissoes={sessao.permissoes}>{children}</BarreiraDePermissao>
+        </main>
       </div>
     </div>
   );

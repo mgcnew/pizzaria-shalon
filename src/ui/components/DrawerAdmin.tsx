@@ -22,7 +22,7 @@ import { MenuLateralAdmin } from "./MenuLateralAdmin";
  * A gaveta fecha quando a navegação conclui, não no toque: até lá, o item
  * escolhido mostra o indicador de carregamento (`useFecharAoNavegar`).
  */
-export function DrawerAdmin() {
+export function DrawerAdmin({ permissoes = null }: { permissoes?: readonly string[] | null }) {
   const [aberto, setAberto] = useState(false);
   const aoClicarEmLink = useFecharAoNavegar(() => setAberto(false));
 
@@ -62,7 +62,7 @@ export function DrawerAdmin() {
               </button>
             </div>
 
-            <MenuLateralAdmin aoClicarEmLink={aoClicarEmLink} />
+            <MenuLateralAdmin aoClicarEmLink={aoClicarEmLink} permissoes={permissoes} />
           </nav>
         </div>
       ) : null}

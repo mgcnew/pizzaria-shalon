@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { MouseEvent } from "react";
-import { MENU_ADMIN } from "@/ui/navegacao";
+import { useState, type MouseEvent } from "react";
+import { MENU_ADMIN, rotaBloqueada } from "@/ui/navegacao";
 import { IndicadorDeNavegacao } from "./IndicadorDeNavegacao";
 
 const GRUPOS = [
@@ -120,10 +120,15 @@ function IconeMenu({ href }: { href: string }) {
 
 export function MenuLateralAdmin({
   aoClicarEmLink,
+  permissoes = null,
 }: {
   aoClicarEmLink?: (evento: MouseEvent<HTMLAnchorElement>) => void;
+  /** As permissões de quem está logado; nulo = não bloqueia nada. */
+  permissoes?: readonly string[] | null;
 }) {
   const pathname = usePathname();
+  // Item bloqueado tocado: a explicação aparece logo abaixo dele.
+  const [explicando, setExplicando] = useState<string | null>(null);
 
   return (
     <div className="scrollbar-hidden flex min-h-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-3 [@media(max-height:720px)]:gap-0 [@media(max-height:720px)]:py-2">
@@ -138,6 +143,44 @@ export function MenuLateralAdmin({
                 item.href === "/admin"
                   ? pathname === item.href
                   : pathname === item.href || pathname.startsWith(`${item.href}/`);
+
+              if (permissoes && rotaBloqueada(item.href, permissoes)) {
+                return (
+                  <div key={item.href}>
+                    <button
+                      type="button"
+                      aria-disabled="true"
+                      aria-expanded={explicando === item.href}
+                      onClick={() => setExplicando(explicando === item.href ? null : item.href)}
+                      className="group flex min-h-touch w-full cursor-pointer items-center gap-2.5 rounded-10 border-0 border-l-[3px] border-transparent bg-transparent px-2.5 py-2 text-left text-[13.5px] font-medium text-admin-nav-muted [@media(max-height:720px)]:py-1.5"
+                    >
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-10 bg-admin-nav-icon text-admin-nav-muted opacity-70">
+                        <IconeMenu href={item.href} />
+                      </span>
+                      <span className="min-w-0 flex-1 leading-[1.2]">{item.nome}</span>
+                      <svg
+                        aria-label="Bloqueado"
+                        role="img"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        className="h-4 w-4 shrink-0"
+                      >
+                        <rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" strokeWidth="1.8" />
+                        <path d="M8 11V8a4 4 0 0 1 8 0v3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                    {explicando === item.href ? (
+                      <p
+                        role="status"
+                        className="mx-2.5 mb-1 mt-0.5 rounded-10 bg-admin-nav-icon px-3 py-2 text-[12.5px] leading-[1.4] text-admin-nav-text"
+                      >
+                        Você não tem permissão para abrir {item.nome}. Peça à proprietária para
+                        liberar o acesso.
+                      </p>
+                    ) : null}
+                  </div>
+                );
+              }
 
               return (
                 <Link

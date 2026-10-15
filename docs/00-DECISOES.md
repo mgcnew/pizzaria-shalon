@@ -4453,3 +4453,17 @@ do valor da pizza. **Revisa a D-2026-10-15-128**, em que o limite era teto.
 4. Tela: "5 ingredientes inclusos no preço · cada um a mais soma o seu valor";
    cada ingrediente mostra "Incluso" ou "+ R$ 5,00" conforme a escolha. O
    total é sempre o do servidor (`montar_item`).
+
+## D-2026-10-15-130 — Permissão negada aparece bloqueada, não some
+
+**Pedido da dona:** o que a pessoa não pode acessar não deve simplesmente
+sumir/ficar vazio.
+
+**Decisão:**
+1. No menu, o módulo sem permissão **continua aparecendo**, com cadeado; ao
+   tocar, explica que é preciso pedir à proprietária.
+2. Abrir o endereço de um módulo sem permissão mostra a tela "X está bloqueado
+   para você" (com volta ao painel), em vez de uma página vazia.
+3. A permissão que abre cada módulo está em `PERMISSAO_DA_ROTA`
+   (`src/ui/navegacao.ts`). É apenas interface: a autorização real segue no
+   RLS/RPC (CLAUDE.md §12).

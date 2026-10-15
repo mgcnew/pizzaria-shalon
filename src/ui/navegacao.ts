@@ -33,3 +33,32 @@ export const ROTAS_PUBLICAS: readonly ItemNav[] = [
   { nome: "Histórico", href: "/historico" },
   { nome: "Favoritos", href: "/favoritos" },
 ] as const;
+
+/**
+ * Permissão que abre cada módulo do administrativo (qualquer uma das listadas).
+ *
+ * É SÓ para a interface mostrar o item bloqueado e explicar por quê: quem
+ * decide o que se pode ler ou fazer é o banco (RLS/RPC). Rota sem entrada
+ * aqui — o painel e o perfil — é de todos.
+ */
+export const PERMISSAO_DA_ROTA: Readonly<Record<string, readonly string[]>> = {
+  "/admin/pedidos": ["orders.view"],
+  "/admin/pdv": ["orders.create_manual", "cash.view"],
+  "/admin/entregas": ["deliveries.view"],
+  "/admin/produtos": ["catalog.view"],
+  "/admin/clientes": ["customers.view"],
+  "/admin/remarketing": ["remarketing.view"],
+  "/admin/financeiro": ["finance.view"],
+  "/admin/equipe": ["employees.view"],
+  "/admin/relatorios": ["reports.view"],
+  "/admin/configuracoes": ["settings.view"],
+};
+
+/** A rota (ou a página dentro dela) está fora do que esta pessoa pode abrir? */
+export function rotaBloqueada(rota: string, permissoes: readonly string[]): boolean {
+  const modulo = Object.keys(PERMISSAO_DA_ROTA).find(
+    (r) => rota === r || rota.startsWith(`${r}/`),
+  );
+  if (!modulo) return false;
+  return !PERMISSAO_DA_ROTA[modulo]!.some((p) => permissoes.includes(p));
+}
