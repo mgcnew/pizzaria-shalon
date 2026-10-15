@@ -11,7 +11,12 @@ import {
   salvarFuncionario,
   vincularAcesso,
 } from "@/application/equipe/acoes";
-import { convidarFuncionario, criarContaComSenha } from "@/application/equipe/convite";
+import {
+  convidarFuncionario,
+  criarContaComSenha,
+  definirSenhaInicial,
+  reenviarConvite,
+} from "@/application/equipe/convite";
 import type { MembroDaEquipe, PapelAtribuivel, ReferenciaSalarial } from "@/application/equipe/tipos";
 
 /**
@@ -105,6 +110,7 @@ export function GestaoDaEquipe({
   const [vinculando, setVinculando] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [senhaInicial, setSenhaInicial] = useState("");
+  const [definindoSenha, setDefinindoSenha] = useState(false);
   const [editandoPapeis, setEditandoPapeis] = useState<string | null>(null);
   const [selecionados, setSelecionados] = useState<string[]>([]);
 
@@ -275,13 +281,64 @@ export function GestaoDaEquipe({
                         aoCancelar={() => setEmail("")}
                       />
                     ) : (
-                      <p className="m-0 text-[13.5px] text-ink-2">
-                        Acesso {membro.acesso.ativo ? "ativo" : "desativado"} ·{" "}
-                        {membro.acesso.papeis.length === 0
-                          ? "sem papel"
-                          : membro.acesso.papeis.map((p) => p.nome).join(", ")}
-                        . Para trocar papéis, use a lista abaixo.
-                      </p>
+                      <>
+                        <p className="m-0 text-[13.5px] text-ink-2">
+                          Acesso {membro.acesso.ativo ? "ativo" : "desativado"} ·{" "}
+                          {membro.acesso.papeis.length === 0
+                            ? "sem papel"
+                            : membro.acesso.papeis.map((p) => p.nome).join(", ")}
+                          . Para trocar papéis, use a lista abaixo.
+                        </p>
+                        <p className="m-0 text-[12.5px] text-muted">
+                          Se a pessoa ainda não entrou no sistema, você pode definir a senha inicial
+                          ou reenviar o convite. Depois que ela entrar, isso não fica disponível.
+                        </p>
+                        {definindoSenha ? (
+                          <div className="flex flex-col gap-2">
+                            <Input
+                              label="Senha inicial (mínimo 8 caracteres)"
+                              type="password"
+                              autoComplete="new-password"
+                              value={senhaInicial}
+                              onChange={(e) => setSenhaInicial(e.target.value)}
+                            />
+                            <div className="flex flex-wrap gap-2">
+                              <Button
+                                variante="primario"
+                                disabled={enviando || senhaInicial.length < 8}
+                                onClick={() =>
+                                  executar(() =>
+                                    definirSenhaInicial({
+                                      funcionario_id: rascunho.id as string,
+                                      senha: senhaInicial,
+                                    }),
+                                  )
+                                }
+                              >
+                                Salvar senha inicial
+                              </Button>
+                              <Button variante="secundario" onClick={() => setDefinindoSenha(false)}>
+                                Cancelar
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-wrap gap-2">
+                            <Button variante="secundario" onClick={() => setDefinindoSenha(true)}>
+                              Definir senha inicial
+                            </Button>
+                            <Button
+                              variante="secundario"
+                              disabled={enviando}
+                              onClick={() =>
+                                executar(() => reenviarConvite({ funcionario_id: rascunho.id as string }))
+                              }
+                            >
+                              Reenviar convite
+                            </Button>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 );

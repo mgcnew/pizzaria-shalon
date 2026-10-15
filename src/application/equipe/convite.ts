@@ -210,3 +210,109 @@ async function criarConta(entrada: unknown): Promise<Resultado> {
   revalidatePath(ROTA_EQUIPE);
   return { ok: true };
 }
+
+/**
+ * Conta de um funcionário já vinculada, lida com a chave administrativa, só
+ * depois da checagem de permissão. Devolve null se não houver conta.
+ */
+async function contaVinculada(funcionarioId: string) {
+  const admin = getSupabaseAdminClient();
+  const { data: vinculo } = await admin
+    .from("app_users")
+    .select("auth_user_id")
+    .eq("employee_id", funcionarioId)
+    .maybeSingle();
+  if (!vinculo?.auth_user_id) return null;
+  const { data } = await admin.auth.admin.getUserById(vinculo.auth_user_id);
+  if (!data.user) return null;
+  return { admin, user: data.user };
+}
+
+async function podeAdministrarAcesso(): Promise<{ appUserId: string } | null> {
+  const sessao = await obterSessaoInterna();
+  if (!sessao || !podeNaUI(sessao, "employees.manage") || !podeNaUI(sessao, "roles.manage")) {
+    return null;
+  }
+  return { appUserId: sessao.appUserId };
+}
+
+const funcionarioSchema = z.object({ funcionario_id: z.string().uuid() });
+
+const senhaInicialSchema = funcionarioSchema.extend({
+  senha: z.string().min(8, { message: "A senha precisa ter pelo menos 8 caracteres." }).max(72),
+});
+
+/**
+ * Define a senha inicial de uma conta que ainda NÃO entrou no sistema (convite
+ * pendente ou conta recém-vinculada). Conta que já entrou não tem a senha
+ * trocada aqui: a própria pessoa troca por "Esqueci minha senha".
+ */
+export async function definirSenhaInicial(entrada: unknown): Promise<Resultado> {
+  try {
+    const v = senhaInicialSchema.safeParse(entrada);
+    if (!v.success) return { ok: false, erro: v.error.issues[0]?.message ?? "Confira a senha." };
+
+    const quem = await podeAdministrarAcesso();
+    if (!quem) return { ok: false, erro: "Você não tem permissão para alterar acessos." };
+
+    const conta = await contaVinculada(v.data.funcionario_id);
+    if (!conta) return { ok: false, erro: "Este funcionário ainda não tem conta vinculada." };
+    if (conta.user.last_sign_in_at) {
+      return {
+        ok: false,
+        erro: "Esta pessoa já entrou no sistema. Ela troca a senha em “Esqueci minha senha”.",
+      };
+    }
+
+    const { error } = await conta.admin.auth.admin.updateUserById(conta.user.id, {
+      password: v.data.senha,
+      email_confirm: true,
+    });
+    if (error) return falha("definirSenha", error);
+
+    await conta.admin.rpc("log_audit", {
+      p_action: "definir_senha_inicial",
+      p_entity_type: "employees",
+      p_entity_id: v.data.funcionario_id,
+      p_before: null,
+      p_after: null,
+      p_reason: null,
+      p_metadata: { feito_por_app_user: quem.appUserId, email: conta.user.email },
+    });
+
+    revalidatePath(ROTA_EQUIPE);
+    return { ok: true };
+  } catch (erro) {
+    return falha("definirSenhaInicial", erro);
+  }
+}
+
+/** Reenvia o convite para quem ainda não entrou. */
+export async function reenviarConvite(entrada: unknown): Promise<Resultado> {
+  try {
+    const v = funcionarioSchema.safeParse(entrada);
+    if (!v.success) return { ok: false, erro: "Funcionário inválido." };
+
+    const quem = await podeAdministrarAcesso();
+    if (!quem) return { ok: false, erro: "Você não tem permissão para alterar acessos." };
+
+    const conta = await contaVinculada(v.data.funcionario_id);
+    if (!conta || !conta.user.email) return { ok: false, erro: "Este funcionário não tem conta vinculada." };
+    if (conta.user.last_sign_in_at) {
+      return { ok: false, erro: "Esta pessoa já entrou no sistema; não há convite pendente." };
+    }
+
+    const cabecalhos = await headers();
+    const origem =
+      cabecalhos.get("origin") ??
+      `${cabecalhos.get("x-forwarded-proto") ?? "https"}://${cabecalhos.get("host") ?? "localhost:3000"}`;
+
+    const { error } = await conta.admin.auth.admin.inviteUserByEmail(conta.user.email, {
+      redirectTo: `${origem}/admin/redefinir-senha`,
+    });
+    if (error) return { ok: false, erro: motivoDoConvite(error) };
+    return { ok: true };
+  } catch (erro) {
+    return falha("reenviarConvite", erro);
+  }
+}

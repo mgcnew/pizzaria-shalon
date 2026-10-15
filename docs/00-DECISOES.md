@@ -4287,6 +4287,12 @@ travava cadastros urgentes (caso da Julia, 14/10/2026).
    decisão dele. Quem tem `employees.manage` e `roles.manage` pode usar isto,
    por isso a conta principal deve ter senha forte e poucas pessoas devem ter
    esse papel.
+6. **Complemento de 15/10/2026:** para conta já vinculada mas que a pessoa
+   ainda não usou (convite pendente), o dono pode definir a senha inicial ou
+   reenviar o convite, em `/admin/equipe`, na edição do funcionário. Depois
+   que a pessoa entra, essas ações são recusadas pelo servidor. A auditoria
+   grava o autor no metadado, porque a chave administrativa não identifica
+   quem chamou a função de auditoria.
 
 **Operação.** Configurar no Supabase (Authentication → URL Configuration) o
 endereço `/admin/redefinir-senha` na lista de redirecionamentos, e no Vercel
