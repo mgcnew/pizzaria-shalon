@@ -175,6 +175,11 @@ export function NucleoConfigurador({
   const buscaDeSabor = true;
   const [termoDoSabor, setTermoDoSabor] = useState("");
 
+  // Adicionais: 39 ingredientes de uma vez cansam. Abre com 3 (mais o que já
+  // foi escolhido), com busca e "Ver todos". Poucos adicionais aparecem todos.
+  const [termoAdicional, setTermoAdicional] = useState("");
+  const [todosOsAdicionais, setTodosOsAdicionais] = useState(false);
+
   const outrosSabores = (dadosDoTamanho?.sabores ?? []).filter(
     (s) => s.variacao_id !== config.variacaoId,
   );
@@ -283,6 +288,24 @@ export function NucleoConfigurador({
       </div>
     </div>
   );
+
+  const COLAPSA_ADICIONAIS = 3;
+  const todosAdicionais = dadosDoTamanho?.adicionais ?? [];
+  const adicionaisColapsaveis = todosAdicionais.length > COLAPSA_ADICIONAIS + 2;
+  const buscaDeAdicional = termoAdicional.trim();
+  const adicionaisVisiveis = !adicionaisColapsaveis
+    ? todosAdicionais
+    : buscaDeAdicional !== ""
+      ? filtrarSabores(
+          todosAdicionais.map((a) => ({ ...a, descricao: null })),
+          buscaDeAdicional,
+        )
+      : todosOsAdicionais
+        ? todosAdicionais
+        : // Os já escolhidos ficam sempre à vista, para a conta fazer sentido.
+          todosAdicionais.filter(
+            (a, i) => i < COLAPSA_ADICIONAIS || config.adicionais.includes(a.id),
+          );
 
   return (
     <div className={ancoragem === "fixa" ? "pb-[150px]" : ""}>
@@ -482,8 +505,24 @@ export function NucleoConfigurador({
               : ""}
             {config.sabores.length > 0 ? " · valem para a pizza inteira" : ""}
           </p>
+          {adicionaisColapsaveis ? (
+            <div className="mb-2">
+              <label htmlFor="busca-adicional" className="sr-only">
+                Buscar ingrediente
+              </label>
+              <input
+                id="busca-adicional"
+                type="search"
+                value={termoAdicional}
+                onChange={(e) => setTermoAdicional(e.target.value)}
+                placeholder={`Buscar entre ${dadosDoTamanho.adicionais.length} ingredientes… (ex.: bacon)`}
+                autoComplete="off"
+                className="min-h-touch w-full rounded-11 border-[1.5px] border-border-shalon bg-surface px-3 text-[15px] text-ink focus:border-brand-orange focus:outline-none"
+              />
+            </div>
+          ) : null}
           <div className="flex flex-col gap-2">
-            {dadosDoTamanho.adicionais.map((a) => {
+            {adicionaisVisiveis.map((a) => {
               const ativo = config.adicionais.includes(a.id);
               return (
                 <button
@@ -518,7 +557,22 @@ export function NucleoConfigurador({
                 </button>
               );
             })}
+            {adicionaisColapsaveis && termoAdicional.trim() !== "" && adicionaisVisiveis.length === 0 ? (
+              <p className="m-0 text-[13.5px] text-muted">Nenhum ingrediente com esse nome.</p>
+            ) : null}
           </div>
+          {adicionaisColapsaveis && termoAdicional.trim() === "" ? (
+            <button
+              type="button"
+              onClick={() => setTodosOsAdicionais((v) => !v)}
+              aria-expanded={todosOsAdicionais}
+              className="mt-2 min-h-touch w-full cursor-pointer rounded-13 border-[1.5px] border-border-shalon bg-transparent px-4 text-[14px] font-bold text-ink hover:border-brand-orange"
+            >
+              {todosOsAdicionais
+                ? "Mostrar menos"
+                : `Ver todos os ${dadosDoTamanho.adicionais.length} ingredientes`}
+            </button>
+          ) : null}
         </fieldset>
       ) : null}
 

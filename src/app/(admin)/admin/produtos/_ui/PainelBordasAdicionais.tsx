@@ -1,3 +1,4 @@
+import { formatBRL } from "@/lib/format";
 import { StatusBadge, Input, SelectMenu } from "@/ui/components";
 import { Cartao, LinhaLista } from "@/ui/patterns";
 import {
@@ -66,6 +67,9 @@ export async function PainelBordasAdicionais({
     return achado ? (achado["price"] as number) : null;
   };
 
+  // Nome | situação | um preço por tamanho | Editar.
+  const colunas = `minmax(150px,1fr) 150px ${tamanhosAtivos.map(() => "92px").join(" ")} 96px`;
+
   return (
     <div className="flex flex-col gap-4">
       <p className="m-0 max-w-[70ch] text-[13.5px] text-ink-2">
@@ -112,95 +116,160 @@ export async function PainelBordasAdicionais({
         </Cartao>
       ) : null}
 
-      {itens.map((item) => {
-        const oferecidoEm = tamanhosAtivos.filter((t) => precoDe(item.id, t.id) !== null).length;
-        return (
-          <Cartao key={item.id} largura="cheio">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-              <div className={["min-w-[140px] flex-1", item.is_active ? "" : "opacity-60"].join(" ")}>
-                <p className="m-0 text-[15px] font-semibold text-ink">{item.name}</p>
-                <p className="m-0 mt-[2px] text-[12.5px] text-muted">
-                  {oferecidoEm === 0
-                    ? "Não é oferecid" + (ehBorda ? "a" : "o") + " em nenhum tamanho"
-                    : `Oferecid${ehBorda ? "a" : "o"} em ${oferecidoEm} de ${tamanhosAtivos.length} tamanhos`}
-                </p>
-              </div>
-              {!item.is_active ? (
-                <StatusBadge tom="neutro">Inativ{ehBorda ? "a" : "o"}</StatusBadge>
-              ) : item.is_temporarily_available ? (
-                <StatusBadge tom="sucesso">Disponível</StatusBadge>
-              ) : (
-                <StatusBadge tom="atencao">Indisponível hoje</StatusBadge>
-              )}
-              {podeGerenciar ? (
-                <>
-                  <BotaoAcao
-                    acao={alternarDisponibilidadeSimples}
-                    campos={{
-                      tabela,
-                      id: item.id,
-                      disponivel: String(!item.is_temporarily_available),
-                    }}
-                  >
-                    {item.is_temporarily_available ? "Em falta hoje" : "Voltou a ter"}
-                  </BotaoAcao>
-                  <BotaoAcao
-                    acao={alternarAtivoSimples}
-                    campos={{ tabela, id: item.id, ativar: String(!item.is_active) }}
-                    {...(item.is_active
-                      ? { confirmar: "Tirar do cardápio?", tom: "perigo" as const }
-                      : {})}
-                  >
-                    {item.is_active ? "Inativar" : "Reativar"}
-                  </BotaoAcao>
-                </>
-              ) : null}
-            </div>
+      {itens.length > 0 ? (
+        <section
+          aria-label={ehBorda ? "Bordas" : "Adicionais"}
+          className="overflow-hidden rounded-14 border border-border-shalon bg-surface"
+        >
+          {/* Cabeçalho da tabela: só a partir de `md`; no celular cada linha
+              traz o preço com o nome do tamanho. */}
+          <div
+            aria-hidden="true"
+            style={{ "--colunas": colunas } as React.CSSProperties}
+            className="hidden items-center gap-3 md:[grid-template-columns:var(--colunas)] border-b border-border-shalon bg-elev px-4 py-2 text-[12px] font-bold uppercase tracking-[0.04em] text-muted md:grid"
+          >
+            <span>{ehBorda ? "Borda" : "Adicional"}</span>
+            <span>Situação</span>
+            {tamanhosAtivos.map((t) => (
+              <span key={t.id} className="text-right">
+                {t.name}
+              </span>
+            ))}
+            <span />
+          </div>
 
-            {podeGerenciar && tamanhosAtivos.length > 0 ? (
-              <FormularioAcao
-                acao={salvarPrecosDoItem}
-                rotulo="Salvar preços"
-                variante="secundario"
-                tamanho="sm"
-                className="mt-3 border-t border-border-shalon pt-3"
-              >
-                <input type="hidden" name="tipo" value={tipo} />
-                <input type="hidden" name="entidade_id" value={item.id} />
-                <div className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-3 lg:grid-cols-4">
+          {itens.map((item) => {
+            const situacao = !item.is_active ? (
+              <StatusBadge tom="neutro">Inativ{ehBorda ? "a" : "o"}</StatusBadge>
+            ) : item.is_temporarily_available ? (
+              <StatusBadge tom="sucesso">Disponível</StatusBadge>
+            ) : (
+              <StatusBadge tom="atencao">Indisponível hoje</StatusBadge>
+            );
+            return (
+              <details key={item.id} className="group border-b border-border-shalon last:border-b-0">
+                <summary
+                  style={{ "--colunas": colunas } as React.CSSProperties}
+                  className="grid cursor-pointer list-none grid-cols-[1fr_auto] md:[grid-template-columns:var(--colunas)] items-center gap-x-3 gap-y-1 px-4 py-3 marker:hidden hover:bg-elev md:min-h-[56px] [&::-webkit-details-marker]:hidden"
+                >
+                  <span className={["min-w-0", item.is_active ? "" : "opacity-60"].join(" ")}>
+                    <span className="block truncate text-[15px] font-semibold text-ink">
+                      {item.name}
+                    </span>
+                    {/* Celular: preços em linha, com o nome do tamanho. */}
+                    <span className="mt-0.5 block text-[12.5px] text-muted md:hidden">
+                      {(() => {
+                        // Só os tamanhos em que é oferecid{o|a}: "—" em cada
+                        // um dos outros só faz ruído numa tela estreita.
+                        const oferecidos = tamanhosAtivos
+                          .map((t) => ({ t, preco: precoDe(item.id, t.id) }))
+                          .filter((x) => x.preco !== null);
+                        return oferecidos.length === 0
+                          ? "Não oferecido em nenhum tamanho"
+                          : oferecidos.map((x) => `${x.t.name} ${formatBRL(x.preco as number)}`).join(" · ");
+                      })()}
+                    </span>
+                  </span>
+                  <span className="hidden md:block">{situacao}</span>
                   {tamanhosAtivos.map((t) => {
                     const preco = precoDe(item.id, t.id);
                     return (
-                      <label key={t.id} className="flex min-w-0 flex-col gap-1">
-                        <span className="truncate text-[12.5px] font-semibold text-ink-2">
-                          {t.name}
-                        </span>
-                        <span className="flex min-h-[44px] items-center gap-1 rounded-11 border-[1.5px] border-border-shalon bg-surface px-3 focus-within:border-brand-orange">
-                          <span aria-hidden="true" className="text-[13px] text-muted">
-                            R$
-                          </span>
-                          <input
-                            name={`preco_${t.id}`}
-                            inputMode="decimal"
-                            defaultValue={preco === null ? "" : preco.toFixed(2).replace(".", ",")}
-                            placeholder="—"
-                            aria-label={`Preço no tamanho ${t.name}; em branco não oferece`}
-                            className="min-w-0 flex-1 border-0 bg-transparent text-[15px] tabular-nums text-ink outline-none placeholder:text-muted"
-                          />
-                        </span>
-                      </label>
+                      <span
+                        key={t.id}
+                        className="hidden text-right text-[14px] tabular-nums text-ink md:block"
+                      >
+                        {preco === null ? <span className="text-muted">—</span> : formatBRL(preco)}
+                      </span>
                     );
                   })}
-                </div>
-                <p className="m-0 text-[12.5px] text-muted">
-                  Em branco, {ehBorda ? "a borda" : "o adicional"} não é oferecid
-                  {ehBorda ? "a" : "o"} naquele tamanho.
-                </p>
-              </FormularioAcao>
-            ) : null}
-          </Cartao>
-        );
-      })}
+                  <span className="flex items-center justify-end gap-2">
+                    {/* No celular, "Disponível" é o normal e some: só aparece o
+                        que foge dele (em falta, inativo). */}
+                    {!item.is_active || !item.is_temporarily_available ? (
+                      <span className="md:hidden">{situacao}</span>
+                    ) : null}
+                    {podeGerenciar ? (
+                      <span className="inline-flex min-h-[40px] items-center rounded-10 border-[1.5px] border-border-shalon px-3 text-[13px] font-semibold text-ink group-open:border-brand-orange group-open:bg-elev">
+                        <span className="group-open:hidden">Editar</span>
+                        <span className="hidden group-open:inline">Fechar</span>
+                      </span>
+                    ) : null}
+                  </span>
+                </summary>
+
+                {podeGerenciar ? (
+                  <div className="flex flex-col gap-4 border-t border-border-shalon bg-elev px-4 py-4">
+                    {tamanhosAtivos.length > 0 ? (
+                      <FormularioAcao
+                        acao={salvarPrecosDoItem}
+                        rotulo="Salvar preços"
+                        variante="secundario"
+                        tamanho="sm"
+                      >
+                        <input type="hidden" name="tipo" value={tipo} />
+                        <input type="hidden" name="entidade_id" value={item.id} />
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-3 lg:grid-cols-4">
+                          {tamanhosAtivos.map((t) => {
+                            const preco = precoDe(item.id, t.id);
+                            return (
+                              <label key={t.id} className="flex min-w-0 flex-col gap-1">
+                                <span className="truncate text-[12.5px] font-semibold text-ink-2">
+                                  {t.name}
+                                </span>
+                                <span className="flex min-h-[44px] items-center gap-1 rounded-11 border-[1.5px] border-border-shalon bg-surface px-3 focus-within:border-brand-orange">
+                                  <span aria-hidden="true" className="text-[13px] text-muted">
+                                    R$
+                                  </span>
+                                  <input
+                                    name={`preco_${t.id}`}
+                                    inputMode="decimal"
+                                    defaultValue={
+                                      preco === null ? "" : preco.toFixed(2).replace(".", ",")
+                                    }
+                                    placeholder="—"
+                                    aria-label={`Preço no tamanho ${t.name}; em branco não oferece`}
+                                    className="min-w-0 flex-1 border-0 bg-transparent text-[15px] tabular-nums text-ink outline-none placeholder:text-muted"
+                                  />
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                        <p className="m-0 text-[12.5px] text-muted">
+                          Em branco, {ehBorda ? "a borda" : "o adicional"} não é oferecid
+                          {ehBorda ? "a" : "o"} naquele tamanho.
+                        </p>
+                      </FormularioAcao>
+                    ) : null}
+
+                    <div className="flex flex-wrap items-center gap-2 border-t border-border-shalon pt-3">
+                      <BotaoAcao
+                        acao={alternarDisponibilidadeSimples}
+                        campos={{
+                          tabela,
+                          id: item.id,
+                          disponivel: String(!item.is_temporarily_available),
+                        }}
+                      >
+                        {item.is_temporarily_available ? "Em falta hoje" : "Voltou a ter"}
+                      </BotaoAcao>
+                      <BotaoAcao
+                        acao={alternarAtivoSimples}
+                        campos={{ tabela, id: item.id, ativar: String(!item.is_active) }}
+                        {...(item.is_active
+                          ? { confirmar: "Tirar do cardápio?", tom: "perigo" as const }
+                          : {})}
+                      >
+                        {item.is_active ? "Inativar" : "Reativar"}
+                      </BotaoAcao>
+                    </div>
+                  </div>
+                ) : null}
+              </details>
+            );
+          })}
+        </section>
+      ) : null}
 
       {podeGerenciar ? (
       <NovoItem titulo={ehBorda ? "Nova borda" : "Novo adicional"} aberto={itens.length === 0}>
