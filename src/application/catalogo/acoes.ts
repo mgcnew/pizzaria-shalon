@@ -365,6 +365,11 @@ export async function salvarProduto(
     requires_production: form.get("exige_producao") !== "nao",
     max_quantity_per_order: limite ? Number(limite) : null,
     max_addons: limiteAdicionais ? Number(limiteAdicionais) : null,
+    // Só muda quando o formulário envia a escolha (edição); produto novo e
+    // outros formulários mantêm o que está gravado.
+    ...(form.has("adicionais_inclusos")
+      ? { addons_included: form.get("adicionais_inclusos") === "sim" }
+      : {}),
     sort_order: Number(form.get("ordem") ?? 0),
     image_asset_id: String(form.get("imagem_id") ?? "") || null,
   };

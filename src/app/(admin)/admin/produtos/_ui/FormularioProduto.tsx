@@ -98,6 +98,33 @@ export function FormularioProduto({
         hint="Em branco: sem limite."
       />
 
+      {produto ? (
+        <fieldset className="m-0 border-0 p-0">
+          <legend className="mb-1 p-0 text-[14px] font-bold text-ink">
+            Adicionais inclusos no preço?
+          </legend>
+          <p className="m-0 mb-2 text-[12.5px] text-muted">
+            Sim: o cliente escolhe os adicionais (até o limite acima) sem acréscimo. Use em
+            produtos como &ldquo;À sua escolha&rdquo; e &ldquo;X-tudo&rdquo;. Não: cada adicional
+            soma o seu preço.
+          </p>
+          <div className="flex gap-4">
+            {(["nao", "sim"] as const).map((valor) => (
+              <label key={valor} className="flex min-h-touch cursor-pointer items-center gap-2 text-[14px] text-ink">
+                <input
+                  type="radio"
+                  name="adicionais_inclusos"
+                  value={valor}
+                  defaultChecked={(produto.adicionais_inclusos ?? false) === (valor === "sim")}
+                  className="h-5 w-5 accent-[var(--shalon-red,#b91c1c)]"
+                />
+                {valor === "sim" ? "Sim, inclusos" : "Não, cobrar cada um"}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
+
       <Input label="Ordem no cardápio" name="ordem" type="number" min={0} defaultValue={produto?.ordem ?? 0} />
 
       {/*

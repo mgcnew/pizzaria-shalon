@@ -4414,3 +4414,25 @@ sem popup**, para nunca aparecer aviso sem sentido.
    promoção, destaque, link externo). Banner sem destino mostra só a arte.
 4. No cadastro, o seletor do carrossel mostra só imagens horizontais e o do
    popup só imagens em retrato.
+
+## D-2026-10-15-128 — Adicionais da Shalon e produtos com adicionais inclusos
+
+**Pedido da dona:** cadastrar os 39 ingredientes como adicionais, R$ 5,00,
+somente na pizza Tradicional; em "À sua escolha" (até 5) e "X-tudo" (até 6) o
+cliente escolhe os ingredientes **sem alterar o valor final**.
+
+**Decisão (migration 0153):**
+1. `products.addons_included` (padrão falso). Com ele, `montar_item` soma zero
+   de adicional ao preço unitário e ao detalhe; o limite continua o
+   `max_addons` do produto, validado no servidor.
+2. O adicional segue exigindo preço por tamanho cadastrado (é o que diz que
+   ele existe naquele tamanho). Preço de cadastro: R$ 5,00 em Tradicional;
+   Broto e Fogazza não oferecem adicionais.
+3. "À sua escolha": limite 5; "X-tudo": limite 6; ambos inclusos.
+4. Tela: o adicional mostra "Incluso" em vez de "+ R$", e o cabeçalho diz
+   "Incluso no preço · até N". No cadastro do produto há a opção "Adicionais
+   inclusos no preço?".
+
+**Dados (DEV):** 39 adicionais; "cebola" já existia e foi renomeado "Cebola".
+Foi removido o preço antigo de R$ 3,00 da Cebola no Broto, por não fazer parte
+do pedido (adicionais só na Tradicional).

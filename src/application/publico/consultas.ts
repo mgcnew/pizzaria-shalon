@@ -71,7 +71,21 @@ export const listarCardapio = cache(
 export const obterProdutoPublico = cache(
   async (slug: string): Promise<ProdutoDetalhe | null> => {
     const linhas = await rpc<ProdutoDetalhe>("produto_publico", { p_slug: slug });
-    return linhas[0] ?? null;
+    const produto = linhas[0] ?? null;
+    if (!produto) return null;
+
+    // Só para a tela dizer "incluso" em vez de "+ R$": o preço em si é do
+    // servidor (`montar_item`), que já zera o adicional neste produto.
+    const supabase = await getSupabaseServerClient();
+    const { data } = await supabase
+      .from("products")
+      .select("addons_included")
+      .eq("id", produto.id)
+      .maybeSingle();
+    return {
+      ...produto,
+      adicionais_inclusos: Boolean((data as { addons_included?: boolean } | null)?.addons_included),
+    };
   },
 );
 

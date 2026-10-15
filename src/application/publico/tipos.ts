@@ -35,6 +35,8 @@ export type ProdutoDetalhe = Omit<
   limite_por_pedido: number | null;
   limite_adicionais: number | null;
   adicionais_ligados: boolean;
+  /** Adicionais inclusos no preço: a tela mostra "incluso", não "+ R$". */
+  adicionais_inclusos?: boolean;
 };
 
 export type CategoriaPublica = {

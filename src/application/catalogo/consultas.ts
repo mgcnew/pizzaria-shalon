@@ -228,7 +228,21 @@ export async function listarSaboresParaFogazza(
 
 export async function obterProduto(id: string): Promise<ProdutoAdmin | null> {
   const produtos = await listarProdutos();
-  return produtos.find((p) => p.id === id) ?? null;
+  const produto = produtos.find((p) => p.id === id) ?? null;
+  if (!produto) return null;
+
+  // O campo não vem da listagem administrativa; lê-se direto da tabela (RLS
+  // de catálogo), só na edição de um produto.
+  const supabase = await getSupabaseServerClient();
+  const { data } = await supabase
+    .from("products")
+    .select("addons_included")
+    .eq("id", id)
+    .maybeSingle();
+  return {
+    ...produto,
+    adicionais_inclusos: Boolean((data as { addons_included?: boolean } | null)?.addons_included),
+  };
 }
 
 /** Componentes de um combo, com o nome exato de cada item (RN-COMBO-002). */

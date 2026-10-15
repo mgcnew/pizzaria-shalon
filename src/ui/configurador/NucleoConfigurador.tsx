@@ -474,7 +474,7 @@ export function NucleoConfigurador({
         <fieldset className="min-w-0 mt-[22px] border-0 p-0">
           <legend className="mb-1 text-[16px] font-bold text-ink">Adicionais</legend>
           <p className="m-0 mb-[10px] text-[13px] text-muted">
-            Opcional
+            {produto.adicionais_inclusos ? "Incluso no preço" : "Opcional"}
             {produto.limite_adicionais !== null
               ? ` · até ${produto.limite_adicionais}`
               : ""}
@@ -505,7 +505,7 @@ export function NucleoConfigurador({
                   </span>
                   <span className="flex-1 text-[15px] font-semibold text-ink">{a.nome}</span>
                   <span className="text-[14px] font-semibold text-ink-2">
-                    + {formatBRL(a.preco)}
+                    {produto.adicionais_inclusos ? "Incluso" : `+ ${formatBRL(a.preco)}`}
                   </span>
                 </button>
               );

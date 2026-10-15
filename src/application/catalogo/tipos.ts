@@ -44,6 +44,8 @@ export type ProdutoAdmin = {
   limite_adicionais: number | null;
   imagem_path: string | null;
   ordem: number;
+  /** Adicionais inclusos no preço (ex.: "À sua escolha"). Só na edição. */
+  adicionais_inclusos?: boolean;
 };
 
 export type VariacaoAdmin = {
