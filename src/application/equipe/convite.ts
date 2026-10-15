@@ -129,3 +129,84 @@ async function convidar(entrada: unknown): Promise<Resultado> {
   if (r.ok) return { ok: true };
   return { ok: false, erro: r.erro ?? "Não foi possível vincular a conta." };
 }
+
+const contaComSenhaSchema = z.object({
+  funcionario_id: z.string().uuid(),
+  email: z.string().email().max(200),
+  senha: z.string().min(8, { message: "A senha precisa ter pelo menos 8 caracteres." }).max(72),
+});
+
+/**
+ * Cria a conta com senha definida pelo dono (D-2026-10-15-121, opção aprovada
+ * em 15/10/2026). A conta nasce confirmada, sem e-mail. Só cria conta NOVA:
+ * se o e-mail já existe, recusa, e nunca troca a senha de uma conta existente.
+ * Se o vínculo falhar, a conta criada é removida, para não sobrar login solto.
+ */
+export async function criarContaComSenha(entrada: unknown): Promise<Resultado> {
+  try {
+    return await criarConta(entrada);
+  } catch (erro) {
+    if (erro instanceof AppError && erro.kind === "config") {
+      logger.error("equipe:conta:configuracao", { motivo: erro.message });
+      return {
+        ok: false,
+        erro: "Convites ainda não estão configurados neste ambiente. Avise quem cuida do sistema.",
+      };
+    }
+    return falha("criarConta", erro);
+  }
+}
+
+async function criarConta(entrada: unknown): Promise<Resultado> {
+  const v = contaComSenhaSchema.safeParse(entrada);
+  if (!v.success) {
+    return { ok: false, erro: v.error.issues[0]?.message ?? "Confira os dados informados." };
+  }
+  const email = v.data.email.trim().toLowerCase();
+
+  const sessao = await obterSessaoInterna();
+  if (!podeNaUI(sessao, "employees.manage") || !podeNaUI(sessao, "roles.manage")) {
+    return { ok: false, erro: "Você não tem permissão para conceder acesso ao sistema." };
+  }
+
+  const supabase = await getSupabaseServerClient();
+  const { data: funcionario } = await supabase
+    .from("employees")
+    .select("id, employment_status")
+    .eq("id", v.data.funcionario_id)
+    .maybeSingle();
+  if (!funcionario) return { ok: false, erro: "Funcionário não encontrado." };
+  if (funcionario.employment_status !== "active") {
+    return { ok: false, erro: "Funcionário desligado não recebe acesso." };
+  }
+
+  const admin = getSupabaseAdminClient();
+  const { data: criado, error } = await admin.auth.admin.createUser({
+    email,
+    password: v.data.senha,
+    email_confirm: true,
+  });
+  if (error || !criado.user) {
+    if (/already|registered|exists/i.test(error?.message ?? "")) {
+      return {
+        ok: false,
+        erro: "Já existe uma conta com este e-mail. Use “Vincular conta existente” para ligá-la a este funcionário.",
+      };
+    }
+    return { ok: false, erro: motivoDoConvite(error) };
+  }
+
+  const { data, error: erroVinculo } = await supabase.rpc("vincular_acesso", {
+    p_dados: { funcionario_id: v.data.funcionario_id, email },
+  });
+  const r = (data ?? {}) as { ok?: boolean; erro?: string };
+  if (erroVinculo || !r.ok) {
+    // Sem vínculo, a conta não serve a ninguém: desfaz a criação.
+    await admin.auth.admin.deleteUser(criado.user.id);
+    logger.error("equipe:conta:vinculo", { code: (erroVinculo as { code?: string })?.code });
+    return { ok: false, erro: r.erro ?? "Não foi possível vincular a conta. Nada foi criado." };
+  }
+
+  revalidatePath(ROTA_EQUIPE);
+  return { ok: true };
+}

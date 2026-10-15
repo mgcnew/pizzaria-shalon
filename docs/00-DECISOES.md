@@ -4277,6 +4277,16 @@ travava cadastros urgentes (caso da Julia, 14/10/2026).
    sempre, que refaz a checagem de permissão e grava auditoria. O acesso
    nasce sem papel; os papéis são atribuídos depois, deliberadamente.
 4. "Vincular conta existente" continua disponível para quem já tem conta.
+5. **Alteração de 15/10/2026, aprovada pelo Marcelo:** o dono pode criar a
+   conta com uma senha inicial que ele mesmo define, sem confirmação por
+   e-mail, para pizzaria pequena com poucas pessoas. Só cria conta nova: se
+   o e-mail já existe, recusa e nunca troca senha de conta existente. Senha
+   inicial com pelo menos 8 caracteres. Se o vínculo falhar, a conta criada
+   é removida. O funcionário pode trocar a senha depois por "Esqueci minha
+   senha". O dono passa a conhecer a senha inicial, e isso é aceito por
+   decisão dele. Quem tem `employees.manage` e `roles.manage` pode usar isto,
+   por isso a conta principal deve ter senha forte e poucas pessoas devem ter
+   esse papel.
 
 **Operação.** Configurar no Supabase (Authentication → URL Configuration) o
 endereço `/admin/redefinir-senha` na lista de redirecionamentos, e no Vercel

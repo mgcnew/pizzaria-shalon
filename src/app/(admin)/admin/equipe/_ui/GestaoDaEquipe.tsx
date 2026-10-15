@@ -11,7 +11,7 @@ import {
   salvarFuncionario,
   vincularAcesso,
 } from "@/application/equipe/acoes";
-import { convidarFuncionario } from "@/application/equipe/convite";
+import { convidarFuncionario, criarContaComSenha } from "@/application/equipe/convite";
 import type { MembroDaEquipe, PapelAtribuivel, ReferenciaSalarial } from "@/application/equipe/tipos";
 
 /**
@@ -104,6 +104,7 @@ export function GestaoDaEquipe({
   const [motivoDesligamento, setMotivoDesligamento] = useState("");
   const [vinculando, setVinculando] = useState<string | null>(null);
   const [email, setEmail] = useState("");
+  const [senhaInicial, setSenhaInicial] = useState("");
   const [editandoPapeis, setEditandoPapeis] = useState<string | null>(null);
   const [selecionados, setSelecionados] = useState<string[]>([]);
 
@@ -120,6 +121,7 @@ export function GestaoDaEquipe({
       setMotivoDesligamento("");
       setVinculando(null);
       setEmail("");
+      setSenhaInicial("");
       setEditandoPapeis(null);
       setSelecionados([]);
     });
@@ -402,8 +404,9 @@ export function GestaoDaEquipe({
         {vinculando ? (
           <div className="mt-3 flex flex-col gap-2 border-t border-border-shalon pt-3">
             <p className="m-0 text-[13px] text-muted">
-              Envie um convite: a pessoa recebe um e-mail, define a própria senha e entra. Se ela
-              já tem uma conta no sistema, use “Vincular conta existente”.
+              Crie a conta com uma senha inicial que você define, ou envie um convite: a pessoa
+              recebe um e-mail e escolhe a própria senha. Se ela já tem conta, use “Vincular conta
+              existente”.
             </p>
             <Input
               label="E-mail"
@@ -411,9 +414,31 @@ export function GestaoDaEquipe({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
+            <Input
+              label="Senha inicial (mínimo 8 caracteres)"
+              type="password"
+              autoComplete="new-password"
+              value={senhaInicial}
+              onChange={(e) => setSenhaInicial(e.target.value)}
+            />
             <div className="flex flex-wrap gap-2">
               <Button
                 variante="primario"
+                disabled={enviando || !email.includes("@") || senhaInicial.length < 8}
+                onClick={() =>
+                  executar(() =>
+                    criarContaComSenha({
+                      funcionario_id: vinculando,
+                      email: email.trim(),
+                      senha: senhaInicial,
+                    }),
+                  )
+                }
+              >
+                Criar conta com esta senha
+              </Button>
+              <Button
+                variante="secundario"
                 disabled={enviando || !email.includes("@")}
                 onClick={() =>
                   executar(() =>
@@ -421,7 +446,7 @@ export function GestaoDaEquipe({
                   )
                 }
               >
-                Enviar convite
+                Enviar convite por e-mail
               </Button>
               <Button
                 variante="secundario"
