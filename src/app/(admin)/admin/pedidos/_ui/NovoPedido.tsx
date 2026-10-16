@@ -643,6 +643,29 @@ export function NovoPedido({
                   : (avisoCep ?? "Se souber, comece por aqui: a gente completa rua, bairro e cidade.")
               }
             />
+            {/* Rota não localizada: a taxa à mão fica aqui, entre o CEP e o
+                endereço — onde a atendente está olhando (D-2026-10-16-141). */}
+            {rotaFalhou && contexto?.podeInformarTaxa ? (
+              <div className="rounded-12 border border-twb bg-tw p-3">
+                <p className="m-0 text-[13.5px] font-semibold text-twf">
+                  Não localizamos esse endereço no mapa.
+                </p>
+                <p className="m-0 mt-1 text-[12.5px] text-twf">
+                  Confira os dados abaixo ou informe a taxa combinada com o cliente. Ela fica
+                  registrada como taxa informada à mão.
+                </p>
+                <div className="mt-2 max-w-[220px]">
+                  <Input
+                    label="Taxa de entrega (R$)"
+                    value={taxaManual}
+                    onChange={(e) => setTaxaManual(e.target.value)}
+                    inputMode="decimal"
+                    placeholder="Ex.: 8,00"
+                    maxLength={8}
+                  />
+                </div>
+              </div>
+            ) : null}
             <div className="flex gap-3">
               <div className="flex-[3]">
                 <Input label="Rua" value={logradouro} onChange={(e) => setLogradouro(e.target.value)} maxLength={160} />
@@ -706,7 +729,7 @@ export function NovoPedido({
                     }.`
                   : ""}
                 {cotacao.motivo !== "fora_de_area" && contexto?.podeInformarTaxa
-                  ? " Você pode informar a taxa no resumo, ao lado."
+                  ? " Informe a taxa no campo logo abaixo do CEP."
                   : ""}
               </p>
             ) : (
@@ -870,33 +893,11 @@ export function NovoPedido({
             </p>
           ) : null}
 
-          {modalidade === "delivery" && rotaFalhou ? (
-            contexto?.podeInformarTaxa ? (
-              <div className="mt-3 rounded-12 border border-twb bg-tw p-3">
-                <p className="m-0 text-[13.5px] font-semibold text-twf">
-                  Não deu para calcular a entrega até esse endereço.
-                </p>
-                <p className="m-0 mt-1 text-[12.5px] text-twf">
-                  Confira o endereço ou informe a taxa combinada com o cliente. Ela fica registrada
-                  como taxa informada à mão.
-                </p>
-                <div className="mt-2 max-w-[220px]">
-                  <Input
-                    label="Taxa de entrega (R$)"
-                    value={taxaManual}
-                    onChange={(e) => setTaxaManual(e.target.value)}
-                    inputMode="decimal"
-                    placeholder="Ex.: 8,00"
-                    maxLength={8}
-                  />
-                </div>
-              </div>
-            ) : (
-              <p className="m-0 mt-3 rounded-10 bg-tw px-3 py-2 text-[12.5px] font-semibold text-twf">
-                Não deu para calcular a entrega até esse endereço. Confira o endereço, ou peça a
-                quem tem permissão de alterar a taxa para lançar este pedido.
-              </p>
-            )
+          {modalidade === "delivery" && rotaFalhou && !contexto?.podeInformarTaxa ? (
+            <p className="m-0 mt-3 rounded-10 bg-tw px-3 py-2 text-[12.5px] font-semibold text-twf">
+              Não deu para calcular a entrega até esse endereço. Confira o endereço, ou peça a
+              quem tem permissão de alterar a taxa para lançar este pedido.
+            </p>
           ) : null}
 
           {!enviando && pendencias.length > 0 ? (

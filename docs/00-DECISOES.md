@@ -4616,3 +4616,10 @@ sistema aceitava e media 10,6 km (cobrança errada / "fora da área").
    parecida (até 0,05 abaixo) e a mais de 300 m.
 Implementado em `avaliarResultadosDoHere` (`infrastructure/rotas/here.ts`),
 com testes.
+
+## D-2026-10-16-141 — Taxa à mão fica entre o CEP e o endereço
+
+Quando o endereço não é localizado, o campo "Taxa de entrega (R$)" aparece no
+próprio bloco do endereço, logo abaixo do CEP e acima da rua — onde a
+atendente está olhando —, e não mais no resumo. O resumo e o botão ("Lançar
+com taxa de R$ X") refletem o valor digitado.
