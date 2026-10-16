@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { Button, Input } from "@/ui/components";
 import { CampoDeSenha } from "../../_ui/CampoDeSenha";
@@ -13,11 +13,49 @@ import { entrar, type EstadoLogin } from "./actions";
  * novo foi criado. O alerta de erro reutiliza a família tonal de perigo
  * (--td / --tdb / --tdf), a mesma dos alertas do protótipo.
  */
+const CHAVE_EMAIL = "shalon:login-email";
+
+const semInscricao = () => () => {};
+
+function lerEmailLembrado(): string {
+  try {
+    return window.localStorage.getItem(CHAVE_EMAIL) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * LEMBRAR O E-MAIL (15/10/2026): o aparelho guarda só o e-mail — a senha nunca
+ * é guardada por esta tela (o gerenciador de senhas do próprio navegador
+ * continua podendo oferecer isso). Quem volta ao painel só digita a senha.
+ * Desmarcar o campo apaga o e-mail guardado.
+ */
 export function FormularioLogin({ proximo }: { proximo: string }) {
   const [estado, acao, enviando] = useActionState<EstadoLogin, FormData>(entrar, {});
 
+  // No servidor não há e-mail lembrado; no navegador, o guardado.
+  const lembrado = useSyncExternalStore(semInscricao, lerEmailLembrado, () => "");
+  const [digitado, setDigitado] = useState<string | null>(null);
+  const [lembrar, setLembrar] = useState(true);
+  const email = digitado ?? estado.email ?? lembrado;
+
+  // Com o e-mail já conhecido, o cursor vai direto para a senha.
+  useEffect(() => {
+    document.getElementById(lembrado ? "campo-senha" : "campo-e-mail")?.focus();
+  }, [lembrado]);
+
+  function aoEnviar() {
+    try {
+      if (lembrar && email.trim()) window.localStorage.setItem(CHAVE_EMAIL, email.trim());
+      else window.localStorage.removeItem(CHAVE_EMAIL);
+    } catch {
+      // Sem armazenamento, só não se lembra na próxima visita.
+    }
+  }
+
   return (
-    <form action={acao} className="mt-[24px] flex flex-col gap-4">
+    <form action={acao} onSubmit={aoEnviar} className="mt-[24px] flex flex-col gap-4">
       <input type="hidden" name="proximo" value={proximo} />
 
       <Input
@@ -25,21 +63,32 @@ export function FormularioLogin({ proximo }: { proximo: string }) {
         name="email"
         type="email"
         autoComplete="username"
-        defaultValue={estado.email ?? ""}
+        value={email}
+        onChange={(e) => setDigitado(e.target.value)}
         autoCapitalize="none"
         spellCheck={false}
-        autoFocus
         required
         placeholder="voce@pizzariashalon.com"
       />
 
       <CampoDeSenha
+        id="campo-senha"
         label="Senha"
         name="senha"
         autoComplete="current-password"
         required
         placeholder="Sua senha"
       />
+
+      <label className="-mt-1 flex min-h-touch cursor-pointer items-center gap-2.5 text-[14px] text-ink">
+        <input
+          type="checkbox"
+          checked={lembrar}
+          onChange={(e) => setLembrar(e.target.checked)}
+          className="h-5 w-5 shrink-0 accent-[var(--brand-orange)]"
+        />
+        Lembrar meu e-mail neste aparelho
+      </label>
 
       {estado.erro ? (
         <p
