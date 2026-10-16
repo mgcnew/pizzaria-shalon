@@ -133,21 +133,24 @@ export default async function Home({
   // Cada campanha com os seus itens disponíveis, do que mais economiza ao que
   // menos. A diferença vem do servidor (`preco_de` e `preco` já calculados).
   const economia = (p: (typeof cardapio)[number]) => (p.preco_de ?? p.preco ?? 0) - (p.preco ?? 0);
-  // As fogazzas em promoção entram como cards de SABOR de fogazza, não como a
-  // pizza daquele sabor (D-2026-10-15-136).
+  // Fogazza em promoção não vira card (nem todo sabor tem foto): a faixa leva
+  // à página da promoção, que lista os sabores (D-2026-10-15-137).
   const fogazzasPorCampanha = await Promise.all(
     campanhas.map((c) => listarFogazzasDaPromocao(c.variantes_fogazza)),
   );
   const campanhasComItens = campanhas
     .map((campanha, i) => {
       const ids = new Set(campanha.produtos);
-      const itens = [
-        ...emPromocao.filter((p) => ids.has(p.id)),
-        ...(fogazzasPorCampanha[i] ?? []).filter((f) => f.disponivel),
-      ].sort((a, b) => economia(b) - economia(a));
-      return { campanha, itens };
+      const itens = emPromocao
+        .filter((p) => ids.has(p.id))
+        .sort((a, b) => economia(b) - economia(a));
+      const fogazzas = (fogazzasPorCampanha[i] ?? []).reduce(
+        (n, g) => n + g.sabores.filter((s) => s.disponivel).length,
+        0,
+      );
+      return { campanha, itens, fogazzas };
     })
-    .filter((c) => c.itens.length > 0);
+    .filter((c) => c.itens.length > 0 || c.fogazzas > 0);
   // Campanha oculta da vitrine continua valendo (preço e carrinho), só não ganha
   // faixa: os itens dela não caem na seção simples e o banner leva a ela.
   const jaNaCampanha = new Set([
@@ -217,8 +220,12 @@ export default async function Home({
         disponíveis, na ordem de quem mais economiza. O que está em promoção
         mas não pertence a nenhuma campanha conhecida cai na seção simples.
       */}
-      {campanhasNaVitrine.map(({ campanha, itens }) => (
-        <SecaoDeCampanha key={campanha.campanha_id} campanha={campanha} quantidade={itens.length}>
+      {campanhasNaVitrine.map(({ campanha, itens, fogazzas }) => (
+        <SecaoDeCampanha
+          key={campanha.campanha_id}
+          campanha={campanha}
+          quantidade={itens.length + fogazzas}
+        >
           {itens.length > 5 ? (
             <CarrosselDeCards rotulo={campanha.nome}>
               {itens.map((p) => (
@@ -232,6 +239,19 @@ export default async function Home({
               ))}
             </div>
           )}
+          {fogazzas > 0 ? (
+            <Link
+              href={`/promocao/${campanha.campanha_id}`}
+              className={`flex min-h-[52px] items-center justify-between gap-3 rounded-14 border-[1.5px] border-brand-red bg-surface px-4 text-[15px] font-bold text-ink no-underline ${itens.length > 0 ? "mt-3" : ""}`}
+            >
+              <span>
+                Ver os {fogazzas} {fogazzas === 1 ? "sabor" : "sabores"} de fogazza
+              </span>
+              <span aria-hidden="true" className="text-[20px] text-brand-red">
+                ›
+              </span>
+            </Link>
+          ) : null}
         </SecaoDeCampanha>
       ))}
 

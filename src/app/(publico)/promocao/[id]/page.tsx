@@ -7,6 +7,7 @@ import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
 import { listarFogazzasDaPromocao, obterLojaPublica, produtosPorId } from "@/application/publico/consultas";
 import { AvisoLojaFechada } from "../../_ui/AvisoLojaFechada";
 import { CardProduto } from "../../_ui/CardProduto";
+import { ListaDeFogazzasEmPromocao } from "../../_ui/ListaDeFogazzasEmPromocao";
 
 /**
  * Página da promoção (D-2026-10-15-125).
@@ -44,11 +45,16 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const [loja, { nome, produtoIds, variantesDeFogazza }] = await Promise.all([obterLojaPublica(), itensDaPromocao(id)]);
   if (!nome) notFound();
 
-  const [pizzasEOutros, fogazzas] = await Promise.all([
+  const [todosOsProdutos, gruposDeFogazza] = await Promise.all([
     produtosPorId(produtoIds),
     listarFogazzasDaPromocao(variantesDeFogazza),
   ]);
-  const produtos = [...pizzasEOutros, ...fogazzas];
+  // Com a lista de sabores na página, os cards "Fogazza doce/salgada" só
+  // repetiriam o caminho até ela.
+  const produtos =
+    gruposDeFogazza.length > 0
+      ? todosOsProdutos.filter((p) => p.tipo !== "fogazza")
+      : todosOsProdutos;
 
   return (
     <>
@@ -64,17 +70,27 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       </div>
 
       <section className="px-4 pt-5">
-        {produtos.length === 0 ? (
+        {produtos.length === 0 && gruposDeFogazza.length === 0 ? (
           <EmptyState
             titulo="Nada por aqui agora"
             descricao="Os itens desta promoção estão indisponíveis no momento."
           />
         ) : (
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 md:grid-cols-4 lg:grid-cols-5">
-            {produtos.map((p) => (
-              <CardProduto key={p.id} produto={p} />
-            ))}
-          </div>
+          <>
+            {produtos.length > 0 ? (
+              <div className="grid grid-cols-3 gap-2 sm:gap-3 md:grid-cols-4 lg:grid-cols-5">
+                {produtos.map((p) => (
+                  <CardProduto key={p.id} produto={p} />
+                ))}
+              </div>
+            ) : null}
+            {/* Fogazza em lista: nem todo sabor tem foto. */}
+            {gruposDeFogazza.length > 0 ? (
+              <div className={produtos.length > 0 ? "mt-6" : ""}>
+                <ListaDeFogazzasEmPromocao grupos={gruposDeFogazza} />
+              </div>
+            ) : null}
+          </>
         )}
       </section>
     </>

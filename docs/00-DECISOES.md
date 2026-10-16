@@ -4549,7 +4549,18 @@ de fogazza.
 1. `campanhas_em_promocao()` separa `produtos` (alvo direto ou tamanho de
    pizza), `variantes_fogazza` e `produtos_fogazza`. `itens_da_promocao()`
    passa a dizer qual item é variante de fogazza.
-2. Cada variante de fogazza em promoção vira um card de **sabor** ("Banana ·
-   Fogazza"), com preço e disponibilidade da própria fogazza, apontando para
-   `/produto/<card>/<sabor>` (`listarFogazzasDaPromocao`).
+2. Cada variante de fogazza em promoção é um **sabor** (`listarFogazzasDaPromocao`),
+   com preço e disponibilidade da própria fogazza, apontando para
+   `/produto/<card>/<sabor>`. **Revisado na D-2026-10-15-137:** não vira card
+   (nem todo sabor tem foto) — aparece em lista.
 3. As pizzas por trás dessas variantes não aparecem como promoção solta.
+
+## D-2026-10-15-137 — Fogazza em promoção aparece em lista, com busca
+
+Nem todo sabor de fogazza tem foto; card sem foto é um quadrado vazio. Em
+promoção, as fogazzas aparecem em **lista** (nome, ingredientes, preço), no
+mesmo formato da página da fogazza, agrupada por card (doce, salgada) e com
+campo de busca. Na página da promoção (`/promocao/<id>`) é a lista completa;
+na faixa da vitrine, em vez de cards, um botão "Ver os N sabores de fogazza"
+leva a essa página. Itens com foto (pizzas, bebidas) seguem em cards.
+Migration 0160: `itens_da_promocao` aceita também o id da campanha.
