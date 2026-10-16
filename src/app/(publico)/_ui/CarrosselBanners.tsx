@@ -77,37 +77,10 @@ export function CarrosselBanners({ banners }: { banners: BannerDoCarrossel[] }) 
           priority={atual === 0}
           className="object-cover"
         />
-        {/* Sem véu escuro sobre a imagem: o banner existe para chamar atenção.
-            Texto só aparece quando foi cadastrado, e então ganha sombra
-            própria em vez de escurecer a arte inteira. */}
-        {banner.titulo || banner.corpo ? (
-          <div className="absolute inset-x-0 top-0 p-5 sm:p-8">
-            <div className="max-w-[min(78%,560px)]">
-              {/*
-                `h2`, não `h1`: o título do banner é opcional e gira com o
-                slide — não serve de cabeçalho principal do documento. O h1
-                da página é fixo e vive em `page.tsx`. As classes são as
-                mesmas, então a aparência não muda em nada.
-              */}
-              {banner.titulo ? (
-                // Mesma identidade do botão "Ver destaque": amarelo da marca com
-                // texto escuro, em vez de branco solto sobre a arte.
-                <h2 className="m-0 font-display text-[clamp(20px,4.4vw,34px)] font-extrabold leading-[1.15]">
-                  <span className="box-decoration-clone rounded-12 bg-cta px-3 py-1 text-cta-fg shadow-[0_8px_24px_rgb(0_0_0/0.28)]">
-                    {banner.titulo}
-                  </span>
-                </h2>
-              ) : null}
-              {banner.corpo ? (
-                <p className="mb-0 mt-2 max-w-[42ch] text-[clamp(13px,2.2vw,16px)] leading-[1.4] text-dark-ink">
-                  <span className="box-decoration-clone rounded-8 bg-[rgb(30_24_20/0.78)] px-2.5 py-[3px]">
-                  {banner.corpo}
-                  </span>
-                </p>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
+        {/* Sem texto sobre a imagem (15/10/2026): o nome do banner é de
+            controle interno do painel. Quem comunica é a arte, e a chamada
+            fica só no botão. O nome continua como texto alternativo da
+            imagem, para leitor de tela. */}
         <ChamadaBanner banner={banner} />
       </div>
 

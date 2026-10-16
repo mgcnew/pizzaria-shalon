@@ -4515,3 +4515,10 @@ dita uma vez, com destaque, em vez de nove cards iguais com o mesmo selo.
    vão do que mais economiza ao que menos. Mais de 5 itens: carrossel.
 4. Promoção que não pertence a nenhuma campanha conhecida continua na seção
    simples "Promoções". Se a consulta falhar, a vitrine cai nessa seção.
+
+## D-2026-10-15-134 — Nome do banner é de controle interno
+
+O título (e o texto) do banner deixam de ser desenhados sobre a imagem no
+carrossel do cardápio: a arte comunica e a chamada fica só no botão. O nome
+continua gravado, listado no painel e usado como texto alternativo da imagem.
+No cadastro o campo vira "Nome do banner (opcional)", sem o campo "Texto".

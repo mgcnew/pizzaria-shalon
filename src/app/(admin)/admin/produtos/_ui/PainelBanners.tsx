@@ -221,8 +221,11 @@ export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean 
                     opcoes={opcoesRetrato}
                     vazio="Sem arte em retrato (1:2) enviada: sem ela, o banner não gera popup. Envie uma no passo 1."
                   />
-                  <Input label="Título (opcional)" name="titulo" />
-                  <Input label="Texto (opcional)" name="corpo" />
+                  <Input
+                    label="Nome do banner (opcional)"
+                    name="titulo"
+                    hint="Só para controle interno e leitor de tela. Não aparece sobre a imagem no cardápio — quem comunica é a arte."
+                  />
 
                   <DestinoDoBanner
                     promocoes={campanhasParaBanner.map((c) => ({
