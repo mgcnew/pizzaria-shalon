@@ -5,6 +5,7 @@ import {
   buscar,
   listarCardapio,
   listarCategoriasPublicas,
+  listarCampanhasEmPromocao,
   listarMaisPedidos,
   obterLojaPublica,
 } from "@/application/publico/consultas";
@@ -15,6 +16,7 @@ import { CardProduto } from "./_ui/CardProduto";
 import { ChipsCategorias } from "./_ui/ChipsCategorias";
 import { CarrosselDeCards } from "./_ui/CarrosselDeCards";
 import { Secao } from "./_ui/Secao";
+import { SecaoDeCampanha } from "./_ui/SecaoDeCampanha";
 
 export const metadata: Metadata = {
   title: "Cardápio",
@@ -56,11 +58,12 @@ export default async function Home({
   // "Mais pedidos" começa junto com o resto (D-2026-09-29-96). Esperava as
   // outras três para só então ir ao banco, somando uma ida inteira a cada
   // abertura do cardápio. Na busca ele não é usado, e nem é pedido.
-  const [loja, categorias, cardapio, maisPedidos] = await Promise.all([
+  const [loja, categorias, cardapio, maisPedidos, campanhas] = await Promise.all([
     obterLojaPublica(),
     listarCategoriasPublicas(),
     listarCardapio(),
     termo === "" ? listarMaisPedidos(5) : Promise.resolve([]),
+    termo === "" ? listarCampanhasEmPromocao() : Promise.resolve([]),
   ]);
 
   // Catálogo ainda vazio: estado próprio, não uma tela quebrada.
@@ -126,6 +129,21 @@ export default async function Home({
   const emPromocao = cardapio.filter((p) => p.em_promocao && p.disponivel);
   const combos = cardapio.filter((p) => p.tipo === "combo");
 
+  // Cada campanha com os seus itens disponíveis, do que mais economiza ao que
+  // menos. A diferença vem do servidor (`preco_de` e `preco` já calculados).
+  const economia = (p: (typeof cardapio)[number]) => (p.preco_de ?? p.preco ?? 0) - (p.preco ?? 0);
+  const campanhasComItens = campanhas
+    .map((campanha) => {
+      const ids = new Set(campanha.produtos);
+      const itens = emPromocao
+        .filter((p) => ids.has(p.id))
+        .sort((a, b) => economia(b) - economia(a));
+      return { campanha, itens };
+    })
+    .filter((c) => c.itens.length > 0);
+  const jaNaCampanha = new Set(campanhasComItens.flatMap((c) => c.itens.map((p) => p.id)));
+  const promocoesSoltas = emPromocao.filter((p) => !jaNaCampanha.has(p.id));
+
   const porCategoria = categorias
     .map((c) => ({ categoria: c, itens: cardapio.filter((p) => p.categoria_id === c.id) }))
     .filter((g) => g.itens.length > 0);
@@ -180,19 +198,41 @@ export default async function Home({
         </Secao>
       ) : null}
 
-      {emPromocao.length > 0 ? (
+      {/*
+        Uma faixa por campanha vigente, com o nome, os dias, até quando e o
+        preço comum (D-2026-10-15-133). Os itens são os da campanha que estão
+        disponíveis, na ordem de quem mais economiza. O que está em promoção
+        mas não pertence a nenhuma campanha conhecida cai na seção simples.
+      */}
+      {campanhasComItens.map(({ campanha, itens }) => (
+        <SecaoDeCampanha key={campanha.campanha_id} campanha={campanha} quantidade={itens.length}>
+          {itens.length > 5 ? (
+            <CarrosselDeCards rotulo={campanha.nome}>
+              {itens.map((p) => (
+                <CardProduto key={p.id} produto={p} semSeloDePromocao />
+              ))}
+            </CarrosselDeCards>
+          ) : (
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 md:grid-cols-4 lg:grid-cols-5">
+              {itens.map((p) => (
+                <CardProduto key={p.id} produto={p} semSeloDePromocao />
+              ))}
+            </div>
+          )}
+        </SecaoDeCampanha>
+      ))}
+
+      {promocoesSoltas.length > 0 ? (
         <Secao titulo="Promoções" legenda="Enquanto durar">
-          {/* Com muitos itens a grade vira uma coluna longa: a fileira rola de
-              lado e mantém o cardápio compacto. Poucos itens seguem em grade. */}
-          {emPromocao.length > 5 ? (
+          {promocoesSoltas.length > 5 ? (
             <CarrosselDeCards rotulo="Promoções">
-              {emPromocao.map((p) => (
+              {promocoesSoltas.map((p) => (
                 <CardProduto key={p.id} produto={p} />
               ))}
             </CarrosselDeCards>
           ) : (
             <div className="grid grid-cols-3 gap-2 sm:gap-3 md:grid-cols-4 lg:grid-cols-5">
-              {emPromocao.map((p) => (
+              {promocoesSoltas.map((p) => (
                 <CardProduto key={p.id} produto={p} />
               ))}
             </div>

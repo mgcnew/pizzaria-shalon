@@ -4497,3 +4497,21 @@ a descrição (ingredientes) não conta. O card de fogazza permanece quando algu
 sempre. Implementado em `casaPeloNome` (`domain/catalogo/buscaDeSabor.ts`),
 aplicado em `buscarProdutos` e `buscarCatalogoPdv`. Sem migration: a RPC
 pública (`buscar_catalogo`) não foi alterada.
+
+## D-2026-10-15-133 — Cabeçalho de campanha na vitrine de promoções
+
+**Pedido da dona:** hierarquia na seção de promoções do cardápio — a oferta
+dita uma vez, com destaque, em vez de nove cards iguais com o mesmo selo.
+
+**Decisão (migration 0157):**
+1. `campanhas_em_promocao()` devolve uma linha por campanha **vigente agora**
+   (ativa, no período, no dia da semana): nome, dias, fim, menor e maior preço
+   e os produtos que cobre. Só leitura; preço e disponibilidade de cada item
+   seguem vindo do cardápio (CLAUDE.md §16).
+2. Cada campanha vira uma faixa com fundo próprio: selo "Promoção", nome, dias
+   ("Terça a quinta"), até quando (se houver), quantidade de sabores e o preço
+   comum ("todas por R$ 33,00", ou "a partir de" quando variam).
+3. Dentro da faixa o selo "Promoção" some dos cards (era repetido) e os itens
+   vão do que mais economiza ao que menos. Mais de 5 itens: carrossel.
+4. Promoção que não pertence a nenhuma campanha conhecida continua na seção
+   simples "Promoções". Se a consulta falhar, a vitrine cai nessa seção.

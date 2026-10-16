@@ -18,6 +18,7 @@ import type {
   SaborDaFogazza,
   SaborPublico,
   TamanhoPublico,
+  CampanhaEmPromocao,
 } from "./tipos";
 
 /**
@@ -42,6 +43,28 @@ async function rpc<T>(nome: string, args?: Record<string, unknown>): Promise<T[]
 export async function obterLojaPublica(): Promise<LojaPublica | null> {
   const linhas = await rpc<LojaPublica>("loja_publica");
   return linhas[0] ?? null;
+}
+
+/**
+ * Campanhas de promoção vigentes AGORA. Falha vira lista vazia: sem o
+ * cabeçalho a vitrine mostra as promoções como seção simples, nunca quebra.
+ */
+export async function listarCampanhasEmPromocao(): Promise<CampanhaEmPromocao[]> {
+  try {
+    const linhas = await rpc<Omit<CampanhaEmPromocao, "preco_min" | "preco_max"> & {
+      preco_min: number | string;
+      preco_max: number | string;
+    }>("campanhas_em_promocao");
+    return linhas.map((l) => ({
+      ...l,
+      preco_min: Number(l.preco_min),
+      preco_max: Number(l.preco_max),
+      dias: l.dias === null ? null : l.dias.map(Number),
+    }));
+  } catch (erro) {
+    logger.error("publico:campanhasEmPromocao", { code: (erro as { code?: string })?.code });
+    return [];
+  }
 }
 
 export function listarHorariosPublicos(): Promise<HorarioPublico[]> {

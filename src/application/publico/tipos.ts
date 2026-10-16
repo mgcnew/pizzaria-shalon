@@ -215,3 +215,15 @@ export type ConfiguracaoItem = {
   observacao?: string;
   quantidade?: number;
 };
+
+/** Uma campanha de promoção vigente agora (cabeçalho da vitrine). */
+export type CampanhaEmPromocao = {
+  campanha_id: string;
+  nome: string;
+  /** ISO 1..7; nulo = todos os dias. */
+  dias: number[] | null;
+  fim: string | null;
+  preco_min: number;
+  preco_max: number;
+  produtos: string[];
+};

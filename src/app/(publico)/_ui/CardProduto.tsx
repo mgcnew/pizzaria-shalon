@@ -71,7 +71,14 @@ function preco(p: Item): { prefixo: string | null; valor: string } {
   return { prefixo: null, valor: formatBRL(p.preco) };
 }
 
-export async function CardProduto({ produto }: { produto: Item }) {
+export async function CardProduto({
+  produto,
+  semSeloDePromocao = false,
+}: {
+  produto: Item;
+  /** Dentro do cabeçalho de uma campanha o selo é redundante. */
+  semSeloDePromocao?: boolean;
+}) {
   const destaque = "destaque" in produto ? produto.destaque : false;
   const imagem = produto.imagem_path ? await urlDaImagem(produto.imagem_path) : null;
   const { prefixo, valor } = preco(produto);
@@ -141,7 +148,7 @@ export async function CardProduto({ produto }: { produto: Item }) {
             botão troca de texto (§38 — nunca só a cor). */}
         <div className="absolute left-[6px] top-[6px] flex flex-wrap gap-[4px]">
           {destaque ? <Badge tom="destaque">Destaque</Badge> : null}
-          {produto.em_promocao ? <Badge tom="promocao">Promoção</Badge> : null}
+          {produto.em_promocao && !semSeloDePromocao ? <Badge tom="promocao">Promoção</Badge> : null}
         </div>
 
         <div className="absolute right-[6px] top-[6px]">
