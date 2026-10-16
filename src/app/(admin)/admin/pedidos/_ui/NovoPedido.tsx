@@ -414,7 +414,9 @@ export function NovoPedido({
 
         <fieldset className={`m-0 flex flex-col gap-3 rounded-16 border border-border-shalon bg-surface p-4 ${classeDaEtapa("cliente")}`}>
           <legend className="px-1 text-[15px] font-bold text-ink">Cliente</legend>
-          <Input label="Nome" value={nome} onChange={(e) => setNome(e.target.value)} maxLength={120} />
+          {/* WhatsApp primeiro: o cliente já cadastrado é reconhecido por ele e
+              traz nome, endereço e pagamento habitual — o nome só é digitado
+              quando o cliente é novo. */}
           <Input
             label="WhatsApp"
             value={whatsapp}
@@ -431,6 +433,7 @@ export function NovoPedido({
           ) : reconhecido !== null ? (
             <ResumoDoCliente dados={reconhecido} />
           ) : null}
+          <Input label="Nome" value={nome} onChange={(e) => setNome(e.target.value)} maxLength={120} />
         </fieldset>
 
         {modalidade === "delivery" ? (
