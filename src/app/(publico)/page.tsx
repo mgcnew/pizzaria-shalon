@@ -13,6 +13,7 @@ import { Banners } from "./_ui/Banners";
 import { Busca } from "./_ui/Busca";
 import { CardProduto } from "./_ui/CardProduto";
 import { ChipsCategorias } from "./_ui/ChipsCategorias";
+import { CarrosselDeCards } from "./_ui/CarrosselDeCards";
 import { Secao } from "./_ui/Secao";
 
 export const metadata: Metadata = {
@@ -180,11 +181,21 @@ export default async function Home({
 
       {emPromocao.length > 0 ? (
         <Secao titulo="Promoções" legenda="Enquanto durar">
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 md:grid-cols-4 lg:grid-cols-5">
-            {emPromocao.map((p) => (
-              <CardProduto key={p.id} produto={p} />
-            ))}
-          </div>
+          {/* Com muitos itens a grade vira uma coluna longa: a fileira rola de
+              lado e mantém o cardápio compacto. Poucos itens seguem em grade. */}
+          {emPromocao.length > 5 ? (
+            <CarrosselDeCards rotulo="Promoções">
+              {emPromocao.map((p) => (
+                <CardProduto key={p.id} produto={p} />
+              ))}
+            </CarrosselDeCards>
+          ) : (
+            <div className="grid grid-cols-3 gap-2 sm:gap-3 md:grid-cols-4 lg:grid-cols-5">
+              {emPromocao.map((p) => (
+                <CardProduto key={p.id} produto={p} />
+              ))}
+            </div>
+          )}
         </Secao>
       ) : null}
 
