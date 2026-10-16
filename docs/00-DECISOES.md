@@ -4484,3 +4484,16 @@ as bandeiras aceitas aparecem apenas como legenda.
    banco, e pagamentos antigos mantêm a bandeira que já tinham.
 4. Configurações › Pagamentos continua cadastrando as bandeiras — é a fonte da
    legenda.
+
+## D-2026-10-15-132 — Busca do painel casa pelo nome, não pelo ingrediente
+
+**Pedido da dona:** no painel (novo pedido e PDV), digitar "calabresa" deve
+trazer o sabor Calabresa (pizza e fogazza), não toda pizza que leva calabresa.
+O cardápio público continua buscando por ingrediente.
+
+**Decisão:** a busca do painel casa o termo com **nome e categoria** do item;
+a descrição (ingredientes) não conta. O card de fogazza permanece quando algum
+**sabor** dele tem o nome buscado. Item achado por **código de barras** fica
+sempre. Implementado em `casaPeloNome` (`domain/catalogo/buscaDeSabor.ts`),
+aplicado em `buscarProdutos` e `buscarCatalogoPdv`. Sem migration: a RPC
+pública (`buscar_catalogo`) não foi alterada.

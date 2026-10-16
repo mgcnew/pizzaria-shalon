@@ -42,3 +42,18 @@ export function filtrarSabores<T extends { nome: string; descricao: string | nul
     return palavras.every((p) => texto.includes(p));
   });
 }
+
+/**
+ * Casa o termo SÓ com o que identifica o item — nome, categoria — e não com os
+ * ingredientes da descrição (15/10/2026, painel).
+ *
+ * Digitar "calabresa" no balcão devolvia toda pizza que leva calabresa; quem
+ * atende procura a PIZZA de calabresa. A busca do cardápio público continua
+ * por ingrediente, de propósito: o cliente quer descobrir o que leva o quê.
+ */
+export function casaPeloNome(termo: string, campos: readonly (string | null | undefined)[]): boolean {
+  const palavras = palavrasDoTermo(termo);
+  if (palavras.length === 0) return true;
+  const texto = semAcento(campos.filter(Boolean).join(" "));
+  return palavras.every((p) => texto.includes(p));
+}

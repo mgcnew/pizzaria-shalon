@@ -3,8 +3,10 @@
 import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
 import { logger } from "@/lib/logger";
 import type { DadosDoConfigurador } from "@/ui/configurador/tipos";
+import { casaPeloNome } from "@/domain/catalogo/buscaDeSabor";
 import {
   buscar,
+  listarSaboresDaFogazza,
   montarDadosDaFogazza,
   montarDadosDoConfigurador,
   obterCardDeFogazza,
@@ -138,11 +140,31 @@ export async function carregarConfiguradorDaFogazza(
   }
 }
 
-/** Busca do catálogo, usada pelo balcão para achar o produto (RN-BUSCA). */
+/**
+ * Busca do catálogo, usada pelo balcão para achar o produto (RN-BUSCA).
+ *
+ * Diferente do cardápio público, aqui o termo casa com o NOME (e a
+ * categoria), não com os ingredientes da descrição: "calabresa" traz a pizza
+ * Calabresa, não toda pizza que leva calabresa. O card de fogazza fica quando
+ * algum SABOR dele tem o nome buscado — é por ele que se chega à fogazza de
+ * calabresa.
+ */
 export async function buscarProdutos(termo: unknown): Promise<ResultadoBusca[]> {
   if (typeof termo !== "string" || termo.trim().length < 2) return [];
   try {
-    return await buscar(termo.trim());
+    const busca = termo.trim();
+    const encontrados = await buscar(busca);
+
+    const resultado: ResultadoBusca[] = [];
+    for (const p of encontrados) {
+      if (casaPeloNome(busca, [p.nome, p.categoria_nome])) {
+        resultado.push(p);
+      } else if (p.tipo === "fogazza") {
+        const sabores = await listarSaboresDaFogazza(p.id);
+        if (sabores.some((s) => casaPeloNome(busca, [s.nome]))) resultado.push(p);
+      }
+    }
+    return resultado;
   } catch (erro) {
     logger.error("publico:buscarProdutos", { code: (erro as { code?: string })?.code });
     return [];

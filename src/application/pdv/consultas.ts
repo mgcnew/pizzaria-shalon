@@ -1,6 +1,7 @@
 import "server-only";
 import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
 import { logger } from "@/lib/logger";
+import { casaPeloNome } from "@/domain/catalogo/buscaDeSabor";
 import type { ItemCatalogoPdv, PedidoAReceber, ResolucaoDeCodigo } from "./tipos";
 
 /**
@@ -73,7 +74,23 @@ export async function buscarCatalogoPdv(termo: string): Promise<ItemCatalogoPdv[
     return [];
   }
 
-  return (data ?? []) as ItemCatalogoPdv[];
+  // Termo digitado casa com o NOME e a categoria, não com ingredientes da
+  // descrição — "calabresa" traz a pizza Calabresa (15/10/2026). Quem casou
+  // por CÓDIGO DE BARRAS fica sempre; a RPC também casava o nome do tamanho,
+  // que aqui não conta como critério de busca de sabor.
+  const itens = (data ?? []) as ItemCatalogoPdv[];
+  const resultado: ItemCatalogoPdv[] = [];
+  for (const i of itens) {
+    if (i.casou_codigo || casaPeloNome(termo, [i.nome, i.categoria_nome])) {
+      resultado.push(i);
+    } else if (i.tipo === "fogazza") {
+      // O card de fogazza fica quando algum SABOR dele tem o nome buscado.
+      const { data: sabores } = await supabase.rpc("sabores_da_fogazza", { p_card_id: i.id });
+      const lista = (sabores ?? []) as { nome: string }[];
+      if (lista.some((s) => casaPeloNome(termo, [s.nome]))) resultado.push(i);
+    }
+  }
+  return resultado;
 }
 
 /**
