@@ -4589,3 +4589,30 @@ o contato pelo WhatsApp.
 3. **Cliente:** CEP obrigatório (tela e servidor, no envio do pedido). Se a
    entrega não puder ser calculada (exceto "fora da área"), a mensagem traz o
    botão "Falar com a pizzaria pelo WhatsApp", com o endereço já escrito.
+
+## D-2026-10-16-139 — Prévia da taxa abaixo do endereço, no balcão
+
+No pedido pelo painel, assim que rua, número, bairro e cidade estão
+preenchidos, a taxa de entrega aparece logo abaixo do endereço (valor e km de
+rota; aviso quando exigir aprovação). É prévia: o lançamento mede de novo no
+servidor. Se a rota falhar, a opção de taxa à mão já aparece; se for fora da
+área, mostra a distância calculada e o máximo atendido.
+
+## D-2026-10-16-140 — Localização de endereço mais confiável (HERE)
+
+**Problema real encontrado:** (1) a própria rua da loja (Rua dos Dourados) só
+existe no HERE como RUA, sem número, e era sempre recusada; (2) para "Estrada
+do Retiro, 100" o HERE devolveu OUTRA rua, em outra zona, com nota 0,56 — e o
+sistema aceitava e media 10,6 km (cobrança errada / "fora da área").
+
+**Decisão (revisa o mapeamento de D-2026-09-24-75, sem afrouxar RN-ENT-003):**
+1. Resultado só vale com nota de correspondência ≥ 0,8 (`queryScore`).
+   Abaixo disso: "não encontrado" — nada de distância de outro endereço.
+2. Número da casa (`PA`/`interpolated`) segue exata/aproximada.
+3. RUA sem número passa a valer **somente quando o CEP do resultado é o CEP
+   digitado** (confiança "aproximada"): o CEP de rua cobre um trecho, então o
+   ponto fica no lugar certo. Sem CEP conferido, continua recusada.
+4. Um segundo resultado só torna o endereço ambíguo se concorre: nota
+   parecida (até 0,05 abaixo) e a mais de 300 m.
+Implementado em `avaliarResultadosDoHere` (`infrastructure/rotas/here.ts`),
+com testes.

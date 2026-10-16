@@ -10,6 +10,8 @@ import { Textarea } from "@/ui/components/Textarea";
 import { formatBRL } from "@/lib/format";
 import { buscarClienteParaBalcao, contextoDoBalcao, criarPedidoManual } from "@/application/pedidos/acoes";
 import { buscarEnderecoPorCep } from "@/application/checkout/cep";
+import { cotarEntrega } from "@/application/checkout/acoes";
+import type { CotacaoEntrega } from "@/application/checkout/tipos";
 import {
   ORIGENS_MANUAIS,
   type ClienteNoBalcao,
@@ -155,6 +157,59 @@ export function NovoPedido({
       vivo = false;
     };
   }, []);
+
+  /**
+   * Prévia da taxa (D-2026-10-16-139): assim que o endereço está completo, a
+   * taxa aparece logo abaixo dele — a atendente já fala o valor ao cliente.
+   * É só prévia: o lançamento mede de novo no servidor e é ele que vale.
+   * Se a rota falhar aqui, a opção da taxa à mão já aparece.
+   */
+  const enderecoParaCotar =
+    modalidade === "delivery" &&
+    logradouro.trim().length > 1 &&
+    numero.trim().length > 0 &&
+    bairro.trim().length > 1 &&
+    cidade.trim().length > 1 &&
+    /^[A-Za-z]{2}$/.test(uf)
+      ? {
+          logradouro: logradouro.trim(),
+          numero: numero.trim(),
+          bairro: bairro.trim(),
+          cidade: cidade.trim(),
+          uf: uf.trim().toUpperCase(),
+          cep: cep.trim() || null,
+        }
+      : null;
+  const chaveDaCotacao = enderecoParaCotar ? JSON.stringify(enderecoParaCotar) : null;
+  // O resultado guarda para qual endereço foi: mudou o endereço, ele não vale.
+  const [resultadoDaCotacao, setResultadoDaCotacao] = useState<{
+    chave: string;
+    r: CotacaoEntrega;
+  } | null>(null);
+  const cotacao =
+    chaveDaCotacao !== null && resultadoDaCotacao?.chave === chaveDaCotacao
+      ? resultadoDaCotacao.r
+      : null;
+  const cotando = chaveDaCotacao !== null && cotacao === null;
+
+  // Resposta atrasada de um endereço antigo não sobrescreve a do atual.
+  const chaveMaisRecente = useRef<string | null>(null);
+  useEffect(() => {
+    chaveMaisRecente.current = chaveDaCotacao;
+  });
+
+  useEffect(() => {
+    if (chaveDaCotacao === null) return;
+    const chave = chaveDaCotacao;
+    const espera = setTimeout(async () => {
+      const r = await cotarEntrega(JSON.parse(chave));
+      if (chave !== chaveMaisRecente.current) return;
+      setResultadoDaCotacao({ chave, r });
+      if (!r.ok && r.motivo !== "fora_de_area") setRotaFalhou(true);
+      if (r.ok) setRotaFalhou(false);
+    }, 700);
+    return () => clearTimeout(espera);
+  }, [chaveDaCotacao]);
 
   async function preencherPeloCep(valor: string) {
     const digitos = valor.replace(/\D/g, "");
@@ -624,10 +679,41 @@ export function NovoPedido({
               maxLength={160}
               hint="Não entra no cálculo da distância."
             />
-            <p className="m-0 text-[12.5px] text-muted">
-              A taxa é calculada pelo servidor na hora de lançar, com a distância real de
-              rota. Se o endereço não for localizado, aparece a opção de informar a taxa.
-            </p>
+            {/* Prévia da taxa, logo abaixo do endereço. */}
+            {cotando ? (
+              <p role="status" className="m-0 rounded-12 bg-elev px-3 py-2.5 text-[13.5px] text-ink-2">
+                Calculando a taxa de entrega…
+              </p>
+            ) : cotacao?.ok ? (
+              <div role="status" className="rounded-12 border border-tgb bg-tg px-3 py-2.5">
+                <p className="m-0 flex items-baseline justify-between gap-3 text-[14.5px] font-bold text-tgf">
+                  <span>Taxa de entrega</span>
+                  <span className="tabular-nums">{formatBRL(cotacao.taxa)}</span>
+                </p>
+                <p className="m-0 mt-0.5 text-[12.5px] text-tgf">
+                  {cotacao.distancia_km.toFixed(1).replace(".", ",")} km de rota
+                  {cotacao.exige_aprovacao ? " · acima do raio automático: vai pedir aprovação da entrega" : ""}
+                </p>
+              </div>
+            ) : cotacao && !cotacao.ok ? (
+              <p role="alert" className="m-0 rounded-12 bg-td px-3 py-2.5 text-[13px] font-semibold text-tdf">
+                {cotacao.erro}
+                {cotacao.motivo === "fora_de_area" && typeof cotacao.distancia_km === "number"
+                  ? ` Distância calculada: ${cotacao.distancia_km.toFixed(1).replace(".", ",")} km${
+                      typeof cotacao.distancia_maxima_km === "number"
+                        ? ` (atendemos até ${cotacao.distancia_maxima_km.toString().replace(".", ",")} km)`
+                        : ""
+                    }.`
+                  : ""}
+                {cotacao.motivo !== "fora_de_area" && contexto?.podeInformarTaxa
+                  ? " Você pode informar a taxa no resumo, ao lado."
+                  : ""}
+              </p>
+            ) : (
+              <p className="m-0 text-[12.5px] text-muted">
+                Com rua, número, bairro e cidade preenchidos, a taxa aparece aqui.
+              </p>
+            )}
           </fieldset>
         ) : null}
 
@@ -769,7 +855,9 @@ export function NovoPedido({
                 ? "retirada"
                 : usarTaxaManual && taxaManualValor !== null
                   ? `${formatBRL(taxaManualValor)} (informada)`
-                  : "calculada ao lançar"}
+                  : cotacao?.ok
+                    ? formatBRL(cotacao.taxa)
+                    : "calculada ao lançar"}
             </span>
           </div>
 

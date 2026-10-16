@@ -37,12 +37,21 @@ function respostaJson(corpo: unknown, status = 200): Response {
 }
 
 /** Item de geocodificação com o tipo de resultado que o teste quiser. */
-function item(resultType: string, houseNumberType?: string) {
+function item(
+  resultType: string,
+  houseNumberType?: string,
+  extra: { lat?: number; lng?: number; nota?: number; cep?: string } = {},
+) {
   return {
     resultType,
     ...(houseNumberType ? { houseNumberType } : {}),
-    position: { lat: -23.51, lng: -46.61 },
-    address: { label: "Rua das Flores, 123, São Paulo - SP, Brasil" },
+    position: { lat: extra.lat ?? -23.51, lng: extra.lng ?? -46.61 },
+    address: {
+      label: "Rua das Flores, 123, São Paulo - SP, Brasil",
+      ...(extra.cep ? { postalCode: extra.cep } : {}),
+    },
+    // O HERE sempre manda a nota; os casos de confiança usam nota alta.
+    scoring: { queryScore: extra.nota ?? 0.95 },
   };
 }
 
@@ -142,9 +151,14 @@ describe("HERE: mapeamento de confiança (D-2026-09-24-75)", () => {
     if (!r.ok) expect(r.motivo).toBe("ambiguo");
   });
 
-  it("REJEITA quando há mais de um resultado, mesmo sendo os dois exatos", async () => {
+  // D-2026-10-16-140: o segundo resultado só torna ambíguo se CONCORRE —
+  // nota parecida e em OUTRO lugar. Dois resultados no mesmo ponto são o
+  // mesmo endereço.
+  it("REJEITA quando há dois resultados exatos em lugares diferentes", async () => {
     mockarFetch(
-      respostaJson({ items: [item("houseNumber", "PA"), item("houseNumber", "PA")] }),
+      respostaJson({
+        items: [item("houseNumber", "PA"), item("houseNumber", "PA", { lat: -23.6, lng: -46.7, nota: 0.94 })],
+      }),
     );
     const r = await provedorHere(CHAVE).geocodificar(ENDERECO);
     expect(r.ok).toBe(false);

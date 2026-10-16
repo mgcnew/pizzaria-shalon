@@ -57,6 +57,87 @@ function confiancaDoHere(
   return null;
 }
 
+/** Um item da resposta do Geocoding v1, só com o que avaliamos. */
+export type ItemDoHere = {
+  resultType?: string;
+  houseNumberType?: string;
+  position?: { lat?: number; lng?: number };
+  address?: { label?: string; postalCode?: string };
+  scoring?: { queryScore?: number };
+};
+
+/**
+ * Nota mínima de correspondência (`scoring.queryScore`, 0 a 1) para aceitar
+ * um resultado (D-2026-10-16-140). Abaixo disso o HERE está "chutando": numa
+ * consulta real ("Estrada do Retiro, 100") ele devolveu outra rua, em outra
+ * zona da cidade, com nota 0,56 — e a entrega saía cobrada por 10,6 km.
+ */
+const NOTA_MINIMA = 0.8;
+/** Dois resultados a menos disso um do outro são o mesmo lugar. */
+const MESMO_LUGAR_METROS = 300;
+
+function distanciaEmMetros(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const r = 6371000;
+  const rad = (g: number) => (g * Math.PI) / 180;
+  const dLat = rad(b.lat - a.lat);
+  const dLng = rad(b.lng - a.lng);
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * r * Math.asin(Math.sqrt(h));
+}
+
+/**
+ * Decide se a resposta do HERE localiza o endereço com segurança para COBRAR
+ * por distância. Função pura (testada à parte).
+ *
+ *   1. a nota do primeiro resultado precisa ser alta (≥ 0,8);
+ *   2. número da casa (`PA`/`interpolated`) → exata/aproximada, como antes;
+ *   3. só a RUA (`street`) passa a valer quando o CEP do resultado é o CEP
+ *      digitado: no Brasil o CEP de rua cobre um trecho, então o ponto fica
+ *      no lugar certo — é o caso de ruas curtas que o HERE não numera
+ *      (a própria Rua dos Dourados da loja). Sem CEP conferido, continua
+ *      recusado (RN-ENT-003);
+ *   4. um segundo resultado só torna ambíguo se CONCORRE: nota parecida e
+ *      em outro lugar (mais de 300 m).
+ */
+export function avaliarResultadosDoHere(
+  itens: readonly ItemDoHere[],
+  cepDigitado: string | null | undefined,
+):
+  | { ok: true; lat: number; lng: number; confianca: "exata" | "aproximada"; label: string | undefined }
+  | { ok: false; motivo: "nao_encontrado" | "ambiguo" } {
+  const primeiro = itens[0];
+  const lat = primeiro?.position?.lat;
+  const lng = primeiro?.position?.lng;
+  if (!primeiro || lat === undefined || lng === undefined) return { ok: false, motivo: "nao_encontrado" };
+
+  const nota = primeiro.scoring?.queryScore ?? 0;
+  if (nota < NOTA_MINIMA) return { ok: false, motivo: "nao_encontrado" };
+
+  const cep = (cepDigitado ?? "").replace(/\D/g, "");
+  const cepDoResultado = (primeiro.address?.postalCode ?? "").replace(/\D/g, "");
+  const cepConfere = cep.length === 8 && cep === cepDoResultado;
+
+  let confianca: "exata" | "aproximada" | null = confiancaDoHere(
+    primeiro.resultType,
+    primeiro.houseNumberType,
+  );
+  if (!confianca && primeiro.resultType === "street" && cepConfere) confianca = "aproximada";
+  if (!confianca) return { ok: false, motivo: "ambiguo" };
+
+  const segundo = itens[1];
+  if (segundo?.position?.lat !== undefined && segundo.position.lng !== undefined) {
+    const notaDoSegundo = segundo.scoring?.queryScore ?? 0;
+    const longe =
+      distanciaEmMetros({ lat, lng }, { lat: segundo.position.lat, lng: segundo.position.lng }) >
+      MESMO_LUGAR_METROS;
+    const concorre = notaDoSegundo >= nota - 0.05;
+    if (longe && concorre) return { ok: false, motivo: "ambiguo" };
+  }
+
+  return { ok: true, lat, lng, confianca, label: primeiro.address?.label };
+}
+
 async function buscar(url: string): Promise<Response> {
   const controlador = new AbortController();
   const limite = setTimeout(() => controlador.abort(), TEMPO_LIMITE_MS);
@@ -111,14 +192,7 @@ export function provedorHere(chave: string): ProvedorDeRotas {
         };
       }
 
-      let dados: {
-        items?: {
-          resultType?: string;
-          houseNumberType?: string;
-          position?: { lat?: number; lng?: number };
-          address?: { label?: string };
-        }[];
-      };
+      let dados: { items?: ItemDoHere[] };
       try {
         dados = (await resposta.json()) as typeof dados;
       } catch {
@@ -130,38 +204,28 @@ export function provedorHere(chave: string): ProvedorDeRotas {
         };
       }
 
-      const itens = dados.items ?? [];
-      const primeiro = itens[0];
-      const lat = primeiro?.position?.lat;
-      const lng = primeiro?.position?.lng;
-
-      if (!primeiro || lat === undefined || lng === undefined) {
-        return {
-          ok: false,
-          motivo: "nao_encontrado",
-          mensagem: "Não encontramos esse endereço.",
-          provedor: NOME,
-        };
-      }
-
-      const confianca = confiancaDoHere(primeiro.resultType, primeiro.houseNumberType);
-
-      // Mais de um resultado, ou precisão menor que o número da casa:
-      // ambíguo. Não se inventa coordenada para poder cobrar.
-      if (!confianca || itens.length > 1) {
-        return {
-          ok: false,
-          motivo: "ambiguo",
-          mensagem: "Esse endereço ficou ambíguo. Confira os dados ou ajuste no mapa.",
-          provedor: NOME,
-        };
+      const avaliacao = avaliarResultadosDoHere(dados.items ?? [], endereco.cep);
+      if (!avaliacao.ok) {
+        return avaliacao.motivo === "nao_encontrado"
+          ? {
+              ok: false,
+              motivo: "nao_encontrado",
+              mensagem: "Não encontramos esse endereço. Confira a rua, o número e o CEP.",
+              provedor: NOME,
+            }
+          : {
+              ok: false,
+              motivo: "ambiguo",
+              mensagem: "Esse endereço ficou ambíguo. Confira os dados ou ajuste no mapa.",
+              provedor: NOME,
+            };
       }
 
       return {
         ok: true,
-        coordenada: { latitude: lat, longitude: lng },
-        confianca,
-        enderecoFormatado: primeiro.address?.label ?? consulta,
+        coordenada: { latitude: avaliacao.lat, longitude: avaliacao.lng },
+        confianca: avaliacao.confianca,
+        enderecoFormatado: avaliacao.label ?? consulta,
         provedor: NOME,
       };
     },
