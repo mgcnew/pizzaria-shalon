@@ -1,4 +1,5 @@
 import { formatBRL } from "@/lib/format";
+import { urlDaImagem } from "@/application/publico/consultas";
 import { StatusBadge, Input } from "@/ui/components";
 import { EmptyState } from "@/ui/patterns";
 import {
@@ -111,6 +112,19 @@ export async function PainelPromocoes({ podeGerenciar }: { podeGerenciar: boolea
     (p) => p.ativo && p.preco_base !== null && (p.tamanhos === 0 || soFogazza.has(p.id)),
   );
 
+  // Foto de cada produto, para a prévia na escolha dos itens.
+  const caminhos = [
+    ...new Set(
+      [...comVariacao, ...comPrecoProprio]
+        .map((p) => p.imagem_path)
+        .filter((c): c is string => c !== null),
+    ),
+  ];
+  const urls = new Map(
+    await Promise.all(caminhos.map(async (c) => [c, await urlDaImagem(c)] as const)),
+  );
+  const fotoDe = (caminho: string | null) => (caminho ? (urls.get(caminho) ?? null) : null);
+
   const opcoes: OpcaoDeItem[] = [
     ...variacoesPorProduto.flatMap(({ produto, variacoes }) =>
       variacoes.map((v) => ({
@@ -118,6 +132,7 @@ export async function PainelPromocoes({ podeGerenciar }: { podeGerenciar: boolea
         nome: `${produto.nome} · ${v.tamanho_nome}`,
         detalhe: formatBRL(v.preco),
         grupo: produto.categoria_nome,
+        imagem: fotoDe(produto.imagem_path),
       })),
     ),
     ...comPrecoProprio.map((p) => ({
@@ -125,6 +140,7 @@ export async function PainelPromocoes({ podeGerenciar }: { podeGerenciar: boolea
       nome: p.nome,
       detalhe: p.preco_base === null ? "—" : formatBRL(p.preco_base),
       grupo: p.categoria_nome,
+      imagem: fotoDe(p.imagem_path),
     })),
   ];
 

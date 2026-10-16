@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 
 /**
@@ -15,6 +16,8 @@ export type OpcaoDeItem = {
   /** Texto à direita: o preço normal já formatado. */
   detalhe: string;
   grupo: string;
+  /** Foto do produto, para a prévia. */
+  imagem?: string | null;
 };
 
 export function SeletorDeItensDaPromocao({
@@ -84,6 +87,32 @@ export function SeletorDeItensDaPromocao({
         ) : null}
       </div>
 
+      {marcados.size > 0 ? (
+        <ul
+          aria-label="Itens marcados"
+          className="m-0 mb-2 flex list-none gap-2 overflow-x-auto p-0 pb-1"
+        >
+          {opcoes
+            .filter((o) => marcados.has(o.valor))
+            .map((o) => (
+              <li
+                key={o.valor}
+                className="flex w-[72px] shrink-0 flex-col items-center gap-1"
+                title={o.nome}
+              >
+                <span className="relative block h-[56px] w-[72px] overflow-hidden rounded-10 border border-border-shalon bg-elev">
+                  {o.imagem ? (
+                    <Image src={o.imagem} alt="" fill sizes="72px" className="object-cover" />
+                  ) : null}
+                </span>
+                <span className="line-clamp-2 w-full text-center text-[11px] leading-[1.2] text-ink-2">
+                  {o.nome}
+                </span>
+              </li>
+            ))}
+        </ul>
+      ) : null}
+
       <div className="max-h-[260px] overflow-y-auto rounded-12 border border-border-shalon bg-surface">
         {grupos.map((grupo) => {
           const doGrupo = opcoes.filter((o) => o.grupo === grupo);
@@ -107,6 +136,11 @@ export function SeletorDeItensDaPromocao({
                     onChange={() => alternar(o.valor)}
                     className="h-5 w-5 shrink-0 accent-[var(--shalon-red,#b91c1c)]"
                   />
+                  <span className="relative block h-[36px] w-[48px] shrink-0 overflow-hidden rounded-8 bg-elev">
+                    {o.imagem ? (
+                      <Image src={o.imagem} alt="" fill sizes="48px" className="object-cover" />
+                    ) : null}
+                  </span>
                   <span className="min-w-0 flex-1 truncate">{o.nome}</span>
                   <span className="shrink-0 text-[13px] tabular-nums text-muted">{o.detalhe}</span>
                 </label>

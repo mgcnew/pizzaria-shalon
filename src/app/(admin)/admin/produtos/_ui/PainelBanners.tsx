@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { formatBRL } from "@/lib/format";
-import { StatusBadge, Input, SelectMenu } from "@/ui/components";
+import { StatusBadge, Input } from "@/ui/components";
 import { Cartao, EmptyState, LinhaLista } from "@/ui/patterns";
 import {
   listarBanners,
@@ -11,10 +11,12 @@ import {
 } from "@/application/catalogo/consultas";
 import { salvarBanner, alternarAtivoBanner, removerBanner } from "@/application/catalogo/acoes";
 import { enviarImagem, urlPublica } from "@/application/midia/imagem";
+import { urlDaImagem } from "@/application/publico/consultas";
 import { FormularioAcao } from "./FormularioAcao";
 import { BotaoAcao } from "./BotaoAcao";
 import { NovoItem } from "./NovoItem";
 import { DestinoDoBanner } from "./DestinoDoBanner";
+import { SeletorDeImagem, type OpcaoDeImagem } from "./SeletorDeImagem";
 import { QuandoValeAPromocao } from "./QuandoValeAPromocao";
 
 /**
@@ -50,8 +52,30 @@ export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean 
   // só o que serve, para não pôr uma arte vertical no carrossel.
   const imagensLargas = imagens.filter((i) => (i.width ?? 1) >= (i.height ?? 0));
   const imagensRetrato = imagens.filter((i) => (i.height ?? 0) > (i.width ?? 1));
-  const rotuloImagem = (i: (typeof imagens)[number]) =>
-    `${i.original_filename ?? i.storage_path} (${i.width}×${i.height})`;
+
+  // Prévia: cada imagem vira miniatura clicável, com a escolhida em tamanho
+  // de uso. A URL do bucket é pública e determinística.
+  const comUrl = async (lista: typeof imagens): Promise<OpcaoDeImagem[]> =>
+    Promise.all(
+      lista.map(async (i) => ({
+        id: i.id,
+        url: await urlPublica(i.storage_path),
+        nome: i.original_filename ?? i.storage_path,
+        dimensoes: `${i.width}×${i.height}`,
+      })),
+    );
+  const opcoesLargas = await comUrl(imagensLargas);
+  const opcoesRetrato = await comUrl(imagensRetrato);
+
+  // Foto dos produtos do destaque (prévia no seletor).
+  const caminhosDeFoto = [
+    ...new Set(
+      produtos.filter((p) => p.ativo).map((p) => p.imagem_path).filter((c): c is string => c !== null),
+    ),
+  ];
+  const fotosDosProdutos = new Map(
+    await Promise.all(caminhosDeFoto.map(async (c) => [c, await urlDaImagem(c)] as const)),
+  );
 
   // Uma entrada por promoção (campanha), não por item.
   const porCampanha = new Map<string, { nome: string; idRepresentante: string; itens: number }>();
@@ -180,27 +204,22 @@ export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean 
                 </p>
               ) : (
                 <FormularioAcao acao={salvarBanner} rotulo="Criar banner" limparAoSalvar>
-                  <SelectMenu
-                    label="Imagem"
+                  <SeletorDeImagem
                     name="imagem_id"
-                    required
-                    placeholder="Escolha a imagem"
-                    opcoes={imagensLargas.map((i) => ({ valor: i.id, texto: rotuloImagem(i) }))}
-                    hint="Arte horizontal (2:1) do carrossel."
+                    label="Imagem do carrossel"
+                    proporcao="2 / 1"
+                    obrigatorio
+                    opcoes={opcoesLargas}
+                    vazio="Nenhuma imagem horizontal (2:1) enviada. Envie uma no passo 1."
                   />
-                  <SelectMenu
-                    label="Imagem do popup (opcional)"
+                  <SeletorDeImagem
                     name="popup_imagem_id"
-                    valorInicial=""
-                    hint={
-                      imagensRetrato.length === 0
-                        ? "Sem arte em retrato (1:2) enviada: sem ela, o banner não gera popup. Envie uma no passo 1."
-                        : "Arte em retrato (1:2). Com ela, o banner também aparece num popup quando o cliente abre o cardápio. Sem ela, não há popup."
-                    }
-                    opcoes={[
-                      { valor: "", texto: "Sem popup" },
-                      ...imagensRetrato.map((i) => ({ valor: i.id, texto: rotuloImagem(i) })),
-                    ]}
+                    label="Imagem do popup (opcional)"
+                    proporcao="1 / 2"
+                    opcional
+                    rotuloNenhuma="Sem popup"
+                    opcoes={opcoesRetrato}
+                    vazio="Sem arte em retrato (1:2) enviada: sem ela, o banner não gera popup. Envie uma no passo 1."
                   />
                   <Input label="Título (opcional)" name="titulo" />
                   <Input label="Texto (opcional)" name="corpo" />
@@ -221,6 +240,7 @@ export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean 
                         nome: p.nome,
                         detalhe: p.preco_base === null ? "" : formatBRL(p.preco_base),
                         grupo: p.categoria_nome,
+                        imagem: p.imagem_path ? (fotosDosProdutos.get(p.imagem_path) ?? null) : null,
                       }))}
                   />
 
