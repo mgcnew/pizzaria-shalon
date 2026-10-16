@@ -228,4 +228,8 @@ export type CampanhaEmPromocao = {
   produtos: string[];
   /** Falso: a campanha vale, mas só se chega a ela pelo banner. */
   na_vitrine: boolean;
+  /** Variantes de fogazza em promoção: viram cards de SABOR de fogazza. */
+  variantes_fogazza: string[];
+  /** Os produtos (pizzas) por trás delas: não são promoção solta. */
+  produtos_fogazza: string[];
 };

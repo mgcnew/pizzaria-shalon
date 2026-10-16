@@ -6,6 +6,7 @@ import {
   listarCardapio,
   listarCategoriasPublicas,
   listarCampanhasEmPromocao,
+  listarFogazzasDaPromocao,
   listarMaisPedidos,
   obterLojaPublica,
 } from "@/application/publico/consultas";
@@ -132,18 +133,27 @@ export default async function Home({
   // Cada campanha com os seus itens disponíveis, do que mais economiza ao que
   // menos. A diferença vem do servidor (`preco_de` e `preco` já calculados).
   const economia = (p: (typeof cardapio)[number]) => (p.preco_de ?? p.preco ?? 0) - (p.preco ?? 0);
+  // As fogazzas em promoção entram como cards de SABOR de fogazza, não como a
+  // pizza daquele sabor (D-2026-10-15-136).
+  const fogazzasPorCampanha = await Promise.all(
+    campanhas.map((c) => listarFogazzasDaPromocao(c.variantes_fogazza)),
+  );
   const campanhasComItens = campanhas
-    .map((campanha) => {
+    .map((campanha, i) => {
       const ids = new Set(campanha.produtos);
-      const itens = emPromocao
-        .filter((p) => ids.has(p.id))
-        .sort((a, b) => economia(b) - economia(a));
+      const itens = [
+        ...emPromocao.filter((p) => ids.has(p.id)),
+        ...(fogazzasPorCampanha[i] ?? []).filter((f) => f.disponivel),
+      ].sort((a, b) => economia(b) - economia(a));
       return { campanha, itens };
     })
     .filter((c) => c.itens.length > 0);
   // Campanha oculta da vitrine continua valendo (preço e carrinho), só não ganha
   // faixa: os itens dela não caem na seção simples e o banner leva a ela.
-  const jaNaCampanha = new Set(campanhasComItens.flatMap((c) => c.itens.map((p) => p.id)));
+  const jaNaCampanha = new Set([
+    ...campanhasComItens.flatMap((c) => c.itens.map((p) => p.id)),
+    ...campanhas.flatMap((c) => c.produtos_fogazza),
+  ]);
   const campanhasNaVitrine = campanhasComItens.filter((c) => c.campanha.na_vitrine);
   const promocoesSoltas = emPromocao.filter((p) => !jaNaCampanha.has(p.id));
 

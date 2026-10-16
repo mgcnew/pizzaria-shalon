@@ -61,6 +61,8 @@ export async function listarCampanhasEmPromocao(): Promise<CampanhaEmPromocao[]>
       preco_max: Number(l.preco_max),
       dias: l.dias === null ? null : l.dias.map(Number),
       na_vitrine: l.na_vitrine !== false,
+      variantes_fogazza: l.variantes_fogazza ?? [],
+      produtos_fogazza: l.produtos_fogazza ?? [],
     }));
   } catch (erro) {
     logger.error("publico:campanhasEmPromocao", { code: (erro as { code?: string })?.code });
@@ -389,4 +391,58 @@ async function montarItemNoServidor(config: ConfiguracaoItem): Promise<ItemMonta
     return { ok: false, erro: "Não foi possível montar este item agora." };
   }
   return data as ItemMontado;
+}
+
+
+/**
+ * As fogazzas de uma promoção, como cards de SABOR (D-2026-10-15-136).
+ *
+ * Promoção de uma variante de fogazza não é promoção da pizza: o cliente
+ * escolhe o sabor dentro do card "Fogazza salgada/doce" e o tamanho é fixo.
+ * Aqui cada variante de fogazza em promoção vira um item com o mesmo formato
+ * de um card, apontando para `/produto/<card>/<sabor>` (o `slug` carrega os
+ * dois). Preço, promoção e disponibilidade são os que `sabores_da_fogazza`
+ * calculou — nada é recalculado aqui.
+ */
+export async function listarFogazzasDaPromocao(
+  varianteIds: readonly string[],
+): Promise<ProdutoPublico[]> {
+  if (varianteIds.length === 0) return [];
+  const alvo = new Set(varianteIds);
+  const cardapio = await listarCardapio();
+  const cards = cardapio.filter((p) => p.tipo === "fogazza");
+
+  const porCard = await Promise.all(
+    cards.map(async (card) => ({ card, sabores: await listarSaboresDaFogazza(card.id) })),
+  );
+
+  const itens: ProdutoPublico[] = [];
+  for (const { card, sabores } of porCard) {
+    for (const s of sabores) {
+      if (!alvo.has(s.variacao_id)) continue;
+      itens.push({
+        id: s.produto_id,
+        nome: `${s.nome} · Fogazza`,
+        slug: `${card.slug}/${s.slug}`,
+        tipo: "fogazza",
+        descricao: s.descricao,
+        categoria_id: card.categoria_id,
+        categoria_nome: card.categoria_nome,
+        categoria_slug: card.categoria_slug,
+        categoria_ordem: card.categoria_ordem,
+        preco_de: s.preco_de,
+        preco: s.preco,
+        preco_max: s.preco,
+        em_promocao: s.em_promocao,
+        disponivel: s.disponivel,
+        destaque: false,
+        // Abre o configurador do sabor: nunca o "+" de um toque.
+        tem_tamanhos: true,
+        imagem_path: s.imagem_path,
+        ordem: 0,
+        limite_por_pedido: null,
+      });
+    }
+  }
+  return itens;
 }

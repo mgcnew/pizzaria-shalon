@@ -4538,3 +4538,18 @@ outra, poder ocultar a promoção da vitrine e acessá-la pelo banner.
 3. Painel: no cadastro, "Mostrar no cardápio" (marcado); no cartão da
    promoção, "Ocultar do cardápio"/"Mostrar no cardápio" e a etiqueta "Só pelo
    banner" quando oculta.
+
+## D-2026-10-15-136 — Promoção de fogazza mostra as fogazzas, não as pizzas
+
+**Problema:** campanha cujos itens eram variantes de fogazza aparecia na
+vitrine e na página da promoção com as PIZZAS dos sabores, e não com as opções
+de fogazza.
+
+**Decisão (migration 0159):**
+1. `campanhas_em_promocao()` separa `produtos` (alvo direto ou tamanho de
+   pizza), `variantes_fogazza` e `produtos_fogazza`. `itens_da_promocao()`
+   passa a dizer qual item é variante de fogazza.
+2. Cada variante de fogazza em promoção vira um card de **sabor** ("Banana ·
+   Fogazza"), com preço e disponibilidade da própria fogazza, apontando para
+   `/produto/<card>/<sabor>` (`listarFogazzasDaPromocao`).
+3. As pizzas por trás dessas variantes não aparecem como promoção solta.

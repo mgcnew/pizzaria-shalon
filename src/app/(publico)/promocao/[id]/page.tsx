@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 import { EmptyState } from "@/ui/patterns";
 import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
-import { obterLojaPublica, produtosPorId } from "@/application/publico/consultas";
+import { listarFogazzasDaPromocao, obterLojaPublica, produtosPorId } from "@/application/publico/consultas";
 import { AvisoLojaFechada } from "../../_ui/AvisoLojaFechada";
 import { CardProduto } from "../../_ui/CardProduto";
 
@@ -20,10 +20,18 @@ import { CardProduto } from "../../_ui/CardProduto";
 async function itensDaPromocao(id: string) {
   const supabase = await getSupabaseServerClient();
   const { data } = await supabase.rpc("itens_da_promocao", { p_promotion_id: id });
-  const linhas = (data ?? []) as { produto_id: string; nome_da_promocao: string }[];
+  const linhas = (data ?? []) as {
+    produto_id: string;
+    nome_da_promocao: string;
+    variante_de_fogazza: string | null;
+  }[];
   return {
     nome: linhas[0]?.nome_da_promocao ?? null,
-    produtoIds: linhas.map((l) => l.produto_id),
+    // Fogazza em promoção é um card de SABOR de fogazza, não a pizza.
+    produtoIds: linhas.filter((l) => l.variante_de_fogazza === null).map((l) => l.produto_id),
+    variantesDeFogazza: linhas
+      .map((l) => l.variante_de_fogazza)
+      .filter((v): v is string => v !== null),
   };
 }
 
@@ -33,10 +41,14 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const { id } = await params;
   if (!z.string().uuid().safeParse(id).success) notFound();
 
-  const [loja, { nome, produtoIds }] = await Promise.all([obterLojaPublica(), itensDaPromocao(id)]);
+  const [loja, { nome, produtoIds, variantesDeFogazza }] = await Promise.all([obterLojaPublica(), itensDaPromocao(id)]);
   if (!nome) notFound();
 
-  const produtos = await produtosPorId(produtoIds);
+  const [pizzasEOutros, fogazzas] = await Promise.all([
+    produtosPorId(produtoIds),
+    listarFogazzasDaPromocao(variantesDeFogazza),
+  ]);
+  const produtos = [...pizzasEOutros, ...fogazzas];
 
   return (
     <>
