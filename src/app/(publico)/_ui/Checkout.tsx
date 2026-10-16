@@ -187,6 +187,9 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
   const [buscandoCep, iniciarBuscaCep] = useTransition();
   const [avisoCep, setAvisoCep] = useState<string | null>(null);
 
+  // O último endereço que veio do CEP: o próximo CEP pode substituí-lo.
+  const cepAutomatico = useRef<{ logradouro?: string; bairro?: string }>({});
+
   function preencherPeloCep(valor: string) {
     const digitos = valor.replace(/\D/g, "");
     setAvisoCep(null);
@@ -204,11 +207,17 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
         );
         return;
       }
-      // Não sobrescreve o que o cliente já digitou: o CEP completa, não manda.
-      if (r.logradouro) setLogradouro((atual) => atual.trim() || r.logradouro);
-      if (r.bairro) setBairro((atual) => atual.trim() || r.bairro);
+      // Troca o que está vazio ou o que veio de um CEP anterior: digitar
+      // outro CEP traz o outro endereço, sem recarregar. O que o cliente
+      // digitou à mão não é apagado.
+      const anterior = cepAutomatico.current;
+      setLogradouro((atual) =>
+        atual.trim() === "" || atual === anterior.logradouro ? r.logradouro : atual,
+      );
+      setBairro((atual) => (atual.trim() === "" || atual === anterior.bairro ? r.bairro : atual));
       setCidade(r.cidade);
       setUf(r.uf);
+      cepAutomatico.current = { logradouro: r.logradouro, bairro: r.bairro };
       // Com a rua pronta, o que falta é o número: o cursor vai direto para lá.
       if (r.logradouro) {
         requestAnimationFrame(() => document.getElementById("campo-número")?.focus());

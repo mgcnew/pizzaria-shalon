@@ -121,6 +121,12 @@ export function NovoPedido({
    * encontrado ou consulta fora do ar. Antes o campo não fazia nada.
    */
   const [buscandoCep, setBuscandoCep] = useState(false);
+  /**
+   * O que foi preenchido AUTOMATICAMENTE (pelo CEP, pelo endereço salvo ou
+   * pela cidade da loja). Um CEP novo troca esses valores sem pedir para
+   * fechar a tela; o que a atendente digitou à mão nunca é apagado.
+   */
+  const automatico = useRef<Partial<Record<"logradouro" | "numero" | "complemento" | "bairro" | "cidade" | "uf" | "referencia", string>>>({});
   const [avisoCep, setAvisoCep] = useState<string | null>(null);
 
   /**
@@ -143,6 +149,7 @@ export function NovoPedido({
       // A maioria das entregas é na cidade da loja: já vem preenchida.
       setCidade((atual) => atual || c.cidade);
       setUf((atual) => atual || c.uf);
+      automatico.current = { ...automatico.current, cidade: c.cidade, uf: c.uf };
     });
     return () => {
       vivo = false;
@@ -166,11 +173,27 @@ export function NovoPedido({
       );
       return;
     }
-    // Completa só o que está vazio: não apaga o que a atendente digitou.
-    setLogradouro((v) => v.trim() || r.logradouro);
-    setBairro((v) => v.trim() || r.bairro);
-    setCidade((v) => (v.trim() && v.trim() !== contexto?.cidade ? v : r.cidade));
-    setUf((v) => (v.trim() && v.trim() !== contexto?.uf ? v : r.uf));
+    // Troca o que está vazio OU o que veio automático (CEP anterior, endereço
+    // salvo, cidade da loja): o cliente disse outro endereço e a tela acompanha
+    // sem precisar fechar. O que foi digitado à mão fica como está.
+    const auto = automatico.current;
+    const trocavel = (atual: string, chave: keyof typeof auto) =>
+      atual.trim() === "" || atual === (auto[chave] ?? "\u0000");
+    const outroEndereco = Boolean(auto.logradouro) && auto.logradouro !== r.logradouro;
+
+    if (trocavel(logradouro, "logradouro")) setLogradouro(r.logradouro);
+    if (trocavel(bairro, "bairro")) setBairro(r.bairro);
+    if (trocavel(cidade, "cidade")) setCidade(r.cidade);
+    if (trocavel(uf, "uf")) setUf(r.uf);
+    // Número, complemento e referência eram do endereço anterior: se vieram
+    // automáticos e o endereço mudou, saem para não ficar pela metade.
+    if (outroEndereco) {
+      if (numero !== "" && numero === auto.numero) setNumero("");
+      if (complemento !== "" && complemento === auto.complemento) setComplemento("");
+      if (referencia !== "" && referencia === auto.referencia) setReferencia("");
+      setEnderecoSalvoId(null);
+    }
+    automatico.current = { logradouro: r.logradouro, bairro: r.bairro, cidade: r.cidade, uf: r.uf };
     setAvisoCep(
       r.logradouro
         ? `Encontrado: ${[r.logradouro, r.bairro, `${r.cidade}/${r.uf}`].filter(Boolean).join(", ")}.`
@@ -199,6 +222,17 @@ export function NovoPedido({
   });
 
   function aplicarEndereco(e: EnderecoSalvo | null) {
+    automatico.current = e
+      ? {
+          logradouro: e.logradouro ?? "",
+          numero: e.numero ?? "",
+          complemento: e.complemento ?? "",
+          bairro: e.bairro ?? "",
+          cidade: e.cidade ?? "",
+          uf: e.uf ?? "",
+          referencia: e.referencia ?? "",
+        }
+      : {};
     setEnderecoSalvoId(e?.id ?? null);
     setLogradouro(e?.logradouro ?? "");
     setNumero(e?.numero ?? "");
