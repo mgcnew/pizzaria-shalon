@@ -79,10 +79,13 @@ export function QuandoValeAPromocao({
           {DIAS.map((d) => {
             const ativo = dias.has(d.iso);
             return (
+              // `relative`: a caixa escondida (sr-only) é `absolute`; sem um pai
+              // posicionado ela ancora no MODAL, e focar nela rolava o próprio
+              // modal (que é overflow-hidden), sumindo com o título e as abas.
               <label
                 key={d.iso}
                 className={[
-                  "flex min-h-[44px] min-w-0 cursor-pointer items-center justify-center rounded-pill border-[1.5px] px-1 text-[13px] font-semibold sm:text-[14px]",
+                  "relative flex min-h-[44px] min-w-0 cursor-pointer items-center justify-center rounded-pill border-[1.5px] px-1 text-[13px] font-semibold sm:text-[14px]",
                   ativo
                     ? "border-brand-red bg-td text-tdf"
                     : "border-border-shalon bg-surface text-ink",
