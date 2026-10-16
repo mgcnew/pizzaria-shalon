@@ -60,7 +60,7 @@ export default async function Home({
     obterLojaPublica(),
     listarCategoriasPublicas(),
     listarCardapio(),
-    termo === "" ? listarMaisPedidos() : Promise.resolve([]),
+    termo === "" ? listarMaisPedidos(5) : Promise.resolve([]),
   ]);
 
   // Catálogo ainda vazio: estado próprio, não uma tela quebrada.
@@ -171,11 +171,12 @@ export default async function Home({
 
       {maisPedidos.length > 0 ? (
         <Secao titulo="Mais pedidos" legenda="Últimos 30 dias">
-          <div className="grid grid-cols-3 gap-2 sm:gap-3 md:grid-cols-4 lg:grid-cols-5">
-            {maisPedidos.map((p) => (
+          {/* Sempre em fileira rolável, no máximo 5 itens (15/10/2026). */}
+          <CarrosselDeCards rotulo="Mais pedidos">
+            {maisPedidos.slice(0, 5).map((p) => (
               <CardProduto key={p.id} produto={p} />
             ))}
-          </div>
+          </CarrosselDeCards>
         </Secao>
       ) : null}
 
