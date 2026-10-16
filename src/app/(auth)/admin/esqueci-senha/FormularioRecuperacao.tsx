@@ -38,7 +38,7 @@ export function FormularioRecuperacao() {
   }
 
   return (
-    <form action={acao} className="mt-5 flex flex-col gap-4">
+    <form action={acao} className="mt-[24px] flex flex-col gap-4">
       <Input
         label="E-mail"
         name="email"

@@ -13,7 +13,11 @@ import { logger } from "@/lib/logger";
  * A mensagem devolvida é deliberadamente genérica: não revela se o e-mail
  * existe, o que evita enumeração de usuários (§25).
  */
-export type EstadoLogin = { erro?: string };
+export type EstadoLogin = {
+  erro?: string;
+  /** O e-mail digitado volta ao campo; a senha, jamais. */
+  email?: string;
+};
 
 export async function entrar(
   _anterior: EstadoLogin,
@@ -24,7 +28,7 @@ export async function entrar(
   const proximo = String(formData.get("proximo") ?? "/admin");
 
   if (!email || !senha) {
-    return { erro: "Informe e-mail e senha." };
+    return { erro: "Informe e-mail e senha.", email };
   }
 
   const supabase = await getSupabaseServerClient();
@@ -35,7 +39,7 @@ export async function entrar(
 
   if (error) {
     logger.warn("tentativa de login sem sucesso");
-    return { erro: "E-mail ou senha incorretos." };
+    return { erro: "E-mail ou senha incorretos.", email };
   }
 
   // Autenticar não basta: é preciso ser usuário interno ATIVO. Quem não for
@@ -46,6 +50,7 @@ export async function entrar(
     logger.warn("login de identidade sem acesso interno ativo");
     return {
       erro: "Esta conta não tem acesso ao painel da Shalon. Fale com a proprietária.",
+      email,
     };
   }
 

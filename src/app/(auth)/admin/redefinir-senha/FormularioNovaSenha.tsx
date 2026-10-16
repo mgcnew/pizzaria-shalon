@@ -2,7 +2,8 @@
 
 import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
-import { Button, Input } from "@/ui/components";
+import { Button } from "@/ui/components";
+import { CampoDeSenha } from "../../_ui/CampoDeSenha";
 import { getSupabaseBrowserClient } from "@/infrastructure/supabase/client";
 import { definirNovaSenha, type EstadoNovaSenha } from "./actions";
 
@@ -105,21 +106,19 @@ export function FormularioNovaSenha() {
   }
 
   return (
-    <form action={acao} className="mt-5 flex flex-col gap-4">
-      <Input
+    <form action={acao} className="mt-[24px] flex flex-col gap-4">
+      <CampoDeSenha
         label="Nova senha"
         name="senha"
-        type="password"
         autoComplete="new-password"
         required
         minLength={8}
         hint="Pelo menos 8 caracteres."
       />
 
-      <Input
+      <CampoDeSenha
         label="Repita a nova senha"
         name="confirmacao"
-        type="password"
         autoComplete="new-password"
         required
         minLength={8}
