@@ -780,6 +780,9 @@ export async function salvarPromocao(
         ends_at: fim ? fim.toISOString() : null,
         weekdays: dias.length > 0 && dias.length < 7 ? dias : null,
         campaign_id: campanha,
+        // Desmarcar tira a faixa da vitrine; a promoção segue valendo e o
+        // banner continua levando a ela.
+        show_on_menu: form.get("na_vitrine") === "on",
         max_quantity_per_order: limite ? Number(limite) : null,
       })),
     );
@@ -798,6 +801,25 @@ export async function salvarPromocao(
   } catch (erro) {
     return falha("salvarPromocao", erro);
   }
+}
+
+/**
+ * Mostra ou oculta a faixa da promoção na vitrine do cardápio. Não mexe em
+ * preço, dias nem vigência: oculta, ela continua valendo e acessível pelo
+ * banner.
+ */
+export async function alternarVitrinePromocao(form: FormData): Promise<void> {
+  const campanha = String(form.get("campanha") ?? "");
+  const mostrar = String(form.get("mostrar")) === "true";
+  if (!campanha) return;
+  const supabase = await getSupabaseServerClient();
+  const { error } = await supabase
+    .from("promotions")
+    .update({ show_on_menu: mostrar })
+    .eq("campaign_id", campanha);
+  if (error) logger.error("catalogo:alternarVitrinePromocao", { code: (error as { code?: string }).code });
+  revalidatePath(ROTA);
+  revalidatePath("/");
 }
 
 /** Pausa ou retoma a promoção INTEIRA (todos os itens), mantendo dias e datas. */

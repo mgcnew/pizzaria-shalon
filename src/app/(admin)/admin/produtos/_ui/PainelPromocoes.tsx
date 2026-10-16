@@ -11,6 +11,7 @@ import {
 import {
   salvarPromocao,
   alternarAtivoPromocao,
+  alternarVitrinePromocao,
   removerPromocao,
 } from "@/application/catalogo/acoes";
 import type { PromocaoAdmin, SituacaoPromocao } from "@/application/catalogo/tipos";
@@ -174,6 +175,21 @@ export async function PainelPromocoes({ podeGerenciar }: { podeGerenciar: boolea
               hint="Este valor substitui o preço normal de cada item marcado."
             />
             <QuandoValeAPromocao />
+            <label className="flex min-h-touch cursor-pointer items-start gap-3 rounded-12 border border-border-shalon bg-surface px-3 py-2.5 text-[14px] text-ink">
+              <input
+                type="checkbox"
+                name="na_vitrine"
+                defaultChecked
+                className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--brand-orange)]"
+              />
+              <span>
+                <span className="block font-semibold">Mostrar no cardápio</span>
+                <span className="block text-[12.5px] text-muted">
+                  Ganha uma faixa na página inicial. Desmarque para a promoção valer, mas só
+                  ser acessada pelo banner.
+                </span>
+              </span>
+            </label>
             <Input
               label="Limite por pedido (opcional)"
               name="limite"
@@ -213,6 +229,11 @@ export async function PainelPromocoes({ podeGerenciar }: { podeGerenciar: boolea
                     <h3 className="m-0 text-[16px] font-bold text-ink">{primeiro.nome}</h3>
                     <StatusBadge tom={TOM[situacao]}>{ROTULO[situacao]}</StatusBadge>
                   </div>
+                  {!primeiro.na_vitrine ? (
+                    <p className="m-0 mt-1.5">
+                      <StatusBadge tom="info">Só pelo banner</StatusBadge>
+                    </p>
+                  ) : null}
 
                   <p className="m-0 mt-1 text-[13px] text-ink-2">{quandoVale(primeiro)}</p>
 
@@ -245,6 +266,15 @@ export async function PainelPromocoes({ podeGerenciar }: { podeGerenciar: boolea
                         campos={{ campanha: primeiro.campanha_id, ativar: String(pausada) }}
                       >
                         {pausada ? "Retomar" : "Pausar"}
+                      </BotaoAcao>
+                      <BotaoAcao
+                        acao={alternarVitrinePromocao}
+                        campos={{
+                          campanha: primeiro.campanha_id,
+                          mostrar: String(!primeiro.na_vitrine),
+                        }}
+                      >
+                        {primeiro.na_vitrine ? "Ocultar do cardápio" : "Mostrar no cardápio"}
                       </BotaoAcao>
                       <BotaoAcao
                         acao={removerPromocao}

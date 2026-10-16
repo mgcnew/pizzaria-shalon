@@ -226,4 +226,6 @@ export type CampanhaEmPromocao = {
   preco_min: number;
   preco_max: number;
   produtos: string[];
+  /** Falso: a campanha vale, mas só se chega a ela pelo banner. */
+  na_vitrine: boolean;
 };

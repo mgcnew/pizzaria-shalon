@@ -60,6 +60,7 @@ export async function listarCampanhasEmPromocao(): Promise<CampanhaEmPromocao[]>
       preco_min: Number(l.preco_min),
       preco_max: Number(l.preco_max),
       dias: l.dias === null ? null : l.dias.map(Number),
+      na_vitrine: l.na_vitrine !== false,
     }));
   } catch (erro) {
     logger.error("publico:campanhasEmPromocao", { code: (erro as { code?: string })?.code });

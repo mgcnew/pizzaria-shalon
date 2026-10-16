@@ -4522,3 +4522,19 @@ O título (e o texto) do banner deixam de ser desenhados sobre a imagem no
 carrossel do cardápio: a arte comunica e a chamada fica só no botão. O nome
 continua gravado, listado no painel e usado como texto alternativo da imagem.
 No cadastro o campo vira "Nome do banner (opcional)", sem o campo "Texto".
+
+## D-2026-10-15-135 — Promoção oculta da vitrine, acessível pelo banner
+
+**Pedido da dona:** com mais de uma promoção, em vez de uma faixa embaixo da
+outra, poder ocultar a promoção da vitrine e acessá-la pelo banner.
+
+**Decisão (migration 0158):**
+1. `promotions.show_on_menu` (padrão verdadeiro), por campanha. Falso tira a
+   **faixa** da página inicial; **não muda** preço, dias, vigência nem
+   carrinho — a promoção continua valendo e os itens aparecem com o preço
+   promocional nas categorias.
+2. Os itens de uma campanha oculta não caem na seção simples "Promoções": a
+   promoção só é encontrada pelo banner (`/promocao/<id>`).
+3. Painel: no cadastro, "Mostrar no cardápio" (marcado); no cartão da
+   promoção, "Ocultar do cardápio"/"Mostrar no cardápio" e a etiqueta "Só pelo
+   banner" quando oculta.

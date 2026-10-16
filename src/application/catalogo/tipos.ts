@@ -86,6 +86,8 @@ export type PromocaoAdmin = {
   campanha_id: string;
   /** ISO: 1 = segunda … 7 = domingo. Nulo = todos os dias. */
   dias: number[] | null;
+  /** Tem faixa própria na vitrine do cardápio? Falso = só pelo banner. */
+  na_vitrine: boolean;
 };
 
 export type ComboAdmin = {

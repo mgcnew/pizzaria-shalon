@@ -141,7 +141,10 @@ export default async function Home({
       return { campanha, itens };
     })
     .filter((c) => c.itens.length > 0);
+  // Campanha oculta da vitrine continua valendo (preço e carrinho), só não ganha
+  // faixa: os itens dela não caem na seção simples e o banner leva a ela.
   const jaNaCampanha = new Set(campanhasComItens.flatMap((c) => c.itens.map((p) => p.id)));
+  const campanhasNaVitrine = campanhasComItens.filter((c) => c.campanha.na_vitrine);
   const promocoesSoltas = emPromocao.filter((p) => !jaNaCampanha.has(p.id));
 
   const porCategoria = categorias
@@ -204,7 +207,7 @@ export default async function Home({
         disponíveis, na ordem de quem mais economiza. O que está em promoção
         mas não pertence a nenhuma campanha conhecida cai na seção simples.
       */}
-      {campanhasComItens.map(({ campanha, itens }) => (
+      {campanhasNaVitrine.map(({ campanha, itens }) => (
         <SecaoDeCampanha key={campanha.campanha_id} campanha={campanha} quantidade={itens.length}>
           {itens.length > 5 ? (
             <CarrosselDeCards rotulo={campanha.nome}>
