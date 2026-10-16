@@ -95,7 +95,7 @@ export function ModalFerramentaCatalogo({
   });
 
   return (
-    <div className="fixed inset-0 z-70 flex overflow-y-auto bg-bg lg:items-center lg:justify-center lg:bg-transparent lg:p-6">
+    <div className="fixed inset-0 z-70 flex items-start overflow-y-auto bg-bg lg:items-center lg:justify-center lg:bg-transparent lg:p-6">
       <button
         type="button"
         aria-label="Fechar janela"

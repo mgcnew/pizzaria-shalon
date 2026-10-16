@@ -75,14 +75,14 @@ export function QuandoValeAPromocao({
           {banner ? "O banner" : "A promoção"} se repete toda semana nos dias marcados — não precisa
           refazer. Sem nenhum dia marcado, {banner ? "aparece" : "vale"} todos os dias.
         </p>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid max-w-[460px] grid-cols-7 gap-1.5 sm:gap-2">
           {DIAS.map((d) => {
             const ativo = dias.has(d.iso);
             return (
               <label
                 key={d.iso}
                 className={[
-                  "flex min-h-[44px] min-w-[52px] cursor-pointer items-center justify-center rounded-pill border-[1.5px] px-3 text-[14px] font-semibold",
+                  "flex min-h-[44px] min-w-0 cursor-pointer items-center justify-center rounded-pill border-[1.5px] px-1 text-[13px] font-semibold sm:text-[14px]",
                   ativo
                     ? "border-brand-red bg-td text-tdf"
                     : "border-border-shalon bg-surface text-ink",
@@ -129,29 +129,36 @@ export function QuandoValeAPromocao({
             hint={banner ? "Em branco: aparece agora." : "Em branco: começa agora."}
           />
           {temFim ? (
-            <CampoDataHora label={banner ? "Sai do ar em" : "Termina em"} name="fim" modo="dataHora" />
+            <div className="flex flex-col">
+              <CampoDataHora label={banner ? "Sai do ar em" : "Termina em"} name="fim" modo="dataHora" />
+              <button
+                type="button"
+                onClick={() => setTemFim(false)}
+                className="mt-[6px] cursor-pointer self-start border-0 bg-transparent p-0 text-[12.5px] font-semibold text-brand-red"
+              >
+                Remover data de término
+              </button>
+            </div>
           ) : (
-            <div className="flex flex-col justify-end">
-              <p className="m-0 mb-1 text-[13px] text-ink">Sem data para acabar.</p>
+            // Mesma altura e mesma moldura do campo ao lado: a coluna não
+            // muda de tamanho nem desalinha quando se liga ou desliga.
+            <div className="flex flex-col">
+              <span className="mb-[6px] block text-[14px] font-semibold text-ink">
+                {banner ? "Sai do ar em" : "Termina em"}
+              </span>
+              <div className="flex min-h-[50px] items-center rounded-12 border-[1.5px] border-dashed border-border-shalon bg-elev px-[14px] text-[15px] text-muted">
+                Sem data para acabar
+              </div>
               <button
                 type="button"
                 onClick={() => setTemFim(true)}
-                className="cursor-pointer self-start border-0 bg-transparent p-0 py-1 text-[13px] font-semibold text-brand-red"
+                className="mt-[6px] cursor-pointer self-start border-0 bg-transparent p-0 text-[12.5px] font-semibold text-brand-red"
               >
                 Definir uma data de término
               </button>
             </div>
           )}
         </div>
-        {temFim ? (
-          <button
-            type="button"
-            onClick={() => setTemFim(false)}
-            className="mt-1 cursor-pointer border-0 bg-transparent p-0 py-1 text-[13px] font-semibold text-brand-red"
-          >
-            Remover data de término
-          </button>
-        ) : null}
       </fieldset>
 
       <p
