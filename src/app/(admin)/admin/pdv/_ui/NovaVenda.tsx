@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { BandeirasAceitas } from "@/ui/components/BandeirasAceitas";
 import { formatBRL } from "@/lib/format";
 import { SelectMenu } from "@/ui/components/SelectMenu";
 import { montarItem } from "@/application/publico/acoes";
@@ -127,7 +128,6 @@ export function NovaVenda({
 
   const [itens, setItens] = useState<ItemDoRascunho[]>([]);
   const [formaId, setFormaId] = useState("");
-  const [bandeiraId, setBandeiraId] = useState("");
   const [recebido, setRecebido] = useState("");
 
   const [erro, setErro] = useState<string | null>(null);
@@ -187,7 +187,6 @@ export function NovaVenda({
     caixaAberto &&
     itens.length > 0 &&
     forma !== null &&
-    (!forma.exige_bandeira || bandeiraId !== "") &&
     (!pagamentoEmDinheiro || (recebidoNumero !== null && recebidoNumero >= subtotal));
 
   /**
@@ -211,7 +210,6 @@ export function NovaVenda({
     setCriado(null);
     setConcluindo(false);
     setFormaId("");
-    setBandeiraId("");
     setRecebido("");
     tentativa.current = null;
     limparBusca();
@@ -393,7 +391,7 @@ export function NovaVenda({
         })),
         pagamento: {
           forma_id: forma.id,
-          bandeira_id: forma.exige_bandeira ? bandeiraId : null,
+          bandeira_id: null,
           recebido: pagamentoEmDinheiro ? recebidoNumero : null,
         },
       });
@@ -418,7 +416,6 @@ export function NovaVenda({
       });
       setItens([]);
       setFormaId("");
-      setBandeiraId("");
       setRecebido("");
       tentativa.current = null;
       limparBusca();
@@ -895,7 +892,6 @@ export function NovaVenda({
             valor={formaId}
             aoMudar={(valor) => {
               setFormaId(valor);
-              setBandeiraId("");
               setRecebido("");
             }}
             hint="O recebimento será registrado e a venda será encerrada agora."
@@ -905,30 +901,7 @@ export function NovaVenda({
             ]}
           />
 
-          {forma?.exige_bandeira ? (
-            forma.bandeiras.length === 0 ? (
-              <p
-                role="status"
-                className="m-0 rounded-10 border border-twb bg-tw px-3 py-2 text-[12.5px] font-semibold text-twf"
-              >
-                {forma.nome} exige bandeira e nenhuma está cadastrada. Cadastre em
-                Configurações, ou escolha outra forma.
-              </p>
-            ) : (
-              <SelectMenu
-                label="Bandeira"
-                valor={bandeiraId}
-                aoMudar={setBandeiraId}
-                opcoes={[
-                  { valor: "", texto: "Escolha…" },
-                  ...forma.bandeiras.map((bandeira) => ({
-                    valor: bandeira.id,
-                    texto: bandeira.nome,
-                  })),
-                ]}
-              />
-            )
-          ) : null}
+          {forma?.exige_bandeira ? <BandeirasAceitas bandeiras={forma.bandeiras} /> : null}
 
           {pagamentoEmDinheiro ? (
             <div>

@@ -65,7 +65,11 @@ export async function SecaoPagamentos({ podeGerenciar }: { podeGerenciar: boolea
       </div>
 
       <div>
-        <Cartao titulo="Bandeiras por forma" largura="cheio">
+        <Cartao
+          titulo="Bandeiras por forma"
+          descricao="Aparecem como legenda quando a pessoa escolhe a forma de pagamento — ninguém precisa escolher a bandeira."
+          largura="cheio"
+        >
           {comBandeira.map((f) => {
             const doTipo = bandeiras.filter((b) => b.payment_method_id === f.id);
             return (
@@ -76,7 +80,7 @@ export async function SecaoPagamentos({ podeGerenciar }: { podeGerenciar: boolea
                 <div className="flex flex-wrap items-center gap-[7px]">
                   {doTipo.length === 0 ? (
                     <span className="text-[13px] text-muted">
-                      Nenhuma bandeira cadastrada — esta forma não poderá ser escolhida no checkout.
+                      Nenhuma bandeira cadastrada — a forma continua disponível, só não mostra a legenda.
                     </span>
                   ) : (
                     doTipo.map((b) => (

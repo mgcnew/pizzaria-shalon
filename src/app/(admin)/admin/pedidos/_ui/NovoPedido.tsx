@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
+import { BandeirasAceitas } from "@/ui/components/BandeirasAceitas";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Input } from "@/ui/components/Input";
@@ -108,7 +109,6 @@ export function NovoPedido({
   const [observacao, setObservacao] = useState("");
 
   const [formaId, setFormaId] = useState("");
-  const [bandeiraId, setBandeiraId] = useState("");
   const [precisaTroco, setPrecisaTroco] = useState(false);
   const [trocoPara, setTrocoPara] = useState("");
 
@@ -217,7 +217,6 @@ export function NovoPedido({
     itens.length > 0 &&
     clienteCompleto &&
     forma !== null &&
-    (!forma.exige_bandeira || bandeiraId !== "") &&
     (!precisaTroco || trocoPara.trim() !== "");
 
   function lancar() {
@@ -259,7 +258,7 @@ export function NovoPedido({
         })),
         pagamento: {
           forma_id: forma.id,
-          bandeira_id: forma.exige_bandeira ? bandeiraId : null,
+          bandeira_id: null,
           precisa_troco: precisaTroco,
           troco_para: precisaTroco ? Number(trocoPara.replace(",", ".")) : null,
         },
@@ -398,7 +397,6 @@ export function NovoPedido({
                 onClick={() => {
                   setModalidade(m);
                   setFormaId("");
-                  setBandeiraId("");
                 }}
                 aria-pressed={modalidade === m}
                 className={[
@@ -503,7 +501,6 @@ export function NovoPedido({
                 valor={formaId}
                 aoMudar={(valor) => {
                   setFormaId(valor);
-                  setBandeiraId("");
                   setPrecisaTroco(false);
                 }}
                 opcoes={[
@@ -512,17 +509,7 @@ export function NovoPedido({
                 ]}
               />
 
-              {forma?.exige_bandeira ? (
-                <SelectMenu
-                  label="Bandeira"
-                  valor={bandeiraId}
-                  aoMudar={setBandeiraId}
-                  opcoes={[
-                    { valor: "", texto: "Escolha…" },
-                    ...forma.bandeiras.map((b) => ({ valor: b.id, texto: b.nome })),
-                  ]}
-                />
-              ) : null}
+              {forma?.exige_bandeira ? <BandeirasAceitas bandeiras={forma.bandeiras} /> : null}
 
               {reconhecido?.pagamento_habitual && !bloqueado ? (
                 <p className="m-0 text-[12.5px] text-ink-2">

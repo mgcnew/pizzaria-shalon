@@ -4467,3 +4467,20 @@ sumir/ficar vazio.
 3. A permissão que abre cada módulo está em `PERMISSAO_DA_ROTA`
    (`src/ui/navegacao.ts`). É apenas interface: a autorização real segue no
    RLS/RPC (CLAUDE.md §12).
+
+## D-2026-10-15-131 — Bandeira do cartão vira legenda, não escolha
+
+**Pedido da dona:** cliente e balconista não escolhem mais a bandeira
+(Visa, Mastercard…). Escolhe-se a forma — débito, crédito, voucher ou Pix — e
+as bandeiras aceitas aparecem apenas como legenda.
+
+**Decisão (migration 0156; revisa RN-PGTO-006):**
+1. Checkout, pedido manual, PDV e recebimento do pedido: o seletor de bandeira
+   saiu; a forma com bandeiras cadastradas mostra a lista "Bandeiras aceitas".
+2. Servidor: a bandeira deixa de ser obrigatória em `criar_pedido` e
+   `registrar_pagamento`. Se for enviada, continua validada contra a forma.
+3. A venda/pagamento passa a não registrar a bandeira (`payment_brand_id`
+   nulo). Consequência aceita: sem relatório por bandeira. Os campos seguem no
+   banco, e pagamentos antigos mantêm a bandeira que já tinham.
+4. Configurações › Pagamentos continua cadastrando as bandeiras — é a fonte da
+   legenda.

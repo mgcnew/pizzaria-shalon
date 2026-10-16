@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BandeirasAceitas } from "@/ui/components/BandeirasAceitas";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Input } from "@/ui/components/Input";
@@ -216,7 +217,6 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
   }
 
   const [formaId, setFormaId] = useState("");
-  const [bandeiraId, setBandeiraId] = useState("");
   const [precisaTroco, setPrecisaTroco] = useState(false);
   const [trocoPara, setTrocoPara] = useState("");
 
@@ -305,7 +305,6 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
     nome.trim().length >= 2 &&
     whatsapp.replace(/\D/g, "").length >= 10 &&
     forma !== null &&
-    (!forma.exige_bandeira || bandeiraId !== "") &&
     (!precisaTroco || trocoPara.trim() !== "") &&
     (modalidade === "pickup" || cotacao?.ok === true);
 
@@ -353,7 +352,7 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
         })),
         pagamento: {
           forma_id: forma.id,
-          bandeira_id: forma.exige_bandeira ? bandeiraId : null,
+          bandeira_id: null,
           precisa_troco: precisaTroco,
           troco_para: precisaTroco ? Number(trocoPara.replace(",", ".")) : null,
         },
@@ -436,7 +435,6 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
                   onClick={() => {
                     setModalidade(m);
                     setFormaId("");
-                    setBandeiraId("");
                     sugerirPreferido(reconhecido?.enderecos[0], m);
                   }}
                   aria-pressed={modalidade === m}
@@ -641,7 +639,6 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
                   valor={formaId}
                   aoMudar={(valor) => {
                     setFormaId(valor);
-                    setBandeiraId("");
                     setPrecisaTroco(false);
                   }}
                   opcoes={[
@@ -650,17 +647,7 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
                   ]}
                 />
 
-                {forma?.exige_bandeira ? (
-                  <SelectMenu
-                    label="Bandeira"
-                    valor={bandeiraId}
-                    aoMudar={setBandeiraId}
-                    opcoes={[
-                      { valor: "", texto: "Escolha…" },
-                      ...forma.bandeiras.map((b) => ({ valor: b.id, texto: b.nome })),
-                    ]}
-                  />
-                ) : null}
+                {forma?.exige_bandeira ? <BandeirasAceitas bandeiras={forma.bandeiras} /> : null}
 
                 {forma?.permite_troco ? (
                   <div>

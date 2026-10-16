@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { BandeirasAceitas } from "@/ui/components/BandeirasAceitas";
 import Link from "next/link";
 import { Button, Input, SelectMenu, StatusBadge } from "@/ui/components";
 import { Aviso, ParDeDados } from "@/ui/patterns";
@@ -450,17 +451,7 @@ export function Recebimento({
                   )}
                 </div>
 
-                {forma?.exige_bandeira ? (
-                  <SelectMenu
-                    label="Bandeira"
-                    valor={linha.bandeira_id}
-                    aoMudar={(valor) => atualizar(i, "bandeira_id", valor)}
-                    opcoes={[
-                      { valor: "", texto: "Selecione" },
-                      ...forma.bandeiras.map((b) => ({ valor: b.id, texto: b.nome })),
-                    ]}
-                  />
-                ) : null}
+                {forma?.exige_bandeira ? <BandeirasAceitas bandeiras={forma.bandeiras} /> : null}
 
                 {forma?.familia === "cash" ? (
                   <>
