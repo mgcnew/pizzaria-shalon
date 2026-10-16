@@ -403,6 +403,11 @@ export async function enviarPedido(pedido: unknown): Promise<ResultadoEnvio> {
     if (!dados.endereco) {
       return { ok: false, erro: "Informe o endereço de entrega." };
     }
+    // No pedido do CLIENTE o CEP é obrigatório (D-2026-10-16-138). No balcão
+    // não — por isso a regra mora aqui, e não no esquema compartilhado.
+    if ((dados.endereco.cep ?? "").replace(/\D/g, "").length !== 8) {
+      return { ok: false, erro: "Informe o CEP do endereço de entrega (8 números)." };
+    }
 
     // Recalcula endereço e rota AGORA. O que a tela mostrou na cotação não
     // volta como verdade — nem a coordenada, nem a distância. O cache muda de

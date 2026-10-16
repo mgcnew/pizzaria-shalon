@@ -4564,3 +4564,28 @@ campo de busca. Na página da promoção (`/promocao/<id>`) é a lista completa;
 na faixa da vitrine, em vez de cards, um botão "Ver os N sabores de fogazza"
 leva a essa página. Itens com foto (pizzas, bebidas) seguem em cards.
 Migration 0160: `itens_da_promocao` aceita também o id da campanha.
+
+## D-2026-10-16-138 — CEP opcional no balcão, taxa à mão quando a rota falha
+
+**Pedido da dona:** no pedido feito pelo painel o CEP não deve ser obrigatório;
+o CEP digitado no balcão não localizava nada e não havia nenhum aviso; quando
+o endereço não for localizado, a atendente deve poder informar o frete (só em
+caso de falha). Para o cliente o CEP continua obrigatório e, na falha, aparece
+o contato pelo WhatsApp.
+
+**Decisão (migration 0161):**
+1. **Balcão:** CEP opcional, no topo do endereço, com consulta (ViaCEP) e aviso
+   sempre visível — encontrado, não encontrado ou consulta fora do ar. Cidade e
+   UF já vêm com as da loja. Abaixo do botão, "Falta preencher: …" diz por que
+   o pedido ainda não pode ser lançado.
+2. **Taxa à mão:** só aparece depois que a rota FALHA (endereço não localizado
+   ou serviço de rotas fora do ar — não para "fora da área"). `criar_pedido`
+   aceita `taxa_manual` apenas no caminho interno, com
+   `orders.override_delivery_fee`, entre 0 e 500; grava sem distância e sem
+   faixa (nada inventado), marca `taxa_manual: true` no endereço do pedido e
+   audita `taxa_entrega_manual`. A regra `orders_entrega_com_snapshot` aceita
+   entrega sem distância só nesse caso. O detalhe do pedido mostra "Taxa de
+   entrega informada à mão".
+3. **Cliente:** CEP obrigatório (tela e servidor, no envio do pedido). Se a
+   entrega não puder ser calculada (exceto "fora da área"), a mensagem traz o
+   botão "Falar com a pizzaria pelo WhatsApp", com o endereço já escrito.

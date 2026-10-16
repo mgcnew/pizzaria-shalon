@@ -8,7 +8,8 @@ import { Input } from "@/ui/components/Input";
 import { SelectMenu } from "@/ui/components/SelectMenu";
 import { Textarea } from "@/ui/components/Textarea";
 import { formatBRL } from "@/lib/format";
-import { buscarClienteParaBalcao, criarPedidoManual } from "@/application/pedidos/acoes";
+import { buscarClienteParaBalcao, contextoDoBalcao, criarPedidoManual } from "@/application/pedidos/acoes";
+import { buscarEnderecoPorCep } from "@/application/checkout/cep";
 import {
   ORIGENS_MANUAIS,
   type ClienteNoBalcao,
@@ -113,6 +114,69 @@ export function NovoPedido({
   const [trocoPara, setTrocoPara] = useState("");
 
   const [erro, setErro] = useState<string | null>(null);
+
+  /**
+   * CEP é opcional no balcão (D-2026-10-16-138). Quando digitado, completa
+   * rua, bairro e cidade — e SEMPRE diz o que aconteceu: encontrado, não
+   * encontrado ou consulta fora do ar. Antes o campo não fazia nada.
+   */
+  const [buscandoCep, setBuscandoCep] = useState(false);
+  const [avisoCep, setAvisoCep] = useState<string | null>(null);
+
+  /**
+   * Taxa à mão: só aparece depois que a rota FALHOU (endereço não localizado
+   * ou serviço de rotas fora do ar), e só para quem tem a permissão.
+   */
+  const [contexto, setContexto] = useState<{
+    podeInformarTaxa: boolean;
+    cidade: string;
+    uf: string;
+  } | null>(null);
+  const [rotaFalhou, setRotaFalhou] = useState(false);
+  const [taxaManual, setTaxaManual] = useState("");
+
+  useEffect(() => {
+    let vivo = true;
+    void contextoDoBalcao().then((c) => {
+      if (!vivo) return;
+      setContexto(c);
+      // A maioria das entregas é na cidade da loja: já vem preenchida.
+      setCidade((atual) => atual || c.cidade);
+      setUf((atual) => atual || c.uf);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  async function preencherPeloCep(valor: string) {
+    const digitos = valor.replace(/\D/g, "");
+    setAvisoCep(null);
+    if (digitos.length !== 8) return;
+    setBuscandoCep(true);
+    const r = await buscarEnderecoPorCep(digitos);
+    setBuscandoCep(false);
+    if (!r.ok) {
+      setAvisoCep(
+        r.motivo === "nao_encontrado"
+          ? "CEP não encontrado. Sem problema: preencha a rua, o número e o bairro à mão."
+          : r.motivo === "indisponivel"
+            ? "A consulta de CEP está fora do ar agora. Preencha o endereço à mão."
+            : "CEP com formato inválido. Confira os 8 números ou deixe em branco.",
+      );
+      return;
+    }
+    // Completa só o que está vazio: não apaga o que a atendente digitou.
+    setLogradouro((v) => v.trim() || r.logradouro);
+    setBairro((v) => v.trim() || r.bairro);
+    setCidade((v) => (v.trim() && v.trim() !== contexto?.cidade ? v : r.cidade));
+    setUf((v) => (v.trim() && v.trim() !== contexto?.uf ? v : r.uf));
+    setAvisoCep(
+      r.logradouro
+        ? `Encontrado: ${[r.logradouro, r.bairro, `${r.cidade}/${r.uf}`].filter(Boolean).join(", ")}.`
+        : `CEP de ${r.cidade}/${r.uf}. Complete a rua e o bairro.`,
+    );
+  }
   const [criado, setCriado] = useState<
     { numero: number; token: string | null; status: string } | null
   >(null);
@@ -212,6 +276,30 @@ export function NovoPedido({
     !bloqueado &&
     (modalidade === "pickup" || enderecoCompleto);
 
+  const taxaManualValor = (() => {
+    const n = Number(taxaManual.replace(/\s/g, "").replace(",", "."));
+    return taxaManual.trim() !== "" && Number.isFinite(n) && n >= 0 && n <= 500
+      ? Math.round(n * 100) / 100
+      : null;
+  })();
+  const usarTaxaManual =
+    modalidade === "delivery" && rotaFalhou && contexto?.podeInformarTaxa === true && taxaManualValor !== null;
+
+  // O que falta para lançar, dito com todas as letras: o botão desabilitado
+  // sozinho não explica nada (era o caso do CEP sem cidade).
+  const pendencias = [
+    itens.length === 0 ? "itens" : null,
+    nome.trim().length < 2 ? "nome do cliente" : null,
+    whatsappDigitos.length < 10 ? "WhatsApp" : null,
+    modalidade === "delivery" && logradouro.trim().length <= 1 ? "rua" : null,
+    modalidade === "delivery" && numero.trim().length === 0 ? "número" : null,
+    modalidade === "delivery" && bairro.trim().length <= 1 ? "bairro" : null,
+    modalidade === "delivery" && cidade.trim().length <= 1 ? "cidade" : null,
+    modalidade === "delivery" && !/^[A-Za-z]{2}$/.test(uf) ? "UF" : null,
+    forma === null ? "forma de pagamento" : null,
+    precisaTroco && trocoPara.trim() === "" ? "troco para quanto" : null,
+  ].filter((x): x is string => x !== null);
+
   const podeLancar =
     !enviando &&
     itens.length > 0 &&
@@ -263,10 +351,15 @@ export function NovoPedido({
           troco_para: precisaTroco ? Number(trocoPara.replace(",", ".")) : null,
         },
         observacao_geral: observacao.trim() || null,
+        taxa_manual: usarTaxaManual ? taxaManualValor : null,
       });
 
       if (!r.ok) {
         setErro(r.erro);
+        // Falha de ROTA (não de área): abre a opção da taxa à mão.
+        if (modalidade === "delivery" && (r.rota_indisponivel || r.endereco_ambiguo)) {
+          setRotaFalhou(true);
+        }
         return;
       }
       setCriado({ numero: r.numero, token: r.token, status: r.status });
@@ -446,6 +539,21 @@ export function NovoPedido({
                 aoEscolher={aplicarEndereco}
               />
             ) : null}
+            <Input
+              label="CEP (opcional)"
+              value={cep}
+              onChange={(e) => {
+                setCep(e.target.value);
+                void preencherPeloCep(e.target.value);
+              }}
+              inputMode="numeric"
+              maxLength={12}
+              hint={
+                buscandoCep
+                  ? "Buscando o endereço…"
+                  : (avisoCep ?? "Se souber, comece por aqui: a gente completa rua, bairro e cidade.")
+              }
+            />
             <div className="flex gap-3">
               <div className="flex-[3]">
                 <Input label="Rua" value={logradouro} onChange={(e) => setLogradouro(e.target.value)} maxLength={160} />
@@ -468,7 +576,6 @@ export function NovoPedido({
                 />
               </div>
             </div>
-            <Input label="CEP" value={cep} onChange={(e) => setCep(e.target.value)} inputMode="numeric" maxLength={12} />
             <Input
               label="Complemento"
               value={complemento}
@@ -485,8 +592,7 @@ export function NovoPedido({
             />
             <p className="m-0 text-[12.5px] text-muted">
               A taxa é calculada pelo servidor na hora de lançar, com a distância real de
-              rota. Se o cálculo não estiver disponível, o pedido não é lançado com taxa
-              inventada — e a retirada continua funcionando.
+              rota. Se o endereço não for localizado, aparece a opção de informar a taxa.
             </p>
           </fieldset>
         ) : null}
@@ -625,7 +731,11 @@ export function NovoPedido({
           <div className="flex justify-between text-[14.5px] text-ink-2">
             <span>Taxa de entrega</span>
             <span className="text-[13px]">
-              {modalidade === "pickup" ? "retirada" : "calculada ao lançar"}
+              {modalidade === "pickup"
+                ? "retirada"
+                : usarTaxaManual && taxaManualValor !== null
+                  ? `${formatBRL(taxaManualValor)} (informada)`
+                  : "calculada ao lançar"}
             </span>
           </div>
 
@@ -638,13 +748,52 @@ export function NovoPedido({
             </p>
           ) : null}
 
+          {modalidade === "delivery" && rotaFalhou ? (
+            contexto?.podeInformarTaxa ? (
+              <div className="mt-3 rounded-12 border border-twb bg-tw p-3">
+                <p className="m-0 text-[13.5px] font-semibold text-twf">
+                  Não deu para calcular a entrega até esse endereço.
+                </p>
+                <p className="m-0 mt-1 text-[12.5px] text-twf">
+                  Confira o endereço ou informe a taxa combinada com o cliente. Ela fica registrada
+                  como taxa informada à mão.
+                </p>
+                <div className="mt-2 max-w-[220px]">
+                  <Input
+                    label="Taxa de entrega (R$)"
+                    value={taxaManual}
+                    onChange={(e) => setTaxaManual(e.target.value)}
+                    inputMode="decimal"
+                    placeholder="Ex.: 8,00"
+                    maxLength={8}
+                  />
+                </div>
+              </div>
+            ) : (
+              <p className="m-0 mt-3 rounded-10 bg-tw px-3 py-2 text-[12.5px] font-semibold text-twf">
+                Não deu para calcular a entrega até esse endereço. Confira o endereço, ou peça a
+                quem tem permissão de alterar a taxa para lançar este pedido.
+              </p>
+            )
+          ) : null}
+
+          {!enviando && pendencias.length > 0 ? (
+            <p className="m-0 mt-3 text-[12.5px] text-ink-2" role="status">
+              Falta preencher: {pendencias.join(", ")}.
+            </p>
+          ) : null}
+
           <button
             type="button"
             disabled={!podeLancar}
             onClick={lancar}
             className="motion-interactive mt-3 flex min-h-[52px] w-full cursor-pointer items-center justify-center rounded-13 border-0 bg-cta text-[16px] font-semibold text-cta-fg transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:bg-tn disabled:text-muted disabled:opacity-100"
           >
-            {enviando ? "Lançando…" : "Lançar pedido"}
+            {enviando
+              ? "Lançando…"
+              : usarTaxaManual && taxaManualValor !== null
+                ? `Lançar com taxa de ${formatBRL(taxaManualValor)}`
+                : "Lançar pedido"}
           </button>
 
           <p className="m-0 mt-2 text-[12px] text-muted">

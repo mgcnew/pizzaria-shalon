@@ -224,7 +224,10 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
                 ) : null}
                 {pedido.distancia_km !== null ? (
                   <p className="m-0 text-muted">{pedido.distancia_km} km de rota</p>
-                ) : null}
+                ) : (
+                  // Entrega sem distância só existe com taxa informada no balcão.
+                  <p className="m-0 font-semibold text-twf">Taxa de entrega informada à mão (sem rota)</p>
+                )}
               </div>
             ) : null}
           </Cartao>

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
 import { obterLojaPublica } from "@/application/publico/consultas";
+import { obterSessaoInterna, podeNaUI } from "@/application/auth/sessao";
 import { cotarEntrega } from "@/application/checkout/acoes";
 import { montarItem } from "@/application/publico/acoes";
 import type { ItemMontado } from "@/application/publico/tipos";
@@ -389,6 +390,12 @@ const pedidoManualSchema = z.object({
     troco_para: z.number().nonnegative().nullish(),
   }),
   observacao_geral: z.string().max(500).nullish(),
+  /**
+   * Taxa de entrega informada à mão, SÓ quando a rota não pôde ser calculada
+   * (D-2026-10-16-138). Quem autoriza é o banco
+   * (`orders.override_delivery_fee`), e ela fica auditada.
+   */
+  taxa_manual: z.number().min(0).max(500).nullish(),
 });
 
 export type ResultadoPedidoManual =
@@ -425,6 +432,31 @@ export async function criarPedidoManual(entrada: unknown): Promise<ResultadoPedi
   if (dados.modalidade === "delivery") {
     if (!dados.endereco) return { ok: false, erro: "Informe o endereço de entrega." };
 
+    // Taxa informada à mão: não há rota, então não há coordenada, distância
+    // nem faixa — e nada disso é inventado. O banco confere a permissão.
+    if (dados.taxa_manual !== null && dados.taxa_manual !== undefined) {
+      enderecoParaBanco = {
+        id: dados.endereco.id
+          ? await enderecoSalvoConferido(dados.endereco.id, dados.cliente?.whatsapp, dados.endereco)
+          : null,
+        logradouro: dados.endereco.logradouro,
+        numero: dados.endereco.numero,
+        complemento: dados.endereco.complemento ?? null,
+        bairro: dados.endereco.bairro,
+        cidade: dados.endereco.cidade,
+        uf: dados.endereco.uf,
+        cep: dados.endereco.cep ?? null,
+        referencia: dados.endereco.referencia ?? null,
+        latitude: null,
+        longitude: null,
+        confianca: null,
+        provedor: null,
+        ajustado_no_mapa: false,
+      };
+    }
+  }
+
+  if (dados.modalidade === "delivery" && dados.endereco && enderecoParaBanco === null) {
     // Mesma medição do checkout público. Sem provedor de rotas configurado,
     // isto falha com mensagem honesta — e NÃO inventa distância nem taxa
     // (CLAUDE.md §20). A retirada segue funcionando normalmente.
@@ -484,6 +516,7 @@ export async function criarPedidoManual(entrada: unknown): Promise<ResultadoPedi
       itens: dados.itens,
       pagamento: dados.pagamento,
       observacao_geral: dados.observacao_geral ?? null,
+      taxa_manual: dados.taxa_manual ?? null,
     },
     p_segredo: "",
   });
@@ -509,6 +542,24 @@ export async function criarPedidoManual(entrada: unknown): Promise<ResultadoPedi
     // No reenvio da mesma tentativa o pedido já existe e este token não é o
     // dele: dizer o contrário daria um link que não abre nada.
     token: resposta["ja_existia"] ? null : token,
+  };
+}
+
+/**
+ * O que a tela do balcão precisa saber antes de lançar: se quem está logado
+ * pode informar a taxa à mão (só para mostrar a opção — o banco decide), e a
+ * cidade/UF da loja, para já virem preenchidas no endereço.
+ */
+export async function contextoDoBalcao(): Promise<{
+  podeInformarTaxa: boolean;
+  cidade: string;
+  uf: string;
+}> {
+  const [sessao, loja] = await Promise.all([obterSessaoInterna(), obterLojaPublica()]);
+  return {
+    podeInformarTaxa: podeNaUI(sessao, "orders.override_delivery_fee"),
+    cidade: loja?.endereco_cidade ?? "",
+    uf: loja?.endereco_uf ?? "",
   };
 }
 

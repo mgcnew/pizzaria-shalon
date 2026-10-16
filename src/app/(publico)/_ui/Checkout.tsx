@@ -260,7 +260,11 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
   // Soma só para exibir. A autoridade é o recálculo no envio.
   const total = subtotal !== null && taxa !== null ? subtotal + taxa : null;
 
+  // Para o cliente o CEP é obrigatório (D-2026-10-16-138): é o que mais
+  // ajuda a localizar o endereço e calcular a entrega.
+  const cepValido = cep.replace(/\D/g, "").length === 8;
   const enderecoCompleto =
+    cepValido &&
     logradouro.trim().length > 1 &&
     numero.trim().length > 0 &&
     bairro.trim().length > 1 &&
@@ -511,6 +515,7 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
 
               <Input
                 label="CEP"
+                required
                 value={cep}
                 onChange={(e) => {
                   editarEndereco(setCep)(e.target.value);
@@ -522,7 +527,7 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
                   buscandoCep
                     ? "Buscando o endereço…"
                     : (avisoCep ??
-                      "Comece pelo CEP: a gente completa rua, bairro e cidade. Se não souber, preencha à mão.")
+                      "Obrigatório. Comece por ele: a gente completa rua, bairro e cidade.")
                 }
               />
 
@@ -617,9 +622,23 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
               ) : null}
 
               {cotacao?.ok === false ? (
-                <p className="m-0 rounded-10 bg-td px-3 py-2 text-[13.5px] font-semibold text-tdf" role="alert">
-                  {cotacao.erro}
-                </p>
+                <div className="m-0 rounded-10 bg-td px-3 py-2 text-[13.5px] text-tdf" role="alert">
+                  <p className="m-0 font-semibold">{cotacao.erro}</p>
+                  {/* Falha de localização ou de rota (não "fora da área"):
+                      a loja resolve pelo WhatsApp, sem taxa inventada. */}
+                  {cotacao.motivo !== "fora_de_area" && loja.whatsapp ? (
+                    <a
+                      href={`https://wa.me/55${loja.whatsapp.replace(/\D/g, "").replace(/^55/, "")}?text=${encodeURIComponent(
+                        `Olá! Quero fazer um pedido para entrega, mas o site não conseguiu calcular a taxa para o meu endereço: ${logradouro}, ${numero} - ${bairro}, ${cidade}/${uf}${cep ? ` (CEP ${cep})` : ""}.`,
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-flex min-h-touch items-center rounded-11 bg-surface px-3 text-[14px] font-bold text-tdf no-underline"
+                    >
+                      Falar com a pizzaria pelo WhatsApp
+                    </a>
+                  ) : null}
+                </div>
               ) : null}
             </fieldset>
           ) : null}
