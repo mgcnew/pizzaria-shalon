@@ -4623,3 +4623,21 @@ Quando o endereço não é localizado, o campo "Taxa de entrega (R$)" aparece no
 próprio bloco do endereço, logo abaixo do CEP e acima da rua — onde a
 atendente está olhando —, e não mais no resumo. O resumo e o botão ("Lançar
 com taxa de R$ X") refletem o valor digitado.
+
+## D-2026-10-16-142 — TomTom como reserva de mapas
+
+O HERE não tem algumas ruas do entorno da loja (ex.: Estrada do Retiro, CEP
+04474-150) e o OpenStreetMap também não — o que descarta as opções gratuitas
+baseadas nele. Fica a TomTom como **reserva**: base própria de ruas no Brasil,
+cota gratuita diária, sem cartão.
+
+1. `provedorComReserva(HERE, TomTom)`: geocodifica no HERE; se ele não
+   localiza (não encontrado/ambíguo) ou está fora do ar, pergunta à TomTom.
+   Rota: HERE; se falhar, TomTom. Credencial errada no HERE não é escondida.
+2. A TomTom segue o MESMO rigor (D-2026-10-16-140): nota ≥ 0,8; "Point
+   Address" exata; "Address Range" aproximada; "Street" só com CEP conferido;
+   segundo resultado concorrente a mais de 300 m é ambíguo.
+3. Ativa só com `TOMTOM_API_KEY` no servidor (Vercel). Sem a chave, nada muda.
+4. Cobrança por distância APROXIMADA pelo ponto do CEP (sem localizar a rua)
+   **não** foi adotada; continua proibida (RN-ENT-003) — ver análise de risco
+   na conversa de 16/10/2026.

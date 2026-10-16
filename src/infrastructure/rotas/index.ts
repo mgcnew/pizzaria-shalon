@@ -1,5 +1,7 @@
 import type { ProvedorDeRotas } from "./contrato";
 import { provedorHere } from "./here";
+import { provedorTomTom } from "./tomtom";
+import { provedorComReserva } from "./comReserva";
 import { provedorIndisponivel } from "./indisponivel";
 
 export type { Coordenada, EnderecoParaGeocodificar, ProvedorDeRotas, ResultadoGeocodificacao, ResultadoRota, MotivoFalha, Confianca } from "./contrato";
@@ -24,11 +26,16 @@ export { provedorFalso } from "./falso";
  */
 export function selecionarProvedorDeRotas(): ProvedorDeRotas {
   const chave = process.env.HERE_API_KEY?.trim();
+  // Reserva (D-2026-10-16-142): só existe com a chave configurada. É outra
+  // base de ruas com o mesmo rigor, não um "estimado".
+  const chaveDaReserva = process.env.TOMTOM_API_KEY?.trim();
+  if (chave && chaveDaReserva) return provedorComReserva(provedorHere(chave), provedorTomTom(chaveDaReserva));
   if (chave) return provedorHere(chave);
+  if (chaveDaReserva) return provedorTomTom(chaveDaReserva);
   return provedorIndisponivel();
 }
 
 /** Diz se há credencial de rotas, sem revelar nada sobre ela. */
 export function rotasConfiguradas(): boolean {
-  return Boolean(process.env.HERE_API_KEY?.trim());
+  return Boolean(process.env.HERE_API_KEY?.trim() || process.env.TOMTOM_API_KEY?.trim());
 }
