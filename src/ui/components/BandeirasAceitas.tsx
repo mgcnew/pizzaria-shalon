@@ -86,6 +86,13 @@ const MARCAS: Record<string, Marca> = {
       </text>
     </Moldura>
   ),
+  alelo: () => (
+    <Moldura>
+      <text x="24" y="19.5" textAnchor="middle" fontFamily={FONTE} fontSize="12" fontWeight="800" fill="#00875a">
+        alelo
+      </text>
+    </Moldura>
+  ),
   sodexo: () => (
     <Moldura>
       <text x="24" y="19" textAnchor="middle" fontFamily={FONTE} fontSize="10" fontWeight="800" fill="#2a3b8f">
