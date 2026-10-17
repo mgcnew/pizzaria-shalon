@@ -59,6 +59,12 @@
   --color-tn: var(--shalon-tn);
   --color-tnb: var(--shalon-tnb);
   --color-tnf: var(--shalon-tnf);
+  --color-tp: var(--shalon-tp);
+  --color-tpb: var(--shalon-tpb);
+  --color-tpf: var(--shalon-tpf);
+  --color-tr: var(--shalon-tr);
+  --color-trb: var(--shalon-trb);
+  --color-trf: var(--shalon-trf);
 
   --color-sidebar: var(--shalon-sidebar);
   --color-sidebar-ink: var(--shalon-sidebar-ink);

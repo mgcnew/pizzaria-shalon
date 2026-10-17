@@ -143,7 +143,7 @@ export function descreverEstado(estado: string): DescricaoDoEstado {
  * O tom acompanha as famílias tonais do design. Ele NUNCA é a única pista:
  * o rótulo sempre aparece junto (CLAUDE.md §38).
  */
-export type TomVisual = "sucesso" | "atencao" | "perigo" | "info" | "neutro";
+export type TomVisual = "sucesso" | "atencao" | "perigo" | "info" | "neutro" | "producao" | "rota";
 
 const ROTULOS_INTERNOS: Record<EstadoDoPedido, { rotulo: string; tom: TomVisual }> = {
   waiting_pix_confirmation: { rotulo: "Aguardando Pix", tom: "atencao" },
@@ -151,10 +151,10 @@ const ROTULOS_INTERNOS: Record<EstadoDoPedido, { rotulo: string; tom: TomVisual 
   waiting_store_confirmation: { rotulo: "Novo pedido", tom: "info" },
   change_requested_waiting_customer: { rotulo: "Aguardando cliente", tom: "atencao" },
   confirmed: { rotulo: "Aceito", tom: "sucesso" },
-  in_production: { rotulo: "Em produção", tom: "info" },
+  in_production: { rotulo: "Em produção", tom: "producao" },
   ready_for_pickup: { rotulo: "Pronto — retirada", tom: "sucesso" },
   ready_for_delivery: { rotulo: "Pronto — entrega", tom: "sucesso" },
-  out_for_delivery: { rotulo: "Saiu para entrega", tom: "info" },
+  out_for_delivery: { rotulo: "Saiu para entrega", tom: "rota" },
   delivery_failed: { rotulo: "Falha na entrega", tom: "perigo" },
   completed: { rotulo: "Concluído", tom: "neutro" },
   rejected: { rotulo: "Rejeitado", tom: "perigo" },

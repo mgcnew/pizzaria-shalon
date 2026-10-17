@@ -4758,3 +4758,14 @@ taxa na confirmação.
    definir a taxa.
 
 Migration 0164 (`20261017120000_taxa_a_confirmar_no_pedido_do_cliente`).
+
+## D-2026-10-17-150 — Cores próprias para "Em produção" e "Saiu para entrega"
+
+**Pedido da dona:** na fila, "Saiu para entrega" e "Em produção" tinham a
+mesma cor (azul de informação) e não se distinguiam de relance.
+
+**Decisão:** duas famílias tonais novas no design, com claro e escuro:
+`tp/tpb/tpf` (laranja, "Em produção") e `tr/trb/trf` (roxo, "Saiu para
+entrega"). As demais etapas não mudaram: Novo pedido azul, aguardando
+(Pix, aprovação, cliente) âmbar, Aceito e Pronto verdes, falha/rejeitado/
+cancelado vermelhos, concluído neutro. O rótulo continua sempre junto da cor.

@@ -90,6 +90,16 @@
   --shalon-tnb: #e8dccb;
   --shalon-tnf: #584e45;
 
+  /* Etapas do pedido com cor própria (D-2026-10-17-150): produção
+     (laranja, forno) e saiu para entrega (roxo, na rua). */
+  --shalon-tp: #fdece1;
+  --shalon-tpb: #f3cbb0;
+  --shalon-tpf: #b4470f;
+
+  --shalon-tr: #f0ebfb;
+  --shalon-trb: #d8ccf2;
+  --shalon-trf: #5f3fb0;
+
   /* --- Shell administrativo --------------------------------------------- */
   --shalon-sidebar: #2a201a;
   --shalon-sidebar-ink: #e3d3bd;
@@ -222,6 +232,14 @@
   --shalon-tn: rgb(255 255 255 / 0.07);
   --shalon-tnb: rgb(255 255 255 / 0.15);
   --shalon-tnf: #c6b8a8;
+
+  --shalon-tp: rgb(230 110 40 / 0.17);
+  --shalon-tpb: rgb(230 110 40 / 0.4);
+  --shalon-tpf: #f5a26e;
+
+  --shalon-tr: rgb(124 92 214 / 0.2);
+  --shalon-trb: rgb(124 92 214 / 0.42);
+  --shalon-trf: #b9a4f2;
 
   --shalon-sidebar: #100c0a;
   --shalon-sidebar-ink: #e3d3bd;

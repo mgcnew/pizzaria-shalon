@@ -11,7 +11,7 @@ import type { ReactNode } from "react";
  * Fase 1: componente de apresentação. Não decide status — apenas exibe.
  */
 
-type Tom = "sucesso" | "atencao" | "perigo" | "info" | "neutro";
+type Tom = "sucesso" | "atencao" | "perigo" | "info" | "neutro" | "producao" | "rota";
 
 const TONS: Record<Tom, { caixa: string; ponto: string }> = {
   sucesso: { caixa: "bg-tg text-tgf border-tgb", ponto: "bg-tgf" },
@@ -19,6 +19,9 @@ const TONS: Record<Tom, { caixa: string; ponto: string }> = {
   perigo: { caixa: "bg-td text-tdf border-tdb", ponto: "bg-tdf" },
   info: { caixa: "bg-ti text-tif border-tib", ponto: "bg-tif" },
   neutro: { caixa: "bg-tn text-tnf border-tnb", ponto: "bg-muted" },
+  // Etapas do pedido que precisam se distinguir de relance (D-2026-10-17-150).
+  producao: { caixa: "bg-tp text-tpf border-tpb", ponto: "bg-tpf" },
+  rota: { caixa: "bg-tr text-trf border-trb", ponto: "bg-trf" },
 };
 
 export function StatusBadge({
