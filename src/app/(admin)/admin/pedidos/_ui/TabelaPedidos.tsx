@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { StatusBadge } from "@/ui/components";
 import { IndicadorDeNavegacao } from "@/ui/components/IndicadorDeNavegacao";
 import { formatBRL, formatarEspera, minutosDesde } from "@/lib/format";
-import { rotuloDeModalidade, rotuloDeOrigem, rotuloInterno } from "@/domain/pedidos/estados";
+import { rotuloInterno } from "@/domain/pedidos/estados";
+import { CanalDoPedido } from "@/ui/components/CanalDoPedido";
 import type { PedidoNaFila } from "@/application/pedidos/tipos";
 import type { PedidoAReceber } from "@/application/pdv/tipos";
 import { AcoesDoPedido } from "./AcoesDoPedido";
@@ -178,9 +179,11 @@ export function TabelaPedidos({
                 <td className="max-w-[220px] px-3 py-3">
                   <span className="block truncate text-ink">{p.cliente}</span>
                   {/* Abaixo de xl, o canal vem aqui (a coluna própria some). */}
-                  <span className="block truncate text-[12px] text-ink-2 xl:hidden">
-                    {rotuloDeOrigem(p.origem)} · {rotuloDeModalidade(p.modalidade)}
-                  </span>
+                  <CanalDoPedido
+                    origem={p.origem}
+                    modalidade={p.modalidade}
+                    className="mt-[2px] max-w-full text-[12px] text-ink-2 xl:hidden"
+                  />
                   {/* A observação é operacional ("sem cebola") e não pode sumir
                       só porque virou tabela. Truncada, com o texto inteiro no
                       `title` para quem precisar conferir. */}
@@ -195,9 +198,7 @@ export function TabelaPedidos({
                 </td>
 
                 <td className="hidden whitespace-nowrap px-3 py-3 text-ink-2 xl:table-cell">
-                  {rotuloDeOrigem(p.origem)}
-                  <span className="text-muted"> · </span>
-                  {rotuloDeModalidade(p.modalidade)}
+                  <CanalDoPedido origem={p.origem} modalidade={p.modalidade} />
                 </td>
 
                 <td className="px-3 py-3 text-center">

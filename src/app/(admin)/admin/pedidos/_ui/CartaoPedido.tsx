@@ -1,6 +1,7 @@
 import { StatusBadge } from "@/ui/components";
 import { formatBRL } from "@/lib/format";
-import { rotuloDeModalidade, rotuloDeOrigem, rotuloInterno } from "@/domain/pedidos/estados";
+import { rotuloInterno } from "@/domain/pedidos/estados";
+import { CanalDoPedido } from "@/ui/components/CanalDoPedido";
 import type { PedidoNaFila } from "@/application/pedidos/tipos";
 import type { PedidoAReceber } from "@/application/pdv/tipos";
 import { AcoesDoPedido } from "./AcoesDoPedido";
@@ -72,7 +73,6 @@ export function CartaoPedido({
             {espera ? <span className="font-semibold text-ink-2">{espera}</span> : null}
             {espera ? " · " : ""}
             {hora} · {pedido.itens} {pedido.itens === 1 ? "item" : "itens"}
-            {pedido.origem !== "shalon_link" ? ` · ${rotuloDeOrigem(pedido.origem)}` : ""}
           </p>
         </div>
 
@@ -80,8 +80,8 @@ export function CartaoPedido({
           <StatusBadge tom={estado.tom} pulsante={pedido.status === "waiting_store_confirmation"}>
             {estado.rotulo}
           </StatusBadge>
-          <span className="rounded-pill border border-border-shalon px-[10px] py-[3px] text-[12px] font-semibold text-ink">
-            {rotuloDeModalidade(pedido.modalidade)}
+          <span className="rounded-pill border border-border-shalon px-[8px] py-[3px] text-[12px] font-semibold text-ink">
+            <CanalDoPedido origem={pedido.origem} modalidade={pedido.modalidade} />
           </span>
         </div>
       </div>
