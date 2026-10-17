@@ -901,6 +901,8 @@ Não imprimir pedido ainda aguardando Pix, aprovação de entrega, alteração d
 ### RN-PRINT-003
 Comanda prioriza informação operacional: número/hora, entrega ou retirada, itens, quantidades, sabores, tamanho, borda, adicionais, remoções/observações e demais instruções necessárias à produção.
 
+**Ampliada em 17/10/2026 (D-2026-10-17-147):** como a comanda também é o papel do motoboy, ela termina com os valores calculados pelo servidor — subtotal, taxa de entrega (na entrega) e TOTAL em destaque —, seguidos de como cobrar (pago, troco ou forma de pagamento).
+
 ### RN-PRINT-004
 Reimpressão é permitida e registrada.
 

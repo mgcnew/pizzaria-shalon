@@ -17,11 +17,10 @@
  * que permite testar sem hardware e o que dá sentido ao hash guardado em
  * `order_prints.content_hash`.
  *
- * PRIORIDADE É A COZINHA, não o financeiro (RN-PRINT-003). Por isso não há
- * subtotal, nem taxa, nem total: quem produz precisa saber o que fazer, e
- * quem fecha a conta tem as telas do financeiro. A única informação de
- * dinheiro que aparece é o TROCO, e só na entrega, porque quem sai com a
- * moto precisa levar o troco certo.
+ * PRIORIDADE É A COZINHA (RN-PRINT-003), mas a comanda também é o papel que
+ * o motoboy leva (D-2026-10-17-147): por isso ela termina com os VALORES —
+ * subtotal, taxa de entrega e total —, além do pagamento e do troco. Os
+ * valores vêm prontos do servidor; aqui só se escrevem.
  */
 
 /** Largura do papel configurada no aparelho que imprime (D-2026-10-08-116). */
@@ -92,6 +91,11 @@ export type PedidoDaComanda = {
    * diz PAGO e não manda cobrar nem levar troco (D-2026-10-01-110).
    */
   pago?: boolean;
+  /**
+   * Valores do pedido, já calculados pelo servidor (D-2026-10-17-147): o
+   * motoboy cobra pelo que está no papel. Taxa só aparece na entrega.
+   */
+  valores?: { subtotal: number; taxa: number; total: number } | null;
 };
 
 // ----------------------------------------------------------------- texto
@@ -250,8 +254,20 @@ export function montarComanda(
     saida.push(...txt(pedido.observacao, "destaque"));
   }
 
-  // A única informação financeira, e só quando serve à operação de entrega
-  // (RN-PRINT-003: nada de transformar a comanda de cozinha em fechamento).
+  // Valores: o motoboy cobra pelo que está no papel (D-2026-10-17-147).
+  if (pedido.valores) {
+    saida.push(SEPARADOR);
+    saida.push({ texto: ladoALado("Subtotal", reais(pedido.valores.subtotal), largura), estilo: "normal" });
+    if (pedido.modalidade === "delivery") {
+      saida.push({
+        texto: ladoALado("Taxa de entrega", reais(pedido.valores.taxa), largura),
+        estilo: "normal",
+      });
+    }
+    saida.push({ texto: ladoALado("TOTAL", reais(pedido.valores.total), largura), estilo: "destaque" });
+  }
+
+  // Como cobrar, na entrega: pago, troco a levar ou a forma escolhida.
   if (pedido.modalidade === "delivery" && pedido.pago === true) {
     saida.push(SEPARADOR);
     saida.push({ texto: "PAGO - NAO COBRAR", estilo: "destaque" });

@@ -242,3 +242,33 @@ describe("papel de 80 mm (D-2026-10-08-116)", () => {
     );
   });
 });
+
+describe("valores na comanda (D-2026-10-17-147)", () => {
+  const base = {
+    numero: 24,
+    horario: "16/10, 22:21",
+    cliente: "Micael",
+    itens: [{ quantidade: 1, nome: "Calabresa" }],
+  };
+
+  it("entrega: subtotal, taxa de entrega e TOTAL em destaque", () => {
+    const linhas = montarComanda({
+      ...base,
+      modalidade: "delivery",
+      endereco: { logradouro: "Rua X", numero: "1", bairro: "B" },
+      valores: { subtotal: 37, taxa: 5, total: 42 },
+    });
+    const textos = linhas.map((l) => l.texto);
+    expect(textos.some((t) => t.startsWith("Subtotal") && t.endsWith("R$ 37,00"))).toBe(true);
+    expect(textos.some((t) => t.startsWith("Taxa de entrega") && t.endsWith("R$ 5,00"))).toBe(true);
+    const total = linhas.find((l) => l.texto.startsWith("TOTAL"));
+    expect(total?.texto.endsWith("R$ 42,00")).toBe(true);
+    expect(total?.estilo).toBe("destaque");
+  });
+
+  it("retirada: sem linha de taxa", () => {
+    const linhas = montarComanda({ ...base, modalidade: "pickup", valores: { subtotal: 37, taxa: 0, total: 37 } });
+    expect(linhas.some((l) => l.texto.startsWith("Taxa de entrega"))).toBe(false);
+    expect(linhas.some((l) => l.texto.startsWith("TOTAL"))).toBe(true);
+  });
+});

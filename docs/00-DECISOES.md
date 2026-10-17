@@ -4714,3 +4714,12 @@ Em Configurações › Entrega, o cartão "Serviços de mapa" diz se o HERE
 (principal) e a TomTom (reserva) têm chave configurada NESTE ambiente — só
 "Configurado"/"Sem chave", nunca o valor. Serve para conferir se a Vercel
 recebeu `HERE_API_KEY` e `TOMTOM_API_KEY` sem acesso ao painel dela.
+
+## D-2026-10-17-147 — Comanda com subtotal, taxa de entrega e total
+
+**Pedido da dona:** o valor do pedido precisa sair na comanda, porque é o
+papel que o motoboy usa — total e frete discriminados.
+
+**Decisão (amplia RN-PRINT-003):** ao fim da comanda, antes de "como cobrar",
+saem Subtotal, Taxa de entrega (só na entrega) e TOTAL (em destaque), com os
+valores do pedido calculados pelo servidor. A comanda de ALTERAÇÃO não mudou.

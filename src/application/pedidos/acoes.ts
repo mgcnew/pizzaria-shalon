@@ -242,6 +242,12 @@ export async function emitirDocumento(
       trocoEsperado: pedido.pagamento?.troco_esperado ?? null,
       formaPagamento: pedido.pagamento?.forma ?? null,
       pago: (pagamento?.realizado ?? []).some((p) => p.status === "confirmed"),
+      // Number(): o PostgREST pode devolver numeric como texto.
+      valores: {
+        subtotal: Number(pedido.subtotal),
+        taxa: Number(pedido.taxa_entrega),
+        total: Number(pedido.total),
+      },
     }, largura);
   } else {
     const revisao = pedido.revisoes.find((r) => r.status === "applied");
