@@ -39,3 +39,15 @@ export function selecionarProvedorDeRotas(): ProvedorDeRotas {
 export function rotasConfiguradas(): boolean {
   return Boolean(process.env.HERE_API_KEY?.trim() || process.env.TOMTOM_API_KEY?.trim());
 }
+
+/**
+ * Quais serviços de mapa estão configurados neste ambiente — só sim/não,
+ * nunca a chave. Para a tela de Configurações dizer se a Vercel recebeu as
+ * variáveis (D-2026-10-16-146).
+ */
+export function servicosDeMapaConfigurados(): { principal: boolean; reserva: boolean } {
+  return {
+    principal: Boolean(process.env.HERE_API_KEY?.trim()),
+    reserva: Boolean(process.env.TOMTOM_API_KEY?.trim()),
+  };
+}

@@ -4707,3 +4707,10 @@ naquele endereço.
    auditando. O site do cliente não usa a taxa combinada.
 4. Os pedidos com taxa à mão já existentes tiveram a taxa copiada para os
    respectivos endereços (#18, #19, #20, #22, #24, #25).
+
+## D-2026-10-16-146 — Configurações mostra quais serviços de mapa estão ativos
+
+Em Configurações › Entrega, o cartão "Serviços de mapa" diz se o HERE
+(principal) e a TomTom (reserva) têm chave configurada NESTE ambiente — só
+"Configurado"/"Sem chave", nunca o valor. Serve para conferir se a Vercel
+recebeu `HERE_API_KEY` e `TOMTOM_API_KEY` sem acesso ao painel dela.

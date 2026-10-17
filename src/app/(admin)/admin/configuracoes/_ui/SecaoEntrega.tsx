@@ -11,6 +11,7 @@ import {
 import { distanciaMaximaAtendida } from "@/domain/entrega/faixas";
 import { FormularioAcao } from "@/app/(admin)/admin/produtos/_ui/FormularioAcao";
 import { BotaoAcao } from "@/app/(admin)/admin/produtos/_ui/BotaoAcao";
+import { servicosDeMapaConfigurados } from "@/infrastructure/rotas";
 
 /**
  * Entrega.
@@ -27,6 +28,7 @@ import { BotaoAcao } from "@/app/(admin)/admin/produtos/_ui/BotaoAcao";
  */
 export async function SecaoEntrega({ podeGerenciar }: { podeGerenciar: boolean }) {
   const [faixas, loja] = await Promise.all([listarFaixas(), obterLoja()]);
+  const mapas = servicosDeMapaConfigurados();
 
   const maxima = distanciaMaximaAtendida(
     faixas.map((f) => ({
@@ -40,6 +42,28 @@ export async function SecaoEntrega({ podeGerenciar }: { podeGerenciar: boolean }
 
   return (
     <div className="grid items-start gap-4 lg:grid-cols-2">
+      <div className="lg:col-span-2">
+        <Cartao
+          titulo="Serviços de mapa"
+          descricao="Localizam o endereço e medem a rota. Mostra só se a chave está configurada neste site — nunca a chave."
+          largura="cheio"
+        >
+          <LinhaLista>
+            <span className="min-w-[140px] flex-1 text-[14px] font-semibold text-ink">HERE (principal)</span>
+            <StatusBadge tom={mapas.principal ? "sucesso" : "perigo"}>
+              {mapas.principal ? "Configurado" : "Sem chave"}
+            </StatusBadge>
+          </LinhaLista>
+          <LinhaLista>
+            <span className="min-w-[140px] flex-1 text-[14px] font-semibold text-ink">
+              TomTom (reserva, quando o HERE não acha)
+            </span>
+            <StatusBadge tom={mapas.reserva ? "sucesso" : "atencao"}>
+              {mapas.reserva ? "Configurado" : "Sem chave (TOMTOM_API_KEY)"}
+            </StatusBadge>
+          </LinhaLista>
+        </Cartao>
+      </div>
       <div className="lg:col-span-2">
         <Cartao
           titulo="Faixas de distância e taxa"
