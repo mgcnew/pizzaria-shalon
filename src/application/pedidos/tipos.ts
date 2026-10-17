@@ -225,6 +225,9 @@ export type EnderecoSalvo = {
   cep: string | null;
   referencia: string | null;
   preferido: boolean;
+  /** Taxa combinada no balcão para este endereço (D-2026-10-16-145). */
+  taxa_combinada?: number | string | null;
+  motivo_taxa_combinada?: string | null;
 };
 
 /**

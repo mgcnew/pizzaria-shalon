@@ -4688,3 +4688,22 @@ fica baixa porque há homônimos pela cidade.
 3. Resultado nos pedidos reais: 8 de 9 localizados (antes 3). Continua sem
    mapa: Estrada do Bom Retiro, 24 (CEP 04425-005) — nenhum serviço a tem.
 Implementado em `infrastructure/rotas/proximidade.ts`, com testes.
+
+## D-2026-10-16-145 — Taxa informada à mão fica guardada no endereço
+
+**Pedido da dona:** o valor colocado à mão deve ficar guardado para o cliente,
+naquele endereço.
+
+**Decisão (migration 0163):**
+1. `customer_addresses` ganha a taxa combinada (valor, motivo, quando, quem).
+   `criar_pedido` grava ali sempre que o pedido sai com taxa informada à mão
+   (não localizado, ou troca com motivo).
+2. `cliente_para_balcao` devolve a taxa combinada de cada endereço salvo. Ao
+   escolher o endereço no balcão, a taxa já vem aplicada: se o mapa não
+   localizar, como taxa à mão; se localizar com outro valor, como troca com o
+   motivo "Taxa combinada salva para este endereço". Igual à calculada, nada
+   muda. Trocar o CEP para outro endereço descarta a combinada.
+3. É sugestão para o balcão: o lançamento continua exigindo a permissão e
+   auditando. O site do cliente não usa a taxa combinada.
+4. Os pedidos com taxa à mão já existentes tiveram a taxa copiada para os
+   respectivos endereços (#18, #19, #20, #22, #24, #25).

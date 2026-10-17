@@ -34,6 +34,7 @@ const MOTIVOS_DE_TROCA_DA_TAXA = [
   "Mapa calculou rota mais longa que a real",
   "CEP ou número levaram a ponto errado no mapa",
   "Cliente frequente / acordo com a casa",
+  "Taxa combinada salva para este endereço",
   "Frete promocional",
   "Cortesia da casa",
   "Outro",
@@ -160,6 +161,8 @@ export function NovoPedido({
   const [taxaTrocada, setTaxaTrocada] = useState("");
   const [motivoDaTroca, setMotivoDaTroca] = useState("");
   const [motivoOutro, setMotivoOutro] = useState("");
+  // Taxa combinada do endereço salvo escolhido (D-2026-10-16-145).
+  const [taxaCombinada, setTaxaCombinada] = useState<{ valor: number; motivo: string | null } | null>(null);
 
   useEffect(() => {
     let vivo = true;
@@ -265,6 +268,13 @@ export function NovoPedido({
       if (complemento !== "" && complemento === auto.complemento) setComplemento("");
       if (referencia !== "" && referencia === auto.referencia) setReferencia("");
       setEnderecoSalvoId(null);
+      if (taxaCombinada) {
+        setTaxaCombinada(null);
+        setTrocandoTaxa(false);
+        setTaxaTrocada("");
+        setMotivoDaTroca("");
+        setTaxaManual("");
+      }
     }
     automatico.current = { logradouro: r.logradouro, bairro: r.bairro, cidade: r.cidade, uf: r.uf };
     setAvisoCep(
@@ -307,6 +317,20 @@ export function NovoPedido({
         }
       : {};
     setEnderecoSalvoId(e?.id ?? null);
+    const combinada =
+      e?.taxa_combinada !== null && e?.taxa_combinada !== undefined ? Number(e.taxa_combinada) : null;
+    if (combinada !== null && Number.isFinite(combinada)) {
+      const texto = combinada.toFixed(2).replace(".", ",");
+      setTaxaCombinada({ valor: combinada, motivo: e?.motivo_taxa_combinada ?? null });
+      // Vale para os dois casos: se o mapa não localizar, é a taxa à mão; se
+      // localizar com outro valor, entra como troca, já com o motivo.
+      setTaxaManual(texto);
+      setTaxaTrocada(texto);
+      setMotivoDaTroca("Taxa combinada salva para este endereço");
+      setTrocandoTaxa(true);
+    } else {
+      setTaxaCombinada(null);
+    }
     setLogradouro(e?.logradouro ?? "");
     setNumero(e?.numero ?? "");
     setComplemento(e?.complemento ?? "");
@@ -408,6 +432,7 @@ export function NovoPedido({
     contexto?.podeInformarTaxa === true &&
     cotacao?.ok === true &&
     taxaTrocadaValor !== null &&
+    taxaTrocadaValor !== cotacao.taxa &&
     motivoDaTrocaTexto.length >= 3;
   const taxaInformada = usarTaxaManual ? taxaManualValor : usarTrocaDaTaxa ? taxaTrocadaValor : null;
 
@@ -425,10 +450,13 @@ export function NovoPedido({
     forma === null ? "forma de pagamento" : null,
     precisaTroco && trocoPara.trim() === "" ? "troco para quanto" : null,
     trocandoTaxa && cotacao?.ok && taxaTrocadaValor === null ? "nova taxa" : null,
-    trocandoTaxa && cotacao?.ok && motivoDaTrocaTexto.length < 3 ? "motivo da troca da taxa" : null,
+    trocandoTaxa && cotacao?.ok && taxaTrocadaValor !== cotacao.taxa && motivoDaTrocaTexto.length < 3
+      ? "motivo da troca da taxa"
+      : null,
   ].filter((x): x is string => x !== null);
 
-  const trocaIncompleta = trocandoTaxa && cotacao?.ok === true && !usarTrocaDaTaxa;
+  const trocaIncompleta =
+    trocandoTaxa && cotacao?.ok === true && !usarTrocaDaTaxa && taxaTrocadaValor !== cotacao.taxa;
   const podeLancar =
     !trocaIncompleta &&
     !enviando &&
@@ -685,6 +713,15 @@ export function NovoPedido({
                   : (avisoCep ?? "Se souber, comece por aqui: a gente completa rua, bairro e cidade.")
               }
             />
+            {taxaCombinada ? (
+              <p className="m-0 rounded-12 border border-tib bg-ti px-3 py-2 text-[13px] text-tif">
+                <span className="font-semibold">
+                  Taxa combinada para este endereço: {formatBRL(taxaCombinada.valor)}
+                </span>
+                {taxaCombinada.motivo ? ` · ${taxaCombinada.motivo}` : ""}. Já vem aplicada; dá para
+                trocar abaixo.
+              </p>
+            ) : null}
             {/* Rota não localizada: a taxa à mão fica aqui, entre o CEP e o
                 endereço — onde a atendente está olhando (D-2026-10-16-141). */}
             {rotaFalhou && contexto?.podeInformarTaxa ? (
@@ -825,7 +862,9 @@ export function NovoPedido({
                     }.`
                   : ""}
                 {cotacao.motivo !== "fora_de_area" && contexto?.podeInformarTaxa
-                  ? " Informe a taxa no campo logo abaixo do CEP."
+                  ? taxaCombinada
+                    ? " Usando a taxa combinada deste endereço."
+                    : " Informe a taxa no campo logo abaixo do CEP."
                   : ""}
               </p>
             ) : (
