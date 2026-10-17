@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Button, Input } from "@/ui/components";
+import { Button, Input, SelectMenu } from "@/ui/components";
 import { Aviso, Cartao, ParDeDados } from "@/ui/patterns";
 import { COLUNAS, type Papel } from "@/domain/pedidos/comanda";
 import {
@@ -254,23 +254,15 @@ export function SecaoImpressora() {
             />
           ) : null}
           {impressora.modo !== "balcao" ? (
-            <Opcoes
-              rotulo="Letras por linha"
+            <SelectMenu
+              label="Letras por linha"
+              valor={impressora.letrasPorLinha}
+              aoMudar={(letrasPorLinha) => salvar({ ...impressora, letrasPorLinha })}
+              hint="Se o fim das linhas sai cortado (ex.: R$ 57,0 em vez de 57,00), imprima o teste e escolha o maior número da régua que sai inteiro."
               opcoes={[
-                {
-                  valor: "auto",
-                  titulo: "Automático",
-                  detalhe: "O padrão do papel (ou o da régua, se calibrou).",
-                },
-                ...LETRAS_POR_LINHA[impressora.papel].map((n) => ({
-                  valor: String(n),
-                  titulo: `${n} letras`,
-                  detalhe:
-                    "Use se o fim das linhas sai cortado (ex.: R$ 57,0 em vez de 57,00). Imprima o teste e escolha o maior número da régua que sai inteiro.",
-                })),
+                { valor: "auto", texto: "Automático", descricao: "O padrão do papel (ou o da régua, se calibrou)." },
+                ...LETRAS_POR_LINHA[impressora.papel].map((n) => ({ valor: String(n), texto: `${n} letras` })),
               ]}
-              atual={impressora.letrasPorLinha}
-              aoEscolher={(letrasPorLinha) => salvar({ ...impressora, letrasPorLinha })}
             />
           ) : null}
           {(impressora.modo === "sistema" || impressora.modo === "tela") && impressora.areaMedida === null ? (
