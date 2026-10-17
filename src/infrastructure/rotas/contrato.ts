@@ -87,9 +87,20 @@ export function consultaDeEndereco(e: EnderecoParaGeocodificar): string {
     `${e.logradouro}, ${e.numero}`,
     e.bairro,
     `${e.cidade} - ${e.uf}`,
-    e.cep,
+    cepFormatado(e.cep),
     "Brasil",
   ]
     .filter((p): p is string => Boolean(p && p.trim()))
     .join(", ");
+}
+
+/**
+ * CEP sempre como "00000-000" na consulta (16/10/2026). Sem o hífen os
+ * serviços de mapa leem os 8 dígitos como outra coisa: a TomTom, com
+ * "04474150", devolveu outra rua; com "04474-150", o endereço certo.
+ */
+export function cepFormatado(cep: string | undefined): string | undefined {
+  if (!cep) return cep;
+  const digitos = cep.replace(/\D/g, "");
+  return digitos.length === 8 ? `${digitos.slice(0, 5)}-${digitos.slice(5)}` : cep;
 }

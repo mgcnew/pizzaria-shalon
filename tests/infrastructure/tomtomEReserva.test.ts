@@ -83,3 +83,11 @@ describe("provedorComReserva", () => {
     expect(r).toMatchObject({ ok: false, provedor: "here" });
   });
 });
+
+describe("consultaDeEndereco", () => {
+  it("manda o CEP sempre com hífen", async () => {
+    const { consultaDeEndereco } = await import("@/infrastructure/rotas/contrato");
+    const q = consultaDeEndereco({ logradouro: "Estrada do Retiro", numero: "100", bairro: "B", cidade: "São Paulo", uf: "SP", cep: "04474150" });
+    expect(q).toContain("04474-150");
+  });
+});

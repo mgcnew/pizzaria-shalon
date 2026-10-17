@@ -4646,3 +4646,7 @@ cota gratuita diária, sem cartão.
    TomTom). Verificado: "Estrada do Retiro, 100" (CEP 04474-150) — o HERE não
    acha; a TomTom acha como "Rua do Retiro, 100", CEP 04474-150, nota 0,69 →
    0,77 km de rota. Sem CEP conferido, o mínimo segue 0,8.
+6. A consulta de endereço passa a mandar o CEP sempre como "00000-000"
+   (`cepFormatado`): sem o hífen a TomTom devolveu outra rua para o mesmo
+   endereço. Verificado na tela do balcão: Estrada do Retiro, 100 →
+   R$ 4,00 · 0,8 km.
