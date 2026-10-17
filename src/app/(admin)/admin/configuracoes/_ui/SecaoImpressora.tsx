@@ -15,6 +15,7 @@ import {
   areaValida,
   type ImpressoraDoAparelho,
   type ModoDeImpressao,
+  LETRAS_POR_LINHA,
 } from "@/ui/impressao/impressoraDoAparelho";
 import { imprimirReguaDeAlinhamento, linhasDeTeste } from "@/ui/impressao/imprimir";
 import { colunasDoAparelho, imprimirNoAparelho } from "@/ui/impressao/imprimirNoAparelho";
@@ -214,7 +215,7 @@ export function SecaoImpressora() {
             rotulo="Papel"
             opcoes={PAPEIS}
             atual={impressora.papel}
-            aoEscolher={(papel) => salvar({ ...impressora, papel })}
+            aoEscolher={(papel) => salvar({ ...impressora, papel, letrasPorLinha: "auto" })}
           />
           <Opcoes
             rotulo="Ao emitir a comanda"
@@ -250,6 +251,26 @@ export function SecaoImpressora() {
               opcoes={ESPACOS}
               atual={impressora.espacoFinal}
               aoEscolher={(espacoFinal) => salvar({ ...impressora, espacoFinal })}
+            />
+          ) : null}
+          {impressora.modo !== "balcao" ? (
+            <Opcoes
+              rotulo="Letras por linha"
+              opcoes={[
+                {
+                  valor: "auto",
+                  titulo: "Automático",
+                  detalhe: "O padrão do papel (ou o da régua, se calibrou).",
+                },
+                ...LETRAS_POR_LINHA[impressora.papel].map((n) => ({
+                  valor: String(n),
+                  titulo: `${n} letras`,
+                  detalhe:
+                    "Use se o fim das linhas sai cortado (ex.: R$ 57,0 em vez de 57,00). Imprima o teste e escolha o maior número da régua que sai inteiro.",
+                })),
+              ]}
+              atual={impressora.letrasPorLinha}
+              aoEscolher={(letrasPorLinha) => salvar({ ...impressora, letrasPorLinha })}
             />
           ) : null}
           {(impressora.modo === "sistema" || impressora.modo === "tela") && impressora.areaMedida === null ? (

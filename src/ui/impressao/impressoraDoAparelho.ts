@@ -53,6 +53,13 @@ export type ImpressoraDoAparelho = {
    * existe, vale no lugar da margem.
    */
   areaMedida: AreaMedida | null;
+  /**
+   * Letras por linha (17/10/2026). "auto" usa a conta de sempre (32 no 58 mm,
+   * 42 no 80 mm, ou a da régua). Um número força a largura — para impressora
+   * que alcança MENOS do que o padrão e corta o fim das linhas (ex.: a
+   * KD-1025 cortando "57,00" em "57,0"). Vale em todos os modos.
+   */
+  letrasPorLinha: string;
 };
 
 export type AreaMedida = { inicioMm: number; fimMm: number };
@@ -102,6 +109,13 @@ export const PADRAO: ImpressoraDoAparelho = {
   espacoFinal: "normal",
   margemEsquerda: "nenhuma",
   areaMedida: null,
+  letrasPorLinha: "auto",
+};
+
+/** Opções de letras por linha para cada papel. */
+export const LETRAS_POR_LINHA: Record<Papel, number[]> = {
+  "58": [28, 29, 30, 31, 32],
+  "80": [38, 40, 42, 44, 46, 48],
 };
 
 /** Modos em que este próprio aparelho manda para uma impressora. */
@@ -125,7 +139,7 @@ function interpretar(bruto: string | null): ImpressoraDoAparelho {
   try {
     const valor: unknown = JSON.parse(bruto);
     if (typeof valor !== "object" || valor === null) return PADRAO;
-    const { papel, modo, estacao, tabela, espacoFinal, margemEsquerda, areaMedida } = valor as Record<
+    const { papel, modo, estacao, tabela, espacoFinal, margemEsquerda, areaMedida, letrasPorLinha } = valor as Record<
       string,
       unknown
     >;
@@ -143,6 +157,10 @@ function interpretar(bruto: string | null): ImpressoraDoAparelho {
           ? margemEsquerda
           : "nenhuma",
       areaMedida: lerAreaMedida(areaMedida, papelLido),
+      letrasPorLinha:
+        typeof letrasPorLinha === "string" && LETRAS_POR_LINHA[papelLido].includes(Number(letrasPorLinha))
+          ? letrasPorLinha
+          : "auto",
     };
   } catch {
     return PADRAO;

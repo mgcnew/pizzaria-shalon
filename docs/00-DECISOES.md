@@ -4723,3 +4723,14 @@ papel que o motoboy usa — total e frete discriminados.
 **Decisão (amplia RN-PRINT-003):** ao fim da comanda, antes de "como cobrar",
 saem Subtotal, Taxa de entrega (só na entrega) e TOTAL (em destaque), com os
 valores do pedido calculados pelo servidor. A comanda de ALTERAÇÃO não mudou.
+
+## D-2026-10-17-148 — "Letras por linha" na impressora do aparelho
+
+**Problema:** na impressora de 58 mm da loja a comanda perdia os últimos
+caracteres de cada linha (valores cortados à direita). A impressora imprime
+menos colunas do que as 32 padrão, e margem/régua não valem no modo serial.
+
+**Decisão:** em Configurações › Impressora há "Letras por linha"
+(Automático ou um número fixo: 28–32 no 58 mm, 38–48 no 80 mm). Quando fixado,
+manda sobre o cálculo automático em qualquer modo. Fica no aparelho, junto da
+configuração da impressora; trocar o papel volta para Automático.

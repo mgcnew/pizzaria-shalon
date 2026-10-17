@@ -22,6 +22,8 @@ import { imprimirSerial } from "./serial";
  *   sobra depois das margens (`colunasNaLargura`).
  */
 export function colunasDoAparelho(impressora: ImpressoraDoAparelho): number {
+  // Escolhido à mão na configuração: vale em qualquer modo.
+  if (impressora.letrasPorLinha !== "auto") return Number(impressora.letrasPorLinha);
   if (impressora.modo === "serial") return COLUNAS[impressora.papel];
   return colunasNaLargura(faixaDoAparelho(impressora).larguraMm);
 }
