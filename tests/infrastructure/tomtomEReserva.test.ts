@@ -25,6 +25,21 @@ describe("avaliarResultadosDaTomTom", () => {
     expect(avaliarResultadosDaTomTom([item("Point Address", 0.5)], null)).toEqual({ ok: false, motivo: "nao_encontrado" });
     expect(avaliarResultadosDaTomTom([item("Geography")], "04474150")).toEqual({ ok: false, motivo: "ambiguo" });
   });
+  it("nota menor vale quando o CEP completo do resultado é o digitado", () => {
+    const retiro = {
+      type: "Address Range",
+      position: { lat: -23.6934, lon: -46.6376 },
+      address: { freeformAddress: "Rua do Retiro, 100", postalCode: "04474", extendedPostalCode: "04474-150" },
+      matchConfidence: { score: 0.69 },
+    };
+    expect(avaliarResultadosDaTomTom([retiro], "04474-150")).toMatchObject({ ok: true, confianca: "aproximada" });
+    expect(avaliarResultadosDaTomTom([retiro], null)).toEqual({ ok: false, motivo: "nao_encontrado" });
+    expect(avaliarResultadosDaTomTom([{ ...retiro, matchConfidence: { score: 0.55 } }], "04474150")).toEqual({
+      ok: false,
+      motivo: "nao_encontrado",
+    });
+  });
+
   it("segundo resultado concorrente longe é ambíguo", () => {
     expect(
       avaliarResultadosDaTomTom([item("Point Address"), item("Point Address", 0.94, "x", -23.5, -46.5)], null),

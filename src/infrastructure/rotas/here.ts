@@ -73,6 +73,8 @@ export type ItemDoHere = {
  * zona da cidade, com nota 0,56 — e a entrega saía cobrada por 10,6 km.
  */
 const NOTA_MINIMA = 0.8;
+/** Nota mínima quando o CEP completo do resultado é o digitado. */
+const NOTA_COM_CEP = 0.6;
 /** Dois resultados a menos disso um do outro são o mesmo lugar. */
 const MESMO_LUGAR_METROS = 300;
 
@@ -111,12 +113,13 @@ export function avaliarResultadosDoHere(
   const lng = primeiro?.position?.lng;
   if (!primeiro || lat === undefined || lng === undefined) return { ok: false, motivo: "nao_encontrado" };
 
-  const nota = primeiro.scoring?.queryScore ?? 0;
-  if (nota < NOTA_MINIMA) return { ok: false, motivo: "nao_encontrado" };
-
   const cep = (cepDigitado ?? "").replace(/\D/g, "");
   const cepDoResultado = (primeiro.address?.postalCode ?? "").replace(/\D/g, "");
   const cepConfere = cep.length === 8 && cep === cepDoResultado;
+
+  // CEP completo igual ao digitado confirma o lugar: aceita nota menor.
+  const nota = primeiro.scoring?.queryScore ?? 0;
+  if (nota < (cepConfere ? NOTA_COM_CEP : NOTA_MINIMA)) return { ok: false, motivo: "nao_encontrado" };
 
   let confianca: "exata" | "aproximada" | null = confiancaDoHere(
     primeiro.resultType,

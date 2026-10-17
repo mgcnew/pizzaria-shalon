@@ -32,6 +32,8 @@ import { consultaDeEndereco } from "./contrato";
 const NOME = "tomtom";
 const TEMPO_LIMITE_MS = 6000;
 const NOTA_MINIMA = 0.8;
+/** Nota mínima quando o CEP completo do resultado é o digitado. */
+const NOTA_COM_CEP = 0.6;
 const MESMO_LUGAR_METROS = 300;
 
 export type ItemDaTomTom = {
@@ -63,13 +65,16 @@ export function avaliarResultadosDaTomTom(
   const lng = primeiro?.position?.lon;
   if (!primeiro || lat === undefined || lng === undefined) return { ok: false, motivo: "nao_encontrado" };
 
-  const nota = primeiro.matchConfidence?.score ?? 0;
-  if (nota < NOTA_MINIMA) return { ok: false, motivo: "nao_encontrado" };
-
   const cep = (cepDigitado ?? "").replace(/\D/g, "");
   const cepDoResultado = (primeiro.address?.extendedPostalCode ?? primeiro.address?.postalCode ?? "")
     .replace(/\D/g, "");
   const cepConfere = cep.length === 8 && cepDoResultado.startsWith(cep);
+
+  // CEP completo igual ao digitado é confirmação forte (o CEP de rua cobre
+  // um trecho): aí a nota pode ser menor. Ex.: "Estrada do Retiro, 100" volta
+  // como "Rua do Retiro, 100", CEP 04474-150, nota 0,69 — é o lugar certo.
+  const nota = primeiro.matchConfidence?.score ?? 0;
+  if (nota < (cepConfere ? NOTA_COM_CEP : NOTA_MINIMA)) return { ok: false, motivo: "nao_encontrado" };
 
   let confianca: "exata" | "aproximada" | null = null;
   if (primeiro.type === "Point Address") confianca = "exata";

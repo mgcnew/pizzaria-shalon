@@ -4641,3 +4641,8 @@ cota gratuita diária, sem cartão.
 4. Cobrança por distância APROXIMADA pelo ponto do CEP (sem localizar a rua)
    **não** foi adotada; continua proibida (RN-ENT-003) — ver análise de risco
    na conversa de 16/10/2026.
+5. (16/10/2026, com a chave real) CEP completo do resultado igual ao digitado
+   é confirmação forte: a nota mínima cai de 0,8 para 0,6 nesse caso (HERE e
+   TomTom). Verificado: "Estrada do Retiro, 100" (CEP 04474-150) — o HERE não
+   acha; a TomTom acha como "Rua do Retiro, 100", CEP 04474-150, nota 0,69 →
+   0,77 km de rota. Sem CEP conferido, o mínimo segue 0,8.
