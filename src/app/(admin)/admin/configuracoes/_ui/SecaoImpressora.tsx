@@ -121,40 +121,17 @@ function Opcoes<T extends string>({
   atual: T;
   aoEscolher: (valor: T) => void;
 }) {
+  // Lista suspensa para a aba não virar uma parede de cartões; o detalhe da
+  // opção escolhida fica embaixo, e o de cada uma aparece na lista aberta.
+  const escolhida = opcoes.find((opcao) => opcao.valor === atual);
   return (
-    <div role="radiogroup" aria-label={rotulo} className="flex flex-col gap-2">
-      <p className="m-0 text-[12px] font-bold uppercase tracking-[0.06em] text-muted">{rotulo}</p>
-      {opcoes.map((opcao) => {
-        const ativa = opcao.valor === atual;
-        return (
-          <button
-            key={opcao.valor}
-            type="button"
-            role="radio"
-            aria-checked={ativa}
-            onClick={() => aoEscolher(opcao.valor)}
-            className={[
-              "flex min-h-touch w-full cursor-pointer items-start gap-3 rounded-12 border-[1.5px] px-3 py-2.5 text-left",
-              ativa ? "border-brand-red bg-elev" : "border-border-shalon bg-surface hover:border-brand-orange",
-            ].join(" ")}
-          >
-            <span
-              aria-hidden="true"
-              className={[
-                "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
-                ativa ? "border-brand-red" : "border-border-shalon",
-              ].join(" ")}
-            >
-              {ativa ? <span className="h-2.5 w-2.5 rounded-full bg-brand-red" /> : null}
-            </span>
-            <span className="min-w-0">
-              <span className="block text-[14px] font-semibold text-ink">{opcao.titulo}</span>
-              <span className="block text-[12.5px] text-ink-2">{opcao.detalhe}</span>
-            </span>
-          </button>
-        );
-      })}
-    </div>
+    <SelectMenu
+      label={rotulo}
+      valor={atual}
+      aoMudar={(valor) => aoEscolher(valor as T)}
+      {...(escolhida ? { hint: escolhida.detalhe } : {})}
+      opcoes={opcoes.map((opcao) => ({ valor: opcao.valor, texto: opcao.titulo, descricao: opcao.detalhe }))}
+    />
   );
 }
 
