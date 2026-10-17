@@ -4734,3 +4734,27 @@ menos colunas do que as 32 padrão, e margem/régua não valem no modo serial.
 (Automático ou um número fixo: 28–32 no 58 mm, 38–48 no 80 mm). Quando fixado,
 manda sobre o cálculo automático em qualquer modo. Fica no aparelho, junto da
 configuração da impressora; trocar o papel volta para Automático.
+
+## D-2026-10-17-149 — Pedido do cliente com taxa a confirmar (até um teto)
+
+**Pedido da dona:** quando o site não localiza o endereço, o cliente ficava
+impedido de pedir entrega. Ela propôs deixar enviar e a balconista colocar a
+taxa na confirmação.
+
+**Decisão (cria RN-ENT-016), com o teto sugerido e aprovado:**
+1. Endereço não localizado, ambíguo ou rota indisponível (não "fora de
+   área"): o checkout mostra "Taxa de entrega: a confirmar (até R$ X)", X = a
+   maior taxa entre as faixas ativas, e o total como "R$ ... + entrega".
+2. O pedido nasce em "aguardando aprovação de entrega", com taxa 0
+   provisória e o endereço marcado `taxa_a_confirmar` + `taxa_teto`.
+3. Na fila aparece "Taxa de entrega a definir". "Aprovar entrega" abre o
+   campo da taxa; o banco exige o valor (0 até o teto), a permissão
+   `orders.override_delivery_fee`, atualiza taxa, total e valor esperado do
+   pagamento, guarda a taxa no endereço do cliente e audita
+   (`taxa_entrega_manual`). Depois segue o fluxo normal (aceitar etc.).
+4. Acima do teto: recusar a entrega ou combinar com o cliente.
+5. Pix antecipado sai das opções; troco precisa cobrir subtotal + teto.
+6. O acompanhamento do cliente mostra "a confirmar (até R$ X)" até a loja
+   definir a taxa.
+
+Migration 0164 (`20261017120000_taxa_a_confirmar_no_pedido_do_cliente`).

@@ -82,6 +82,7 @@ const pedidoSchema = z.object({
   }),
   observacao_geral: z.string().max(500).nullish(),
   dispositivo_token: z.string().min(32).max(128).nullish(),
+  taxa_a_confirmar: z.boolean().optional(),
 });
 
 /**
@@ -340,6 +341,38 @@ async function localizarEMedir(endereco: EnderecoInformado): Promise<Medicao> {
   };
 }
 
+/**
+ * Falhas em que o cliente pode seguir com a taxa a confirmar pela loja
+ * (D-2026-10-17-149): não sabemos onde é ou não conseguimos medir. "Fora da
+ * área" NÃO entra — ali a distância foi medida e a resposta é não.
+ */
+const PODE_SEGUIR_SEM_TAXA = new Set<string>([
+  "endereco_nao_encontrado",
+  "endereco_ambiguo",
+  "rota_indisponivel",
+]);
+
+/** A maior taxa das faixas ativas: o limite que o cliente vê. `null` sem entrega configurada. */
+async function tetoDaTaxa(): Promise<number | null> {
+  try {
+    const supabase = await getSupabaseServerClient();
+    const { data, error } = await supabase.rpc("teto_da_taxa_de_entrega", {
+      p_segredo: lerSegredoDeOrigem(),
+    });
+    const r = data as { ok: true; teto: number } | { ok: false } | null;
+    if (error || !r?.ok) return null;
+    return Number(r.teto);
+  } catch {
+    return null;
+  }
+}
+
+async function comTaxaAConfirmar(cotacao: CotacaoEntrega): Promise<CotacaoEntrega> {
+  if (cotacao.ok || !PODE_SEGUIR_SEM_TAXA.has(cotacao.motivo)) return cotacao;
+  const teto = await tetoDaTaxa();
+  return teto === null ? cotacao : { ...cotacao, taxa_a_confirmar: { teto } };
+}
+
 /** Cotação mostrada na tela antes do envio. Informativa, não autoridade. */
 export async function cotarEntrega(endereco: unknown): Promise<CotacaoEntrega> {
   const validado = enderecoSchema.safeParse(endereco);
@@ -354,7 +387,7 @@ export async function cotarEntrega(endereco: unknown): Promise<CotacaoEntrega> {
   try {
     // Só a cotação atravessa: `rotaMedidaAgora` é assunto interno do cache, e
     // o navegador não precisa — nem deve — saber de onde veio a distância.
-    return (await localizarEMedir(validado.data)).cotacao;
+    return await comTaxaAConfirmar((await localizarEMedir(validado.data)).cotacao);
   } catch (erro) {
     if (erro instanceof SegredoAusente) {
       logger.error("checkout:segredo_ausente", {});
@@ -365,11 +398,11 @@ export async function cotarEntrega(endereco: unknown): Promise<CotacaoEntrega> {
       };
     }
     logger.error("checkout:cotarEntrega", {});
-    return {
+    return comTaxaAConfirmar({
       ok: false,
       motivo: "rota_indisponivel",
       erro: "Não conseguimos calcular a entrega agora. Tente de novo em instantes.",
-    };
+    });
   }
 }
 
@@ -402,6 +435,7 @@ export async function enviarPedido(pedido: unknown): Promise<ResultadoEnvio> {
   // Guardada para depois de `criar_pedido`: é ela que cria a linha de
   // endereço, e sem linha não há onde gravar a distância.
   let medicaoParaRegistrar: Medicao | null = null;
+  let taxaAConfirmar = false;
 
   if (dados.modalidade === "delivery") {
     if (!dados.endereco) {
@@ -419,7 +453,25 @@ export async function enviarPedido(pedido: unknown): Promise<ResultadoEnvio> {
     // segue recalculando a taxa do zero mais abaixo.
     const medicao = await localizarEMedir(dados.endereco);
     const medida = medicao.cotacao;
-    if (!medida.ok) {
+    if (!medida.ok && dados.taxa_a_confirmar && PODE_SEGUIR_SEM_TAXA.has(medida.motivo)) {
+      // Sem localização: segue SEM coordenada e sem rota. `criar_pedido`
+      // marca a taxa como a confirmar e a aprovação da loja a define
+      // (D-2026-10-17-149). Nada de distância inventada.
+      taxaAConfirmar = true;
+      enderecoParaBanco = {
+        id: dados.endereco.id ?? null,
+        rotulo: dados.endereco.rotulo ?? null,
+        logradouro: dados.endereco.logradouro,
+        numero: dados.endereco.numero,
+        complemento: dados.endereco.complemento ?? null,
+        bairro: dados.endereco.bairro,
+        cidade: dados.endereco.cidade,
+        uf: dados.endereco.uf,
+        cep: dados.endereco.cep ?? null,
+        referencia: dados.endereco.referencia ?? null,
+        ajustado_no_mapa: false,
+      };
+    } else if (!medida.ok) {
       return {
         ok: false,
         erro: medida.erro,
@@ -429,27 +481,27 @@ export async function enviarPedido(pedido: unknown): Promise<ResultadoEnvio> {
           : {}),
         ...(medida.motivo === "rota_indisponivel" ? { rota_indisponivel: true } : {}),
       };
+    } else {
+      medicaoParaRegistrar = medicao;
+      rota = { distancia_km: medida.distancia_km, provedor: medida.provedor };
+      enderecoParaBanco = {
+        id: dados.endereco.id ?? null,
+        rotulo: dados.endereco.rotulo ?? null,
+        logradouro: dados.endereco.logradouro,
+        numero: dados.endereco.numero,
+        complemento: dados.endereco.complemento ?? null,
+        bairro: dados.endereco.bairro,
+        cidade: dados.endereco.cidade,
+        uf: dados.endereco.uf,
+        cep: dados.endereco.cep ?? null,
+        referencia: dados.endereco.referencia ?? null,
+        latitude: medida.latitude,
+        longitude: medida.longitude,
+        confianca: medida.confianca,
+        provedor: medida.provedor,
+        ajustado_no_mapa: false,
+      };
     }
-
-    medicaoParaRegistrar = medicao;
-    rota = { distancia_km: medida.distancia_km, provedor: medida.provedor };
-    enderecoParaBanco = {
-      id: dados.endereco.id ?? null,
-      rotulo: dados.endereco.rotulo ?? null,
-      logradouro: dados.endereco.logradouro,
-      numero: dados.endereco.numero,
-      complemento: dados.endereco.complemento ?? null,
-      bairro: dados.endereco.bairro,
-      cidade: dados.endereco.cidade,
-      uf: dados.endereco.uf,
-      cep: dados.endereco.cep ?? null,
-      referencia: dados.endereco.referencia ?? null,
-      latitude: medida.latitude,
-      longitude: medida.longitude,
-      confianca: medida.confianca,
-      provedor: medida.provedor,
-      ajustado_no_mapa: false,
-    };
   }
 
   const supabase = await getSupabaseServerClient();
@@ -466,6 +518,7 @@ export async function enviarPedido(pedido: unknown): Promise<ResultadoEnvio> {
       pagamento: dados.pagamento,
       observacao_geral: dados.observacao_geral ?? null,
       dispositivo_token: dados.dispositivo_token ?? null,
+      taxa_a_confirmar: taxaAConfirmar,
     },
     p_segredo: segredo,
   });

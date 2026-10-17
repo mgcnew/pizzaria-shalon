@@ -131,7 +131,11 @@ export function TabelaPedidos({
             const estado = rotuloInterno(p.status);
             const travas = [
               p.aguarda_pix ? "Pix não confirmado" : null,
-              p.aguarda_aprovacao_entrega ? "Entrega não aprovada" : null,
+              p.taxa_a_definir != null
+                ? "Taxa de entrega a definir"
+                : p.aguarda_aprovacao_entrega
+                  ? "Entrega não aprovada"
+                  : null,
               p.aguarda_cliente ? "Alteração aguardando o cliente" : null,
             ].filter((t): t is string => t !== null);
 
@@ -271,6 +275,7 @@ export function TabelaPedidos({
                       <AcoesDoPedido
                         pedidoId={p.id}
                         acoes={p.acoes}
+                        tetoDaTaxa={p.taxa_a_definir ?? null}
                         compacto
                         modo="linha"
                         comPrimaria={!(cobravel && podeReceber)}

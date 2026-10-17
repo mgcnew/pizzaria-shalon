@@ -48,7 +48,11 @@ export function CartaoPedido({
 
   const travas = [
     pedido.aguarda_pix ? "Pix não confirmado" : null,
-    pedido.aguarda_aprovacao_entrega ? "Entrega não aprovada" : null,
+    pedido.taxa_a_definir != null
+      ? "Taxa de entrega a definir"
+      : pedido.aguarda_aprovacao_entrega
+        ? "Entrega não aprovada"
+        : null,
     pedido.aguarda_cliente ? "Alteração aguardando o cliente" : null,
   ].filter((t): t is string => t !== null);
 
@@ -124,6 +128,7 @@ export function CartaoPedido({
         <AcoesDoPedido
           pedidoId={pedido.id}
           acoes={pedido.acoes}
+          tetoDaTaxa={pedido.taxa_a_definir ?? null}
           compacto
           modo="linha"
           comPrimaria={!cobravel}

@@ -66,6 +66,12 @@ export type CotacaoEntrega =
         | "nao_configurado";
       distancia_km?: number;
       distancia_maxima_km?: number | null;
+      /**
+       * Endereço não localizado (ou rota indisponível): o cliente pode enviar
+       * mesmo assim, e a loja confirma a taxa até este teto, a maior taxa das
+       * faixas ativas (D-2026-10-17-149).
+       */
+      taxa_a_confirmar?: { teto: number };
     };
 
 /** Item enviado ao criar o pedido: escolhas, não preço. */
@@ -102,6 +108,8 @@ export type PedidoParaEnviar = {
   observacao_geral?: string | null | undefined;
   /** Credencial do navegador para "Meus pedidos". Não é login (03 §11). */
   dispositivo_token?: string | null | undefined;
+  /** O cliente aceitou enviar com a taxa a confirmar pela loja (D-2026-10-17-149). */
+  taxa_a_confirmar?: boolean | undefined;
 };
 
 export type ResultadoEnvio =

@@ -44,6 +44,8 @@ const comandoSchema = z.object({
   pedido_id: z.string().uuid(),
   comando: z.string().min(3).max(40),
   motivo: z.string().max(400).optional(),
+  /** Taxa definida ao aprovar a entrega com taxa a confirmar (0164). */
+  taxa: z.number().min(0).max(500).optional(),
 });
 
 function falha(contexto: string, erro: unknown): ResultadoComando {
@@ -60,7 +62,7 @@ export async function executarComando(entrada: unknown): Promise<ResultadoComand
   const { data, error } = await supabase.rpc("comando_pedido", {
     p_order_id: validado.data.pedido_id,
     p_comando: validado.data.comando,
-    p_dados: { motivo: validado.data.motivo ?? null },
+    p_dados: { motivo: validado.data.motivo ?? null, taxa: validado.data.taxa ?? null },
   });
 
   if (error) return falha("executarComando", error);

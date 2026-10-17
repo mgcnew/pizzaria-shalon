@@ -8,6 +8,7 @@ import type { AcaoDoPedido } from "@/application/pedidos/tipos";
 import { IndicadorDeNavegacao } from "@/ui/components/IndicadorDeNavegacao";
 import { useFecharAoNavegar } from "@/ui/hooks/useFecharAoNavegar";
 import { usePopoverFixo } from "@/ui/hooks/usePopoverFixo";
+import { formatBRL } from "@/lib/format";
 import { estiloDoComando } from "./estiloDasAcoes";
 
 /**
@@ -45,6 +46,7 @@ export function AcoesDoPedido({
   modo = "lista",
   comPrimaria = true,
   itensAdicionais = [],
+  tetoDaTaxa = null,
 }: {
   pedidoId: string;
   acoes: AcaoDoPedido[];
@@ -56,8 +58,17 @@ export function AcoesDoPedido({
    */
   comPrimaria?: boolean;
   itensAdicionais?: { rotulo: string; href: string }[];
+  /**
+   * Pedido do cliente com a taxa a confirmar (D-2026-10-17-149): o teto que
+   * ele viu. Com ele, "Aprovar entrega" abre o campo da taxa antes.
+   */
+  tetoDaTaxa?: number | null;
 }) {
   const [pedindoMotivo, setPedindoMotivo] = useState<AcaoDoPedido | null>(null);
+  // Aprovar entrega com taxa a definir: `teto` vem da fila, ou da recusa do
+  // banco quando a tela ainda não sabia (`exige_taxa`).
+  const [pedindoTaxa, setPedindoTaxa] = useState<{ acao: AcaoDoPedido; teto: number | null } | null>(null);
+  const [taxa, setTaxa] = useState("");
   const [motivo, setMotivo] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [menuAberto, setMenuAberto] = useState(false);
@@ -112,26 +123,37 @@ export function AcoesDoPedido({
     };
   }, [menuAberto]);
 
-  function disparar(acao: AcaoDoPedido, motivoInformado?: string) {
+  function disparar(acao: AcaoDoPedido, motivoInformado?: string, taxaInformada?: number) {
     setErro(null);
     iniciar(async () => {
       const r = await executarComando({
         pedido_id: pedidoId,
         comando: acao.comando,
         motivo: motivoInformado,
+        taxa: taxaInformada,
       });
       if (!r.ok) {
+        if (r.exige_taxa && pedindoTaxa === null) {
+          setPedindoTaxa({ acao, teto: tetoDaTaxa });
+          return;
+        }
         setErro(r.erro);
         return;
       }
       setPedindoMotivo(null);
       setMotivo("");
+      setPedindoTaxa(null);
+      setTaxa("");
       setMenuAberto(false);
     });
   }
 
   function aoEscolher(acao: AcaoDoPedido) {
     setMenuAberto(false);
+    if (acao.comando === "aprovar_entrega" && tetoDaTaxa !== null) {
+      setPedindoTaxa({ acao, teto: tetoDaTaxa });
+      return;
+    }
     if (acao.exige_motivo) {
       setPedindoMotivo(acao);
       return;
@@ -280,7 +302,28 @@ export function AcoesDoPedido({
           )
         : null}
 
-      {erro !== null && pedindoMotivo === null ? (
+      {pedindoTaxa !== null
+        ? createPortal(
+            <ModalDaTaxa
+              campoId={`taxa-${pedidoId}`}
+              teto={pedindoTaxa.teto}
+              taxa={taxa}
+              aoMudarTaxa={setTaxa}
+              executando={executando}
+              erro={erro}
+              aoConfirmar={(valor) => disparar(pedindoTaxa.acao, undefined, valor)}
+              aoFechar={() => {
+                if (executando) return;
+                setPedindoTaxa(null);
+                setTaxa("");
+                setErro(null);
+              }}
+            />,
+            document.body,
+          )
+        : null}
+
+      {erro !== null && pedindoMotivo === null && pedindoTaxa === null ? (
         <p
           role="alert"
           className="m-0 rounded-10 bg-td px-3 py-2 text-[13px] font-semibold text-tdf"
@@ -406,6 +449,149 @@ function ModalDeMotivo({
               className="min-h-touch cursor-pointer rounded-11 border-0 bg-cta px-4 text-[14px] font-semibold text-cta-fg disabled:cursor-not-allowed disabled:bg-tn disabled:text-muted"
             >
               {executando ? "Registrando…" : "Confirmar"}
+            </button>
+            <button
+              type="button"
+              onClick={aoFechar}
+              disabled={executando}
+              className="min-h-touch cursor-pointer rounded-11 border-[1.5px] border-border-shalon bg-surface px-4 text-[14px] font-semibold text-ink disabled:opacity-60"
+            >
+              Voltar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A taxa de entrega de um pedido do cliente cujo endereço não foi localizado
+ * (D-2026-10-17-149). Aprovar a entrega define a taxa; o banco recusa sem
+ * ela e acima do teto que o cliente viu, e a guarda no endereço dele.
+ */
+function ModalDaTaxa({
+  campoId,
+  teto,
+  taxa,
+  aoMudarTaxa,
+  executando,
+  erro,
+  aoConfirmar,
+  aoFechar,
+}: {
+  campoId: string;
+  teto: number | null;
+  taxa: string;
+  aoMudarTaxa: (taxa: string) => void;
+  executando: boolean;
+  erro: string | null;
+  aoConfirmar: (valor: number) => void;
+  aoFechar: () => void;
+}) {
+  const campo = useRef<HTMLInputElement>(null);
+  const tituloId = `${campoId}-titulo`;
+  const fechar = useRef(aoFechar);
+  useEffect(() => {
+    fechar.current = aoFechar;
+  }, [aoFechar]);
+
+  useEffect(() => {
+    const anterior = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    campo.current?.focus();
+    function aoTeclar(evento: KeyboardEvent) {
+      if (evento.key === "Escape") fechar.current();
+    }
+    document.addEventListener("keydown", aoTeclar);
+    return () => {
+      document.removeEventListener("keydown", aoTeclar);
+      document.body.style.overflow = overflow;
+      anterior?.focus();
+    };
+  }, []);
+
+  const numero = Number(taxa.replace(/\s/g, "").replace(",", "."));
+  const valor =
+    taxa.trim() !== "" && Number.isFinite(numero) && numero >= 0 && numero <= (teto ?? 500)
+      ? Math.round(numero * 100) / 100
+      : null;
+  const acimaDoTeto = teto !== null && taxa.trim() !== "" && Number.isFinite(numero) && numero > teto;
+
+  return (
+    <div
+      className="fixed inset-0 z-[95] flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-4"
+      onMouseDown={(evento) => {
+        if (evento.target === evento.currentTarget) aoFechar();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={tituloId}
+        className="max-h-[92dvh] w-full overflow-y-auto rounded-t-20 border border-border-shalon bg-surface p-5 shadow-2xl sm:max-w-[480px] sm:rounded-20"
+      >
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 id={tituloId} className="m-0 font-display text-[19px] font-bold text-ink">
+            Aprovar entrega
+          </h2>
+          <button
+            type="button"
+            aria-label="Fechar"
+            onClick={aoFechar}
+            className="flex size-10 cursor-pointer items-center justify-center rounded-full border border-border-shalon bg-elev text-[20px] text-ink"
+          >
+            ×
+          </button>
+        </div>
+
+        <p className="m-0 mb-3 text-[13.5px] text-ink-2">
+          O endereço deste pedido não foi localizado no mapa. Confira o endereço e informe a taxa
+          de entrega{teto !== null ? <> — o cliente aceitou até <strong>{formatBRL(teto)}</strong></> : null}.
+        </p>
+
+        <form
+          onSubmit={(evento) => {
+            evento.preventDefault();
+            if (!executando && valor !== null) aoConfirmar(valor);
+          }}
+        >
+          <label htmlFor={campoId} className="mb-[6px] block text-[13.5px] font-semibold text-ink">
+            Taxa de entrega (R$)
+          </label>
+          <input
+            ref={campo}
+            id={campoId}
+            value={taxa}
+            onChange={(e) => aoMudarTaxa(e.target.value)}
+            inputMode="decimal"
+            placeholder="Ex.: 6,00"
+            className="min-h-touch w-full rounded-11 border-[1.5px] border-border-shalon bg-surface px-3 text-[15px] text-ink focus:border-brand-orange focus:outline-none"
+          />
+          <p className="m-0 mt-1 text-[12px] text-muted">
+            Fica guardada no endereço do cliente para os próximos pedidos e registrada na auditoria.
+          </p>
+
+          {acimaDoTeto ? (
+            <p className="m-0 mt-3 rounded-10 bg-tw px-3 py-2 text-[13px] font-semibold text-twf">
+              Acima do que o cliente aceitou. Combine com ele antes ou recuse a entrega.
+            </p>
+          ) : null}
+
+          {erro !== null ? (
+            <p role="alert" className="m-0 mt-3 rounded-10 bg-td px-3 py-2 text-[13px] font-semibold text-tdf">
+              {erro}
+            </p>
+          ) : null}
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="submit"
+              disabled={executando || valor === null}
+              className="min-h-touch cursor-pointer rounded-11 border-0 bg-cta px-4 text-[14px] font-semibold text-cta-fg disabled:cursor-not-allowed disabled:bg-tn disabled:text-muted"
+            >
+              {executando ? "Aprovando…" : valor !== null ? `Aprovar com ${formatBRL(valor)}` : "Aprovar"}
             </button>
             <button
               type="button"

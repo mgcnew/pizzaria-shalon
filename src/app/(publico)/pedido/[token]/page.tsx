@@ -8,6 +8,7 @@ import { ChavePix } from "../../_ui/ChavePix";
 import { DecidirAlteracao } from "../../_ui/DecidirAlteracao";
 import { AcompanharAoVivo } from "../../_ui/AcompanharAoVivo";
 import { assinaturaDoPedido } from "@/domain/pedidos/acompanhamento";
+import { tetoDaTaxaAConfirmar } from "@/domain/pedidos/taxaAConfirmar";
 
 export const metadata: Metadata = {
   title: "Acompanhar pedido",
@@ -46,6 +47,9 @@ export default async function Page({
   if (pedido === null) notFound();
 
   const estado = descreverEstado(pedido.status);
+  // Taxa a confirmar pela loja (D-2026-10-17-149). Pedido encerrado sem
+  // taxa definida (recusado) não mostra "a confirmar".
+  const tetoAConfirmar = estado.emAberto ? tetoDaTaxaAConfirmar(pedido.endereco) : null;
   const pix =
     pedido.pagamento.pix_status === "pending" ? await pixDoPedido(token) : { ok: false as const };
 
@@ -90,7 +94,9 @@ export default async function Page({
 
         {pedido.aguarda_aprovacao_entrega && estado.emAberto ? (
           <p className="m-0 mt-2 text-[13.5px] font-semibold">
-            A entrega para o seu endereço ainda depende da aprovação da pizzaria.
+            {tetoAConfirmar !== null
+              ? `A pizzaria está conferindo o seu endereço para confirmar a taxa de entrega (até ${formatBRL(tetoAConfirmar)}).`
+              : "A entrega para o seu endereço ainda depende da aprovação da pizzaria."}
           </p>
         ) : null}
 
@@ -155,22 +161,28 @@ export default async function Page({
         <div className="flex justify-between text-[14.5px] text-ink-2">
           <span>{pedido.modalidade === "pickup" ? "Retirada" : "Taxa de entrega"}</span>
           <span className="tabular-nums">
-            {pedido.modalidade === "pickup" ? "—" : formatBRL(pedido.taxa_entrega)}
+            {pedido.modalidade === "pickup"
+              ? "—"
+              : tetoAConfirmar !== null
+                ? `a confirmar (até ${formatBRL(tetoAConfirmar)})`
+                : formatBRL(pedido.taxa_entrega)}
           </span>
         </div>
         <div className="mt-2 flex items-baseline justify-between border-t border-border-shalon pt-2">
           <span className="font-semibold text-ink">Total</span>
           <span className="font-display text-[22px] font-extrabold tabular-nums text-ink">
-            {formatBRL(pedido.total)}
+            {tetoAConfirmar !== null ? `${formatBRL(pedido.subtotal)} + entrega` : formatBRL(pedido.total)}
           </span>
         </div>
 
         <p className="m-0 mt-3 text-[13.5px] text-ink-2">
           Pagamento: {pedido.pagamento.forma ?? "—"}
           {pedido.pagamento.bandeira ? ` · ${pedido.pagamento.bandeira}` : ""}
-          {pedido.pagamento.troco_esperado !== null
-            ? ` · troco de ${formatBRL(pedido.pagamento.troco_esperado)}`
-            : ""}
+          {tetoAConfirmar !== null && pedido.pagamento.troco_para !== null
+            ? ` · troco para ${formatBRL(pedido.pagamento.troco_para)}`
+            : pedido.pagamento.troco_esperado !== null
+              ? ` · troco de ${formatBRL(pedido.pagamento.troco_esperado)}`
+              : ""}
         </p>
 
         {pedido.observacao ? (

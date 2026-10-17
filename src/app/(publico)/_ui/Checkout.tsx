@@ -261,7 +261,15 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
     };
   }, [assinatura, itens.length]);
 
-  const formas = formasPorModalidade[modalidade];
+  // Endereço não localizado: dá para enviar com a taxa a confirmar pela
+  // loja, até o teto (D-2026-10-17-149).
+  const taxaAConfirmar =
+    modalidade === "delivery" && cotacao?.ok === false ? (cotacao.taxa_a_confirmar ?? null) : null;
+
+  // Sem total fechado não há Pix antecipado: paga-se na entrega.
+  const formas = formasPorModalidade[modalidade].filter(
+    (f) => !(taxaAConfirmar && f.familia === "pix_key"),
+  );
   const forma = formas.find((f) => f.id === formaId) ?? null;
 
   const subtotal = revalidacao?.ok ? revalidacao.subtotal : null;
@@ -319,7 +327,7 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
     whatsapp.replace(/\D/g, "").length >= 10 &&
     forma !== null &&
     (!precisaTroco || trocoPara.trim() !== "") &&
-    (modalidade === "pickup" || cotacao?.ok === true);
+    (modalidade === "pickup" || cotacao?.ok === true || taxaAConfirmar !== null);
 
   function enviar() {
     if (!podeEnviar || forma === null) return;
@@ -371,6 +379,7 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
         },
         observacao_geral: observacao.trim() || null,
         dispositivo_token: garantirDispositivo(),
+        taxa_a_confirmar: taxaAConfirmar !== null,
       });
 
       if (!resultado.ok) {
@@ -630,7 +639,18 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
                 </div>
               ) : null}
 
-              {cotacao?.ok === false ? (
+              {taxaAConfirmar ? (
+                <div className="m-0 rounded-10 bg-tw px-3 py-2 text-[13.5px] text-twf" role="status">
+                  <p className="m-0 font-semibold">Não localizamos esse endereço no mapa.</p>
+                  <p className="m-0 mt-1">
+                    Você pode enviar o pedido mesmo assim: a pizzaria confere o endereço e confirma
+                    a taxa de entrega, de até {formatBRL(taxaAConfirmar.teto)}, antes de começar a
+                    preparar. O pagamento é feito na entrega.
+                  </p>
+                </div>
+              ) : null}
+
+              {cotacao?.ok === false && !taxaAConfirmar ? (
                 <div className="m-0 rounded-10 bg-td px-3 py-2 text-[13.5px] text-tdf" role="alert">
                   <p className="m-0 font-semibold">{cotacao.erro}</p>
                   {/* Falha de localização ou de rota (não "fora da área"):
@@ -694,7 +714,11 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
                         value={trocoPara}
                         onChange={(e) => setTrocoPara(e.target.value)}
                         inputMode="decimal"
-                        hint="O valor precisa ser igual ou maior que o total do pedido."
+                        hint={
+                          taxaAConfirmar && subtotal !== null
+                            ? `Precisa cobrir o pedido com a taxa máxima: ${formatBRL(subtotal + taxaAConfirmar.teto)}.`
+                            : "O valor precisa ser igual ou maior que o total do pedido."
+                        }
                       />
                     ) : null}
                   </div>
@@ -761,9 +785,11 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
             <span className="tabular-nums">
               {modalidade === "pickup"
                 ? "retirada"
-                : taxa === null
-                  ? "informe o endereço"
-                  : formatBRL(taxa)}
+                : taxaAConfirmar
+                  ? `a confirmar (até ${formatBRL(taxaAConfirmar.teto)})`
+                  : taxa === null
+                    ? "informe o endereço"
+                    : formatBRL(taxa)}
             </span>
           </div>
 
@@ -772,7 +798,11 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
           <div className="flex items-baseline justify-between">
             <span className="font-semibold text-ink">Total</span>
             <span className="font-display text-[22px] font-extrabold tabular-nums text-ink">
-              {total === null ? "—" : formatBRL(total)}
+              {taxaAConfirmar && subtotal !== null
+                ? `${formatBRL(subtotal)} + entrega`
+                : total === null
+                  ? "—"
+                  : formatBRL(total)}
             </span>
           </div>
 

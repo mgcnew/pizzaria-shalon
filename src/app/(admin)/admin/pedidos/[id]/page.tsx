@@ -15,6 +15,7 @@ import { Comanda } from "../_ui/Comanda";
 import { PainelAlteracao } from "../_ui/PainelAlteracao";
 import { Recebimento } from "../_ui/Recebimento";
 import { momentoDoRecebimento } from "@/domain/pedidos/recebimentoNaEntrega";
+import { tetoDaTaxaAConfirmar } from "@/domain/pedidos/taxaAConfirmar";
 
 export const metadata: Metadata = { title: "Pedido" };
 
@@ -108,7 +109,11 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       <div className="grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(340px,1fr))]">
         <div className="flex flex-col gap-4">
           <Cartao titulo="Ações" largura="cheio">
-            <AcoesDoPedido pedidoId={pedido.id} acoes={pedido.acoes} />
+            <AcoesDoPedido
+              pedidoId={pedido.id}
+              acoes={pedido.acoes}
+              tetoDaTaxa={tetoDaTaxaAConfirmar(pedido.endereco)}
+            />
             {pedido.acoes.length === 0 ? (
               <p className="m-0 text-[13.5px] text-ink-2">
                 Nada a fazer aqui agora — ou por causa do estado do pedido, ou porque o seu

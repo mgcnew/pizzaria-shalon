@@ -54,6 +54,11 @@ export type PedidoNaFila = {
   aguarda_aprovacao_entrega: boolean;
   aguarda_cliente: boolean;
   encerrado: boolean;
+  /**
+   * Pedido do cliente com a taxa a confirmar (D-2026-10-17-149): o teto que
+   * ele viu, enquanto a taxa não foi definida. `null`/ausente nos demais.
+   */
+  taxa_a_definir?: number | null;
   acoes: AcaoDoPedido[];
 };
 
@@ -165,7 +170,13 @@ export type PedidoAdministrativo = {
 
 export type ResultadoComando =
   | { ok: true; status: string }
-  | { ok: false; erro: string; bloqueio?: "pix" | "entrega" | "alteracao" };
+  | {
+      ok: false;
+      erro: string;
+      bloqueio?: "pix" | "entrega" | "alteracao";
+      /** Aprovar a entrega pede a taxa (endereço não localizado, 0164). */
+      exige_taxa?: boolean;
+    };
 
 /**
  * Os canais previstos para pedido manual (RN-MAN-001).

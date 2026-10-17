@@ -526,6 +526,9 @@ A convenção é única e obrigatória em toda a V1 — configuração, cálculo
 
 Distância não coberta por faixa ativa alguma **nunca** produz taxa zero: o resultado é entrega fora de área, conforme RN-ENT-012. *(Decisão aprovada em 18/09/2026; histórico em `docs/00-DECISOES.md` D-2026-09-18-21.)*
 
+### RN-ENT-016 — Taxa a confirmar quando o endereço não é localizado
+Exceção controlada a RN-ENT-003, só no pedido do cliente: quando o endereço não é localizado ou a rota não pode ser medida (não quando está fora de área), o cliente pode enviar com a taxa **a confirmar pela loja, até o teto** — a maior taxa entre as faixas ativas, mostrada antes do envio. O pedido nasce aguardando aprovação de entrega; aprovar exige informar a taxa (de 0 ao teto), com `orders.override_delivery_fee`, e a taxa fica auditada e guardada no endereço do cliente. Acima do teto, a loja recusa ou combina com o cliente. Pix antecipado não é aceito nesse caso, e o troco precisa cobrir subtotal + teto. Nunca há taxa R$ 0,00 por omissão: sem a taxa informada, a entrega não é aprovada. *(Decisão de 17/10/2026; D-2026-10-17-149.)*
+
 ---
 
 ## 17. Pagamentos no checkout
