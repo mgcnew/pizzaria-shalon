@@ -212,7 +212,11 @@ async function localizarEMedir(endereco: EnderecoInformado): Promise<Medicao> {
     enderecoFormatado = consultaDeEndereco(paraBuscar);
   } else {
     logger.info("checkout:geocode", { cache: "miss" });
-    const geo = await provedor.geocodificar(paraBuscar);
+    // A loja vai junto: prioriza ruas do entorno e desempata homônimos.
+    const geo = await provedor.geocodificar(paraBuscar, {
+      latitude: origem.latitude,
+      longitude: origem.longitude,
+    });
     if (!geo.ok) {
       // RN-ENT-003: sem localização confiável, não se inventa coordenada.
       //

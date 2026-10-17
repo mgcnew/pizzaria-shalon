@@ -71,7 +71,11 @@ export type ResultadoRota =
 
 export interface ProvedorDeRotas {
   readonly nome: string;
-  geocodificar(endereco: EnderecoParaGeocodificar): Promise<ResultadoGeocodificacao>;
+  /**
+   * `perto`: a loja. Serve para priorizar ruas próximas e desempatar
+   * homônimos (D-2026-10-16-144). Opcional: sem ela, o rigor é o de sempre.
+   */
+  geocodificar(endereco: EnderecoParaGeocodificar, perto?: Coordenada): Promise<ResultadoGeocodificacao>;
   /** Rota de carro entre dois pontos. A origem é a loja (RN-ENT-007). */
   rota(origem: Coordenada, destino: Coordenada): Promise<ResultadoRota>;
 }

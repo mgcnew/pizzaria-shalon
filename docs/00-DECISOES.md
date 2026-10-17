@@ -4670,3 +4670,21 @@ continua sem motivo.
 3. Mesmas salvaguardas: só no balcão, com `orders.override_delivery_fee`,
    0–500. **Não passa por cima de "fora da área"** (a rota é medida antes).
 4. O detalhe do pedido mostra "taxa trocada (calculada: R$ X) · motivo".
+
+## D-2026-10-16-144 — Busca de endereço com a loja como referência
+
+**Problema (pedidos reais #25, #22, #19, #18, #20):** endereços próximos não
+eram achados — sem CEP e com nome comum ("Getúlio Vargas, 6") a nota do mapa
+fica baixa porque há homônimos pela cidade.
+
+**Decisão:**
+1. A geocodificação recebe a posição da loja: o HERE prioriza o entorno
+   (`at`), a TomTom busca num raio de 20 km; 5 resultados para desempatar.
+2. Se a regra principal (D-140/142) recusar, aceita-se UM resultado quando:
+   é número da casa; o nome da rua confere com o digitado (sem acento, sem
+   "Rua/Av.", sem "de/da"); fica a até 12 km em linha reta da loja; nota ≥
+   0,6; e é o ÚNICO lugar assim (dois a mais de 300 m = ambíguo, recusa).
+   Confiança "aproximada". Nunca se escolhe "o mais perto" entre vários.
+3. Resultado nos pedidos reais: 8 de 9 localizados (antes 3). Continua sem
+   mapa: Estrada do Bom Retiro, 24 (CEP 04425-005) — nenhum serviço a tem.
+Implementado em `infrastructure/rotas/proximidade.ts`, com testes.

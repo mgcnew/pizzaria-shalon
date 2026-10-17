@@ -18,10 +18,10 @@ export function provedorComReserva(principal: ProvedorDeRotas, reserva: Provedor
   return {
     nome: `${principal.nome}+${reserva.nome}`,
 
-    async geocodificar(endereco) {
-      const r = await principal.geocodificar(endereco);
+    async geocodificar(endereco, perto) {
+      const r = await principal.geocodificar(endereco, perto);
       if (r.ok || r.motivo === "configuracao") return r;
-      const daReserva = await reserva.geocodificar(endereco);
+      const daReserva = await reserva.geocodificar(endereco, perto);
       // Se a reserva também não achar, a mensagem do principal é a que vale.
       return daReserva.ok ? daReserva : r;
     },

@@ -7,6 +7,7 @@ import type {
   ResultadoRota,
 } from "./contrato";
 import { consultaDeEndereco } from "./contrato";
+import { escolherPorNomeEProximidade } from "./proximidade";
 
 /**
  * HERE Location Services.
@@ -62,7 +63,7 @@ export type ItemDoHere = {
   resultType?: string;
   houseNumberType?: string;
   position?: { lat?: number; lng?: number };
-  address?: { label?: string; postalCode?: string };
+  address?: { label?: string; postalCode?: string; street?: string };
   scoring?: { queryScore?: number };
 };
 
@@ -102,7 +103,7 @@ function distanciaEmMetros(a: { lat: number; lng: number }, b: { lat: number; ln
  *   4. um segundo resultado só torna ambíguo se CONCORRE: nota parecida e
  *      em outro lugar (mais de 300 m).
  */
-export function avaliarResultadosDoHere(
+function avaliarPrincipalDoHere(
   itens: readonly ItemDoHere[],
   cepDigitado: string | null | undefined,
 ):
@@ -141,6 +142,37 @@ export function avaliarResultadosDoHere(
   return { ok: true, lat, lng, confianca, label: primeiro.address?.label };
 }
 
+export function avaliarResultadosDoHere(
+  itens: readonly ItemDoHere[],
+  cepDigitado: string | null | undefined,
+  proximidade?: { ruaDigitada: string; loja: Coordenada },
+): ReturnType<typeof avaliarPrincipalDoHere> {
+  const principal = avaliarPrincipalDoHere(itens, cepDigitado);
+  if (principal.ok || !proximidade) return principal;
+  const escolhido = escolherPorNomeEProximidade(
+    itens
+      .filter((i) => i.position?.lat !== undefined && i.position?.lng !== undefined)
+      .map((i) => ({
+        lat: i.position!.lat!,
+        lng: i.position!.lng!,
+        nivel:
+          i.resultType === "houseNumber" && (i.houseNumberType === "PA" || i.houseNumberType === "interpolated")
+            ? ("casa" as const)
+            : i.resultType === "street"
+              ? ("rua" as const)
+              : ("outro" as const),
+        rua: i.address?.street,
+        nota: i.scoring?.queryScore ?? 0,
+        label: i.address?.label,
+      })),
+    proximidade.ruaDigitada,
+    proximidade.loja,
+  );
+  return escolhido
+    ? { ok: true, lat: escolhido.lat, lng: escolhido.lng, confianca: "aproximada", label: escolhido.label }
+    : principal;
+}
+
 async function buscar(url: string): Promise<Response> {
   const controlador = new AbortController();
   const limite = setTimeout(() => controlador.abort(), TEMPO_LIMITE_MS);
@@ -160,14 +192,15 @@ export function provedorHere(chave: string): ProvedorDeRotas {
   return {
     nome: NOME,
 
-    async geocodificar(endereco: EnderecoParaGeocodificar): Promise<ResultadoGeocodificacao> {
+    async geocodificar(endereco: EnderecoParaGeocodificar, perto?: Coordenada): Promise<ResultadoGeocodificacao> {
       const consulta = consultaDeEndereco(endereco);
-      // `limit=2` de propósito: com 1 não há como detectar ambiguidade, e
-      // acima de 2 se paga por dados que não vamos olhar.
+      // Com a loja informada, o HERE prioriza o entorno (`at`) e trazemos 5
+      // resultados para o desempate por proximidade (D-2026-10-16-144).
       const url =
         "https://geocode.search.hereapi.com/v1/geocode" +
         `?q=${encodeURIComponent(consulta)}` +
-        "&in=countryCode%3ABRA&lang=pt-BR&limit=2" +
+        (perto ? `&at=${perto.latitude}%2C${perto.longitude}` : "") +
+        `&in=countryCode%3ABRA&lang=pt-BR&limit=${perto ? 5 : 2}` +
         `&apiKey=${encodeURIComponent(chave)}`;
 
       let resposta: Response;
@@ -207,7 +240,11 @@ export function provedorHere(chave: string): ProvedorDeRotas {
         };
       }
 
-      const avaliacao = avaliarResultadosDoHere(dados.items ?? [], endereco.cep);
+      const avaliacao = avaliarResultadosDoHere(
+        dados.items ?? [],
+        endereco.cep,
+        perto ? { ruaDigitada: endereco.logradouro, loja: perto } : undefined,
+      );
       if (!avaliacao.ok) {
         return avaliacao.motivo === "nao_encontrado"
           ? {

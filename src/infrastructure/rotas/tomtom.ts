@@ -7,6 +7,7 @@ import type {
   ResultadoRota,
 } from "./contrato";
 import { consultaDeEndereco } from "./contrato";
+import { escolherPorNomeEProximidade } from "./proximidade";
 
 /**
  * TomTom — provedor de RESERVA (D-2026-10-16-142).
@@ -39,7 +40,7 @@ const MESMO_LUGAR_METROS = 300;
 export type ItemDaTomTom = {
   type?: string;
   position?: { lat?: number; lon?: number };
-  address?: { freeformAddress?: string; postalCode?: string; extendedPostalCode?: string };
+  address?: { freeformAddress?: string; postalCode?: string; extendedPostalCode?: string; streetName?: string };
   matchConfidence?: { score?: number };
 };
 
@@ -54,7 +55,7 @@ function distanciaEmMetros(a: { lat: number; lng: number }, b: { lat: number; ln
 }
 
 /** Decide se a resposta da TomTom serve para cobrar por distância. Pura. */
-export function avaliarResultadosDaTomTom(
+function avaliarPrincipalDaTomTom(
   itens: readonly ItemDaTomTom[],
   cepDigitado: string | null | undefined,
 ):
@@ -94,6 +95,38 @@ export function avaliarResultadosDaTomTom(
   return { ok: true, lat, lng, confianca, label: primeiro.address?.freeformAddress };
 }
 
+/** Regra principal e, se ela recusar, o desempate por nome + proximidade. */
+export function avaliarResultadosDaTomTom(
+  itens: readonly ItemDaTomTom[],
+  cepDigitado: string | null | undefined,
+  proximidade?: { ruaDigitada: string; loja: Coordenada },
+): ReturnType<typeof avaliarPrincipalDaTomTom> {
+  const principal = avaliarPrincipalDaTomTom(itens, cepDigitado);
+  if (principal.ok || !proximidade) return principal;
+  const escolhido = escolherPorNomeEProximidade(
+    itens
+      .filter((i) => i.position?.lat !== undefined && i.position?.lon !== undefined)
+      .map((i) => ({
+        lat: i.position!.lat!,
+        lng: i.position!.lon!,
+        nivel:
+          i.type === "Point Address" || i.type === "Address Range"
+            ? ("casa" as const)
+            : i.type === "Street"
+              ? ("rua" as const)
+              : ("outro" as const),
+        rua: i.address?.streetName,
+        nota: i.matchConfidence?.score ?? 0,
+        label: i.address?.freeformAddress,
+      })),
+    proximidade.ruaDigitada,
+    proximidade.loja,
+  );
+  return escolhido
+    ? { ok: true, lat: escolhido.lat, lng: escolhido.lng, confianca: "aproximada", label: escolhido.label }
+    : principal;
+}
+
 async function buscar(url: string): Promise<Response> {
   const controlador = new AbortController();
   const limite = setTimeout(() => controlador.abort(), TEMPO_LIMITE_MS);
@@ -112,11 +145,14 @@ export function provedorTomTom(chave: string): ProvedorDeRotas {
   return {
     nome: NOME,
 
-    async geocodificar(endereco: EnderecoParaGeocodificar): Promise<ResultadoGeocodificacao> {
+    async geocodificar(endereco: EnderecoParaGeocodificar, perto?: Coordenada): Promise<ResultadoGeocodificacao> {
       const consulta = consultaDeEndereco(endereco);
+      // Com a loja, a busca fica restrita a 20 km dela (`lat/lon/radius`):
+      // homônimos do outro lado da cidade nem entram (D-2026-10-16-144).
       const url =
         `https://api.tomtom.com/search/2/geocode/${encodeURIComponent(consulta)}.json` +
-        "?countrySet=BR&language=pt-BR&limit=2" +
+        `?countrySet=BR&language=pt-BR&limit=${perto ? 5 : 2}` +
+        (perto ? `&lat=${perto.latitude}&lon=${perto.longitude}&radius=20000` : "") +
         `&key=${encodeURIComponent(chave)}`;
 
       let resposta: Response;
@@ -141,7 +177,11 @@ export function provedorTomTom(chave: string): ProvedorDeRotas {
         return { ok: false, motivo: "indisponivel", mensagem: "O serviço de mapas respondeu de forma inesperada.", provedor: NOME };
       }
 
-      const avaliacao = avaliarResultadosDaTomTom(dados.results ?? [], endereco.cep);
+      const avaliacao = avaliarResultadosDaTomTom(
+        dados.results ?? [],
+        endereco.cep,
+        perto ? { ruaDigitada: endereco.logradouro, loja: perto } : undefined,
+      );
       if (!avaliacao.ok) {
         return {
           ok: false,
