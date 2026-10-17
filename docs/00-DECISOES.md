@@ -4650,3 +4650,23 @@ cota gratuita diária, sem cartão.
    (`cepFormatado`): sem o hífen a TomTom devolveu outra rua para o mesmo
    endereço. Verificado na tela do balcão: Estrada do Retiro, 100 →
    R$ 4,00 · 0,8 km.
+
+## D-2026-10-16-143 — Troca da taxa calculada, com motivo obrigatório
+
+**Pedido da dona:** quando o endereço é localizado mas a taxa sai errada (ex.:
+mais alta do que deveria), a balconista pode trocar o valor — escolhendo o
+motivo numa lista, para ficar registrado. No caso "não localizado" (D-138)
+continua sem motivo.
+
+**Decisão (migration 0162):**
+1. Abaixo da prévia da taxa, "Trocar a taxa" abre: nova taxa (R$) + motivo
+   (lista: rota mais longa que a real; CEP/número levaram a ponto errado;
+   cliente frequente/acordo; frete promocional; cortesia da casa; outro, com
+   descrição). Sem motivo, o pedido não é lançado.
+2. `criar_pedido` com `taxa_manual` + `motivo_taxa_manual`: a rota é medida
+   normalmente (distância e faixa gravadas) e só a taxa cobrada muda. Fica no
+   endereço do pedido a taxa calculada e o motivo, e na auditoria
+   (`taxa_entrega_manual`, com a taxa calculada, a cobrada e o motivo).
+3. Mesmas salvaguardas: só no balcão, com `orders.override_delivery_fee`,
+   0–500. **Não passa por cima de "fora da área"** (a rota é medida antes).
+4. O detalhe do pedido mostra "taxa trocada (calculada: R$ X) · motivo".

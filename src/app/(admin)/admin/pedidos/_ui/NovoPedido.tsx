@@ -26,6 +26,19 @@ import { AtalhosDoCliente, EnderecosSalvos, ResumoDoCliente } from "./ClienteNoB
 
 export type EtapaNovoPedido = "cliente" | "itens" | "pagamento";
 
+/**
+ * Motivos para TROCAR uma taxa calculada (D-2026-10-16-143). Ficam
+ * registrados no pedido e na auditoria. "Outro" pede o texto.
+ */
+const MOTIVOS_DE_TROCA_DA_TAXA = [
+  "Mapa calculou rota mais longa que a real",
+  "CEP ou número levaram a ponto errado no mapa",
+  "Cliente frequente / acordo com a casa",
+  "Frete promocional",
+  "Cortesia da casa",
+  "Outro",
+] as const;
+
 const ETAPAS: readonly { valor: EtapaNovoPedido; nome: string; numero: number }[] = [
   { valor: "cliente", nome: "Cliente", numero: 1 },
   { valor: "itens", nome: "Itens", numero: 2 },
@@ -142,6 +155,11 @@ export function NovoPedido({
   } | null>(null);
   const [rotaFalhou, setRotaFalhou] = useState(false);
   const [taxaManual, setTaxaManual] = useState("");
+  // Troca da taxa CALCULADA: com motivo obrigatório.
+  const [trocandoTaxa, setTrocandoTaxa] = useState(false);
+  const [taxaTrocada, setTaxaTrocada] = useState("");
+  const [motivoDaTroca, setMotivoDaTroca] = useState("");
+  const [motivoOutro, setMotivoOutro] = useState("");
 
   useEffect(() => {
     let vivo = true;
@@ -374,6 +392,25 @@ export function NovoPedido({
   const usarTaxaManual =
     modalidade === "delivery" && rotaFalhou && contexto?.podeInformarTaxa === true && taxaManualValor !== null;
 
+  const taxaTrocadaValor = (() => {
+    const n = Number(taxaTrocada.replace(/\s/g, "").replace(",", "."));
+    return taxaTrocada.trim() !== "" && Number.isFinite(n) && n >= 0 && n <= 500
+      ? Math.round(n * 100) / 100
+      : null;
+  })();
+  const motivoDaTrocaTexto =
+    motivoDaTroca === "Outro" ? motivoOutro.trim() : motivoDaTroca;
+  // Só vale com a taxa calculada na tela, valor e motivo preenchidos.
+  const usarTrocaDaTaxa =
+    modalidade === "delivery" &&
+    !usarTaxaManual &&
+    trocandoTaxa &&
+    contexto?.podeInformarTaxa === true &&
+    cotacao?.ok === true &&
+    taxaTrocadaValor !== null &&
+    motivoDaTrocaTexto.length >= 3;
+  const taxaInformada = usarTaxaManual ? taxaManualValor : usarTrocaDaTaxa ? taxaTrocadaValor : null;
+
   // O que falta para lançar, dito com todas as letras: o botão desabilitado
   // sozinho não explica nada (era o caso do CEP sem cidade).
   const pendencias = [
@@ -387,9 +424,13 @@ export function NovoPedido({
     modalidade === "delivery" && !/^[A-Za-z]{2}$/.test(uf) ? "UF" : null,
     forma === null ? "forma de pagamento" : null,
     precisaTroco && trocoPara.trim() === "" ? "troco para quanto" : null,
+    trocandoTaxa && cotacao?.ok && taxaTrocadaValor === null ? "nova taxa" : null,
+    trocandoTaxa && cotacao?.ok && motivoDaTrocaTexto.length < 3 ? "motivo da troca da taxa" : null,
   ].filter((x): x is string => x !== null);
 
+  const trocaIncompleta = trocandoTaxa && cotacao?.ok === true && !usarTrocaDaTaxa;
   const podeLancar =
+    !trocaIncompleta &&
     !enviando &&
     itens.length > 0 &&
     clienteCompleto &&
@@ -440,7 +481,8 @@ export function NovoPedido({
           troco_para: precisaTroco ? Number(trocoPara.replace(",", ".")) : null,
         },
         observacao_geral: observacao.trim() || null,
-        taxa_manual: usarTaxaManual ? taxaManualValor : null,
+        taxa_manual: taxaInformada,
+        motivo_taxa_manual: usarTrocaDaTaxa ? motivoDaTrocaTexto : null,
       });
 
       if (!r.ok) {
@@ -717,6 +759,60 @@ export function NovoPedido({
                   {cotacao.distancia_km.toFixed(1).replace(".", ",")} km de rota
                   {cotacao.exige_aprovacao ? " · acima do raio automático: vai pedir aprovação da entrega" : ""}
                 </p>
+                {contexto?.podeInformarTaxa ? (
+                  trocandoTaxa ? (
+                    <div className="mt-2.5 flex flex-col gap-2 border-t border-tgb pt-2.5">
+                      <div className="grid gap-2 sm:grid-cols-[160px_1fr]">
+                        <Input
+                          label="Nova taxa (R$)"
+                          value={taxaTrocada}
+                          onChange={(e) => setTaxaTrocada(e.target.value)}
+                          inputMode="decimal"
+                          placeholder="Ex.: 4,00"
+                          maxLength={8}
+                        />
+                        <SelectMenu
+                          label="Motivo da troca"
+                          valor={motivoDaTroca}
+                          aoMudar={setMotivoDaTroca}
+                          placeholder="Escolha o motivo"
+                          opcoes={MOTIVOS_DE_TROCA_DA_TAXA.map((m) => ({ valor: m, texto: m }))}
+                        />
+                      </div>
+                      {motivoDaTroca === "Outro" ? (
+                        <Input
+                          label="Descreva o motivo"
+                          value={motivoOutro}
+                          onChange={(e) => setMotivoOutro(e.target.value)}
+                          maxLength={160}
+                        />
+                      ) : null}
+                      <p className="m-0 text-[12px] text-tgf">
+                        Fica registrado no pedido, com a taxa calculada ({formatBRL(cotacao.taxa)}) e o motivo.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTrocandoTaxa(false);
+                          setTaxaTrocada("");
+                          setMotivoDaTroca("");
+                          setMotivoOutro("");
+                        }}
+                        className="min-h-touch cursor-pointer self-start border-0 bg-transparent p-0 text-[13px] font-semibold text-tgf underline underline-offset-2"
+                      >
+                        Manter a taxa calculada
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setTrocandoTaxa(true)}
+                      className="mt-1.5 min-h-touch cursor-pointer border-0 bg-transparent p-0 text-[13px] font-semibold text-tgf underline underline-offset-2"
+                    >
+                      Trocar a taxa
+                    </button>
+                  )
+                ) : null}
               </div>
             ) : cotacao && !cotacao.ok ? (
               <p role="alert" className="m-0 rounded-12 bg-td px-3 py-2.5 text-[13px] font-semibold text-tdf">
@@ -878,7 +974,9 @@ export function NovoPedido({
                 ? "retirada"
                 : usarTaxaManual && taxaManualValor !== null
                   ? `${formatBRL(taxaManualValor)} (informada)`
-                  : cotacao?.ok
+                  : usarTrocaDaTaxa && taxaTrocadaValor !== null
+                    ? `${formatBRL(taxaTrocadaValor)} (trocada)`
+                    : cotacao?.ok
                     ? formatBRL(cotacao.taxa)
                     : "calculada ao lançar"}
             </span>
@@ -914,8 +1012,8 @@ export function NovoPedido({
           >
             {enviando
               ? "Lançando…"
-              : usarTaxaManual && taxaManualValor !== null
-                ? `Lançar com taxa de ${formatBRL(taxaManualValor)}`
+              : taxaInformada !== null
+                ? `Lançar com taxa de ${formatBRL(taxaInformada)}`
                 : "Lançar pedido"}
           </button>
 

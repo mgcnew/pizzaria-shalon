@@ -396,6 +396,12 @@ const pedidoManualSchema = z.object({
    * (`orders.override_delivery_fee`), e ela fica auditada.
    */
   taxa_manual: z.number().min(0).max(500).nullish(),
+  /**
+   * Motivo da TROCA de uma taxa que foi calculada (D-2026-10-16-143). Com
+   * motivo, a rota é medida normalmente e só a taxa cobrada muda; sem motivo,
+   * `taxa_manual` é o caso "não localizado".
+   */
+  motivo_taxa_manual: z.string().trim().min(3).max(200).nullish(),
 });
 
 export type ResultadoPedidoManual =
@@ -434,7 +440,7 @@ export async function criarPedidoManual(entrada: unknown): Promise<ResultadoPedi
 
     // Taxa informada à mão: não há rota, então não há coordenada, distância
     // nem faixa — e nada disso é inventado. O banco confere a permissão.
-    if (dados.taxa_manual !== null && dados.taxa_manual !== undefined) {
+    if (dados.taxa_manual !== null && dados.taxa_manual !== undefined && !dados.motivo_taxa_manual) {
       enderecoParaBanco = {
         id: dados.endereco.id
           ? await enderecoSalvoConferido(dados.endereco.id, dados.cliente?.whatsapp, dados.endereco)
@@ -517,6 +523,7 @@ export async function criarPedidoManual(entrada: unknown): Promise<ResultadoPedi
       pagamento: dados.pagamento,
       observacao_geral: dados.observacao_geral ?? null,
       taxa_manual: dados.taxa_manual ?? null,
+      motivo_taxa_manual: dados.motivo_taxa_manual ?? null,
     },
     p_segredo: "",
   });

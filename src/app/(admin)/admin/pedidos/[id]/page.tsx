@@ -222,7 +222,14 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
                 {pedido.endereco["referencia"] !== null ? (
                   <p className="m-0">Ref.: {pedido.endereco["referencia"]}</p>
                 ) : null}
-                {pedido.distancia_km !== null ? (
+                {pedido.distancia_km !== null && pedido.endereco["motivo_taxa"] ? (
+                  // Taxa calculada trocada no balcão (D-2026-10-16-143).
+                  <p className="m-0 font-semibold text-twf">
+                    {pedido.distancia_km} km de rota · taxa trocada (calculada: R${" "}
+                    {String(pedido.endereco["taxa_calculada"] ?? "—").replace(".", ",")}) ·{" "}
+                    {String(pedido.endereco["motivo_taxa"])}
+                  </p>
+                ) : pedido.distancia_km !== null ? (
                   <p className="m-0 text-muted">{pedido.distancia_km} km de rota</p>
                 ) : (
                   // Entrega sem distância só existe com taxa informada no balcão.
