@@ -12,6 +12,7 @@ import type { ItemMontado } from "@/application/publico/tipos";
 import { logger } from "@/lib/logger";
 import {
   COLUNAS,
+  montarAcrescimo,
   montarAlteracao,
   montarComanda,
   renderizarTexto,
@@ -121,6 +122,45 @@ export async function proporAlteracao(entrada: unknown): Promise<ResultadoComand
   return data as ResultadoComando;
 }
 
+const acrescimoSchema = z.object({
+  pedido_id: z.string().uuid(),
+  versao: z.string().min(10).max(40).optional(),
+  canal: z.enum(["whatsapp", "phone", "counter"]),
+  itens: alteracaoSchema.shape.itens.max(30),
+});
+
+/**
+ * Acrescenta itens a um pedido já aceito, a pedido do cliente
+ * (D-2026-10-17-154). O canal é o aceite dele; o banco precifica os itens
+ * novos, não mexe nos que já estavam e guarda o antes numa revisão.
+ */
+export async function acrescentarItens(
+  entrada: unknown,
+): Promise<{ ok: true; acrescimo: number; total: number; a_receber: number } | { ok: false; erro: string }> {
+  const validado = acrescimoSchema.safeParse(entrada);
+  if (!validado.success) return { ok: false, erro: "Escolha os itens e por onde o cliente pediu." };
+
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("acrescentar_itens", {
+    p_order_id: validado.data.pedido_id,
+    p_dados: {
+      canal: validado.data.canal,
+      versao: validado.data.versao ?? null,
+      itens: validado.data.itens,
+    },
+  });
+  if (error) {
+    logger.error("pedidos:acrescentarItens", { code: (error as { code?: string }).code });
+    return { ok: false, erro: "Não foi possível acrescentar agora. Tente de novo." };
+  }
+
+  revalidatePath(ROTA);
+  revalidatePath(`${ROTA}/${validado.data.pedido_id}`);
+  const r = data as { ok: boolean; erro?: string; acrescimo?: number; total?: number; a_receber?: number };
+  if (!r.ok) return { ok: false, erro: r.erro ?? "Não foi possível acrescentar." };
+  return { ok: true, acrescimo: Number(r.acrescimo), total: Number(r.total), a_receber: Number(r.a_receber) };
+}
+
 export async function retirarAlteracao(pedidoId: string): Promise<ResultadoComando> {
   if (!z.string().uuid().safeParse(pedidoId).success) {
     return { ok: false, erro: "Pedido inválido." };
@@ -222,6 +262,12 @@ export async function emitirDocumento(
   }));
 
   let linhas: LinhaComanda[];
+  // Quanto já foi pago: inteiro vira "PAGO"; em parte (depois de um
+  // acréscimo, D-2026-10-17-154) vira "já pago / cobrar".
+  const pagoSoma = (pagamento?.realizado ?? [])
+    .filter((p) => p.status === "confirmed")
+    .reduce((soma, p) => soma + Number(p.valor), 0);
+  const totalDoPedido = Number(pedido.total);
 
   if (tipo === "comanda") {
     linhas = montarComanda({
@@ -243,7 +289,8 @@ export async function emitirDocumento(
       trocoPara: pedido.pagamento?.troco_para ?? null,
       trocoEsperado: pedido.pagamento?.troco_esperado ?? null,
       formaPagamento: pedido.pagamento?.forma ?? null,
-      pago: (pagamento?.realizado ?? []).some((p) => p.status === "confirmed"),
+      pago: pagoSoma > 0 && Math.round(pagoSoma * 100) >= Math.round(totalDoPedido * 100),
+      pagoEmParte: pagoSoma > 0 && pagoSoma < totalDoPedido ? pagoSoma : null,
       fiado: Boolean(pedido.fiado),
       // Number(): o PostgREST pode devolver numeric como texto.
       valores: {
@@ -257,7 +304,17 @@ export async function emitirDocumento(
     if (revisao === undefined) {
       return { ok: false, erro: "Não há alteração aplicada para imprimir." };
     }
-    linhas = montarAlteracao({
+    linhas = revisao.tipo === "addition" && revisao.a_partir_da_linha != null
+      ? montarAcrescimo({
+          numero: pedido.numero,
+          horario: horarioNaLoja(revisao.proposta_em, fuso),
+          motivo: revisao.motivo,
+          itensNovos: pedido.itens
+            .map((i, indice) => ({ linha: i.linha, item: itens[indice]! }))
+            .filter((x) => x.linha >= (revisao.a_partir_da_linha ?? 0))
+            .map((x) => x.item),
+        }, largura)
+      : montarAlteracao({
       numero: pedido.numero,
       horario: horarioNaLoja(revisao.proposta_em, fuso),
       motivo: revisao.motivo,

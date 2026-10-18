@@ -80,7 +80,7 @@ function linhaVazia(
 
 export function Recebimento({
   pedidoId,
-  total,
+  total: totalDoPedido,
   pagamento,
   formas,
   caixaAberto,
@@ -130,6 +130,13 @@ export function Recebimento({
    */
   aoConcluir?: () => void;
 }) {
+  // O que falta receber. Normalmente é o total; depois de um acréscimo num
+  // pedido já pago, é só a diferença (D-2026-10-17-154).
+  const pagoAntes = (pagamento?.realizado ?? [])
+    .filter((p) => p.status === "confirmed")
+    .reduce((soma, p) => soma + Number(p.valor), 0);
+  const total = Math.max(0, Math.round((totalDoPedido - pagoAntes) * 100) / 100);
+  const complemento = pagoAntes > 0 && total > 0;
   const totalTexto = total.toFixed(2).replace(".", ",");
   const naGavetaPadrao = dinheiroNaGavetaPorPadrao(momento);
   const [linhas, setLinhas] = useState<Linha[]>([
@@ -150,8 +157,7 @@ export function Recebimento({
    */
   useAvisarOperacaoEmVoo(enviando);
 
-  const confirmados = (pagamento?.realizado ?? []).filter((p) => p.status === "confirmed");
-  const jaPago = confirmados.length > 0;
+  const jaPago = pagoAntes > 0 && !complemento;
 
   const somado = linhas.reduce((s, l) => s + (paraNumero(l.valor) ?? 0), 0);
   const fecha = Math.round(somado * 100) === Math.round(total * 100);
@@ -291,10 +297,18 @@ export function Recebimento({
           </p>
           {jaPago ? (
             <StatusBadge tom="sucesso">Pago</StatusBadge>
+          ) : complemento ? (
+            <StatusBadge tom="atencao">Falta {formatBRL(total)}</StatusBadge>
           ) : (
             <StatusBadge tom="atencao">Não registrado</StatusBadge>
           )}
         </div>
+        {complemento ? (
+          <p className="m-0 mt-1 text-[13px] text-twf">
+            Já recebido {formatBRL(pagoAntes)}. Depois do acréscimo, falta receber{" "}
+            <strong>{formatBRL(total)}</strong>.
+          </p>
+        ) : null}
 
         {(pagamento?.realizado ?? []).length === 0 ? (
           <p className="m-0 mt-1 text-[13.5px] text-muted">

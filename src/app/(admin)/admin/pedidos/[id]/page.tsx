@@ -15,6 +15,7 @@ import { Comanda } from "../_ui/Comanda";
 import { PainelAlteracao } from "../_ui/PainelAlteracao";
 import { Recebimento } from "../_ui/Recebimento";
 import { FiadoDoPedido } from "../_ui/FiadoDoPedido";
+import { PainelAcrescimo } from "../_ui/PainelAcrescimo";
 import { obterSessaoInterna, podeNaUI } from "@/application/auth/sessao";
 import { momentoDoRecebimento } from "@/domain/pedidos/recebimentoNaEntrega";
 import { tetoDaTaxaAConfirmar } from "@/domain/pedidos/taxaAConfirmar";
@@ -74,6 +75,15 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 
   const revisaoAberta = pedido.revisoes.find((r) => r.status === "pending_customer");
   const temAlteracaoAplicada = pedido.revisoes.some((r) => r.status === "applied");
+  // A revisão aplicada mais recente decide o documento: acréscimo ou alteração.
+  const ultimaAplicada = pedido.revisoes.find((r) => r.status === "applied");
+  // Acréscimo a pedido do cliente (D-2026-10-17-154): até sair ou concluir.
+  const podeAcrescentar =
+    podeNaUI(sessao, "orders.request_change") &&
+    !pedido.aguarda_cliente &&
+    ["waiting_store_confirmation", "confirmed", "in_production", "ready_for_pickup", "ready_for_delivery"].includes(
+      pedido.status,
+    );
 
   return (
     <div className="flex flex-col gap-4">
@@ -189,6 +199,12 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
                 “{pedido.observacao}”
               </p>
             ) : null}
+
+            {podeAcrescentar ? (
+              <div className="mt-4 border-t border-border-shalon pt-3">
+                <PainelAcrescimo pedidoId={pedido.id} versao={pedido.versao} origem={pedido.origem} />
+              </div>
+            ) : null}
           </Cartao>
 
           <Cartao titulo="Alteração" largura="cheio">
@@ -285,6 +301,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
               pedidoId={pedido.id}
               impressoes={pedido.impressoes}
               podeEmitirAlteracao={temAlteracaoAplicada}
+              documentoDeAcrescimo={ultimaAplicada?.tipo === "addition"}
             />
             <p className="m-0 mt-3 text-[12px] text-muted">
               O envio direto para a impressora Bluetooth ainda não foi validado no

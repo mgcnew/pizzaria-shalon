@@ -9,6 +9,7 @@ import {
   renderizarTexto,
   type ItemDaComanda,
   type PedidoDaComanda,
+  montarAcrescimo,
 } from "@/domain/pedidos/comanda";
 
 const PIZZA: ItemDaComanda = {
@@ -127,6 +128,15 @@ describe("comanda de produção", () => {
     expect(texto).not.toContain("TROCO");
     expect(texto).not.toContain("Levar");
     expect(texto).not.toContain("Pagamento:");
+  });
+
+  it("entrega paga em parte diz quanto já foi pago e quanto cobrar", () => {
+    const texto = renderizarTexto(
+      montarComanda({ ...PEDIDO, pagoEmParte: 50, valores: { subtotal: 63, taxa: 6, total: 69 } }),
+    );
+    expect(texto).toContain("Ja pago: R$ 50,00");
+    expect(texto).toContain("COBRAR R$ 19,00");
+    expect(texto).not.toContain("PAGO - NAO COBRAR");
   });
 
   it("entrega no fiado sai como FIADO, sem troco nem cobrança", () => {
@@ -277,5 +287,23 @@ describe("valores na comanda (D-2026-10-17-147)", () => {
     const linhas = montarComanda({ ...base, modalidade: "pickup", valores: { subtotal: 37, taxa: 0, total: 37 } });
     expect(linhas.some((l) => l.texto.startsWith("Taxa de entrega"))).toBe(false);
     expect(linhas.some((l) => l.texto.startsWith("TOTAL"))).toBe(true);
+  });
+});
+
+describe("montarAcrescimo", () => {
+  it("diz que a comanda anterior continua valendo e lista só os itens novos", () => {
+    const texto = renderizarTexto(
+      montarAcrescimo({
+        numero: 48,
+        horario: "17/10 21:30",
+        motivo: "Acréscimo pedido pelo cliente (WhatsApp)",
+        itensNovos: [{ quantidade: 1, nome: "Coca 2L", tamanho: null, borda: null, sabores: null, adicionais: null, combo: null, observacao: null }],
+      }),
+    );
+    expect(texto).toContain("*** ACRESCIMO ***");
+    expect(texto).toContain("PEDIDO #48");
+    expect(texto).toContain("CONTINUA valendo");
+    expect(texto).toContain("Coca 2L");
+    expect(texto).not.toContain("NAO vale mais");
   });
 });

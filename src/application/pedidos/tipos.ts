@@ -105,6 +105,11 @@ export type RevisaoDoPedido = {
   total_antes: number;
   total_depois: number;
   itens_antes: { quantidade: number; nome: string }[];
+  /** `addition`: acréscimo pedido pelo cliente (D-2026-10-17-154). */
+  tipo?: "change" | "addition";
+  /** Primeira linha dos itens acrescentados. */
+  a_partir_da_linha?: number | null;
+  canal?: "whatsapp" | "phone" | "counter" | null;
 };
 
 export type ImpressaoDoPedido = {

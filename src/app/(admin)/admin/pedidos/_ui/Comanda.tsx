@@ -37,10 +37,13 @@ export function Comanda({
   pedidoId,
   impressoes,
   podeEmitirAlteracao,
+  documentoDeAcrescimo = false,
 }: {
   pedidoId: string;
   impressoes: ImpressaoDoPedido[];
   podeEmitirAlteracao: boolean;
+  /** A última revisão foi um acréscimo (D-2026-10-17-154). */
+  documentoDeAcrescimo?: boolean;
 }) {
   const [documento, setDocumento] = useState<{
     id: string;
@@ -188,7 +191,7 @@ export function Comanda({
             onClick={() => emitir("alteracao")}
             className="min-h-touch cursor-pointer rounded-11 border-[1.5px] border-twb bg-tw px-4 text-[14px] font-semibold text-twf disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Emitir documento de ALTERAÇÃO
+            {documentoDeAcrescimo ? "Emitir comanda de ACRÉSCIMO" : "Emitir documento de ALTERAÇÃO"}
           </button>
         ) : null}
       </div>

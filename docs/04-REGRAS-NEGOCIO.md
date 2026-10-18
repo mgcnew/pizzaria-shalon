@@ -607,6 +607,8 @@ com o valor somado.
 Corrigir um recebimento é estorná-lo e registrar outro — não editar o
 existente (RN-FIN-003).
 
+> **Complemento (D-2026-10-17-154):** depois de um acréscimo (RN-ALT-008) num pedido já pago, um segundo ato de registro recebe exatamente o que falta. Nunca mais que o total.
+
 ### RN-PGTO-014 — Pedido entregue não é valor recebido
 Concluir uma entrega registra que o pedido **chegou ao cliente**. Não registra
 recebimento, não reconhece receita e não coloca dinheiro em caixa nenhum.
@@ -768,6 +770,9 @@ Sem resposta do cliente não há produção automática nem cancelamento automá
 
 ### RN-ALT-007
 Após aprovação, novos snapshots/revisões preservam o histórico anterior em vez de sobrescrevê-lo silenciosamente.
+
+### RN-ALT-008 — Acréscimo pedido pelo cliente
+Exceção controlada a RN-ALT-004: quando o **próprio cliente** pede mais itens (por WhatsApp, telefone ou no balcão), a equipe com `orders.request_change` pode **acrescentar** itens ao pedido até ele sair para entrega ou ser concluído, sem aprovação pelo acompanhamento. O canal é obrigatório e fica registrado como o aceite do cliente. Só acréscimo: tirar ou trocar itens segue RN-ALT-004. Os itens novos são precificados pelo servidor; os que já estavam não são reprecificados. Fica uma revisão aplicada do tipo acréscimo (RN-ALT-007), auditada, e a comanda de **ACRÉSCIMO** lista só os itens novos, mantendo a comanda anterior válida. Pedido já pago passa a ter "falta receber" a diferença, recebida como complemento (RN-PGTO-013). *(Decisão de 17/10/2026; D-2026-10-17-154.)*
 
 ---
 

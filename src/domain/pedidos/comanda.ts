@@ -97,6 +97,11 @@ export type PedidoDaComanda = {
    */
   fiado?: boolean;
   /**
+   * Já pago em parte (o total subiu num acréscimo, D-2026-10-17-154): a
+   * comanda de entrega diz quanto já foi pago e quanto cobrar.
+   */
+  pagoEmParte?: number | null;
+  /**
    * Valores do pedido, já calculados pelo servidor (D-2026-10-17-147): o
    * motoboy cobra pelo que está no papel. Taxa só aparece na entrega.
    */
@@ -276,6 +281,18 @@ export function montarComanda(
   if (pedido.modalidade === "delivery" && pedido.pago === true) {
     saida.push(SEPARADOR);
     saida.push({ texto: "PAGO - NAO COBRAR", estilo: "destaque" });
+  } else if (
+    pedido.modalidade === "delivery" &&
+    pedido.pagoEmParte != null &&
+    pedido.pagoEmParte > 0 &&
+    pedido.valores
+  ) {
+    saida.push(SEPARADOR);
+    saida.push(...txt(`Ja pago: ${reais(pedido.pagoEmParte)}`));
+    saida.push({
+      texto: `COBRAR ${reais(Math.max(0, pedido.valores.total - pedido.pagoEmParte))}`,
+      estilo: "destaque",
+    });
   } else if (pedido.modalidade === "delivery" && pedido.fiado === true) {
     saida.push(SEPARADOR);
     saida.push({ texto: "FIADO - NAO COBRAR", estilo: "destaque" });
@@ -348,6 +365,36 @@ export function montarAlteracao(
     saida.push(VAZIO);
   }
 
+  saida.push(separador(largura, "*"));
+  return saida;
+}
+
+/**
+ * Comanda de ACRÉSCIMO (D-2026-10-17-154): o cliente pediu mais itens depois
+ * do aceite. Diferente da alteração, a comanda anterior CONTINUA valendo —
+ * a cozinha só precisa fazer o que entrou agora.
+ */
+export function montarAcrescimo(
+  dados: { numero: number; horario: string; motivo: string; itensNovos: ItemDaComanda[] },
+  largura: number = LARGURA,
+): LinhaComanda[] {
+  const saida: LinhaComanda[] = [];
+  const txt = (texto: string, estilo?: EstiloLinha) => linhas(texto, largura, estilo);
+
+  saida.push(separador(largura, "*"));
+  saida.push({ texto: centralizar("*** ACRESCIMO ***", largura), estilo: "destaque" });
+  saida.push({ texto: centralizar(`PEDIDO #${dados.numero}`, largura), estilo: "destaque" });
+  saida.push(separador(largura, "*"));
+  saida.push({ texto: dados.horario, estilo: "normal" });
+  saida.push(VAZIO);
+  saida.push(...txt("Somar ao pedido. A comanda anterior CONTINUA valendo.", "destaque"));
+  saida.push(...txt(dados.motivo));
+  saida.push(separador(largura));
+  saida.push(...txt("ACRESCENTAR", "titulo"));
+  for (const item of dados.itensNovos) {
+    saida.push(...bloqueDoItem(item, largura));
+    saida.push(VAZIO);
+  }
   saida.push(separador(largura, "*"));
   return saida;
 }

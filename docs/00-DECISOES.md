@@ -4824,3 +4824,28 @@ o caixa e sem dar quebra, com filtro para ver só quem está devendo.
    Tudo auditado (`pedido_fiado`, `pedido_fiado_desfeito`). Sem limite.
 
 Migration 0167 (`20261017150000_fiado_pagar_depois`).
+
+## D-2026-10-17-154 — Acrescentar itens a pedido aceito; fiado na janela Receber
+
+**Pedido da dona:** (1) marcar fiado na hora de receber, não só na tela do
+pedido; (2) quando o cliente pede mais coisa depois do aceite, acrescentar no
+mesmo pedido em vez de lançar outro e receber duas vezes.
+
+**Decisão (sugestão aprovada; cria RN-ALT-008 e amplia RN-PGTO-013):**
+1. "Pagar depois (fiado)" também na janela **Receber** da fila de pedidos.
+   A forma escolhida no checkout é só a esperada: na hora de receber, o
+   campo Forma registra a forma real.
+2. "+ Acrescentar itens" na tela do pedido (Itens), com a mesma busca de
+   produtos do balcão, até o pedido sair para entrega ou ser concluído;
+   permissão `orders.request_change`; canal obrigatório (WhatsApp, telefone,
+   no balcão) = aceite do cliente, sem aprovação pelo link. Só acréscimo.
+3. `acrescentar_itens` (migration 0168) precifica os itens novos, não mexe
+   nos antigos, atualiza total e valor esperado (troco que não cobre mais o
+   total é limpo), grava revisão `addition` aplicada e audita
+   (`pedido_acrescimo`).
+4. Pedido já pago: volta a "pendente", com "falta receber" a diferença.
+   `registrar_pagamento` aceita o complemento exato; Recebimento e janela
+   Receber mostram "Já recebido R$ X, falta R$ Y"; a comanda de entrega
+   diz "Ja pago / COBRAR".
+5. Comanda de **ACRÉSCIMO** com só os itens novos e "a comanda anterior
+   CONTINUA valendo".

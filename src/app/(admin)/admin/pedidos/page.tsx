@@ -221,6 +221,7 @@ export default async function Page({
           formasDeRecebimento={formasDeRecebimento}
           caixaAberto={caixa.aberto}
           podeReceber={podeNaUI(sessao, "payments.register")}
+          podeFiado={podeNaUI(sessao, "orders.defer_payment")}
         />
       )}
 

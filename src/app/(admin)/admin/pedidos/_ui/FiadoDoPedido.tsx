@@ -24,6 +24,7 @@ export function FiadoDoPedido({
   podeFiado,
   temCliente,
   encerradoSemVenda,
+  aoMarcar,
 }: {
   pedidoId: string;
   fiado: { em: string; por: string | null; observacao: string | null } | null;
@@ -32,6 +33,8 @@ export function FiadoDoPedido({
   temCliente: boolean;
   /** Cancelado ou rejeitado: não há o que cobrar. */
   encerradoSemVenda: boolean;
+  /** Depois que o servidor confirmou (usado pela gaveta para fechar). */
+  aoMarcar?: () => void;
 }) {
   const [abrindo, setAbrindo] = useState<"fiado" | "desfazer" | null>(null);
   const [texto, setTexto] = useState("");
@@ -55,6 +58,7 @@ export function FiadoDoPedido({
       }
       setAbrindo(null);
       setTexto("");
+      aoMarcar?.();
     });
   }
 

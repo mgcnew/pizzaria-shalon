@@ -48,6 +48,7 @@ export function CentralDePedidos({
   formasDeRecebimento,
   caixaAberto,
   podeReceber,
+  podeFiado = false,
 }: {
   pedidos: PedidoNaFila[];
   /** Horários já formatados no servidor, no fuso da loja. */
@@ -59,6 +60,7 @@ export function CentralDePedidos({
   formasDeRecebimento: FormaParaRecebimento[];
   caixaAberto: boolean;
   podeReceber: boolean;
+  podeFiado?: boolean;
 }) {
   const router = useRouter();
   const [conectado, setConectado] = useState(false);
@@ -260,6 +262,7 @@ export function CentralDePedidos({
           tentativa={cobrando?.tentativa ?? null}
           formas={formasDeRecebimento}
           caixaAberto={caixaAberto}
+          podeFiado={podeFiado}
           aoFechar={() => setCobrando(null)}
           aoConcluir={() => {
             setCobrando(null);

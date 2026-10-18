@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { Recebimento, type FormaParaRecebimento } from "./Recebimento";
+import { FiadoDoPedido } from "./FiadoDoPedido";
 import { useAvisarOperacaoEmVoo } from "@/ui/operacaoEmVoo";
 import { obterPagamentoDoPedidoNoPdv } from "@/application/pdv/acoes";
 import { formatBRL } from "@/lib/format";
@@ -39,6 +40,7 @@ export function GavetaDeCobranca({
   caixaAberto,
   aoFechar,
   aoConcluir,
+  podeFiado = false,
 }: {
   /**
    * O pedido a cobrar, já na projeção de `pedidos_a_receber()` — a MESMA
@@ -60,6 +62,8 @@ export function GavetaDeCobranca({
   aoFechar: () => void;
   /** Depois que o SERVIDOR confirmou. Fecha e deixa a lista recarregar. */
   aoConcluir: () => void;
+  /** Pode deixar para pagar depois (D-2026-10-17-153). */
+  podeFiado?: boolean;
 }) {
   const [pagamento, setPagamento] = useState<PagamentoDoPedido | null>(null);
   const [carregando, iniciar] = useTransition();
@@ -99,7 +103,12 @@ export function GavetaDeCobranca({
    * e sem autoridade nova. Estorno NÃO conta como pago; ele devolve o pedido
    * para a fila, e o operador precisa poder cobrar de novo.
    */
-  const jaFoiPago = (pagamento?.realizado ?? []).some((p) => p.status === "confirmed");
+  // Pago em parte (o total subiu num acréscimo, D-2026-10-17-154) ainda
+  // tem o que receber: só conta como pago quando cobre o total.
+  const pagoAteAgora = (pagamento?.realizado ?? [])
+    .filter((p) => p.status === "confirmed")
+    .reduce((soma, p) => soma + Number(p.valor), 0);
+  const jaFoiPago = pagoAteAgora > 0 && Math.round(pagoAteAgora * 100) >= Math.round(Number(pedido.total) * 100);
 
   return (
     <>
@@ -158,6 +167,18 @@ export function GavetaDeCobranca({
               </p>
             </div>
           ) : tentativa === null ? null : (
+            <>
+            {pagoAteAgora === 0 ? (
+              <FiadoDoPedido
+                pedidoId={pedido.id}
+                fiado={null}
+                pago={false}
+                podeFiado={podeFiado}
+                temCliente={Boolean(pedido.cliente_whatsapp?.trim())}
+                encerradoSemVenda={false}
+                aoMarcar={aoConcluir}
+              />
+            ) : null}
             <Recebimento
               pedidoId={pedido.id}
               total={pedido.total}
@@ -178,6 +199,7 @@ export function GavetaDeCobranca({
               momento={momentoDoRecebimento(pedido.modalidade, pedido.status_operacional)}
               aoConcluir={aoConcluir}
             />
+            </>
           )}
         </div>
       </aside>
