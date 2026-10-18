@@ -217,3 +217,15 @@ export function rotuloDeOrigem(origem: string): string {
 export function rotuloDeModalidade(modalidade: string): string {
   return MODALIDADES[modalidade] ?? modalidade;
 }
+
+/**
+ * Estados em que dá para acrescentar itens a pedido do cliente
+ * (D-2026-10-17-154). Espelha `acrescentar_itens`, que decide de novo.
+ */
+export const ESTADOS_COM_ACRESCIMO: readonly string[] = [
+  "waiting_store_confirmation",
+  "confirmed",
+  "in_production",
+  "ready_for_pickup",
+  "ready_for_delivery",
+];

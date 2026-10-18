@@ -1,21 +1,32 @@
 import { Badge, StatusBadge } from "@/ui/components";
 import { formatBRL } from "@/lib/format";
-import { rotuloDeModalidade, rotuloDeOrigem, rotuloInterno } from "@/domain/pedidos/estados";
+import { ESTADOS_COM_ACRESCIMO, rotuloDeModalidade, rotuloDeOrigem, rotuloInterno } from "@/domain/pedidos/estados";
 import type { PedidoAdministrativo } from "@/application/pedidos/tipos";
 import { Comanda } from "./Comanda";
 import { EstruturaModalPedido } from "./EstruturaModalPedido";
+import { PainelAcrescimo } from "./PainelAcrescimo";
+
 
 export function ModalPedido({
   pedido,
   tipo,
   fuso,
   fecharEm,
+  podeAcrescentar = false,
+  acrescentarAberto = false,
 }: {
   pedido: PedidoAdministrativo;
   tipo: "detalhes" | "comanda";
   fuso: string;
   fecharEm: string;
+  /** Tem `orders.request_change` (o estado do pedido é conferido aqui). */
+  podeAcrescentar?: boolean;
+  /** Veio do menu "Acrescentar itens": o painel já abre. */
+  acrescentarAberto?: boolean;
 }) {
+  const mostraAcrescimo =
+    podeAcrescentar && !pedido.aguarda_cliente && ESTADOS_COM_ACRESCIMO.includes(pedido.status);
+  const ultimaAplicada = pedido.revisoes.find((revisao) => revisao.status === "applied");
   const estado = rotuloInterno(pedido.status);
   const quando = new Intl.DateTimeFormat("pt-BR", {
     timeZone: fuso,
@@ -38,6 +49,7 @@ export function ModalPedido({
           pedidoId={pedido.id}
           impressoes={pedido.impressoes}
           podeEmitirAlteracao={pedido.revisoes.some((revisao) => revisao.status === "applied")}
+          documentoDeAcrescimo={ultimaAplicada?.tipo === "addition"}
         />
         <p className="mb-0 mt-4 text-[12px] text-muted">
           Confira a prévia e registre se o documento saiu ou não no equipamento.
@@ -86,6 +98,16 @@ export function ModalPedido({
           </div>
           {pedido.observacao ? (
             <p className="mb-0 mt-3 rounded-10 bg-elev px-3 py-2 text-[13px] italic text-ink-2">“{pedido.observacao}”</p>
+          ) : null}
+          {mostraAcrescimo ? (
+            <div className="mt-3 border-t border-border-shalon pt-3">
+              <PainelAcrescimo
+                pedidoId={pedido.id}
+                versao={pedido.versao}
+                origem={pedido.origem}
+                abertoDeInicio={acrescentarAberto}
+              />
+            </div>
           ) : null}
         </section>
 

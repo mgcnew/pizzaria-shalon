@@ -49,10 +49,11 @@ export default async function Page({
     dias?: string;
     novo?: string;
     modal?: string;
+    acrescentar?: string;
     pedido?: string;
   }>;
 }) {
-  const { aba, dias, novo, modal, pedido: pedidoId } = await searchParams;
+  const { aba, dias, novo, modal, pedido: pedidoId, acrescentar } = await searchParams;
   const encerrados = aba === "encerrados";
   const diasAnteriores = encerrados ? diasDaUrl(dias) : 0;
   // O começo da query da aba, repetido nos links de modal e no fechamento:
@@ -236,6 +237,8 @@ export default async function Page({
           pedido={pedidoModal}
           tipo={tipoModal}
           fuso={fuso}
+          podeAcrescentar={podeNaUI(sessao, "orders.request_change")}
+          acrescentarAberto={acrescentar === "1"}
           fecharEm={`/admin/pedidos${consultaDaAba ? `?${consultaDaAba.slice(0, -1)}` : ""}`}
         />
       ) : null}

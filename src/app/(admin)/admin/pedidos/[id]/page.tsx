@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { StatusBadge } from "@/ui/components";
 import { Cartao } from "@/ui/patterns";
 import { formatBRL } from "@/lib/format";
-import { rotuloInterno } from "@/domain/pedidos/estados";
+import { ESTADOS_COM_ACRESCIMO, rotuloInterno } from "@/domain/pedidos/estados";
 import { obterPedido } from "@/application/pedidos/consultas";
 import { obterLojaPublica } from "@/application/publico/consultas";
 import { obterCaixa, obterPagamentoDoPedido } from "@/application/caixa/consultas";
@@ -81,9 +81,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const podeAcrescentar =
     podeNaUI(sessao, "orders.request_change") &&
     !pedido.aguarda_cliente &&
-    ["waiting_store_confirmation", "confirmed", "in_production", "ready_for_pickup", "ready_for_delivery"].includes(
-      pedido.status,
-    );
+    ESTADOS_COM_ACRESCIMO.includes(pedido.status);
 
   return (
     <div className="flex flex-col gap-4">

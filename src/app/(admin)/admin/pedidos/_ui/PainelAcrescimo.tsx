@@ -28,14 +28,16 @@ export function PainelAcrescimo({
   pedidoId,
   versao,
   origem,
+  abertoDeInicio = false,
 }: {
   pedidoId: string;
   versao: string;
   /** Canal de origem do pedido: vira o canal sugerido. */
   origem: string;
+  abertoDeInicio?: boolean;
 }) {
   const sugerido: Canal = origem === "phone" ? "phone" : origem === "counter" ? "counter" : "whatsapp";
-  const [aberto, setAberto] = useState(false);
+  const [aberto, setAberto] = useState(abertoDeInicio);
   const [novos, setNovos] = useState<ItemDoRascunho[]>([]);
   const [canal, setCanal] = useState<Canal>(sugerido);
   const [erro, setErro] = useState<string | null>(null);
