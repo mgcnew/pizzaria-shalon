@@ -4769,3 +4769,21 @@ mesma cor (azul de informação) e não se distinguiam de relance.
 entrega"). As demais etapas não mudaram: Novo pedido azul, aguardando
 (Pix, aprovação, cliente) âmbar, Aceito e Pronto verdes, falha/rejeitado/
 cancelado vermelhos, concluído neutro. O rótulo continua sempre junto da cor.
+
+## D-2026-10-17-151 — Bloco de notas rápido na topbar
+
+**Pedido da dona:** um bloco de notas rápido ao lado do claro/escuro, com
+opção de referenciar, para anotações do dia a dia.
+
+**Decisão (respostas da dona):** compartilhado com a equipe e referência a
+pedido, cliente ou produto.
+1. Tabela `quick_notes` (migration 0165) com RLS sem política: acesso só
+   pelas funções `notas_rapidas`, `criar_nota_rapida`,
+   `concluir_nota_rapida`, `excluir_nota_rapida` e `referencias_para_nota`,
+   que exigem usuário interno ativo.
+2. Referenciar pedido exige `orders.view`; cliente, `customers.view`;
+   produto, nenhuma (o cardápio é público). O rótulo da referência é gravado
+   na criação, e a nota leva link para o pedido, cliente ou produto.
+3. Concluir tira da lista "Em aberto" sem apagar (aba Concluídas, com quem
+   concluiu). Excluir só quem escreveu. Selo com a quantidade em aberto,
+   atualizado ao abrir e a cada 2 minutos.

@@ -9,6 +9,7 @@ import { BarreiraDePermissao } from "@/ui/components/BarreiraDePermissao";
 import { MenuLateralAdmin } from "@/ui/components/MenuLateralAdmin";
 import { MenuUsuarioAdmin } from "@/ui/components/MenuUsuarioAdmin";
 import { SeletorDeTema } from "@/ui/components/SeletorDeTema";
+import { NotasRapidas } from "@/ui/notas/NotasRapidas";
 import { RegistrarPwaAdmin } from "@/ui/components/RegistrarPwaAdmin";
 import { SinoNotificacoesAdmin } from "@/ui/notificacoes/SinoNotificacoesAdmin";
 import { EstacaoDeImpressao } from "@/ui/impressao/EstacaoDeImpressao";
@@ -92,6 +93,7 @@ export default async function LayoutAdmin({
             />
           </Link>
           <SeletorDeTema atual={temaAtual} />
+          <NotasRapidas />
           {podeNaUI(sessao, "orders.view") ? (
             <Suspense fallback={<Skeleton className="h-10 w-10 shrink-0 rounded-12 sm:h-touch sm:w-touch" />}>
               <SinoDoPainel key={sessao.appUserId} appUserId={sessao.appUserId} />
