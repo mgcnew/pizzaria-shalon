@@ -331,6 +331,34 @@ export async function listarImagens(tipo: "product" | "banner") {
 }
 
 /**
+ * Fotos de produto que nenhum produto usa (17/10/2026). A edição apagava a
+ * foto a cada mudança de preço; o arquivo continuava na biblioteca. Esta
+ * lista deixa recolocá-la sem reenviar.
+ */
+export async function listarImagensDeProdutoSemUso() {
+  const supabase = await getSupabaseServerClient();
+  const [imagens, usadas] = await Promise.all([
+    supabase
+      .from("media_assets")
+      .select("id, storage_path, original_filename, width, height, created_at")
+      .eq("asset_type", "product")
+      .order("created_at", { ascending: false })
+      .limit(120),
+    supabase.from("products").select("image_asset_id").not("image_asset_id", "is", null),
+  ]);
+  if (imagens.error) throw imagens.error;
+  if (usadas.error) throw usadas.error;
+  const emUso = new Set((usadas.data ?? []).map((p) => (p as { image_asset_id: string }).image_asset_id));
+  return ((imagens.data ?? []) as {
+    id: string;
+    storage_path: string;
+    original_filename: string | null;
+    width: number | null;
+    height: number | null;
+  }[]).filter((i) => !emUso.has(i.id));
+}
+
+/**
  * Códigos de barras de um produto ou de uma variante (09 §2.3).
  *
  * Fica aqui, e não no arquivo de actions: `consultas.ts` é `server-only` e

@@ -30,7 +30,7 @@ export function SeletorDeImagem({
   label: string;
   opcoes: OpcaoDeImagem[];
   /** Largura/altura da prévia: o formato em que a imagem será usada. */
-  proporcao: "2 / 1" | "1 / 2";
+  proporcao: "2 / 1" | "1 / 2" | "1 / 1";
   opcional?: boolean;
   rotuloNenhuma?: string;
   /** Texto quando não há nenhuma imagem desse formato. */
@@ -61,7 +61,11 @@ export function SeletorDeImagem({
         <div
           className={[
             "relative shrink-0 overflow-hidden rounded-12 border border-border-shalon bg-elev",
-            retrato ? "h-[200px] w-[100px]" : "h-[100px] w-full sm:w-[200px]",
+            retrato
+              ? "h-[200px] w-[100px]"
+              : proporcao === "1 / 1"
+                ? "h-[120px] w-[120px]"
+                : "h-[100px] w-full sm:w-[200px]",
           ].join(" ")}
           style={{ aspectRatio: proporcao }}
         >
@@ -93,6 +97,7 @@ export function SeletorDeImagem({
               aoMarcar={() => setEscolhida("")}
               titulo={rotuloNenhuma}
               retrato={retrato}
+              quadrada={proporcao === "1 / 1"}
             >
               <span className="flex h-full w-full items-center justify-center px-1 text-center text-[11.5px] font-semibold text-ink-2">
                 {rotuloNenhuma}
@@ -109,6 +114,7 @@ export function SeletorDeImagem({
               aoMarcar={() => setEscolhida(o.id)}
               titulo={`${o.nome} (${o.dimensoes})`}
               retrato={retrato}
+              quadrada={proporcao === "1 / 1"}
               exigida={obrigatorio}
             >
               <Image src={o.url} alt="" fill sizes="96px" className="object-cover" />
@@ -133,6 +139,7 @@ function Miniatura({
   aoMarcar,
   titulo,
   retrato,
+  quadrada = false,
   exigida = false,
   children,
 }: {
@@ -142,6 +149,7 @@ function Miniatura({
   aoMarcar: () => void;
   titulo: string;
   retrato: boolean;
+  quadrada?: boolean;
   exigida?: boolean;
   children: React.ReactNode;
 }) {
@@ -152,7 +160,7 @@ function Miniatura({
       title={titulo}
       className={[
         "relative block shrink-0 cursor-pointer overflow-hidden rounded-10 border-2 bg-elev",
-        retrato ? "aspect-[1/2] w-[52px]" : "aspect-[2/1] w-[92px]",
+        retrato ? "aspect-[1/2] w-[52px]" : quadrada ? "aspect-square w-[64px]" : "aspect-[2/1] w-[92px]",
         marcada ? "border-brand-red" : "border-border-shalon hover:border-brand-orange",
       ].join(" ")}
     >

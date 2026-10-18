@@ -198,6 +198,7 @@ export async function salvarTamanho(
       if (error) throw error;
       const semLinha = conferirLinhas(count);
       if (semLinha) return semLinha;
+      revalidatePath(ROTA);
       return ok("Tamanho atualizado.");
     }
     const { error } = await supabase.from("pizza_sizes").insert(dados);
@@ -371,7 +372,12 @@ export async function salvarProduto(
       ? { addons_included: form.get("adicionais_inclusos") === "sim" }
       : {}),
     sort_order: Number(form.get("ordem") ?? 0),
-    image_asset_id: String(form.get("imagem_id") ?? "") || null,
+    // A imagem só muda quando o formulário a envia. O formulário de edição
+    // não tem o campo (a foto se troca na aba Imagem), e regravar sempre
+    // apagava a foto a cada mudança de preço (17/10/2026).
+    ...(form.has("imagem_id")
+      ? { image_asset_id: String(form.get("imagem_id") ?? "") || null }
+      : {}),
   };
 
   const supabase = await getSupabaseServerClient();
@@ -465,6 +471,34 @@ export async function salvarVariacao(
     return ok("Tamanho salvo.");
   } catch (erro) {
     return falha("salvarVariacao", erro);
+  }
+}
+
+/**
+ * Usa como foto do produto uma imagem que já está na biblioteca (17/10/2026).
+ * Serve para recolocar a foto que a edição apagava sem reenviar o arquivo.
+ */
+export async function escolherImagemDoProduto(
+  _estado: EstadoFormulario,
+  form: FormData,
+): Promise<EstadoFormulario> {
+  const produtoId = String(form.get("produto_id") ?? "");
+  const imagemId = String(form.get("imagem_id") ?? "");
+  if (!produtoId || !imagemId) return { erro: "Escolha a imagem." };
+  const supabase = await getSupabaseServerClient();
+  try {
+    const { error, count } = await supabase
+      .from("products")
+      .update({ image_asset_id: imagemId }, { count: "exact" })
+      .eq("id", produtoId);
+    if (error) throw error;
+    const semLinha = conferirLinhas(count);
+    if (semLinha) return semLinha;
+    revalidatePath(ROTA);
+    revalidatePath(`${ROTA}/${produtoId}`);
+    return ok("Foto do produto atualizada.");
+  } catch (erro) {
+    return falha("escolherImagemDoProduto", erro);
   }
 }
 

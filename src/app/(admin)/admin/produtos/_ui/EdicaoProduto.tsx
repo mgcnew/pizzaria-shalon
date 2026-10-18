@@ -8,6 +8,7 @@ import { obterSessaoInterna, podeNaUI } from "@/application/auth/sessao";
 import {
   lerCodigosDeBarras,
   listarCategorias,
+  listarImagensDeProdutoSemUso,
   listarTamanhos,
   listarSaboresParaFogazza,
   listarVariacoes,
@@ -18,6 +19,7 @@ import {
   alternarAtivoProduto,
   alternarDisponibilidadeProduto,
   alternarDisponibilidadeVariacao,
+  escolherImagemDoProduto,
   montarFogazza,
   removerVariacao,
   salvarVariacao,
@@ -30,6 +32,7 @@ import { FormularioProduto } from "./FormularioProduto";
 import { PainelCodigosDeBarras } from "./PainelCodigosDeBarras";
 import { ModalFerramentaCatalogo } from "./ModalFerramentaCatalogo";
 import { ListaSaboresDaFogazza } from "./ListaSaboresDaFogazza";
+import { SeletorDeImagem } from "./SeletorDeImagem";
 
 export async function EdicaoProduto({
   id,
@@ -78,6 +81,17 @@ export async function EdicaoProduto({
       (t.sold_as === "pizza" || produto.tipo === "pizza"),
   );
   const imagemUrl = produto.imagem_path ? await urlPublica(produto.imagem_path) : null;
+  // Fotos já enviadas que nenhum produto usa: para recolocar sem reenviar.
+  const fotosSemUso = podeGerenciar
+    ? await Promise.all(
+        (await listarImagensDeProdutoSemUso().catch(() => [])).map(async (i) => ({
+          id: i.id,
+          url: await urlPublica(i.storage_path),
+          nome: i.original_filename ?? "imagem",
+          dimensoes: i.width && i.height ? `${i.width}×${i.height}` : "",
+        })),
+      )
+    : [];
 
   // Uma leitura para o produto e uma por variante. São poucas — o catálogo da
   // Shalon tem dois tamanhos — e cada uma é filtrada pela policy `catalog.view`.
@@ -175,6 +189,26 @@ export async function EdicaoProduto({
                 >
                   Remover
                 </BotaoAcao>
+                {/* Editar o preço sem remover e recriar o tamanho (17/10/2026). */}
+                <details className="group w-full basis-full">
+                  <summary className="inline-flex min-h-touch cursor-pointer list-none items-center rounded-11 px-1 text-[13px] font-semibold text-brand-red marker:hidden [&::-webkit-details-marker]:hidden">
+                    <span className="group-open:hidden">Editar preço</span>
+                    <span className="hidden group-open:inline">Fechar edição</span>
+                  </summary>
+                  <div className="mt-1 rounded-12 border border-border-shalon bg-elev p-3">
+                    <FormularioAcao acao={salvarVariacao} rotulo="Salvar preço" variante="secundario">
+                      <input type="hidden" name="produto_id" value={produto.id} />
+                      <input type="hidden" name="tamanho_id" value={v.tamanho_id} />
+                      <Input
+                        label={`Preço no tamanho ${v.tamanho_nome}`}
+                        name="preco"
+                        inputMode="decimal"
+                        required
+                        defaultValue={Number(v.preco).toFixed(2).replace(".", ",")}
+                      />
+                    </FormularioAcao>
+                  </div>
+                </details>
               </>
             ) : null}
           </LinhaLista>
@@ -262,6 +296,27 @@ export async function EdicaoProduto({
             hint="Até 8 MB. A imagem é redimensionada e convertida para WebP; a anterior só é apagada depois que a troca dá certo."
           />
         </FormularioAcao>
+      ) : null}
+
+      {podeGerenciar && fotosSemUso.length > 0 ? (
+        <details className="mt-4 rounded-12 border border-border-shalon">
+          <summary className="flex min-h-touch cursor-pointer list-none items-center px-3 text-[13.5px] font-semibold text-ink marker:hidden hover:bg-elev [&::-webkit-details-marker]:hidden">
+            Usar uma foto já enviada ({fotosSemUso.length} sem uso)
+          </summary>
+          <div className="border-t border-border-shalon p-3">
+            <FormularioAcao acao={escolherImagemDoProduto} rotulo="Usar esta foto" variante="secundario">
+              <input type="hidden" name="produto_id" value={produto.id} />
+              <SeletorDeImagem
+                name="imagem_id"
+                label="Fotos que nenhum produto está usando"
+                proporcao="1 / 1"
+                obrigatorio
+                opcoes={fotosSemUso}
+                vazio="Nenhuma foto sem uso."
+              />
+            </FormularioAcao>
+          </div>
+        </details>
       ) : null}
     </Cartao>
   );

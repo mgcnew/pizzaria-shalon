@@ -64,6 +64,41 @@ export async function PainelTamanhos({ podeGerenciar }: { podeGerenciar: boolean
                   {t.is_active ? "Inativar" : "Reativar"}
                 </BotaoAcao>
               ) : null}
+              {podeGerenciar ? (
+                /* Editar sem inativar e recriar (17/10/2026). */
+                <details className="group w-full basis-full">
+                  <summary className="inline-flex min-h-touch cursor-pointer list-none items-center rounded-11 px-1 text-[13px] font-semibold text-brand-red marker:hidden [&::-webkit-details-marker]:hidden">
+                    <span className="group-open:hidden">Editar tamanho</span>
+                    <span className="hidden group-open:inline">Fechar edição</span>
+                  </summary>
+                  <div className="mt-1 rounded-12 border border-border-shalon bg-elev p-3">
+                    <FormularioAcao acao={salvarTamanho} rotulo="Salvar tamanho" variante="secundario">
+                      <input type="hidden" name="id" value={t.id} />
+                      <Input label="Nome" name="nome" required defaultValue={t.name} />
+                      <SelectMenu
+                        label="Vendido como"
+                        name="vendido_como"
+                        valorInicial={t.sold_as === "fogazza" ? "fogazza" : "pizza"}
+                        opcoes={[
+                          { valor: "pizza", texto: "Pizza" },
+                          { valor: "fogazza", texto: "Fogazza" },
+                        ]}
+                      />
+                      <Input label="Fatias" name="fatias" type="number" min={1} required defaultValue={t.slice_count} />
+                      <Input
+                        label="Máximo de sabores"
+                        name="max_sabores"
+                        type="number"
+                        min={1}
+                        required
+                        defaultValue={t.max_flavors}
+                        hint="1 significa que este tamanho não aceita meio a meio."
+                      />
+                      <Input label="Ordem" name="ordem" type="number" min={0} defaultValue={t.sort_order ?? 0} />
+                    </FormularioAcao>
+                  </div>
+                </details>
+              ) : null}
             </LinhaLista>
           ))
         )}

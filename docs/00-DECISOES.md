@@ -4849,3 +4849,20 @@ mesmo pedido em vez de lançar outro e receber duas vezes.
    diz "Ja pago / COBRAR".
 5. Comanda de **ACRÉSCIMO** com só os itens novos e "a comanda anterior
    CONTINUA valendo".
+
+## D-2026-10-17-155 — Edição de produto: foto mantida e preço por tamanho editável
+
+**Problemas relatados:** (1) mudar o preço tirava a foto do produto;
+(2) para mudar o preço de um tamanho era preciso remover e recriar.
+
+**Correções:**
+1. `salvarProduto` só mexe na imagem quando o formulário a envia; o
+   formulário de edição não envia (a foto se troca na aba Imagem). Antes ele
+   regravava `image_asset_id` como vazio a cada salvamento.
+2. Aba Imagem: "Usar uma foto já enviada" lista as fotos de produto que
+   nenhum produto usa e permite recolocá-las sem reenviar (recupera as fotos
+   perdidas pelo item 1).
+3. Tamanhos habilitados: "Editar preço" em cada tamanho (mesmo
+   `salvarVariacao`, que já fazia upsert por produto × tamanho).
+4. Ferramenta Tamanhos: "Editar tamanho" (nome, vendido como, fatias, máximo
+   de sabores, ordem), usando o `salvarTamanho` que já aceitava edição.
