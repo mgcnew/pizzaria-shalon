@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatBRL, maskWhatsApp } from "@/lib/format";
+import { formatBRL, maskWhatsApp, formatarTelefone } from "@/lib/format";
 
 /**
  * Testes de formatação de apresentação.
@@ -41,5 +41,18 @@ describe("maskWhatsApp", () => {
 
   it("ignora caracteres não numéricos e limita a 11 dígitos", () => {
     expect(maskWhatsApp("(11) 98812-4477999")).toBe("(11) 98812-4477");
+  });
+});
+
+describe("formatarTelefone", () => {
+  it("celular e fixo com DDD", () => {
+    expect(formatarTelefone("11988113831")).toBe("(11) 98811-3831");
+    expect(formatarTelefone("1163622423")).toBe("(11) 6362-2423");
+  });
+  it("tira o 55 do país", () => {
+    expect(formatarTelefone("+55 11 98811-3831")).toBe("(11) 98811-3831");
+  });
+  it("formato desconhecido volta como veio", () => {
+    expect(formatarTelefone("12345")).toBe("12345");
   });
 });

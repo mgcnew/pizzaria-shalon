@@ -59,6 +59,8 @@ export type FiltrosDeClientes = {
   busca?: string;
   ordem?: "ausencia" | "faturamento" | "pedidos" | "recente";
   limite?: number;
+  /** Quantos pular, para paginar (0166). */
+  deslocamento?: number;
 };
 
 export type ListaDeClientes = {

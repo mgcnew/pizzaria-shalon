@@ -56,3 +56,15 @@ export function minutosDesde(iso: string, agora: number): number {
   if (Number.isNaN(inicio)) return 0;
   return (agora - inicio) / 60_000;
 }
+
+/**
+ * Telefone brasileiro para leitura: "11988113831" → "(11) 98811-3831".
+ * Tira o 55 do país quando vier. Formato desconhecido volta como veio.
+ */
+export function formatarTelefone(valor: string): string {
+  let d = valor.replace(/\D/g, "");
+  if ((d.length === 12 || d.length === 13) && d.startsWith("55")) d = d.slice(2);
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  return valor;
+}

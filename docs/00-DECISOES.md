@@ -4787,3 +4787,14 @@ pedido, cliente ou produto.
 3. Concluir tira da lista "Em aberto" sem apagar (aba Concluídas, com quem
    concluiu). Excluir só quem escreveu. Selo com a quantidade em aberto,
    atualizado ao abrir e a cada 2 minutos.
+
+## D-2026-10-17-152 — Clientes: telefone na tabela e paginação
+
+**Pedido da dona:** mostrar o telefone na lista de clientes, com opção de
+copiar, e paginar para não carregar tudo de uma vez.
+
+**Decisão:** coluna Telefone (formatado, "(11) 98811-3831") com botão de
+copiar (copia só os números). A lista mostra 25 por página, com Anterior/
+Próxima; os filtros seguem ao trocar de página e trocar filtro volta à
+primeira. `clientes_analiticos` passou a aceitar `deslocamento` (migration
+0166); o total e o resumo do topo continuam sobre a base inteira.
