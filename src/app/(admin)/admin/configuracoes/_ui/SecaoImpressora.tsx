@@ -271,62 +271,7 @@ export function SecaoImpressora() {
       </Cartao>
 
       {impressora.modo !== "serial" ? (
-      <Cartao
-        titulo="Imprimir sem a janela de escolha (Windows)"
-        descricao="Por segurança, o navegador sempre pergunta a impressora — a não ser que seja aberto por um atalho preparado para o balcão. Faz-se uma vez só."
-      >
-        <ol className="m-0 flex list-decimal flex-col gap-3 pl-5 text-[13.5px] text-ink">
-          <li>
-            Instale o driver da impressora de 80 mm e deixe-a como <strong>impressora padrão</strong>{" "}
-            em Configurações do Windows → Bluetooth e dispositivos → Impressoras e scanners.
-            Desligue a opção &quot;Permitir que o Windows gerencie minha impressora padrão&quot;.
-          </li>
-          <li>
-            Nas preferências da impressora, confira que o papel é o <strong>rolo de 80 mm</strong>.
-          </li>
-          <li>
-            Desligue o Chrome em segundo plano: abra <code className="font-mono">chrome://settings/system</code>{" "}
-            e desligue <strong>&quot;Continuar executando apps em segundo plano quando o Google Chrome for
-            fechado&quot;</strong>. Se o Chrome continuar rodando escondido, o atalho é ignorado.
-          </li>
-          <li>
-            Coloque <code className="font-mono">--kiosk-printing</code> no fim do campo <strong>Destino</strong>{" "}
-            do atalho que você usa para abrir o sistema (botão direito → Propriedades):
-            <ul className="mt-2 flex list-disc flex-col gap-1 pl-5">
-              <li>
-                <strong>Sistema instalado como app</strong> (ícone próprio da Shalon): edite o atalho do app,
-                na Área de Trabalho e no Menu Iniciar. O Destino já tem algo como{" "}
-                <code className="font-mono">--app-id=…</code>; acrescente um espaço e{" "}
-                <code className="font-mono">--kiosk-printing</code> depois disso. Se o app estiver fixado na
-                barra de tarefas, desafixe e fixe de novo a partir do atalho já editado.
-              </li>
-              <li>
-                <strong>Pelo Chrome comum:</strong> o atalho do Chrome fica assim:
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <code className="min-w-0 break-all rounded-10 bg-elev px-3 py-2 font-mono text-[12px] text-ink">
-                    {ATALHO_CHROME}
-                  </code>
-                  <Button type="button" variante="fantasma" tamanho="sm" onClick={copiarAtalho}>
-                    {copiado ? "Copiado" : "Copiar"}
-                  </Button>
-                </div>
-              </li>
-            </ul>
-          </li>
-          <li>
-            Feche <strong>todas</strong> as janelas do Chrome e do app (confira também o ícone perto do relógio) e
-            abra pelo atalho editado. Aqui, escolha 80 mm e &quot;Imprimir direto&quot;, e faça o teste de
-            impressão.
-          </li>
-          <li>
-            Ainda abriu alguma janela? Veja o guia <strong>&quot;Ainda abre uma janela?&quot;</strong> logo abaixo.
-          </li>
-        </ol>
-        <p className="mb-0 mt-3 text-[12.5px] text-muted">
-          No Microsoft Edge funciona igual, com <code className="font-mono">msedge.exe --kiosk-printing</code>. O
-          atalho não muda mais nada no navegador: só tira a janela de escolha da impressão.
-        </p>
-      </Cartao>
+        <ConfigurarImpressaoDireta atalhoChrome={ATALHO_CHROME} copiado={copiado} aoCopiar={copiarAtalho} />
       ) : null}
 
       {impressora.modo !== "serial" ? <GuiaDaJanelaDeImpressao /> : null}
@@ -663,6 +608,157 @@ function GuiaDaJanelaDeImpressao() {
           </details>
         ))}
       </div>
+    </Cartao>
+  );
+}
+
+/**
+ * Passo a passo da impressão direta no Windows, em 4 etapas (17/10/2026).
+ *
+ * Antes era uma lista corrida de 6 itens com subitens. Agora cada etapa tem
+ * um título que diz o objetivo e poucos passos; o atalho, que depende de como
+ * o sistema é aberto, vira duas opções e a pessoa abre só a dela.
+ */
+function ConfigurarImpressaoDireta({
+  atalhoChrome,
+  copiado,
+  aoCopiar,
+}: {
+  atalhoChrome: string;
+  copiado: boolean;
+  aoCopiar: () => void;
+}) {
+  const codigo = "rounded-6 bg-elev px-1.5 py-0.5 font-mono text-[12.5px] text-ink";
+
+  const etapas: { titulo: string; objetivo: string; conteudo: React.ReactNode }[] = [
+    {
+      titulo: "Impressora no Windows",
+      objetivo: "O Windows precisa saber qual é a impressora do balcão.",
+      conteudo: (
+        <ol className="m-0 flex list-decimal flex-col gap-1.5 pl-5">
+          <li>Instale o driver da impressora térmica.</li>
+          <li>
+            Em <strong>Configurações → Bluetooth e dispositivos → Impressoras e scanners</strong>, desligue{" "}
+            <em>&quot;Permitir que o Windows gerencie minha impressora padrão&quot;</em> e defina a térmica como{" "}
+            <strong>padrão</strong>.
+          </li>
+          <li>
+            Nas preferências da impressora, confira que o papel é o <strong>rolo certo</strong> (58 ou 80 mm).
+          </li>
+        </ol>
+      ),
+    },
+    {
+      titulo: "Chrome sem rodar escondido",
+      objetivo: "Se o Chrome fica aberto em segundo plano, o atalho do balcão é ignorado.",
+      conteudo: (
+        <ol className="m-0 flex list-decimal flex-col gap-1.5 pl-5">
+          <li>
+            Abra <code className={codigo}>chrome://settings/system</code>.
+          </li>
+          <li>
+            Desligue <strong>&quot;Continuar executando apps em segundo plano quando o Google Chrome for fechado&quot;</strong>.
+          </li>
+        </ol>
+      ),
+    },
+    {
+      titulo: "Atalho do balcão",
+      objetivo: (
+        "Acrescentar --kiosk-printing ao atalho que vocês clicam para abrir o sistema. Abra só a opção que usam."
+      ),
+      conteudo: (
+        <div className="flex flex-col gap-2">
+          <details className="group rounded-12 border border-border-shalon bg-surface open:border-brand-orange">
+            <summary className="flex min-h-touch cursor-pointer list-none items-center justify-between gap-3 rounded-12 px-3 text-[13.5px] font-semibold text-ink marker:hidden hover:bg-elev [&::-webkit-details-marker]:hidden">
+              Sistema instalado como app (ícone da Shalon)
+              <span aria-hidden="true" className="text-muted transition-transform group-open:rotate-180">⌄</span>
+            </summary>
+            <ol className="m-0 flex list-decimal flex-col gap-1.5 border-t border-border-shalon px-3 pb-3 pt-2.5 pl-8">
+              <li>
+                Botão direito no ícone do app (Área de Trabalho e Menu Iniciar) → <strong>Propriedades</strong>.
+              </li>
+              <li>
+                No campo <strong>Destino</strong>, depois de <code className={codigo}>--app-id=…</code>, acrescente um
+                espaço e <code className={codigo}>--kiosk-printing</code>. Clique em OK.
+              </li>
+              <li>Se o app estiver fixado na barra de tarefas, desafixe e fixe de novo a partir do atalho editado.</li>
+            </ol>
+          </details>
+          <details className="group rounded-12 border border-border-shalon bg-surface open:border-brand-orange">
+            <summary className="flex min-h-touch cursor-pointer list-none items-center justify-between gap-3 rounded-12 px-3 text-[13.5px] font-semibold text-ink marker:hidden hover:bg-elev [&::-webkit-details-marker]:hidden">
+              Pelo Chrome comum
+              <span aria-hidden="true" className="text-muted transition-transform group-open:rotate-180">⌄</span>
+            </summary>
+            <div className="border-t border-border-shalon px-3 pb-3 pt-2.5">
+              <p className="m-0">
+                Botão direito no atalho do Chrome → <strong>Propriedades</strong>, e deixe o campo{" "}
+                <strong>Destino</strong> assim:
+              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <code className="min-w-0 break-all rounded-10 bg-elev px-3 py-2 font-mono text-[12px] text-ink">
+                  {atalhoChrome}
+                </code>
+                <Button type="button" variante="fantasma" tamanho="sm" onClick={aoCopiar}>
+                  {copiado ? "Copiado" : "Copiar"}
+                </Button>
+              </div>
+              <p className="m-0 mt-2 text-[12.5px] text-muted">
+                No Edge é igual, com <code className={codigo}>msedge.exe --kiosk-printing</code>.
+              </p>
+            </div>
+          </details>
+        </div>
+      ),
+    },
+    {
+      titulo: "Testar",
+      objetivo: "O Chrome só lê o atalho quando abre do zero.",
+      conteudo: (
+        <ol className="m-0 flex list-decimal flex-col gap-1.5 pl-5">
+          <li>
+            Feche <strong>todas</strong> as janelas do Chrome e do app — confira também o ícone perto do relógio.
+          </li>
+          <li>Abra pelo atalho editado.</li>
+          <li>
+            Aqui nesta aba, escolha o papel e <strong>&quot;Imprimir direto&quot;</strong>, e clique em{" "}
+            <strong>Teste de impressão</strong>.
+          </li>
+          <li>
+            Saiu sem perguntar? Pronto. Abriu alguma janela? Use o guia <strong>&quot;Ainda abre uma janela ao
+            imprimir?&quot;</strong> logo abaixo.
+          </li>
+        </ol>
+      ),
+    },
+  ];
+
+  return (
+    <Cartao
+      titulo="Imprimir sem a janela de escolha (Windows)"
+      descricao="Faça uma vez só, no computador que imprime. Depois, o sistema manda a comanda direto para a impressora."
+    >
+      <ol className="m-0 flex list-none flex-col p-0">
+        {etapas.map((etapa, i) => (
+          <li key={etapa.titulo} className="relative flex gap-3 pb-5 last:pb-0">
+            {/* Linha que liga as etapas, para ler como um caminho. */}
+            {i < etapas.length - 1 ? (
+              <span aria-hidden="true" className="absolute bottom-0 left-[13px] top-8 w-px bg-border-shalon" />
+            ) : null}
+            <span
+              aria-hidden="true"
+              className="relative flex size-7 shrink-0 items-center justify-center rounded-full bg-cta text-[13px] font-bold text-cta-fg"
+            >
+              {i + 1}
+            </span>
+            <div className="min-w-0 flex-1 pt-0.5 text-[13.5px] text-ink">
+              <p className="m-0 text-[14.5px] font-bold text-ink">{etapa.titulo}</p>
+              <p className="m-0 mb-2 text-[12.5px] text-muted">{etapa.objetivo}</p>
+              {etapa.conteudo}
+            </div>
+          </li>
+        ))}
+      </ol>
     </Cartao>
   );
 }
