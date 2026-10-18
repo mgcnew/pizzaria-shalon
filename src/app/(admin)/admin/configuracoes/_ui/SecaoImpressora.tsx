@@ -319,9 +319,7 @@ export function SecaoImpressora() {
             impressão.
           </li>
           <li>
-            Ainda abriu a janela? Abra <code className="font-mono">chrome://version</code> numa aba e veja a linha{" "}
-            <strong>Linha de comando</strong>. Se <code className="font-mono">--kiosk-printing</code> não estiver
-            lá, o Chrome foi aberto por outro atalho ou já estava rodando.
+            Ainda abriu alguma janela? Veja o guia <strong>&quot;Ainda abre uma janela?&quot;</strong> logo abaixo.
           </li>
         </ol>
         <p className="mb-0 mt-3 text-[12.5px] text-muted">
@@ -330,6 +328,8 @@ export function SecaoImpressora() {
         </p>
       </Cartao>
       ) : null}
+
+      {impressora.modo !== "serial" ? <GuiaDaJanelaDeImpressao /> : null}
     </div>
   );
 }
@@ -529,5 +529,140 @@ function CalibrarComRegua({
         ) : null}
       </div>
     </div>
+  );
+}
+
+/**
+ * Diagnóstico de "ainda abre uma janela ao imprimir" (17/10/2026).
+ *
+ * Organizado por SINTOMA: a pessoa olha a janela que apareceu, abre só o caso
+ * dela e segue os passos. Cada caso diz como reconhecer, a causa e o que
+ * fazer, nessa ordem. Tudo é feito no computador que imprime.
+ */
+function GuiaDaJanelaDeImpressao() {
+  const codigo = "rounded-6 bg-elev px-1.5 py-0.5 font-mono text-[12.5px] text-ink";
+  const casos: {
+    id: string;
+    titulo: string;
+    reconhecer: string;
+    causa: React.ReactNode;
+    passos: React.ReactNode[];
+  }[] = [
+    {
+      id: "cinza",
+      titulo: "Tela cinza do Chrome, com “Destino” e botão Imprimir",
+      reconhecer: "É a prévia de impressão do próprio Chrome.",
+      causa: (
+        <>
+          O Chrome não foi aberto com <code className={codigo}>--kiosk-printing</code>.
+        </>
+      ),
+      passos: [
+        <>
+          Abra <code className={codigo}>chrome://version</code> e veja a linha <strong>Linha de comando</strong>.
+        </>,
+        <>
+          Se <code className={codigo}>--kiosk-printing</code> não aparece: o Chrome foi aberto por outro atalho (barra
+          de tarefas, Menu Iniciar) ou já estava aberto. Edite o atalho que vocês realmente clicam.
+        </>,
+        <>Feche todas as janelas do Chrome (confira o ícone perto do relógio) e abra pelo atalho editado.</>,
+      ],
+    },
+    {
+      id: "salvar",
+      titulo: "Janela “Salvar como”, pedindo nome de arquivo",
+      reconhecer: "Pede uma pasta e um nome, como quando se salva um documento.",
+      causa: (
+        <>
+          A impressão direta está ligada, mas o Chrome está mandando para <strong>Salvar como PDF</strong>. Ele usa
+          a última impressora escolhida dentro dele.
+        </>
+      ),
+      passos: [
+        <>Abra o Chrome do jeito normal (sem o atalho do balcão).</>,
+        <>
+          Imprima qualquer página uma vez e, em <strong>Destino</strong>, escolha a impressora de 80 mm.
+        </>,
+        <>Feche todas as janelas do Chrome e abra de novo pelo atalho do balcão.</>,
+      ],
+    },
+    {
+      id: "windows",
+      titulo: "Janela do Windows, com a lista de impressoras do sistema",
+      reconhecer: "É a janela “Imprimir” do Windows, não a do Chrome.",
+      causa: (
+        <>
+          O Chrome deste computador está configurado para não usar a própria tela de impressão. Com isso, ele sempre
+          manda para a janela do Windows e ignora a impressão direta.
+        </>
+      ),
+      passos: [
+        <>
+          Em <code className={codigo}>chrome://version</code>, veja se a <strong>Linha de comando</strong> também tem{" "}
+          <code className={codigo}>--disable-print-preview</code>. Se tiver, tire esse trecho do campo{" "}
+          <strong>Destino</strong> do atalho (botão direito → Propriedades) e deixe só o{" "}
+          <code className={codigo}>--kiosk-printing</code>.
+        </>,
+        <>
+          Abra <code className={codigo}>chrome://policy</code> e procure <strong>DisablePrintPreview</strong>. Se não
+          aparecer, pule para o último passo.
+        </>,
+        <>
+          Se aparecer: aperte <strong>Windows + R</strong>, digite <code className={codigo}>regedit</code> e Enter.
+          Vá até <code className={codigo}>HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Google\Chrome</code> e apague o
+          valor <strong>DisablePrintPreview</strong>. Faça o mesmo em{" "}
+          <code className={codigo}>HKEY_CURRENT_USER\SOFTWARE\Policies\Google\Chrome</code>, se existir.
+        </>,
+        <>
+          Feche todas as janelas do Chrome e abra pelo atalho. Em <code className={codigo}>chrome://policy</code>, a{" "}
+          DisablePrintPreview não deve mais aparecer. Faça o teste de impressão.
+        </>,
+        <>
+          Se nenhuma das duas aparecia e a janela continua: anote a <strong>marca e o modelo</strong> da impressora e{" "}
+          <strong>como ela está ligada</strong> (USB, rede ou Bluetooth) e chame o suporte — algumas impressoras
+          térmicas imprimem direto, sem passar pela janela do navegador.
+        </>,
+      ],
+    },
+  ];
+
+  return (
+    <Cartao
+      titulo="Ainda abre uma janela ao imprimir?"
+      descricao="Faça no computador que imprime. Olhe a janela que apareceu, abra só o caso dela e siga os passos na ordem."
+    >
+      <div className="flex flex-col gap-2">
+        {casos.map((c, indice) => (
+          <details key={c.id} className="group rounded-12 border border-border-shalon bg-surface open:border-brand-orange">
+            <summary className="flex min-h-touch cursor-pointer list-none items-center gap-3 rounded-12 px-3 py-2.5 marker:hidden hover:bg-elev [&::-webkit-details-marker]:hidden">
+              <span
+                aria-hidden="true"
+                className="flex size-7 shrink-0 items-center justify-center rounded-full bg-elev text-[13px] font-bold text-ink group-open:bg-cta group-open:text-cta-fg"
+              >
+                {String.fromCharCode(65 + indice)}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[14px] font-semibold text-ink">{c.titulo}</span>
+                <span className="block text-[12.5px] text-muted">{c.reconhecer}</span>
+              </span>
+              <span aria-hidden="true" className="text-muted transition-transform group-open:rotate-180">
+                ⌄
+              </span>
+            </summary>
+            <div className="border-t border-border-shalon px-3 pb-3 pt-2.5 text-[13.5px] text-ink">
+              <p className="m-0 rounded-10 bg-tw px-3 py-2 text-[13px] text-twf">
+                <strong>Causa:</strong> {c.causa}
+              </p>
+              <p className="m-0 mt-3 text-[12px] font-bold uppercase tracking-[0.05em] text-muted">O que fazer</p>
+              <ol className="m-0 mt-1.5 flex list-decimal flex-col gap-2 pl-5">
+                {c.passos.map((passo, i) => (
+                  <li key={i}>{passo}</li>
+                ))}
+              </ol>
+            </div>
+          </details>
+        ))}
+      </div>
+    </Cartao>
   );
 }
