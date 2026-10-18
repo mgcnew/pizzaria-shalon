@@ -4,7 +4,7 @@ import { listarClientes } from "@/application/clientes/consultas";
 import type { Cadencia as ValorDeCadencia, FiltrosDeClientes as Filtros } from "@/application/clientes/tipos";
 import { Cartao, EmptyState } from "@/ui/patterns";
 import { formatBRL } from "@/lib/format";
-import { Cadencia } from "./_ui/Cadencia";
+import { CadenciaDiscreta } from "./_ui/Cadencia";
 import { FiltrosDeClientes } from "./_ui/FiltrosDeClientes";
 import { TelefoneCopiavel } from "./_ui/TelefoneCopiavel";
 
@@ -75,51 +75,64 @@ export default async function Page({
     return texto ? `/admin/clientes?${texto}` : "/admin/clientes";
   }
 
+  const r = lista.resumo;
+  const totalDaBase =
+    r.recorrentes + r.atencao + r.afastados + r.base_fraca + r.dados_insuficientes;
+  const fiadoTotal = Number(r.fiado_total ?? 0);
+  const comFiado = r.com_fiado ?? 0;
+  // A coluna "Em aberto" só existe quando alguém deve: vazia, era ruído.
+  const mostrarEmAberto = comFiado > 0;
+
+  // Troca a cadência mantendo os outros filtros; volta para a página 1.
+  function urlDaCadencia(valor: ValorDeCadencia | null, fiadoNaUrl = soFiado): string {
+    const q = new URLSearchParams();
+    if (ausencia) q.set("ausencia", ausencia);
+    if (valor) q.set("cadencia", valor);
+    if (busca) q.set("busca", busca);
+    if (fiadoNaUrl) q.set("fiado", "1");
+    const texto = q.toString();
+    return texto ? `/admin/clientes?${texto}` : "/admin/clientes";
+  }
+
+  const segmentos: { valor: ValorDeCadencia | null; rotulo: string; n: number }[] = [
+    { valor: null, rotulo: "Todos", n: totalDaBase },
+    { valor: "recorrente", rotulo: "Recorrentes", n: r.recorrentes },
+    { valor: "atencao", rotulo: "Em atenção", n: r.atencao },
+    { valor: "afastado", rotulo: "Afastados", n: r.afastados },
+    { valor: "base_fraca", rotulo: "Base fraca", n: r.base_fraca },
+    { valor: "dados_insuficientes", rotulo: "Sem histórico", n: r.dados_insuficientes },
+  ];
+  const cadenciaAtual = CADENCIAS.includes(cadencia as ValorDeCadencia)
+    ? (cadencia as ValorDeCadencia)
+    : null;
+
+  const th = "border-b border-border-shalon px-3 pb-2.5 pt-1 text-[12px] font-semibold text-muted";
+  const td = "border-b border-border-shalon px-3 py-3";
+
   return (
     <div className="flex flex-col gap-5">
-      <header>
-        <h1 className="m-0 font-display text-[24px] font-bold text-ink">Clientes</h1>
-        <p className="m-0 mt-1 text-[13.5px] text-muted">
-          Quem compra, com que frequência e há quanto tempo não aparece.
-        </p>
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="m-0 font-display text-[24px] font-bold text-ink">Clientes</h1>
+          <p className="m-0 mt-1 text-[13.5px] text-muted">
+            Quem compra, com que frequência e há quanto tempo não aparece.
+          </p>
+        </div>
+        {/* Fiado só ganha destaque quando existe (D-2026-10-17-153). */}
+        {fiadoTotal > 0 ? (
+          <Link
+            href={urlDaCadencia(cadenciaAtual, !soFiado)}
+            aria-current={soFiado ? "true" : undefined}
+            className={[
+              "inline-flex min-h-touch items-center gap-2 rounded-pill border px-4 text-[13px] font-semibold no-underline transition-colors",
+              soFiado ? "border-twf bg-tw text-twf" : "border-twb bg-tw text-twf hover:border-twf",
+            ].join(" ")}
+          >
+            <span aria-hidden="true" className="size-[7px] rounded-full bg-twf" />
+            {formatBRL(fiadoTotal)} em fiado · {comFiado} {comFiado === 1 ? "cliente" : "clientes"}
+          </Link>
+        ) : null}
       </header>
-
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7">
-        {[
-          { rotulo: "Recorrentes", valor: lista.resumo.recorrentes },
-          { rotulo: "Em atenção", valor: lista.resumo.atencao },
-          { rotulo: "Afastados", valor: lista.resumo.afastados },
-          { rotulo: "Base fraca", valor: lista.resumo.base_fraca },
-          { rotulo: "Sem histórico", valor: lista.resumo.dados_insuficientes },
-          { rotulo: "Sem consentimento", valor: lista.resumo.sem_consentimento },
-        ].map((c) => (
-          <div key={c.rotulo} className="rounded-16 border border-border-shalon bg-surface p-3">
-            <p className="m-0 text-[12px] font-semibold uppercase tracking-[0.04em] text-muted">
-              {c.rotulo}
-            </p>
-            <p className="m-0 mt-1 font-display text-[20px] font-bold text-ink">{c.valor}</p>
-          </div>
-        ))}
-        {/* Fiado em aberto: atalho para o filtro (D-2026-10-17-153). */}
-        <Link
-          href={soFiado ? "/admin/clientes" : "/admin/clientes?fiado=1"}
-          aria-current={soFiado ? "true" : undefined}
-          className={[
-            "rounded-16 border p-3 no-underline transition-colors",
-            soFiado ? "border-brand-orange bg-elev" : "border-border-shalon bg-surface hover:border-brand-orange",
-          ].join(" ")}
-        >
-          <p className="m-0 text-[12px] font-semibold uppercase tracking-[0.04em] text-muted">
-            Fiado em aberto
-          </p>
-          <p className="m-0 mt-1 font-display text-[20px] font-bold text-ink">
-            {formatBRL(Number(lista.resumo.fiado_total ?? 0))}
-          </p>
-          <p className="m-0 text-[11.5px] text-muted">
-            {lista.resumo.com_fiado ?? 0} {(lista.resumo.com_fiado ?? 0) === 1 ? "cliente" : "clientes"}
-          </p>
-        </Link>
-      </section>
 
       <Cartao
         titulo={`${lista.total_filtrado} ${lista.total_filtrado === 1 ? "cliente" : "clientes"}`}
@@ -136,76 +149,103 @@ export default async function Page({
         }
         largura="cheio"
       >
+        {/* Cadência como segmentos que filtram: o resumo e o filtro são a
+            mesma coisa, num lugar só. */}
+        <nav aria-label="Filtrar por cadência" className="-mx-1 mb-4 flex gap-1 overflow-x-auto pb-1">
+          {segmentos.map((sg) => {
+            const ativo = sg.valor === cadenciaAtual;
+            return (
+              <Link
+                key={sg.rotulo}
+                href={urlDaCadencia(ativo && sg.valor !== null ? null : sg.valor)}
+                aria-current={ativo ? "true" : undefined}
+                className={[
+                  "inline-flex min-h-[38px] shrink-0 items-center gap-2 rounded-pill px-3.5 text-[13px] font-semibold no-underline transition-colors",
+                  ativo
+                    ? "bg-cta text-cta-fg"
+                    : sg.n === 0
+                      ? "text-muted hover:bg-elev"
+                      : "text-ink hover:bg-elev",
+                ].join(" ")}
+              >
+                {sg.rotulo}
+                <span className={`tabular-nums ${ativo ? "opacity-80" : "text-muted"}`}>{sg.n}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
         {lista.clientes.length === 0 ? (
           <EmptyState
             titulo={soFiado ? "Ninguém com fiado em aberto" : "Nenhum cliente neste filtro"}
-            descricao="Ajuste o período de ausência ou a cadência."
+            descricao="Ajuste a busca, a cadência ou os filtros."
           />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] border-collapse text-[13px]">
+          <div className="-mx-3 overflow-x-auto">
+            <table className="w-full min-w-[820px] border-collapse text-[13.5px]">
               <thead>
-                <tr className="whitespace-nowrap text-left text-muted">
-                  <th className="border-b border-border-shalon py-2 font-semibold">Cliente</th>
-                  <th className="border-b border-border-shalon px-3 py-2 font-semibold">Telefone</th>
-                  <th className="border-b border-border-shalon py-2 pr-3 text-right font-semibold">Em aberto</th>
-                  <th className="border-b border-border-shalon py-2 font-semibold">Cadência</th>
-                  <th className="border-b border-border-shalon py-2 text-right font-semibold">
-                    Pedidos
-                  </th>
-                  <th className="border-b border-border-shalon py-2 text-right font-semibold">
-                    Ticket médio
-                  </th>
-                  <th className="border-b border-border-shalon py-2 text-right font-semibold">
-                    Sem comprar há
-                  </th>
-                  <th className="border-b border-border-shalon py-2 pl-4 font-semibold">Promoção</th>
+                <tr className="whitespace-nowrap text-left">
+                  <th className={th}>Cliente</th>
+                  <th className={th}>Telefone</th>
+                  {mostrarEmAberto ? <th className={`${th} text-right`}>Em aberto</th> : null}
+                  <th className={th}>Cadência</th>
+                  <th className={`${th} text-right`}>Pedidos</th>
+                  <th className={`${th} text-right`}>Ticket médio</th>
+                  <th className={`${th} text-right`}>Última compra</th>
+                  <th className={`${th} text-center`}>Promoção</th>
                 </tr>
               </thead>
               <tbody>
-                {lista.clientes.map((c) => (
-                  <tr key={c.cliente_id}>
-                    <td className="border-b border-border-shalon py-2">
-                      <Link
-                        href={`/admin/clientes/${c.cliente_id}`}
-                        className="font-semibold text-ink"
-                      >
-                        {c.nome}
-                      </Link>
-                      {/* A explicação, com os números da própria linha. */}
-                      <span className="block text-[12px] text-muted">{c.porque}</span>
-                    </td>
-                    <td className="border-b border-border-shalon px-3 py-2">
-                      {c.whatsapp ? (
-                        <TelefoneCopiavel telefone={c.whatsapp} />
-                      ) : (
-                        <span className="text-muted">—</span>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap border-b border-border-shalon py-2 pr-3 text-right">
-                      {Number(c.em_aberto ?? 0) > 0 ? (
-                        <span className="font-semibold text-tdf">{formatBRL(Number(c.em_aberto))}</span>
-                      ) : (
-                        <span className="text-muted">—</span>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap border-b border-border-shalon py-2">
-                      <Cadencia valor={c.classificacao} />
-                    </td>
-                    <td className="border-b border-border-shalon py-2 text-right text-ink">
-                      {c.pedidos}
-                    </td>
-                    <td className="border-b border-border-shalon py-2 text-right text-ink">
-                      {c.ticket_medio === null ? "—" : formatBRL(c.ticket_medio)}
-                    </td>
-                    <td className="whitespace-nowrap border-b border-border-shalon py-2 pl-3 text-right text-ink">
-                      {c.dias_sem_comprar === null ? "—" : `${c.dias_sem_comprar} dias`}
-                    </td>
-                    <td className="whitespace-nowrap border-b border-border-shalon py-2 pl-4 text-muted">
-                      {c.aceita_promocao ? "Aceita" : "Não aceita"}
-                    </td>
-                  </tr>
-                ))}
+                {lista.clientes.map((c) => {
+                  // A frase só aparece quando diz algo que o selo não diz.
+                  const explicaAlgo = c.classificacao !== "dados_insuficientes";
+                  return (
+                    <tr key={c.cliente_id} className="transition-colors hover:bg-elev">
+                      <td className={td}>
+                        <Link href={`/admin/clientes/${c.cliente_id}`} className="font-semibold text-ink no-underline hover:underline">
+                          {c.nome}
+                        </Link>
+                        {c.bloqueado ? (
+                          <span className="ml-2 text-[11.5px] font-semibold text-tdf">Bloqueado</span>
+                        ) : null}
+                        {explicaAlgo ? (
+                          <span className="mt-0.5 block max-w-[46ch] text-[12px] leading-snug text-muted">
+                            {c.porque}
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className={`${td} text-ink-2`}>
+                        {c.whatsapp ? <TelefoneCopiavel telefone={c.whatsapp} /> : <span className="text-muted">—</span>}
+                      </td>
+                      {mostrarEmAberto ? (
+                        <td className={`${td} whitespace-nowrap text-right tabular-nums`}>
+                          {Number(c.em_aberto ?? 0) > 0 ? (
+                            <span className="font-semibold text-twf">{formatBRL(Number(c.em_aberto))}</span>
+                          ) : (
+                            <span className="text-border-shalon">—</span>
+                          )}
+                        </td>
+                      ) : null}
+                      <td className={td}>
+                        <CadenciaDiscreta valor={c.classificacao} explicacao={c.porque} />
+                      </td>
+                      <td className={`${td} text-right tabular-nums text-ink`}>{c.pedidos}</td>
+                      <td className={`${td} whitespace-nowrap text-right tabular-nums text-ink`}>
+                        {c.ticket_medio === null ? <span className="text-muted">—</span> : formatBRL(c.ticket_medio)}
+                      </td>
+                      <td className={`${td} whitespace-nowrap text-right text-ink-2`}>
+                        {haQuanto(c.dias_sem_comprar)}
+                      </td>
+                      <td className={`${td} text-center text-[12.5px]`}>
+                        {c.aceita_promocao ? (
+                          <span className="font-semibold text-tgf">Sim</span>
+                        ) : (
+                          <span className="text-muted">Não</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -236,7 +276,21 @@ export default async function Page({
             </div>
           </nav>
         ) : null}
+
+        {r.sem_consentimento > 0 ? (
+          <p className="m-0 mt-4 text-[12px] text-muted">
+            {r.sem_consentimento} de {totalDaBase} não aceitam receber promoções pelo WhatsApp.
+          </p>
+        ) : null}
       </Cartao>
     </div>
   );
+}
+
+/** "hoje", "ontem", "há 5 dias" — sem "1 dias". */
+function haQuanto(dias: number | null): React.ReactNode {
+  if (dias === null) return <span className="text-muted">—</span>;
+  if (dias <= 0) return "hoje";
+  if (dias === 1) return "ontem";
+  return `há ${dias} dias`;
 }

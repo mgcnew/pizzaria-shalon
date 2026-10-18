@@ -136,7 +136,7 @@ export function FiltrosDeClientes({
           type="search"
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
-          placeholder="Buscar por nome ou telefone"
+          placeholder="Nome ou telefone"
           autoComplete="off"
           className="min-h-touch w-full rounded-11 border-[1.5px] border-border-shalon bg-surface pl-9 pr-9 text-[13.5px] text-ink focus:border-brand-orange focus:outline-none"
         />
