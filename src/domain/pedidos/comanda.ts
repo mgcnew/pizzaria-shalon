@@ -92,6 +92,11 @@ export type PedidoDaComanda = {
    */
   pago?: boolean;
   /**
+   * Fiado (D-2026-10-17-153): a loja deixou para o cliente pagar depois. Na
+   * entrega, a comanda diz FIADO e não manda cobrar nem levar troco.
+   */
+  fiado?: boolean;
+  /**
    * Valores do pedido, já calculados pelo servidor (D-2026-10-17-147): o
    * motoboy cobra pelo que está no papel. Taxa só aparece na entrega.
    */
@@ -271,6 +276,9 @@ export function montarComanda(
   if (pedido.modalidade === "delivery" && pedido.pago === true) {
     saida.push(SEPARADOR);
     saida.push({ texto: "PAGO - NAO COBRAR", estilo: "destaque" });
+  } else if (pedido.modalidade === "delivery" && pedido.fiado === true) {
+    saida.push(SEPARADOR);
+    saida.push({ texto: "FIADO - NAO COBRAR", estilo: "destaque" });
   } else if (
     pedido.modalidade === "delivery" &&
     pedido.trocoEsperado != null &&

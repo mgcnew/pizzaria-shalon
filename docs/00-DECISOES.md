@@ -4798,3 +4798,29 @@ copiar (copia só os números). A lista mostra 25 por página, com Anterior/
 Próxima; os filtros seguem ao trocar de página e trocar filtro volta à
 primeira. `clientes_analiticos` passou a aceitar `deslocamento` (migration
 0166); o total e o resumo do topo continuam sobre a base inteira.
+
+## D-2026-10-17-153 — Fiado: pagar depois sem mexer no caixa
+
+**Pedido da dona:** clientes pedem para pagar depois; fazer isso sem alterar
+o caixa e sem dar quebra, com filtro para ver só quem está devendo.
+
+**Decisão (sugestão aprovada; cria RN-PGTO-015):**
+1. Ação "Pagar depois (fiado)" na tela do pedido, com observação opcional;
+   só para cliente identificado; permissão nova `orders.defer_payment`
+   (Owner/Admin por padrão, concedível em Equipe › Permissões).
+2. Fiado não é pagamento: `payment_status` segue `pending`. O caixa e o
+   dinheiro do motoboy vêm dos pagamentos registrados, então nada é esperado
+   e não há quebra. A retirada em fiado pode ser concluída; a comanda de
+   entrega diz "FIADO - NAO COBRAR"; a central de entregas mostra "Fiado —
+   não cobrar".
+3. O fiado sai da fila "a receber" do dia. A cobrança é pela ficha do
+   cliente (bloco "Fiado em aberto", com "Receber" e "Cobrar pelo
+   WhatsApp", mensagem pronta e manual) e pela tela do pedido, onde o
+   recebimento normal entra no caixa aberto daquele dia.
+4. Clientes: filtro "Com fiado em aberto", coluna "Em aberto" e cartão
+   "Fiado em aberto" no resumo. Dashboard: "A receber no fiado" quando há.
+   Balcão: aviso ao reconhecer cliente com fiado (aviso, não bloqueio).
+5. Desfazer exige motivo; não vale para retirada já concluída no fiado.
+   Tudo auditado (`pedido_fiado`, `pedido_fiado_desfeito`). Sem limite.
+
+Migration 0167 (`20261017150000_fiado_pagar_depois`).

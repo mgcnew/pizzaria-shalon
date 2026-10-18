@@ -38,6 +38,7 @@ const GRUPOS: { titulo: string; itens: [string, string][] }[] = [
       ["cash.reopen", "Reabrir ou corrigir caixa fechado"],
       ["cash.bypass_session", "Receber sem caixa aberto"],
       ["payments.register", "Registrar pagamento recebido"],
+      ["orders.defer_payment", "Deixar o pagamento para depois (fiado)"],
     ],
   },
   {

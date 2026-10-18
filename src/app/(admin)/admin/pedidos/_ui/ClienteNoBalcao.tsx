@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { formatBRL } from "@/lib/format";
 import { remontarItens } from "@/application/pedidos/acoes";
@@ -56,10 +57,29 @@ export function ResumoDoCliente({ dados }: { dados: ClienteNoBalcao }) {
     c.ticket_medio !== null ? `ticket médio ${formatBRL(c.ticket_medio)}` : null,
   ].filter(Boolean);
 
+  const emAberto = dados.em_aberto ?? null;
+
   return (
-    <div className="rounded-12 border border-tgb bg-tg px-3 py-2.5">
-      <p className="m-0 text-[14px] font-bold text-tgf">Cliente reconhecido — {c.nome}</p>
-      <p className="m-0 mt-0.5 text-[12.5px] text-ink-2">{partes.join(" · ")}</p>
+    <div className="flex flex-col gap-2">
+      <div className="rounded-12 border border-tgb bg-tg px-3 py-2.5">
+        <p className="m-0 text-[14px] font-bold text-tgf">Cliente reconhecido — {c.nome}</p>
+        <p className="m-0 mt-0.5 text-[12.5px] text-ink-2">{partes.join(" · ")}</p>
+      </div>
+      {/* Fiado em aberto (D-2026-10-17-153): aviso, não bloqueio. */}
+      {emAberto !== null && Number(emAberto.valor) > 0 ? (
+        <div role="status" className="rounded-12 border border-twb bg-tw px-3 py-2.5 text-twf">
+          <p className="m-0 text-[13.5px] font-bold">
+            Tem {formatBRL(Number(emAberto.valor))} em aberto no fiado
+          </p>
+          <p className="m-0 mt-0.5 text-[12.5px]">
+            {emAberto.pedidos === 1 ? "1 pedido" : `${emAberto.pedidos} pedidos`} desde{" "}
+            {DATA.format(new Date(emAberto.desde))}.{" "}
+            <Link href={`/admin/clientes/${c.id}`} className="font-semibold text-twf underline">
+              Ver na ficha
+            </Link>
+          </p>
+        </div>
+      ) : null}
     </div>
   );
 }

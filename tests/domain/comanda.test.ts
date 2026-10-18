@@ -129,6 +129,13 @@ describe("comanda de produção", () => {
     expect(texto).not.toContain("Pagamento:");
   });
 
+  it("entrega no fiado sai como FIADO, sem troco nem cobrança", () => {
+    const texto = renderizarTexto(montarComanda({ ...PEDIDO, fiado: true }));
+    expect(texto).toContain("FIADO - NAO COBRAR");
+    expect(texto).not.toContain("TROCO");
+    expect(texto).not.toContain("Pagamento:");
+  });
+
   it("entrega ainda não paga continua dizendo como cobrar", () => {
     const texto = renderizarTexto(montarComanda({ ...PEDIDO, pago: false }));
     expect(texto).not.toContain("PAGO");

@@ -627,6 +627,16 @@ autoriza tratar um pedido concluído como pago.
 
 Decisão aprovada em 21/09/2026 (D-2026-09-21-54, confirmada no complemento).
 
+
+### RN-PGTO-015 — Fiado: pagamento deixado para depois
+Com a permissão `orders.defer_payment`, um pedido de **cliente identificado** pode ficar para pagar depois. Fiado **não é pagamento**: o status financeiro continua pendente e nada entra no caixa nem no dinheiro do motoboy, que vêm só dos pagamentos registrados. Registra-se quem autorizou, quando e uma observação.
+
+- retirada em fiado pode ser concluída sem pagamento (exceção a RN-PGTO-012);
+- na entrega, a comanda diz "FIADO - NAO COBRAR";
+- o fiado sai da fila de cobrança do dia e fica na ficha do cliente; quando ele pagar, o recebimento normal entra no caixa aberto daquele dia, e a receita conta ali;
+- desfazer exige motivo e não vale para retirada já concluída no fiado;
+- tudo é auditado. Sem limite por cliente; o balcão avisa quando o cliente tem fiado em aberto. *(Decisão de 17/10/2026; D-2026-10-17-153.)*
+
 ---
 
 ## 18. Revisão e envio

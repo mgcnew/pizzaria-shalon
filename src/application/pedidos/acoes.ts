@@ -244,6 +244,7 @@ export async function emitirDocumento(
       trocoEsperado: pedido.pagamento?.troco_esperado ?? null,
       formaPagamento: pedido.pagamento?.forma ?? null,
       pago: (pagamento?.realizado ?? []).some((p) => p.status === "confirmed"),
+      fiado: Boolean(pedido.fiado),
       // Number(): o PostgREST pode devolver numeric como texto.
       valores: {
         subtotal: Number(pedido.subtotal),

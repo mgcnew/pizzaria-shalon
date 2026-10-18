@@ -138,6 +138,7 @@ export function TabelaPedidos({
                   ? "Entrega não aprovada"
                   : null,
               p.aguarda_cliente ? "Alteração aguardando o cliente" : null,
+              p.fiado ? "Fiado (pagar depois)" : null,
             ].filter((t): t is string => t !== null);
 
             const cobravel = cobraveis?.[p.id] ?? null;

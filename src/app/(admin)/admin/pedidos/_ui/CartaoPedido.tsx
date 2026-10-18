@@ -55,6 +55,7 @@ export function CartaoPedido({
         ? "Entrega não aprovada"
         : null,
     pedido.aguarda_cliente ? "Alteração aguardando o cliente" : null,
+    pedido.fiado ? "Fiado (pagar depois)" : null,
   ].filter((t): t is string => t !== null);
 
   return (

@@ -21,6 +21,7 @@ import { rotuloDeModalidade, rotuloDeOrigem } from "@/domain/pedidos/estados";
 import { GraficoDeBarras, GraficoDeColunas, type CorDoGrafico } from "./_ui/Graficos";
 import { CentralDeAtencao } from "./_ui/CentralDeAtencao";
 import { Indicador } from "./_ui/Indicador";
+import { listarFiados } from "@/application/fiado/acoes";
 import { SeletorDePeriodo } from "./_ui/SeletorDePeriodo";
 import {
   MovimentoCarregando,
@@ -143,6 +144,10 @@ export default async function Page({
 
       <CentralDeAtencao dados={central} />
 
+      <Suspense fallback={null}>
+        <BlocoDoFiado />
+      </Suspense>
+
       {/*
        * `key={chave}`: trocar o período cria blocos novos, que mostram o
        * skeleton na hora. Sem a chave, o Next manteria os números do período
@@ -165,6 +170,33 @@ export default async function Page({
         abre os mesmos números linha a linha, com exportação.
       </p>
     </div>
+  );
+}
+
+/**
+ * Fiado em aberto (D-2026-10-17-153): quanto ficou para receber depois.
+ * Não é período: é o que está em aberto agora. Some quando não há nada.
+ */
+async function BlocoDoFiado() {
+  const fiado = await listarFiados().catch(() => null);
+  if (!fiado?.ok || Number(fiado.total) <= 0) return null;
+  const maisAntigo = fiado.pedidos.reduce((max, p) => Math.max(max, Number(p.dias)), 0);
+  return (
+    <Link
+      href="/admin/clientes?fiado=1"
+      className="flex flex-wrap items-center justify-between gap-3 rounded-16 border border-twb bg-tw px-4 py-3 text-twf no-underline transition-colors hover:brightness-[0.98]"
+    >
+      <div>
+        <p className="m-0 text-[12.5px] font-semibold uppercase tracking-[0.04em]">A receber no fiado</p>
+        <p className="m-0 mt-0.5 font-display text-[22px] font-bold">{formatBRL(Number(fiado.total))}</p>
+        <p className="m-0 text-[12.5px]">
+          {fiado.clientes === 1 ? "1 cliente" : `${fiado.clientes} clientes`} ·{" "}
+          {fiado.pedidos.length === 1 ? "1 pedido" : `${fiado.pedidos.length} pedidos`}
+          {maisAntigo > 0 ? ` · o mais antigo há ${maisAntigo} ${maisAntigo === 1 ? "dia" : "dias"}` : ""}
+        </p>
+      </div>
+      <span className="text-[13px] font-semibold">Ver quem deve →</span>
+    </Link>
   );
 }
 

@@ -27,6 +27,8 @@ export type ClienteNaLista = {
   cliente_id: string;
   nome: string;
   whatsapp: string | null;
+  /** Fiado em aberto (D-2026-10-17-153). 0 quando não deve nada. */
+  em_aberto?: number;
   aceita_promocao: boolean;
   bloqueado: boolean;
   pedidos: number;
@@ -57,6 +59,8 @@ export type FiltrosDeClientes = {
   consentimento?: "sim" | "nao";
   pedidos_minimos?: number;
   busca?: string;
+  /** Só quem tem fiado em aberto (0167). */
+  fiado?: boolean;
   ordem?: "ausencia" | "faturamento" | "pedidos" | "recente";
   limite?: number;
   /** Quantos pular, para paginar (0166). */
@@ -75,11 +79,15 @@ export type ListaDeClientes = {
     base_fraca: number;
     dados_insuficientes: number;
     sem_consentimento: number;
+    com_fiado?: number;
+    fiado_total?: number;
   };
 };
 
 export type FichaDeCliente = {
   ok: true;
+  /** Pedidos em fiado ainda em aberto (D-2026-10-17-153). */
+  fiado?: { pedido_id: string; numero: number; total: number; em_aberto: number; desde: string; observacao: string | null }[];
   cliente_id: string;
   nome: string;
   whatsapp: string | null;

@@ -6,6 +6,7 @@ import { Cartao, EmptyState, ParDeDados } from "@/ui/patterns";
 import { Badge, StatusBadge } from "@/ui/components";
 import { rotuloInterno } from "@/domain/pedidos/estados";
 import { formatBRL } from "@/lib/format";
+import { linkDoWhatsApp, mensagemDeCobranca } from "@/domain/fiado/cobranca";
 import { Cadencia } from "../_ui/Cadencia";
 import { PreferenciaPromocional } from "../_ui/PreferenciaPromocional";
 
@@ -48,6 +49,19 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   if (!ficha) notFound();
 
   const p = ficha.padrao;
+  const fiado = ficha.fiado ?? [];
+  const totalEmAberto = fiado.reduce((soma, f) => soma + Number(f.em_aberto), 0);
+  const cobrar =
+    fiado.length > 0 && ficha.whatsapp
+      ? linkDoWhatsApp(ficha.whatsapp, mensagemDeCobranca(ficha.nome, fiado))
+      : null;
+  const diaHora = new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  });
 
   return (
     <div className="flex flex-col gap-5">
@@ -64,6 +78,56 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           </p>
         </div>
       </header>
+
+      {fiado.length > 0 ? (
+        <Cartao
+          titulo={`Fiado em aberto · ${formatBRL(totalEmAberto)}`}
+          descricao="Valor que ficou para pagar depois. Não está no caixa: entra no dia em que for recebido."
+          largura="cheio"
+          {...(cobrar
+            ? {
+                acao: (
+                  <a
+                    href={cobrar}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex min-h-touch items-center gap-2 rounded-11 bg-[#25d366] px-4 text-[13.5px] font-semibold text-white no-underline hover:brightness-95"
+                  >
+                    Cobrar pelo WhatsApp
+                  </a>
+                ),
+              }
+            : {})}
+        >
+          <ul className="m-0 list-none p-0">
+            {fiado.map((f) => (
+              <li
+                key={f.pedido_id}
+                className="flex flex-wrap items-center justify-between gap-3 border-b border-border-shalon py-2.5 last:border-0"
+              >
+                <div className="min-w-0">
+                  <Link href={`/admin/pedidos/${f.pedido_id}`} className="font-semibold text-ink">
+                    Pedido #{f.numero}
+                  </Link>
+                  <span className="block text-[12.5px] text-muted">
+                    Desde {diaHora.format(new Date(f.desde))}
+                    {f.observacao ? ` · “${f.observacao}”` : ""}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="font-semibold tabular-nums text-tdf">{formatBRL(Number(f.em_aberto))}</span>
+                  <Link
+                    href={`/admin/pedidos/${f.pedido_id}`}
+                    className="inline-flex min-h-touch items-center rounded-11 border-[1.5px] border-border-shalon bg-surface px-3 text-[13px] font-semibold text-ink no-underline hover:border-brand-orange"
+                  >
+                    Receber
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </Cartao>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <Cartao titulo="Padrão de compra" largura="cheio">

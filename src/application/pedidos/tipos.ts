@@ -59,6 +59,8 @@ export type PedidoNaFila = {
    * ele viu, enquanto a taxa não foi definida. `null`/ausente nos demais.
    */
   taxa_a_definir?: number | null;
+  /** Pagamento deixado para depois e ainda não pago (D-2026-10-17-153). */
+  fiado?: boolean;
   acoes: AcaoDoPedido[];
 };
 
@@ -165,6 +167,9 @@ export type PedidoAdministrativo = {
   }[];
   revisoes: RevisaoDoPedido[];
   impressoes: ImpressaoDoPedido[];
+  /** Fiado (D-2026-10-17-153): quando, por quem e a observação. */
+  fiado?: { em: string; por: string | null; observacao: string | null } | null;
+  status_pagamento?: "pending" | "confirmed" | "reversed";
   acoes: AcaoDoPedido[];
 };
 
@@ -266,6 +271,8 @@ export type ClienteNoBalcao = {
   } | null;
   mais_pedidos: { nome: string; vezes: number; configuracao: ConfiguracaoSalva }[];
   pagamento_habitual: { forma_id: string; forma: string; pede_troco: boolean } | null;
+  /** Fiado em aberto (D-2026-10-17-153); `null` quando não deve nada. */
+  em_aberto?: { valor: number; pedidos: number; desde: string } | null;
 };
 
 export type ResultadoClienteNoBalcao =

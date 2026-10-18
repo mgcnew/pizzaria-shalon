@@ -14,6 +14,8 @@ import { AcoesDoPedido } from "../_ui/AcoesDoPedido";
 import { Comanda } from "../_ui/Comanda";
 import { PainelAlteracao } from "../_ui/PainelAlteracao";
 import { Recebimento } from "../_ui/Recebimento";
+import { FiadoDoPedido } from "../_ui/FiadoDoPedido";
+import { obterSessaoInterna, podeNaUI } from "@/application/auth/sessao";
 import { momentoDoRecebimento } from "@/domain/pedidos/recebimentoNaEntrega";
 import { tetoDaTaxaAConfirmar } from "@/domain/pedidos/taxaAConfirmar";
 
@@ -32,13 +34,14 @@ export const metadata: Metadata = { title: "Pedido" };
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [pedido, loja, pagamento, formas, bandeiras, caixa] = await Promise.all([
+  const [pedido, loja, pagamento, formas, bandeiras, caixa, sessao] = await Promise.all([
     obterPedido(id),
     obterLojaPublica(),
     obterPagamentoDoPedido(id),
     listarFormasPagamento(),
     listarBandeiras(),
     obterCaixa(),
+    obterSessaoInterna(),
   ]);
 
   if (pedido === null) notFound();
@@ -256,6 +259,15 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
                 Pix confirmado em {quando(pedido.pagamento.pix_confirmado_em as string)}.
               </p>
             ) : null}
+
+            <FiadoDoPedido
+              pedidoId={pedido.id}
+              fiado={pedido.fiado ?? null}
+              pago={pedido.status_pagamento === "confirmed"}
+              podeFiado={podeNaUI(sessao, "orders.defer_payment")}
+              temCliente={pedido.cliente.whatsapp.trim() !== ""}
+              encerradoSemVenda={pedido.status === "cancelled" || pedido.status === "rejected"}
+            />
 
             <Recebimento
               pedidoId={pedido.id}

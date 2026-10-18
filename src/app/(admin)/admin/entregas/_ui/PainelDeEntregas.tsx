@@ -182,7 +182,11 @@ export function PainelDeEntregas({
               <div className="text-right">
                 <p className="m-0 text-[14px] font-semibold text-ink">{formatBRL(p.total)}</p>
                 <p className="m-0 text-[12.5px] text-muted">
-                  {p.ja_pago ? "Já pago" : `A receber · ${p.pagamento_esperado ?? "—"}`}
+                  {p.ja_pago
+                    ? "Já pago"
+                    : p.fiado
+                      ? "Fiado — não cobrar"
+                      : `A receber · ${p.pagamento_esperado ?? "—"}`}
                 </p>
               </div>
 

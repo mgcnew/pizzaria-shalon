@@ -55,10 +55,13 @@ export function FiltrosDeClientes({
   ausencia,
   classificacao,
   busca,
+  fiado = false,
 }: {
   ausencia?: string;
   classificacao?: string;
   busca?: string;
+  /** Só quem tem fiado em aberto (D-2026-10-17-153). */
+  fiado?: boolean;
 }) {
   const [aberto, setAberto] = useState(false);
   const router = useRouter();
@@ -67,11 +70,13 @@ export function FiltrosDeClientes({
   const aoClicarEmLink = useFecharAoNavegar(() => setAberto(false));
   const raizRef = useRef<HTMLDivElement>(null);
   const botaoRef = useRef<HTMLButtonElement>(null);
-  const quantidadeAtivos = Number(Boolean(ausencia)) + Number(Boolean(classificacao));
+  const quantidadeAtivos = Number(Boolean(ausencia)) + Number(Boolean(classificacao)) + Number(fiado);
 
+  // O filtro de fiado segue junto, a menos que o chamador diga outra coisa.
   const url = (params: Record<string, string | undefined>) => {
     const p = new URLSearchParams();
-    for (const [chave, valor] of Object.entries(params)) if (valor) p.set(chave, valor);
+    const todos = { fiado: fiado ? "1" : undefined, ...params };
+    for (const [chave, valor] of Object.entries(todos)) if (valor) p.set(chave, valor);
     const query = p.toString();
     return query ? `/admin/clientes?${query}` : "/admin/clientes";
   };
@@ -83,13 +88,17 @@ export function FiltrosDeClientes({
     if (limpo === (busca ?? "").trim()) return;
     const id = window.setTimeout(() => {
       iniciarBusca(() => {
-        router.replace(url({ busca: limpo || undefined, ausencia, cadencia: classificacao }), {
-          scroll: false,
-        });
+        const q = new URLSearchParams();
+        if (limpo) q.set("busca", limpo);
+        if (ausencia) q.set("ausencia", ausencia);
+        if (classificacao) q.set("cadencia", classificacao);
+        if (fiado) q.set("fiado", "1");
+        const texto = q.toString();
+        router.replace(texto ? `/admin/clientes?${texto}` : "/admin/clientes", { scroll: false });
       });
     }, 350);
     return () => window.clearTimeout(id);
-  }, [texto, busca, ausencia, classificacao, router]);
+  }, [texto, busca, ausencia, classificacao, fiado, router]);
 
   useEffect(() => {
     if (!aberto) return;
@@ -171,11 +180,11 @@ export function FiltrosDeClientes({
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <p className="m-0 text-[15px] font-bold text-ink">Filtrar clientes</p>
-                <p className="mb-0 mt-0.5 text-[12px] text-muted">Combine ausência e cadência.</p>
+                <p className="mb-0 mt-0.5 text-[12px] text-muted">Combine ausência, cadência e fiado.</p>
               </div>
               {quantidadeAtivos > 0 ? (
                 <Link
-                  href={url({ busca })}
+                  href={url({ busca, fiado: undefined })}
                   onClick={aoClicarEmLink}
                   className="relative inline-flex min-h-[34px] items-center text-[12px] font-semibold text-brand-red hover:text-danger"
                 >
@@ -227,6 +236,19 @@ export function FiltrosDeClientes({
                   </Chip>
                 ))}
               </div>
+            </fieldset>
+
+            <fieldset className="m-0 mt-4 min-w-0 border-0 border-t border-border-shalon p-0 pt-4">
+              <legend className="px-2 text-[12px] font-bold uppercase tracking-[0.05em] text-muted">
+                Pagamento
+              </legend>
+              <Chip
+                ativo={fiado}
+                aoEscolher={aoClicarEmLink}
+                href={url({ busca, ausencia, cadencia: classificacao, fiado: fiado ? undefined : "1" })}
+              >
+                Com fiado em aberto
+              </Chip>
             </fieldset>
           </div>
         ) : null}

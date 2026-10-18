@@ -38,6 +38,8 @@ export type EntregaAguardando = {
   familia_esperada: string | null;
   /** Já pago ANTES de sair. Não muda o fluxo; muda o que o motoboy cobra. */
   ja_pago: boolean;
+  /** Fiado (D-2026-10-17-153): o motoboy não cobra este pedido. */
+  fiado?: boolean;
   pronto_desde: string | null;
 };
 

@@ -33,9 +33,16 @@ const POR_PAGINA = 25;
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ ausencia?: string; cadencia?: string; busca?: string; pagina?: string }>;
+  searchParams: Promise<{
+    ausencia?: string;
+    cadencia?: string;
+    busca?: string;
+    pagina?: string;
+    fiado?: string;
+  }>;
 }) {
-  const { ausencia, cadencia, busca, pagina } = await searchParams;
+  const { ausencia, cadencia, busca, pagina, fiado } = await searchParams;
+  const soFiado = fiado === "1";
   const paginaAtual = Math.max(1, Math.floor(Number(pagina)) || 1);
 
   const filtros: Filtros = {
@@ -46,6 +53,7 @@ export default async function Page({
       ? { classificacao: cadencia as ValorDeCadencia }
       : {}),
     ...(busca ? { busca } : {}),
+    ...(soFiado ? { fiado: true } : {}),
     limite: POR_PAGINA,
     deslocamento: (paginaAtual - 1) * POR_PAGINA,
   };
@@ -61,6 +69,7 @@ export default async function Page({
     if (ausencia) q.set("ausencia", ausencia);
     if (cadencia) q.set("cadencia", cadencia);
     if (busca) q.set("busca", busca);
+    if (soFiado) q.set("fiado", "1");
     if (n > 1) q.set("pagina", String(n));
     const texto = q.toString();
     return texto ? `/admin/clientes?${texto}` : "/admin/clientes";
@@ -75,7 +84,7 @@ export default async function Page({
         </p>
       </header>
 
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7">
         {[
           { rotulo: "Recorrentes", valor: lista.resumo.recorrentes },
           { rotulo: "Em atenção", valor: lista.resumo.atencao },
@@ -91,6 +100,25 @@ export default async function Page({
             <p className="m-0 mt-1 font-display text-[20px] font-bold text-ink">{c.valor}</p>
           </div>
         ))}
+        {/* Fiado em aberto: atalho para o filtro (D-2026-10-17-153). */}
+        <Link
+          href={soFiado ? "/admin/clientes" : "/admin/clientes?fiado=1"}
+          aria-current={soFiado ? "true" : undefined}
+          className={[
+            "rounded-16 border p-3 no-underline transition-colors",
+            soFiado ? "border-brand-orange bg-elev" : "border-border-shalon bg-surface hover:border-brand-orange",
+          ].join(" ")}
+        >
+          <p className="m-0 text-[12px] font-semibold uppercase tracking-[0.04em] text-muted">
+            Fiado em aberto
+          </p>
+          <p className="m-0 mt-1 font-display text-[20px] font-bold text-ink">
+            {formatBRL(Number(lista.resumo.fiado_total ?? 0))}
+          </p>
+          <p className="m-0 text-[11.5px] text-muted">
+            {lista.resumo.com_fiado ?? 0} {(lista.resumo.com_fiado ?? 0) === 1 ? "cliente" : "clientes"}
+          </p>
+        </Link>
       </section>
 
       <Cartao
@@ -103,13 +131,14 @@ export default async function Page({
             {...(ausencia ? { ausencia } : {})}
             {...(cadencia ? { classificacao: cadencia } : {})}
             {...(busca ? { busca } : {})}
+            fiado={soFiado}
           />
         }
         largura="cheio"
       >
         {lista.clientes.length === 0 ? (
           <EmptyState
-            titulo="Nenhum cliente neste filtro"
+            titulo={soFiado ? "Ninguém com fiado em aberto" : "Nenhum cliente neste filtro"}
             descricao="Ajuste o período de ausência ou a cadência."
           />
         ) : (
@@ -119,6 +148,7 @@ export default async function Page({
                 <tr className="whitespace-nowrap text-left text-muted">
                   <th className="border-b border-border-shalon py-2 font-semibold">Cliente</th>
                   <th className="border-b border-border-shalon px-3 py-2 font-semibold">Telefone</th>
+                  <th className="border-b border-border-shalon py-2 pr-3 text-right font-semibold">Em aberto</th>
                   <th className="border-b border-border-shalon py-2 font-semibold">Cadência</th>
                   <th className="border-b border-border-shalon py-2 text-right font-semibold">
                     Pedidos
@@ -148,6 +178,13 @@ export default async function Page({
                     <td className="border-b border-border-shalon px-3 py-2">
                       {c.whatsapp ? (
                         <TelefoneCopiavel telefone={c.whatsapp} />
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap border-b border-border-shalon py-2 pr-3 text-right">
+                      {Number(c.em_aberto ?? 0) > 0 ? (
+                        <span className="font-semibold text-tdf">{formatBRL(Number(c.em_aberto))}</span>
                       ) : (
                         <span className="text-muted">—</span>
                       )}
