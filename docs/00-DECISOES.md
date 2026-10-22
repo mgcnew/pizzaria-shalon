@@ -4866,3 +4866,15 @@ mesmo pedido em vez de lançar outro e receber duas vezes.
    `salvarVariacao`, que já fazia upsert por produto × tamanho).
 4. Ferramenta Tamanhos: "Editar tamanho" (nome, vendido como, fatias, máximo
    de sabores, ordem), usando o `salvarTamanho` que já aceitava edição.
+
+## D-2026-10-22-156 — Retirada no balcão só com o nome
+
+**Pedido da dona:** cliente no balcão que não quer passar o telefone.
+
+**Decisão (amplia D-2026-09-26-81):** no Novo pedido com canal **Balcão** e
+**Retirada**, o WhatsApp é opcional; basta o nome. O pedido não vincula
+cliente (sem histórico, sem fiado) e o nome vai para a fila e a comanda. Sem
+nome e sem telefone continua sendo a venda anônima "Balcão". Telefone
+digitado pela metade continua barrando. Entrega e os outros canais
+continuam exigindo WhatsApp. O aviso no campo explica a perda de histórico
+e de fiado. Migration 0169 (`20261022100000_balcao_so_com_nome`).

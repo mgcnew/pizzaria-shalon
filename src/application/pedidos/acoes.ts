@@ -421,13 +421,14 @@ const pedidoManualSchema = z.object({
    * FORMA. Se o cliente faltar onde é exigido, o servidor responde
    * "Informe seu nome.", que é a mensagem certa vinda da autoridade certa.
    *
-   * O que continua valendo: informado, o cliente tem de estar COMPLETO. Nome
-   * sem telefone não passa por aqui nem por lá.
+   * Desde D-2026-10-22-156 o WhatsApp pode vir vazio: na retirada do balcão
+   * basta o nome. Quem decide se pode é `criar_pedido`, pela mesma regra.
+   * Preenchido, tem de ter jeito de telefone.
    */
   cliente: z
     .object({
       nome: z.string().min(2).max(120),
-      whatsapp: z.string().min(8).max(24),
+      whatsapp: z.union([z.literal(""), z.string().min(8).max(24)]),
     })
     .optional(),
   endereco: z

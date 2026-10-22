@@ -401,9 +401,16 @@ export function NovoPedido({
     cidade.trim().length > 1 &&
     /^[A-Za-z]{2}$/.test(uf);
 
+  // Retirada no balcão: o WhatsApp é opcional (D-2026-10-22-156). Digitado
+  // pela metade continua barrando — número errado não vira pedido sem cliente.
+  const telefoneOpcional = origem === "counter" && modalidade === "pickup";
+  const whatsappOk = telefoneOpcional
+    ? whatsappDigitos.length === 0 || whatsappDigitos.length >= 10
+    : whatsappDigitos.length >= 10;
+
   const clienteCompleto =
     nome.trim().length >= 2 &&
-    whatsappDigitos.length >= 10 &&
+    whatsappOk &&
     !bloqueado &&
     (modalidade === "pickup" || enderecoCompleto);
 
@@ -441,7 +448,7 @@ export function NovoPedido({
   const pendencias = [
     itens.length === 0 ? "itens" : null,
     nome.trim().length < 2 ? "nome do cliente" : null,
-    whatsappDigitos.length < 10 ? "WhatsApp" : null,
+    !whatsappOk ? "WhatsApp" : null,
     modalidade === "delivery" && logradouro.trim().length <= 1 ? "rua" : null,
     modalidade === "delivery" && numero.trim().length === 0 ? "número" : null,
     modalidade === "delivery" && bairro.trim().length <= 1 ? "bairro" : null,
@@ -475,7 +482,7 @@ export function NovoPedido({
         idempotency_key: chaveDaTentativa.current,
         origem,
         modalidade,
-        cliente: { nome: nome.trim(), whatsapp: whatsapp.trim() },
+        cliente: { nome: nome.trim(), whatsapp: whatsappDigitos.length === 0 ? "" : whatsapp.trim() },
         endereco:
           modalidade === "delivery"
             ? {
@@ -670,13 +677,17 @@ export function NovoPedido({
               traz nome, endereço e pagamento habitual — o nome só é digitado
               quando o cliente é novo. */}
           <Input
-            label="WhatsApp"
+            label={telefoneOpcional ? "WhatsApp (opcional)" : "WhatsApp"}
             value={whatsapp}
             onChange={(e) => mudarWhatsapp(e.target.value)}
             inputMode="tel"
             maxLength={24}
             placeholder="(00) 00000-0000"
-            hint="Identificador operacional do cliente. Cliente já cadastrado é reconhecido por ele."
+            hint={
+              telefoneOpcional && whatsappDigitos.length === 0
+                ? "Retirada no balcão: dá para lançar só com o nome. Sem o WhatsApp, o pedido não entra no histórico do cliente e não pode ir para o fiado."
+                : "Identificador operacional do cliente. Cliente já cadastrado é reconhecido por ele."
+            }
           />
           {consultando ? (
             <p className="m-0 text-[12.5px] text-muted" role="status">
