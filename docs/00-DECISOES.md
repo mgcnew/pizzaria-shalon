@@ -4878,3 +4878,35 @@ nome e sem telefone continua sendo a venda anônima "Balcão". Telefone
 digitado pela metade continua barrando. Entrega e os outros canais
 continuam exigindo WhatsApp. O aviso no campo explica a perda de histórico
 e de fiado. Migration 0169 (`20261022100000_balcao_so_com_nome`).
+
+## D-2026-10-23-157 — WhatsApp opcional nos canais Telefone e Balcão
+
+**Pedido da dona:** a balconista recebe pedido por telefone de cliente que não
+quer passar o WhatsApp de jeito nenhum; o mesmo vale no balcão.
+
+**Decisão (amplia D-2026-10-22-156 e D-2026-09-26-81):** no Novo pedido com
+canal **Telefone** ou **Balcão**, em **retirada ou entrega**, o WhatsApp é
+opcional. O **nome continua obrigatório**, exceto na retirada do balcão (que
+sem nome vira "Balcão", como em D-156): em entrega não há a quem entregar, e no
+telefone não há quem chamar na retirada. Os canais WhatsApp, iFood e outro, e
+o checkout público, continuam exigindo WhatsApp; telefone digitado pela metade
+continua barrando. Condições cumulativas em `criar_pedido`: lançamento
+interno, WhatsApp vazio e canal `counter` ou `phone`.
+
+**O que muda no pedido sem WhatsApp:** `customer_id` nulo (a identidade do
+cliente é o WhatsApp), então não há histórico, fiado nem remarketing. Como
+`customer_addresses.customer_id` é NOT NULL, na entrega o **endereço não é
+salvo para uso futuro**: fica só em `orders.delivery_address_snapshot`, que já
+guarda o que a entrega e a corrida usam. A taxa combinada também não é guardada
+no endereço. O aviso do campo explica isso à balconista. As telas do pedido
+passaram a esconder o link "Falar no WhatsApp" quando não há número (já
+aparecia quebrado no balcão sem telefone).
+
+**Risco operacional, aceito:** sem telefone, o motoboy não tem como ligar para o
+cliente se não achar o endereço; vale a balconista preencher bem a referência.
+
+Migration 0170 (`20261023100000_whatsapp_opcional_balcao_e_telefone`).
+Verificada em transação desfeita no DEV, com 11 combinações de canal,
+modalidade e nome: telefone e balcão, em retirada e entrega, criam o pedido sem
+cliente (e sem endereço salvo na entrega); sem nome em entrega ou telefone,
+canais WhatsApp/iFood e número pela metade continuam recusados.

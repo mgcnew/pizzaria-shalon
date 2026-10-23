@@ -115,9 +115,13 @@ export function ModalPedido({
           <section className="min-w-0 rounded-16 border border-border-shalon bg-surface p-4">
             <h3 className="m-0 mb-2 text-[13px] font-bold uppercase tracking-wide text-muted">Cliente</h3>
             <p className="m-0 font-semibold text-ink">{pedido.cliente.nome}</p>
-            <a href={`https://wa.me/${pedido.cliente.whatsapp}`} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex text-[13px] font-semibold text-brand-red">
-              Abrir WhatsApp
-            </a>
+            {pedido.cliente.whatsapp.trim() !== "" ? (
+              <a href={`https://wa.me/${pedido.cliente.whatsapp}`} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex text-[13px] font-semibold text-brand-red">
+                Abrir WhatsApp
+              </a>
+            ) : (
+              <p className="m-0 mt-1 text-[12.5px] text-muted">Cliente sem WhatsApp informado.</p>
+            )}
             {pedido.endereco ? (
               <div className="mt-2 text-[12.5px] text-ink-2">
                 <p className="m-0">{pedido.endereco["logradouro"]}, {pedido.endereco["numero"]}</p>

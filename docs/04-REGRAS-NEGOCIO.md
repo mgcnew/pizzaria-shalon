@@ -442,7 +442,7 @@ Valores enviados pelo frontend nunca são aceitos como autoridade financeira.
 Não há cadastro com senha para cliente na V1.
 
 ### RN-CLI-002
-Nome e WhatsApp são obrigatórios no primeiro pedido. Endereço é obrigatório somente para entrega.
+Nome e WhatsApp são obrigatórios no primeiro pedido. Endereço é obrigatório somente para entrega. Exceção no lançamento manual interno, sem cliente cadastrado: nos canais Balcão e Telefone, em retirada ou entrega, o WhatsApp pode ser dispensado (D-2026-10-22-156 e D-2026-10-23-157); o nome continua obrigatório, salvo na retirada do balcão, e na entrega o endereço fica só no pedido.
 
 ### RN-CLI-003
 WhatsApp é identificador operacional, mas não substitui a chave primária interna do cliente.

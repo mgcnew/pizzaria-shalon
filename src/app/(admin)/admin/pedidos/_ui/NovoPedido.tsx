@@ -401,9 +401,10 @@ export function NovoPedido({
     cidade.trim().length > 1 &&
     /^[A-Za-z]{2}$/.test(uf);
 
-  // Retirada no balcão: o WhatsApp é opcional (D-2026-10-22-156). Digitado
-  // pela metade continua barrando — número errado não vira pedido sem cliente.
-  const telefoneOpcional = origem === "counter" && modalidade === "pickup";
+  // O WhatsApp é opcional nos canais Balcão e Telefone, em retirada e em
+  // entrega (D-2026-10-22-156 e D-2026-10-23-157). Digitado pela metade
+  // continua barrando — número errado não vira pedido sem cliente.
+  const telefoneOpcional = origem === "counter" || origem === "phone";
   const whatsappOk = telefoneOpcional
     ? whatsappDigitos.length === 0 || whatsappDigitos.length >= 10
     : whatsappDigitos.length >= 10;
@@ -685,7 +686,9 @@ export function NovoPedido({
             placeholder="(00) 00000-0000"
             hint={
               telefoneOpcional && whatsappDigitos.length === 0
-                ? "Retirada no balcão: dá para lançar só com o nome. Sem o WhatsApp, o pedido não entra no histórico do cliente e não pode ir para o fiado."
+                ? modalidade === "delivery"
+                  ? "Dá para lançar a entrega sem o WhatsApp. Sem ele, o pedido não entra no histórico do cliente, não pode ir para o fiado, o endereço não fica salvo e a equipe não consegue chamar o cliente pelo sistema."
+                  : "Dá para lançar só com o nome. Sem o WhatsApp, o pedido não entra no histórico do cliente e não pode ir para o fiado."
                 : "Identificador operacional do cliente. Cliente já cadastrado é reconhecido por ele."
             }
           />

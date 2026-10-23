@@ -220,14 +220,18 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         <div className="flex flex-col gap-4">
           <Cartao titulo="Cliente" largura="cheio">
             <p className="m-0 text-[15px] font-semibold text-ink">{pedido.cliente.nome}</p>
-            <a
-              href={`https://wa.me/${pedido.cliente.whatsapp}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-1 inline-flex min-h-touch items-center text-[14px] font-semibold text-ink-2"
-            >
-              Falar no WhatsApp
-            </a>
+            {pedido.cliente.whatsapp.trim() !== "" ? (
+              <a
+                href={`https://wa.me/${pedido.cliente.whatsapp}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 inline-flex min-h-touch items-center text-[14px] font-semibold text-ink-2"
+              >
+                Falar no WhatsApp
+              </a>
+            ) : (
+              <p className="m-0 mt-1 text-[13px] text-muted">Cliente sem WhatsApp informado.</p>
+            )}
 
             {pedido.modalidade === "delivery" && pedido.endereco !== null ? (
               <div className="mt-2 text-[13.5px] text-ink-2">
