@@ -16,9 +16,16 @@ import { CHAMADA_DO_CONVITE, ENDERECO_DO_APP, INSTRUCAO_DO_CONVITE, URL_DO_CONVI
  * última coisa impressa e cortar ali — e o espaço sumia, cortando o QR
  * (Diebold IM433TP, 13/10/2026). Com o ponto, o branco é conteúdo.
  *
- * TUDO EM NEGRITO. A Courier New tem traço fino, e na térmica saía apagada
- * (08/10/2026). Títulos e destaques ganham um contorno a mais
- * (`text-stroke`), que engrossa o traço sem mudar a largura das colunas.
+ * NEGRITO. A Courier New tem traço fino, e na térmica saía apagada
+ * (08/10/2026): por isso o documento inteiro saía em negrito, e títulos e
+ * destaques ganhavam um contorno a mais (`text-stroke`), que engrossa o traço
+ * sem mudar a largura das colunas.
+ *
+ * COMANDA COM NEGRITO SELETIVO (23/10/2026). Com tudo em negrito, o negrito
+ * deixava de apontar o que quer que fosse. Documento que usa o estilo "forte"
+ * (a comanda: itens e observações) sai em peso normal, com só um contorno bem
+ * fino para a letra não sair apagada, e o negrito de verdade fica para o que é
+ * "forte". Os demais documentos (cupom, fechamento) seguem como antes.
  *
  * SEM JANELA DE ESCOLHA só quando o navegador foi aberto com
  * `--kiosk-printing` (o atalho do balcão, explicado em Configurações →
@@ -77,10 +84,18 @@ function montarHtml(
   const caractere = Math.min(LARGURA_DO_CARACTERE_MM, largura / maisLonga / 1.03);
   const fonte = (caractere / AVANCO_DA_FONTE).toFixed(3);
 
+  // Documento com "forte" é o de negrito seletivo.
+  const seletivo = linhas.some((l) => l.estilo === "forte");
+
   const corpo = linhas
     .map((l) => {
       if (l.estilo === "qrcode") return `<p class="qr">${svgDoQr(l.texto)}</p>`;
-      const classe = l.estilo === "titulo" || l.estilo === "destaque" ? ' class="b"' : "";
+      const classe =
+        l.estilo === "forte"
+          ? ' class="f"'
+          : l.estilo === "titulo" || l.estilo === "destaque"
+            ? ' class="b"'
+            : "";
       return `<div${classe}>${l.texto === "" ? "&nbsp;" : escapar(l.texto)}</div>`;
     })
     .join("");
@@ -91,9 +106,10 @@ html, body { margin: 0; padding: 0; background: #fff; color: #000;
   -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 body { width: ${faixa.inicioMm + largura}mm; padding: 2mm 0 1mm ${faixa.inicioMm}mm; box-sizing: border-box;
   font-family: "Courier New", Courier, monospace; font-size: ${fonte}mm; line-height: 1.3;
-  font-weight: 700; }
+  font-weight: ${seletivo ? 400 : 700};${seletivo ? " -webkit-text-stroke: 0.2px #000;" : ""} }
 div { white-space: pre; overflow: hidden; }
-.b { -webkit-text-stroke: 0.35px #000; }
+.b { font-weight: 700; -webkit-text-stroke: 0.35px #000; }
+.f { font-weight: 700; -webkit-text-stroke: 0.35px #000; }
 .qr { margin: 1mm 0; text-align: center; width: ${largura}mm; }
 .fim { padding-top: ${espacoFinalMm}mm; text-align: center; font-size: 2mm; line-height: 1; }
 </style></head><body>${corpo}<div class="fim">.</div></body></html>`;

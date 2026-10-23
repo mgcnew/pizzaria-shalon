@@ -44,6 +44,14 @@ export type EstiloLinha =
   | "titulo"
   /** Informação que não pode passar batida: modalidade, ALTERAÇÃO, troco. */
   | "destaque"
+  /**
+   * Negrito, e só ele. Na comanda é usado apenas nos itens (o que a cozinha
+   * precisa achar de relance) e nas observações (a instrução que costuma ser
+   * esquecida); todo o resto é texto comum, para o negrito ter função
+   * (D-2026-10-23-161). Os cabeçalhos de ALTERAÇÃO e ACRÉSCIMO também o usam:
+   * esses documentos precisam estar claramente identificados (CLAUDE.md §32).
+   */
+  | "forte"
   /** Régua divisória. */
   | "separador"
   /** Espaço em branco. */
@@ -180,11 +188,11 @@ function bloqueDoItem(item: ItemDaComanda, largura: number): LinhaComanda[] {
 
   // Quantidade colada no nome: é o que a cozinha lê primeiro.
   const titulo = `${item.quantidade}x ${item.sabores?.length ? item.sabores.join(" / ") : item.nome}`;
-  saida.push(...txt(titulo, "titulo"));
+  saida.push(...txt(titulo, "forte"));
 
   if (item.tamanho) saida.push(...txt(`  ${item.tamanho}`));
   if (item.sabores && item.sabores.length > 1) {
-    saida.push(...txt("  MEIO A MEIO", "destaque"));
+    saida.push(...txt("  MEIO A MEIO"));
   }
   if (item.borda) saida.push(...txt(`  Borda: ${item.borda}`));
   if (item.adicionais?.length) {
@@ -198,8 +206,8 @@ function bloqueDoItem(item: ItemDaComanda, largura: number): LinhaComanda[] {
       ),
     );
   }
-  // Observação do item em destaque: é a instrução que costuma ser esquecida.
-  if (item.observacao) saida.push(...txt(`  >> ${item.observacao}`, "destaque"));
+  // Observação do item em negrito: é a instrução que costuma ser esquecida.
+  if (item.observacao) saida.push(...txt(`  >> ${item.observacao}`, "forte"));
 
   return saida;
 }
@@ -221,22 +229,23 @@ export function montarComanda(
   const txt = (texto: string, estilo?: EstiloLinha) => linhas(texto, largura, estilo);
   const SEPARADOR = separador(largura);
 
-  saida.push({ texto: centralizar("PIZZARIA SHALON", largura), estilo: "titulo" });
+  saida.push({ texto: centralizar("PIZZARIA SHALON", largura), estilo: "normal" });
   saida.push({
     texto: centralizar("*** NAO E DOCUMENTO FISCAL ***", largura),
     estilo: "normal",
   });
   saida.push(SEPARADOR);
 
-  saida.push({ texto: `PEDIDO #${pedido.numero}`, estilo: "titulo" });
+  saida.push({ texto: `PEDIDO #${pedido.numero}`, estilo: "normal" });
   saida.push({ texto: pedido.horario, estilo: "normal" });
 
   // RN-PRINT-003: entrega ou retirada em destaque. Confundir os dois custa
-  // uma pizza esfriando no balcão ou um entregador sem endereço.
+  // uma pizza esfriando no balcão ou um entregador sem endereço. O destaque é
+  // o letreiro ">>> … <<<" e a linha só para ele; o negrito é dos itens.
   saida.push(VAZIO);
   saida.push({
     texto: pedido.modalidade === "delivery" ? ">>> ENTREGA <<<" : ">>> RETIRADA <<<",
-    estilo: "destaque",
+    estilo: "normal",
   });
   saida.push(VAZIO);
 
@@ -260,8 +269,8 @@ export function montarComanda(
 
   if (pedido.observacao) {
     saida.push(SEPARADOR);
-    saida.push(...txt("OBSERVACAO DO PEDIDO", "titulo"));
-    saida.push(...txt(pedido.observacao, "destaque"));
+    saida.push(...txt("OBSERVACAO DO PEDIDO"));
+    saida.push(...txt(pedido.observacao, "forte"));
   }
 
   // Valores: o motoboy cobra pelo que está no papel (D-2026-10-17-147).
@@ -274,13 +283,13 @@ export function montarComanda(
         estilo: "normal",
       });
     }
-    saida.push({ texto: ladoALado("TOTAL", reais(pedido.valores.total), largura), estilo: "destaque" });
+    saida.push({ texto: ladoALado("TOTAL", reais(pedido.valores.total), largura), estilo: "normal" });
   }
 
   // Como cobrar, na entrega: pago, troco a levar ou a forma escolhida.
   if (pedido.modalidade === "delivery" && pedido.pago === true) {
     saida.push(SEPARADOR);
-    saida.push({ texto: "PAGO - NAO COBRAR", estilo: "destaque" });
+    saida.push({ texto: "PAGO - NAO COBRAR", estilo: "normal" });
   } else if (
     pedido.modalidade === "delivery" &&
     pedido.pagoEmParte != null &&
@@ -291,11 +300,11 @@ export function montarComanda(
     saida.push(...txt(`Ja pago: ${reais(pedido.pagoEmParte)}`));
     saida.push({
       texto: `COBRAR ${reais(Math.max(0, pedido.valores.total - pedido.pagoEmParte))}`,
-      estilo: "destaque",
+      estilo: "normal",
     });
   } else if (pedido.modalidade === "delivery" && pedido.fiado === true) {
     saida.push(SEPARADOR);
-    saida.push({ texto: "FIADO - NAO COBRAR", estilo: "destaque" });
+    saida.push({ texto: "FIADO - NAO COBRAR", estilo: "normal" });
   } else if (
     pedido.modalidade === "delivery" &&
     pedido.trocoEsperado != null &&
@@ -304,9 +313,9 @@ export function montarComanda(
     saida.push(SEPARADOR);
     saida.push({
       texto: `TROCO PARA ${reais(pedido.trocoPara)}`,
-      estilo: "destaque",
+      estilo: "normal",
     });
-    saida.push({ texto: `Levar ${reais(pedido.trocoEsperado)}`, estilo: "destaque" });
+    saida.push({ texto: `Levar ${reais(pedido.trocoEsperado)}`, estilo: "normal" });
   } else if (pedido.modalidade === "delivery" && pedido.formaPagamento) {
     saida.push(SEPARADOR);
     saida.push(...txt(`Pagamento: ${pedido.formaPagamento}`));
@@ -343,23 +352,23 @@ export function montarAlteracao(
   const SEPARADOR = separador(largura);
 
   saida.push(separador(largura, "*"));
-  saida.push({ texto: centralizar("*** ALTERACAO ***", largura), estilo: "destaque" });
-  saida.push({ texto: centralizar(`PEDIDO #${dados.numero}`, largura), estilo: "destaque" });
+  saida.push({ texto: centralizar("*** ALTERACAO ***", largura), estilo: "forte" });
+  saida.push({ texto: centralizar(`PEDIDO #${dados.numero}`, largura), estilo: "forte" });
   saida.push(separador(largura, "*"));
   saida.push({ texto: dados.horario, estilo: "normal" });
   saida.push(VAZIO);
-  saida.push(...txt("A comanda anterior deste pedido NAO vale mais.", "destaque"));
+  saida.push(...txt("A comanda anterior deste pedido NAO vale mais.", "forte"));
   saida.push(VAZIO);
   saida.push(...txt(`Motivo: ${dados.motivo}`));
 
   saida.push(SEPARADOR);
-  saida.push(...txt("ERA", "titulo"));
+  saida.push(...txt("ERA"));
   for (const item of dados.itensAntes) {
     saida.push(...txt(`  - ${item.quantidade}x ${item.nome}`));
   }
 
   saida.push(SEPARADOR);
-  saida.push(...txt("PASSA A SER", "titulo"));
+  saida.push(...txt("PASSA A SER"));
   for (const item of dados.itensDepois) {
     saida.push(...bloqueDoItem(item, largura));
     saida.push(VAZIO);
@@ -382,15 +391,15 @@ export function montarAcrescimo(
   const txt = (texto: string, estilo?: EstiloLinha) => linhas(texto, largura, estilo);
 
   saida.push(separador(largura, "*"));
-  saida.push({ texto: centralizar("*** ACRESCIMO ***", largura), estilo: "destaque" });
-  saida.push({ texto: centralizar(`PEDIDO #${dados.numero}`, largura), estilo: "destaque" });
+  saida.push({ texto: centralizar("*** ACRESCIMO ***", largura), estilo: "forte" });
+  saida.push({ texto: centralizar(`PEDIDO #${dados.numero}`, largura), estilo: "forte" });
   saida.push(separador(largura, "*"));
   saida.push({ texto: dados.horario, estilo: "normal" });
   saida.push(VAZIO);
-  saida.push(...txt("Somar ao pedido. A comanda anterior CONTINUA valendo.", "destaque"));
+  saida.push(...txt("Somar ao pedido. A comanda anterior CONTINUA valendo.", "forte"));
   saida.push(...txt(dados.motivo));
   saida.push(separador(largura));
-  saida.push(...txt("ACRESCENTAR", "titulo"));
+  saida.push(...txt("ACRESCENTAR"));
   for (const item of dados.itensNovos) {
     saida.push(...bloqueDoItem(item, largura));
     saida.push(VAZIO);

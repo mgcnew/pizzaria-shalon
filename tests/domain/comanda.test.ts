@@ -268,7 +268,7 @@ describe("valores na comanda (D-2026-10-17-147)", () => {
     itens: [{ quantidade: 1, nome: "Calabresa" }],
   };
 
-  it("entrega: subtotal, taxa de entrega e TOTAL em destaque", () => {
+  it("entrega: subtotal, taxa de entrega e TOTAL (texto comum, o negrito é dos itens)", () => {
     const linhas = montarComanda({
       ...base,
       modalidade: "delivery",
@@ -280,7 +280,7 @@ describe("valores na comanda (D-2026-10-17-147)", () => {
     expect(textos.some((t) => t.startsWith("Taxa de entrega") && t.endsWith("R$ 5,00"))).toBe(true);
     const total = linhas.find((l) => l.texto.startsWith("TOTAL"));
     expect(total?.texto.endsWith("R$ 42,00")).toBe(true);
-    expect(total?.estilo).toBe("destaque");
+    expect(total?.estilo).toBe("normal");
   });
 
   it("retirada: sem linha de taxa", () => {
@@ -305,5 +305,69 @@ describe("montarAcrescimo", () => {
     expect(texto).toContain("CONTINUA valendo");
     expect(texto).toContain("Coca 2L");
     expect(texto).not.toContain("NAO vale mais");
+  });
+});
+
+describe("negrito só nos itens e nas observações (D-2026-10-23-161)", () => {
+  /** Tudo o que sai em negrito, em qualquer um dos dois transportes. */
+  const emNegrito = (linhas: { texto: string; estilo: string }[]) =>
+    linhas.filter((l) => ["forte", "titulo", "destaque"].includes(l.estilo)).map((l) => l.texto.trim());
+
+  it("a comanda só tem negrito no item e nas observações", () => {
+    const linhas = montarComanda({
+      ...PEDIDO,
+      valores: { subtotal: 37, taxa: 5, total: 42 },
+      itens: [PIZZA, { quantidade: 2, nome: "Coca-Cola 600ml" }],
+    });
+    expect(emNegrito(linhas)).toEqual([
+      "1x Calabresa / Mussarela", // a pizza
+      ">> Sem cebola", // observação do item
+      "2x Coca-Cola 600ml", // o outro item
+      "Interfone quebrado", // observação do pedido
+    ]);
+  });
+
+  it("cabeçalho, ENTREGA/RETIRADA, MEIO A MEIO, total e cobrança saem em texto comum", () => {
+    const linhas = montarComanda({ ...PEDIDO, valores: { subtotal: 37, taxa: 5, total: 42 } });
+    for (const trecho of ["PIZZARIA SHALON", "PEDIDO #1042", ">>> ENTREGA <<<", "MEIO A MEIO", "TOTAL", "TROCO PARA", "Levar"]) {
+      const linha = linhas.find((l) => l.texto.includes(trecho));
+      expect(linha, trecho).toBeDefined();
+      expect(linha?.estilo, trecho).not.toMatch(/forte|titulo|destaque/);
+    }
+  });
+
+  it("o rótulo 'OBSERVACAO DO PEDIDO' é comum e só o texto da observação vai em negrito", () => {
+    const linhas = montarComanda(PEDIDO);
+    expect(linhas.find((l) => l.texto === "OBSERVACAO DO PEDIDO")?.estilo).toBe("normal");
+    expect(linhas.find((l) => l.texto === "Interfone quebrado")?.estilo).toBe("forte");
+  });
+
+  it("a ALTERAÇÃO continua claramente identificada: o cabeçalho segue em negrito (§32)", () => {
+    const linhas = montarAlteracao({
+      numero: 1042,
+      horario: "19/09 20:15",
+      motivo: "Cliente trocou o sabor",
+      itensAntes: [{ quantidade: 1, nome: "Calabresa" }],
+      itensDepois: [PIZZA],
+    });
+    const fortes = emNegrito(linhas);
+    expect(fortes).toContain("*** ALTERACAO ***");
+    expect(fortes).toContain("PEDIDO #1042");
+    // A frase quebra em duas linhas nas 32 colunas; as duas saem em negrito.
+    expect(fortes.join(" ")).toContain("NAO vale mais.");
+    // Os itens novos e a observação deles também.
+    expect(fortes).toContain("1x Calabresa / Mussarela");
+    expect(fortes).toContain(">> Sem cebola");
+    // As etiquetas de seção não.
+    expect(fortes).not.toContain("ERA");
+    expect(fortes).not.toContain("PASSA A SER");
+  });
+
+  it("o ACRÉSCIMO também mantém o cabeçalho em negrito e os itens novos", () => {
+    const linhas = montarAcrescimo({ numero: 7, horario: "19/09 20:15", motivo: "Mais uma pizza", itensNovos: [PIZZA] });
+    const fortes = emNegrito(linhas);
+    expect(fortes).toContain("*** ACRESCIMO ***");
+    expect(fortes).toContain("1x Calabresa / Mussarela");
+    expect(fortes).not.toContain("ACRESCENTAR");
   });
 });

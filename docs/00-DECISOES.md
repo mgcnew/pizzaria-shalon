@@ -4987,3 +4987,34 @@ Só apresentação e conveniência; nenhuma regra, preço ou permissão mudou.
      busca; **/** pula para a busca de produto;
    - o foco entra no configurador ao abrir um produto (no primeiro tamanho ou
      no botão de adicionar) e a dica das teclas aparece no rodapé do modal.
+
+## D-2026-10-23-161 — Comanda: negrito só nos itens e nas observações
+
+**Pedido do balcão:** com tudo em negrito, o negrito perde a função e a comanda
+fica difícil de ler.
+
+**Decisão (só apresentação; o conteúdo da comanda não mudou):**
+
+1. Novo estilo de linha `forte` (negrito, e só ele). Na **comanda de produção**
+   ficam em negrito apenas: as linhas dos **itens** (quantidade e sabores) e as
+   **observações** (a do item, `>> …`, e o texto da observação do pedido).
+2. O resto sai em texto comum: cabeçalho, número do pedido, ENTREGA/RETIRADA
+   (que segue destacada pelo letreiro `>>> … <<<`), cliente, endereço, "MEIO A
+   MEIO", subtotal, taxa, TOTAL e as linhas de cobrança (PAGO, COBRAR, FIADO,
+   TROCO PARA, Levar).
+3. **Alteração e acréscimo** mantêm o cabeçalho (`*** ALTERACAO ***`,
+   `*** ACRESCIMO ***`, número e "a comanda anterior…") em negrito, porque o
+   documento precisa estar claramente identificado (CLAUDE.md §32). Os itens
+   novos e as observações seguem a regra de cima.
+4. **Impressão pelo sistema (HTML):** documento que usa `forte` sai em peso
+   normal com um contorno bem fino (0,2 px) para a letra não sair apagada na
+   térmica, e o negrito de verdade vai só em `forte`. Antes o documento inteiro
+   saía em negrito (08/10/2026, Courier New fina demais). **Cupom do cliente e
+   fechamento de caixa não mudam.** **ESC/POS direto:** liga o negrito só nas
+   linhas `forte`/`titulo`/`destaque`, e a comanda agora só produz `forte`.
+5. O estilo `forte` entra na lista de estilos aceitos no caminho celular →
+   impressora do balcão; fora da lista, a linha viraria texto comum.
+
+**A conferir na impressora:** o texto comum é mais fino que o de antes e não foi
+testado no papel da Diebold. Se sair claro demais, o contorno fino está em
+`imprimir.ts` (`-webkit-text-stroke` do `body` no modo seletivo).
