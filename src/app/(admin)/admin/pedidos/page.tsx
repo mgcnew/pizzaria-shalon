@@ -1,3 +1,4 @@
+import { ESTADOS_DO_PEDIDO, rotuloInterno, type EstadoDoPedido } from "@/domain/pedidos/estados";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Abas, type Aba } from "@/ui/patterns";
@@ -51,9 +52,10 @@ export default async function Page({
     modal?: string;
     acrescentar?: string;
     pedido?: string;
+    status?: string;
   }>;
 }) {
-  const { aba, dias, novo, modal, pedido: pedidoId, acrescentar } = await searchParams;
+  const { aba, dias, novo, modal, pedido: pedidoId, acrescentar, status } = await searchParams;
   const encerrados = aba === "encerrados";
   const diasAnteriores = encerrados ? diasDaUrl(dias) : 0;
   // O começo da query da aba, repetido nos links de modal e no fechamento:
@@ -105,6 +107,24 @@ export default async function Page({
   // A espera nasce no relógio do SERVIDOR, na camada de aplicação. Este é o
   // valor do primeiro render; a tabela reancora nele e depois avança sozinha.
   const espera = esperaDaFila(pedidos);
+
+  // Link do dashboard (`?status=a,b`): recorta a fila em aberto. Só vale o que
+  // o banco conhece — um status inventado na URL é ignorado, e a fila volta
+  // inteira. Isto é só apresentação: a lista e as ações continuam as do banco.
+  const estadosDoFiltro =
+    !encerrados && status
+      ? status
+          .split(",")
+          .filter((e): e is EstadoDoPedido =>
+            (ESTADOS_DO_PEDIDO as readonly string[]).includes(e),
+          )
+      : [];
+  const pedidosDaFila =
+    estadosDoFiltro.length > 0 ? pedidos.filter((p) => (estadosDoFiltro as string[]).includes(p.status)) : pedidos;
+  const filtro =
+    estadosDoFiltro.length > 0
+      ? { rotulo: estadosDoFiltro.map((e) => rotuloInterno(e).rotulo).join(" ou ") }
+      : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -215,7 +235,8 @@ export default async function Page({
         </>
       ) : (
         <CentralDePedidos
-          pedidos={pedidos}
+          pedidos={pedidosDaFila}
+          filtro={filtro}
           hora={hora}
           espera={espera}
           cobraveis={cobraveis}

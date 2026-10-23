@@ -104,27 +104,33 @@ export function TabelaPedidos({
     /* A tabela rola DENTRO de si. Sem isto, uma observação longa faria a
        página inteira rolar na horizontal e levaria a barra lateral junto.
 
-       NOTEBOOK (14/10/2026): com o Windows em 125–150%, o navegador tem de
-       1024 a 1280 px, e tirando o menu sobram ~760–1000 px. As 9 colunas
-       pediam 960 e a tabela rolava de lado. Abaixo de `xl`, Canal desce para
-       baixo do Cliente e Pagamento para baixo do Total — mesma informação,
-       7 colunas. De `xl` para cima, a tabela de sempre. */
+       NOTEBOOK (14/10/2026, refeito em 23/10/2026): com o Windows em 125–150%,
+       o navegador tem de 1024 a 1280 px, e tirando o menu sobram ~760–1000 px.
+       As 9 colunas medem ~1150 px, então o corte `xl` (1280) não bastava: a 1280
+       a tabela rolava de lado e as colunas Situação e Ações, onde fica o botão
+       Aceitar/Receber, ficavam fora da tela.
+
+       Agora as 9 colunas só de `2xl` (1536) para cima. Abaixo disso, 6 colunas:
+       Canal desce para baixo do Cliente, Pagamento para baixo do Total e o
+       botão da comanda vai para ao lado do número do pedido — mesma informação
+       e mesma ação, sem a coluna de 88 px. Por fim a coluna Ações fica presa à
+       direita (`sticky`): se algum dia faltar espaço, a ação continua à vista. */
     <div className="hidden overflow-x-auto rounded-16 border border-border-shalon bg-surface shadow-[0_4px_16px_rgb(41_37_36/0.035)] lg:block">
-      <table className="w-full min-w-[760px] border-collapse text-[13.5px] xl:min-w-[960px]">
+      <table className="w-full min-w-[760px] border-collapse text-[13.5px] 2xl:min-w-[960px]">
         <caption className="sr-only">{rotulo}</caption>
         <thead>
-          <tr className="border-b border-border-shalon bg-bg/60 text-left text-[11px] uppercase tracking-[0.05em] text-muted">
+          <tr className="border-b border-border-shalon bg-[color-mix(in_srgb,var(--shalon-bg)_60%,var(--shalon-surface))] text-left text-[11px] uppercase tracking-[0.05em] text-muted">
             <th scope="col" className="px-4 py-2.5 text-right font-bold">
               {aberto ? "Espera" : "Quando"}
             </th>
             <th scope="col" className="px-3 py-2.5 font-bold">Pedido</th>
             <th scope="col" className="px-3 py-2.5 font-bold">Cliente</th>
-            <th scope="col" className="hidden px-3 py-2.5 font-bold xl:table-cell">Canal</th>
-            <th scope="col" className="px-3 py-2.5 text-center font-bold">Comanda</th>
+            <th scope="col" className="hidden px-3 py-2.5 font-bold 2xl:table-cell">Canal</th>
+            <th scope="col" className="hidden px-3 py-2.5 text-center font-bold 2xl:table-cell">Comanda</th>
             <th scope="col" className="px-3 py-2.5 text-right font-bold">Total</th>
-            <th scope="col" className="hidden px-3 py-2.5 font-bold xl:table-cell">Pagamento</th>
+            <th scope="col" className="hidden px-3 py-2.5 font-bold 2xl:table-cell">Pagamento</th>
             <th scope="col" className="px-3 py-2.5 font-bold">Situação</th>
-            <th scope="col" className="px-4 py-2.5 text-right font-bold">Ações</th>
+            <th scope="col" className="sticky right-0 bg-[color-mix(in_srgb,var(--shalon-bg)_60%,var(--shalon-surface))] px-4 py-2.5 text-right font-bold">Ações</th>
           </tr>
         </thead>
         <tbody>
@@ -148,10 +154,26 @@ export function TabelaPedidos({
                 ? (espera[p.id] ?? "")
                 : formatarEspera(minutosDesde(p.criado_em, agora));
 
+            // O mesmo botão da comanda em dois lugares: ao lado do número do
+            // pedido (abaixo de 2xl) e na coluna própria (de 2xl para cima).
+            const linkDaComanda = (
+              <Link
+                href={`/admin/pedidos?${consulta}modal=comanda&pedido=${p.id}`}
+                aria-label={`Abrir emissão de comanda do pedido #${p.numero}`}
+                title="Emitir comanda"
+                className="relative inline-flex min-h-10 min-w-10 items-center justify-center rounded-10 border border-border-shalon bg-surface text-ink-2 no-underline transition-colors hover:border-brand-orange hover:bg-elev hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-orange"
+              >
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-[18px] w-[18px]">
+                  <path d="M7 8V3h10v5M7 17H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M7 14h10v7H7v-7ZM17 11h.01" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <IndicadorDeNavegacao forma="moldura" />
+              </Link>
+            );
+
             return (
               <tr
                 key={p.id}
-                className="border-b border-border-shalon align-middle transition-colors last:border-b-0 hover:bg-elev"
+                className="group border-b border-border-shalon align-middle transition-colors last:border-b-0 hover:bg-elev"
               >
                 <td className="px-4 py-3 text-right">
                   {aberto ? (
@@ -174,16 +196,17 @@ export function TabelaPedidos({
                       #{p.numero}
                     </span>
                     <InfoProducaoPedido pedidoId={p.id} numero={p.numero} />
+                    <span className="2xl:hidden">{linkDaComanda}</span>
                   </div>
                 </td>
 
                 <td className="max-w-[220px] px-3 py-3">
                   <span className="block truncate text-ink">{p.cliente}</span>
-                  {/* Abaixo de xl, o canal vem aqui (a coluna própria some). */}
+                  {/* Abaixo de 2xl, o canal vem aqui (a coluna própria some). */}
                   <CanalDoPedido
                     origem={p.origem}
                     modalidade={p.modalidade}
-                    className="mt-[2px] max-w-full text-[12px] text-ink-2 xl:hidden"
+                    className="mt-[2px] max-w-full text-[12px] text-ink-2 2xl:hidden"
                   />
                   {/* A observação é operacional ("sem cebola") e não pode sumir
                       só porque virou tabela. Truncada, com o texto inteiro no
@@ -198,36 +221,24 @@ export function TabelaPedidos({
                   ) : null}
                 </td>
 
-                <td className="hidden whitespace-nowrap px-3 py-3 text-ink-2 xl:table-cell">
+                <td className="hidden whitespace-nowrap px-3 py-3 text-ink-2 2xl:table-cell">
                   <CanalDoPedido origem={p.origem} modalidade={p.modalidade} />
                 </td>
 
-                <td className="px-3 py-3 text-center">
-                  <Link
-                    href={`/admin/pedidos?${consulta}modal=comanda&pedido=${p.id}`}
-                    aria-label={`Abrir emissão de comanda do pedido #${p.numero}`}
-                    title="Emitir comanda"
-                    className="relative inline-flex min-h-10 min-w-10 items-center justify-center rounded-10 border border-border-shalon bg-surface text-ink-2 no-underline transition-colors hover:border-brand-orange hover:bg-elev hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-orange"
-                  >
-                    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-[18px] w-[18px]">
-                      <path d="M7 8V3h10v5M7 17H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M7 14h10v7H7v-7ZM17 11h.01" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                    <IndicadorDeNavegacao forma="moldura" />
-                  </Link>
-                </td>
+                <td className="hidden px-3 py-3 text-center 2xl:table-cell">{linkDaComanda}</td>
 
                 <td className="px-3 py-3 text-right">
                   <span className="block whitespace-nowrap font-display text-[15px] font-extrabold tabular-nums text-ink">
                     {formatBRL(p.total)}
                   </span>
-                  {/* Abaixo de xl, a forma de pagamento vem aqui. */}
-                  <span className="block text-[12px] text-ink-2 xl:hidden">
+                  {/* Abaixo de 2xl, a forma de pagamento vem aqui. */}
+                  <span className="block text-[12px] text-ink-2 2xl:hidden">
                     {p.forma_pagamento ?? "—"}
                     {p.troco !== null ? ` · troco ${formatBRL(p.troco)}` : ""}
                   </span>
                 </td>
 
-                <td className="hidden px-3 py-3 text-ink-2 xl:table-cell">
+                <td className="hidden px-3 py-3 text-ink-2 2xl:table-cell">
                   {p.forma_pagamento ?? "—"}
                   {p.troco !== null ? (
                     <span className="block text-[12px] text-muted">
@@ -254,7 +265,7 @@ export function TabelaPedidos({
                   ))}
                 </td>
 
-                <td className="px-4 py-3">
+                <td className="sticky right-0 bg-surface px-4 py-3 transition-colors group-hover:bg-elev">
                     <div className="flex items-center justify-end gap-1">
                       {/*
                        * QUANDO O PEDIDO DEVE, RECEBER É A PRIMÁRIA — e o valor

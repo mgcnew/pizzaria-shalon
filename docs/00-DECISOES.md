@@ -4910,3 +4910,29 @@ Verificada em transação desfeita no DEV, com 11 combinações de canal,
 modalidade e nome: telefone e balcão, em retirada e entrega, criam o pedido sem
 cliente (e sem endereço salvo na entrega); sem nome em entrega ou telefone,
 canais WhatsApp/iFood e número pela metade continuam recusados.
+
+## D-2026-10-23-158 — Fila de pedidos em três grupos e tabela que cabe no notebook
+
+**Origem:** crítica do Impeccable ao dashboard e à fila de pedidos (23/10/2026).
+
+**Decisão (só apresentação; nenhuma regra, estado ou permissão mudou):**
+
+1. **Três grupos na fila em aberto**, cada um ordenado do mais antigo para o
+   mais novo: **Precisam de você** (novo, Pix por conferir, entrega por
+   aprovar), **Parados** (pronto esperando o cliente ou o motoboy, entrega que
+   falhou, alteração aguardando o cliente) e **Em andamento**. "Parados" usa a
+   mesma lista das filas "Prontos e parados", "Aguardando resposta do cliente"
+   e "Entregas com falha" da Central de Atenção do dashboard
+   (`parado()` em `estados.ts`, com teste), para o alerta do dashboard levar a
+   uma fila em que o item se destaca.
+2. **Links do dashboard funcionam:** `/admin/pedidos?status=a,b` recorta a fila
+   em aberto nesses estados, avisa "Mostrando só: …" e oferece "Ver todos os
+   pedidos em aberto". Status desconhecido na URL é ignorado.
+3. **Tabela de pedidos:** as 9 colunas só de 1536 px (`2xl`) para cima; abaixo
+   disso, 6 colunas, com o botão da comanda ao lado do número do pedido,
+   o canal sob o cliente e o pagamento sob o total. A coluna Ações fica presa
+   à direita. Medido a 1280 px (notebook): antes 1144 px de conteúdo em 999 px
+   de espaço, com Situação e Ações fora da tela; agora sem rolagem lateral.
+
+Fora desta decisão, ainda abertos da crítica: dashboard "Agora × Período",
+busca e resumo em Encerrados, acessibilidade do menu mobile e alvos de toque.

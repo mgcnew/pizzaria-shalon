@@ -60,7 +60,7 @@ export function CentralDeAtencao({ dados }: { dados: Dados | null }) {
     { titulo: "Aguardando confirmação de Pix", pendencia: p?.aguardando_pix, destino: "/admin/pedidos?status=waiting_pix_confirmation" },
     { titulo: "Entrega aguardando aprovação", pendencia: p?.aguardando_aprovacao_de_entrega, destino: "/admin/pedidos?status=waiting_delivery_approval" },
     { titulo: "Aguardando resposta do cliente", pendencia: p?.aguardando_cliente, destino: "/admin/pedidos?status=change_requested_waiting_customer" },
-    { titulo: "Prontos e parados", pendencia: p?.prontos_parados, destino: "/admin/pedidos?status=ready_for_pickup" },
+    { titulo: "Prontos e parados", pendencia: p?.prontos_parados, destino: "/admin/pedidos?status=ready_for_pickup,ready_for_delivery" },
     { titulo: "Entregas com falha", pendencia: p?.entregas_com_falha, destino: "/admin/pedidos?status=delivery_failed" },
   ];
 

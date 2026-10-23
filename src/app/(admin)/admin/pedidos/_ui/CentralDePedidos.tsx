@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import { carregarClienteRealtime } from "@/infrastructure/supabase/realtimeSobDemanda";
-import { exigeAtencao } from "@/domain/pedidos/estados";
+import { exigeAtencao, parado } from "@/domain/pedidos/estados";
 import type { PedidoNaFila } from "@/application/pedidos/tipos";
 import { CartaoPedido } from "./CartaoPedido";
 import { TabelaPedidos } from "./TabelaPedidos";
@@ -49,6 +50,7 @@ export function CentralDePedidos({
   caixaAberto,
   podeReceber,
   podeFiado = false,
+  filtro = null,
 }: {
   pedidos: PedidoNaFila[];
   /** Horários já formatados no servidor, no fuso da loja. */
@@ -61,6 +63,11 @@ export function CentralDePedidos({
   caixaAberto: boolean;
   podeReceber: boolean;
   podeFiado?: boolean;
+  /**
+   * Veio de um link do dashboard (`?status=…`): `pedidos` já chega recortado e
+   * isto só conta isso à pessoa, com a saída para a fila inteira.
+   */
+  filtro?: { rotulo: string } | null;
 }) {
   const router = useRouter();
   const [conectado, setConectado] = useState(false);
@@ -154,12 +161,42 @@ export function CentralDePedidos({
   const porIdade = (a: PedidoNaFila, b: PedidoNaFila) =>
     new Date(a.criado_em).getTime() - new Date(b.criado_em).getTime();
 
-  const aguardando = pedidos
-    .filter((p) => exigeAtencao(p.status))
-    .sort(porIdade);
-  const andamento = pedidos
-    .filter((p) => !exigeAtencao(p.status))
-    .sort(porIdade);
+  /*
+   * TRÊS GRUPOS, e não dois. O dashboard chama de "atenção" seis filas; a fila
+   * só destacava três, e o resto (pronto esperando, entrega que falhou,
+   * alteração aguardando o cliente) sumia no meio do que está em produção.
+   *
+   *  - Precisam de você: alguém da equipe tem que decidir agora;
+   *  - Parados: o pedido espera alguém de fora ou deu errado — não é decisão
+   *    imediata, mas é o que o balcão não pode esquecer;
+   *  - Em andamento: o que segue o fluxo normal.
+   *
+   * Cada pedido cai em exatamente um (testado em estadosDoPedido.test.ts).
+   */
+  const grupos = [
+    {
+      chave: "decidir",
+      titulo: "Precisam de você",
+      legenda: null,
+      rotulo: "Pedidos que precisam de decisão, do que espera há mais tempo para o mais recente",
+      lista: pedidos.filter((p) => exigeAtencao(p.status)).sort(porIdade),
+    },
+    {
+      chave: "parados",
+      titulo: "Parados",
+      legenda:
+        "Prontos esperando o cliente ou o motoboy, entregas que falharam e alterações aguardando resposta do cliente.",
+      rotulo: "Pedidos parados, do que espera há mais tempo para o mais recente",
+      lista: pedidos.filter((p) => parado(p.status)).sort(porIdade),
+    },
+    {
+      chave: "andamento",
+      titulo: "Em andamento",
+      legenda: null,
+      rotulo: "Pedidos em andamento, do que espera há mais tempo para o mais recente",
+      lista: pedidos.filter((p) => !exigeAtencao(p.status) && !parado(p.status)).sort(porIdade),
+    },
+  ].filter((g) => g.lista.length > 0);
 
   return (
     <ProvedorDeOperacaoEmVoo aoMudar={aoMudarOperacoes}>
@@ -173,28 +210,45 @@ export function CentralDePedidos({
 
         </div>
 
+        {filtro ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-12 border border-twb bg-tw px-3 py-2 text-[13.5px] text-twf">
+            <span>
+              Mostrando só: <strong>{filtro.rotulo}</strong>
+            </span>
+            <Link href="/admin/pedidos?aba=abertos" className="min-h-touch inline-flex items-center font-semibold text-twf underline">
+              Ver todos os pedidos em aberto
+            </Link>
+          </div>
+        ) : null}
+
         {pedidos.length === 0 ? (
           <div className="rounded-18 border border-dashed border-border-shalon bg-elev px-5 py-[44px] text-center">
             <p className="m-0 font-display text-[19px] font-bold text-ink">
-              Nenhum pedido em aberto
+              {filtro ? "Nenhum pedido nesse estado agora" : "Nenhum pedido em aberto"}
             </p>
             <p className="m-0 mt-1 text-[14px] text-ink-2">
-              Os pedidos aparecem aqui assim que chegam.
+              {filtro
+                ? "Quando algum chegar a esse estado, ele aparece aqui."
+                : "Os pedidos aparecem aqui assim que chegam."}
             </p>
           </div>
         ) : null}
 
-        {aguardando.length > 0 ? (
-          <section>
-            <h2 className="m-0 mb-2 text-[14px] font-bold uppercase tracking-wide text-ink-2">
-              Precisam de você ({aguardando.length})
+        {grupos.map((g) => (
+          <section key={g.chave} aria-labelledby={`grupo-${g.chave}`}>
+            <h2
+              id={`grupo-${g.chave}`}
+              className="m-0 mb-2 text-[14px] font-bold uppercase tracking-wide text-ink-2"
+            >
+              {g.titulo} ({g.lista.length})
             </h2>
+            {g.legenda ? <p className="m-0 mb-2 text-[13px] text-muted">{g.legenda}</p> : null}
             <TabelaPedidos
-              pedidos={aguardando}
+              pedidos={g.lista}
               hora={hora}
               espera={espera}
               modo="aberto"
-              rotulo="Pedidos que precisam de decisão, do que espera há mais tempo para o mais recente"
+              rotulo={g.rotulo}
               cobraveis={cobraveis}
               podeReceber={podeReceber}
               aoCobrar={abrirCobranca}
@@ -202,7 +256,7 @@ export function CentralDePedidos({
             {/* Abaixo de `lg` o cartão volta: nove colunas num celular seria
               trocar o §38 por conveniência de desktop. */}
             <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(320px,1fr))] lg:hidden">
-              {aguardando.map((p) => (
+              {g.lista.map((p) => (
                 <CartaoPedido
                   key={p.id}
                   pedido={p}
@@ -214,37 +268,7 @@ export function CentralDePedidos({
               ))}
             </div>
           </section>
-        ) : null}
-
-        {andamento.length > 0 ? (
-          <section>
-            <h2 className="m-0 mb-2 text-[14px] font-bold uppercase tracking-wide text-ink-2">
-              Em andamento ({andamento.length})
-            </h2>
-            <TabelaPedidos
-              pedidos={andamento}
-              hora={hora}
-              espera={espera}
-              modo="aberto"
-              rotulo="Pedidos em andamento, do que espera há mais tempo para o mais recente"
-              cobraveis={cobraveis}
-              podeReceber={podeReceber}
-              aoCobrar={abrirCobranca}
-            />
-            <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(320px,1fr))] lg:hidden">
-              {andamento.map((p) => (
-                <CartaoPedido
-                  key={p.id}
-                  pedido={p}
-                  hora={hora[p.id] ?? ""}
-                  espera={espera[p.id] ?? ""}
-                  cobravel={podeReceber ? (cobraveis[p.id] ?? null) : null}
-                  aoCobrar={abrirCobranca}
-                />
-              ))}
-            </div>
-          </section>
-        ) : null}
+        ))}
 
         {/*
          * A GAVETA VIVE FORA DAS LINHAS, e isso é deliberado: montada dentro da

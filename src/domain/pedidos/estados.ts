@@ -161,8 +161,34 @@ const ROTULOS_INTERNOS: Record<EstadoDoPedido, { rotulo: string; tom: TomVisual 
   cancelled: { rotulo: "Cancelado", tom: "perigo" },
 };
 
+/** Todos os estados que o banco aceita, para validar o que vem de uma URL. */
+export const ESTADOS_DO_PEDIDO = Object.keys(ROTULOS_INTERNOS) as EstadoDoPedido[];
+
 export function rotuloInterno(estado: string): { rotulo: string; tom: TomVisual } {
   return ROTULOS_INTERNOS[estado as EstadoDoPedido] ?? { rotulo: estado, tom: "neutro" };
+}
+
+/**
+ * Estados "parados": o pedido não está na mão da equipe, está esperando alguém
+ * ou deu errado — o cliente que respondeu a uma alteração, o cliente que vem
+ * buscar, o motoboy que vai levar, a entrega que falhou.
+ *
+ * É a MESMA lista de "Prontos e parados", "Aguardando resposta do cliente" e
+ * "Entregas com falha" da Central de Atenção do dashboard
+ * (`central_de_atencao`). Duas telas contando "atenção" de jeitos diferentes
+ * faziam o alerta do dashboard levar a uma fila em que o item alertado não
+ * se destacava. Não há limite de tempo: o banco também não tem (o comentário
+ * da própria função diz que aparece "sem carimbo de atraso").
+ */
+export const ESTADOS_PARADOS: readonly string[] = [
+  "change_requested_waiting_customer",
+  "ready_for_pickup",
+  "ready_for_delivery",
+  "delivery_failed",
+];
+
+export function parado(estado: string): boolean {
+  return ESTADOS_PARADOS.includes(estado);
 }
 
 /**

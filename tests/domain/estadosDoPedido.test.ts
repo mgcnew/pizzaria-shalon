@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   descreverEstado,
   exigeAtencao,
+  parado,
   rotuloInterno,
   type EstadoDoPedido,
 } from "@/domain/pedidos/estados";
@@ -74,5 +75,20 @@ describe("rótulos internos da operação", () => {
   it("pedido em produção não é interrupção", () => {
     expect(exigeAtencao("in_production")).toBe(false);
     expect(exigeAtencao("completed")).toBe(false);
+  });
+
+  it("parado é o que espera alguém de fora ou falhou, igual à Central de Atenção", () => {
+    expect(TODOS.filter((e) => parado(e))).toEqual([
+      "change_requested_waiting_customer",
+      "ready_for_pickup",
+      "ready_for_delivery",
+      "delivery_failed",
+    ]);
+  });
+
+  it("um pedido nunca é 'precisa de você' e 'parado' ao mesmo tempo", () => {
+    for (const estado of TODOS) {
+      expect(exigeAtencao(estado) && parado(estado)).toBe(false);
+    }
   });
 });
