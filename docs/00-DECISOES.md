@@ -4962,3 +4962,28 @@ sendo do servidor):**
 
 Ainda abertos desta avaliação: passo 1 mais curto (endereço em duas colunas e
 canal abrindo no último usado) e atalhos de teclado.
+
+## D-2026-10-23-160 — Novo pedido: passo 1 mais curto e atalhos de teclado
+
+**Origem:** continuação de D-2026-10-23-159, a pedido do balcão (23/10/2026).
+Só apresentação e conveniência; nenhuma regra, preço ou permissão mudou.
+
+1. **Passo 1 mais curto no desktop do modal:** "Canal e modalidade" e "Cliente"
+   lado a lado, e o endereço numa grade de 12 colunas (rua+número; bairro,
+   cidade e UF; complemento e referência), em três linhas em vez de cinco.
+   Uma entrega foi de ~1370 para ~960 px de altura. No celular e na página
+   `/admin/pedidos/novo` o desenho é o de antes.
+2. **O canal abre no último usado.** Guardado no `localStorage` do aparelho
+   (`shalon:novo-pedido:ultimo-canal`): conveniência de quem usa o aparelho,
+   sem valor de regra; sem armazenamento, vale o padrão (WhatsApp).
+3. **Teclado no modal do desktop:**
+   - **Enter** num campo vai ao próximo campo; no último, com o passo completo,
+     avança (no passo dos itens o Enter é da busca);
+   - **Ctrl+Enter** avança de passo e, no último, **lança**; as mesmas travas do
+     botão valem (`clienteCompleto`, `podeLancar`) e o servidor confere de novo.
+     Lançar nunca é um Enter solto;
+   - na busca de produto, **Enter** abre o primeiro resultado disponível; com o
+     configurador aberto, **Ctrl+Enter** adiciona o item e o cursor volta à
+     busca; **/** pula para a busca de produto;
+   - o foco entra no configurador ao abrir um produto (no primeiro tamanho ou
+     no botão de adicionar) e a dica das teclas aparece no rodapé do modal.

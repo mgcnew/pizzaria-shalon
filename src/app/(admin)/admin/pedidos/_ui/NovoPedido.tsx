@@ -83,6 +83,9 @@ function explicarLancamento(status: string): string {
   return "O pedido entrou na fila.";
 }
 
+/** Onde o canal usado por último fica guardado, só neste aparelho. */
+const CHAVE_DO_ULTIMO_CANAL = "shalon:novo-pedido:ultimo-canal";
+
 export function NovoPedido({
   formasPorModalidade,
   emModal = false,
@@ -99,7 +102,19 @@ export function NovoPedido({
   const etapa = etapaAtual ?? etapaInterna;
   const mudarEtapa = aoMudarEtapa ?? setEtapaInterna;
 
-  const [origem, setOrigem] = useState<OrigemManual>("whatsapp");
+  const [origem, setOrigemSimples] = useState<OrigemManual>("whatsapp");
+  // O canal que a balconista usou por último vira o ponto de partida: quem
+  // passa a noite atendendo ligações não escolhe "Telefone" a cada pedido.
+  // Conveniência de quem usa o aparelho (localStorage), sem valor de regra:
+  // qualquer falha do armazenamento deixa o padrão de sempre.
+  function setOrigem(valor: OrigemManual) {
+    setOrigemSimples(valor);
+    try {
+      window.localStorage.setItem(CHAVE_DO_ULTIMO_CANAL, valor);
+    } catch {
+      /* sem armazenamento: o canal só não é lembrado */
+    }
+  }
   const [modalidade, setModalidade] = useState<Modalidade>("delivery");
   const [nome, setNome] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
@@ -164,6 +179,21 @@ export function NovoPedido({
   const [motivoOutro, setMotivoOutro] = useState("");
   // Taxa combinada do endereço salvo escolhido (D-2026-10-16-145).
   const [taxaCombinada, setTaxaCombinada] = useState<{ valor: number; motivo: string | null } | null>(null);
+
+  useEffect(() => {
+    // Lê depois da montagem (e não no estado inicial) para o HTML do servidor e
+    // o do navegador nascerem iguais.
+    void Promise.resolve().then(() => {
+      try {
+        const guardado = window.localStorage.getItem(CHAVE_DO_ULTIMO_CANAL);
+        if (guardado !== null && ORIGENS_MANUAIS.some((o) => o.valor === guardado)) {
+          setOrigemSimples(guardado as OrigemManual);
+        }
+      } catch {
+        /* sem armazenamento */
+      }
+    });
+  }, []);
 
   useEffect(() => {
     let vivo = true;
@@ -603,13 +633,67 @@ export function NovoPedido({
       : null;
 
   const indiceDaEtapa = ETAPAS.findIndex((item) => item.valor === etapa);
+
+  /**
+   * TECLADO — para quem atende de mãos no teclado, com o cliente na linha:
+   *  - Enter num campo: vai para o próximo campo do passo; no último, com o
+   *    passo completo, avança para o seguinte;
+   *  - Ctrl+Enter: avança de passo e, no último, lança o pedido;
+   *  - "/" no passo dos itens: pula para a busca de produto.
+   * Lançar nunca é um Enter solto: só Ctrl+Enter, para um Enter dado no campo
+   * errado não mandar o pedido. As mesmas travas do botão valem aqui (`podeLancar`,
+   * `clienteCompleto`), e o servidor confere de novo ao lançar.
+   */
+  function aoTeclar(evento: React.KeyboardEvent<HTMLDivElement>) {
+    if (!emModal || evento.nativeEvent.isComposing) return;
+    const alvo = evento.target as HTMLElement;
+    const proxima = ETAPAS[indiceDaEtapa + 1]?.valor;
+    const etapaCompleta =
+      etapa === "cliente" ? clienteCompleto : etapa === "itens" ? itens.length > 0 : podeLancar;
+
+    if (evento.key === "Enter" && (evento.ctrlKey || evento.metaKey)) {
+      evento.preventDefault();
+      if (proxima !== undefined) {
+        if (etapaCompleta) mudarEtapa(proxima);
+      } else if (podeLancar) {
+        lancar();
+      }
+      return;
+    }
+
+    const emCampoDeTexto =
+      alvo instanceof HTMLInputElement || alvo instanceof HTMLTextAreaElement || alvo instanceof HTMLSelectElement;
+    if (evento.key === "/" && etapa === "itens" && !emCampoDeTexto) {
+      evento.preventDefault();
+      document.getElementById("busca-produto")?.focus();
+      return;
+    }
+
+    // Os itens têm o Enter deles (abrir o primeiro resultado da busca).
+    if (evento.key !== "Enter" || etapa === "itens" || !(alvo instanceof HTMLInputElement)) return;
+    if (evento.shiftKey || evento.altKey) return;
+    const campos = Array.from(
+      evento.currentTarget.querySelectorAll<HTMLInputElement>("input:not([type=hidden]):not([disabled])"),
+    ).filter((c) => c.offsetParent !== null);
+    const seguinte = campos[campos.indexOf(alvo) + 1];
+    if (seguinte !== undefined) {
+      evento.preventDefault();
+      seguinte.focus();
+    } else if (etapa === "cliente" && etapaCompleta && proxima !== undefined) {
+      evento.preventDefault();
+      mudarEtapa(proxima);
+    }
+  }
   const classeDaEtapa = (alvo: EtapaNovoPedido) =>
     emModal && etapa !== alvo ? "hidden" : emModal ? "motion-tab-in" : "";
 
   return (
     // No modal do desktop o formulário ganha, à direita, o resumo do pedido
     // sempre à vista; fora do modal (página e celular) nada muda.
-    <div className={emModal ? "lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start lg:gap-x-5" : undefined}>
+    <div
+      className={emModal ? "lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start lg:gap-x-5" : undefined}
+      onKeyDown={aoTeclar}
+    >
     <div
       className={
         emModal
@@ -679,6 +763,15 @@ export function NovoPedido({
       ) : null}
 
       <div className="flex flex-col gap-4">
+        {/* Canal e cliente lado a lado no desktop do modal: o passo 1 deixa de
+            ser uma coluna só. Fora do modal o invólucro some (`contents`) e o
+            layout é o de sempre. */}
+        <div
+          className={[
+            emModal ? "lg:grid lg:grid-cols-2 lg:items-start lg:gap-4" : "contents",
+            emModal && etapa !== "cliente" ? "hidden" : "",
+          ].join(" ")}
+        >
         <fieldset className={`m-0 flex flex-col gap-3 rounded-16 border border-border-shalon bg-surface p-4 ${classeDaEtapa("cliente")}`}>
           <legend className="px-1 text-[15px] font-bold text-ink">Canal e modalidade</legend>
 
@@ -749,6 +842,7 @@ export function NovoPedido({
           ) : null}
           <Input label="Nome" value={nome} onChange={(e) => setNome(e.target.value)} maxLength={120} />
         </fieldset>
+        </div>
 
         {modalidade === "delivery" ? (
           <fieldset className={`m-0 flex flex-col gap-3 rounded-16 border border-border-shalon bg-surface p-4 ${classeDaEtapa("cliente")}`}>
@@ -807,20 +901,23 @@ export function NovoPedido({
                 </div>
               </div>
             ) : null}
-            <div className="flex gap-3">
-              <div className="flex-[3]">
+            {/* Em grade de 12 colunas: no celular as linhas de sempre (rua e
+                número, bairro, cidade e UF…); no modal do desktop, três linhas
+                em vez de cinco. */}
+            <div className="grid grid-cols-12 gap-x-3 gap-y-3">
+              <div className="col-span-9">
                 <Input label="Rua" value={logradouro} onChange={(e) => setLogradouro(e.target.value)} maxLength={160} />
               </div>
-              <div className="flex-1">
+              <div className="col-span-3">
                 <Input label="Número" value={numero} onChange={(e) => setNumero(e.target.value)} maxLength={20} />
               </div>
-            </div>
-            <Input label="Bairro" value={bairro} onChange={(e) => setBairro(e.target.value)} maxLength={80} />
-            <div className="flex gap-3">
-              <div className="flex-[3]">
+              <div className={`col-span-12 ${emModal ? "lg:col-span-5" : ""}`}>
+                <Input label="Bairro" value={bairro} onChange={(e) => setBairro(e.target.value)} maxLength={80} />
+              </div>
+              <div className={`col-span-9 ${emModal ? "lg:col-span-5" : ""}`}>
                 <Input label="Cidade" value={cidade} onChange={(e) => setCidade(e.target.value)} maxLength={80} />
               </div>
-              <div className="w-[88px]">
+              <div className={`col-span-3 ${emModal ? "lg:col-span-2" : ""}`}>
                 <Input
                   label="UF"
                   value={uf}
@@ -828,21 +925,25 @@ export function NovoPedido({
                   maxLength={2}
                 />
               </div>
+              <div className={`col-span-12 ${emModal ? "lg:col-span-6" : ""}`}>
+                <Input
+                  label="Complemento"
+                  value={complemento}
+                  onChange={(e) => setComplemento(e.target.value)}
+                  maxLength={80}
+                  hint="Não entra no cálculo da distância."
+                />
+              </div>
+              <div className={`col-span-12 ${emModal ? "lg:col-span-6" : ""}`}>
+                <Input
+                  label="Ponto de referência"
+                  value={referencia}
+                  onChange={(e) => setReferencia(e.target.value)}
+                  maxLength={160}
+                  hint="Não entra no cálculo da distância."
+                />
+              </div>
             </div>
-            <Input
-              label="Complemento"
-              value={complemento}
-              onChange={(e) => setComplemento(e.target.value)}
-              maxLength={80}
-              hint="Não entra no cálculo da distância."
-            />
-            <Input
-              label="Ponto de referência"
-              value={referencia}
-              onChange={(e) => setReferencia(e.target.value)}
-              maxLength={160}
-              hint="Não entra no cálculo da distância."
-            />
             {/* Prévia da taxa, logo abaixo do endereço. */}
             {cotando ? (
               <p role="status" className="m-0 rounded-12 bg-elev px-3 py-2.5 text-[13.5px] text-ink-2">
@@ -1099,6 +1200,7 @@ export function NovoPedido({
             type="button"
             disabled={!podeLancar}
             onClick={lancar}
+            aria-keyshortcuts="Control+Enter"
             className="motion-interactive mt-3 flex min-h-[52px] w-full cursor-pointer items-center justify-center rounded-13 border-0 bg-cta text-[16px] font-semibold text-cta-fg transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:bg-tn disabled:text-muted disabled:opacity-100"
           >
             {enviando
@@ -1128,6 +1230,10 @@ export function NovoPedido({
           ) : (
             <span />
           )}
+          <span className="hidden text-center text-[12px] text-muted lg:inline">
+            Enter: próximo campo · Ctrl+Enter: {indiceDaEtapa < ETAPAS.length - 1 ? "continuar" : "lançar"}
+            {etapa === "itens" ? " · /: buscar produto" : ""}
+          </span>
           {indiceDaEtapa < ETAPAS.length - 1 ? (
             <button
               type="button"

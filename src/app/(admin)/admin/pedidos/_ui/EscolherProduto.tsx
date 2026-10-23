@@ -61,7 +61,31 @@ export function EscolherProduto({
   const [categoria, setCategoria] = useState<{ slug: string; nome: string } | null>(null);
   const [daCategoria, setDaCategoria] = useState<ResultadoBusca[] | null>(null);
   const campoBusca = useRef<HTMLInputElement>(null);
+  const areaDoConfigurador = useRef<HTMLDivElement>(null);
   const naBusca = dados === null && fogazza === null;
+
+  // Ao abrir o configurador (ou a lista de sabores da fogazza) a busca sai da
+  // tela e leva o foco junto. Sem devolvê-lo, o teclado ficaria no vazio e
+  // Ctrl+Enter, que adiciona o item, não chegaria a lugar nenhum.
+  //
+  // O foco entra DENTRO do configurador, e não no contêiner dele: o atalho
+  // Ctrl+Enter é escutado lá dentro, e um evento disparado de fora (no contêiner)
+  // nunca passa por ele. Vai para o primeiro tamanho (quando há) ou, num item
+  // sem escolha nenhuma, para o próprio botão de adicionar.
+  useEffect(() => {
+    if (dados !== null) {
+      const area = areaDoConfigurador.current;
+      const alvo =
+        area?.querySelector<HTMLElement>("fieldset button:not([disabled])") ??
+        Array.from(area?.querySelectorAll<HTMLButtonElement>("button") ?? []).find((b) =>
+          b.textContent?.startsWith(rotuloAcao),
+        ) ??
+        area;
+      alvo?.focus({ preventScroll: true });
+    } else if (fogazza !== null) {
+      document.getElementById("busca-sabor-fogazza")?.focus();
+    }
+  }, [dados, fogazza, rotuloAcao]);
 
   useEffect(() => {
     let vivo = true;
@@ -151,7 +175,11 @@ export function EscolherProduto({
 
   if (dados !== null) {
     return (
-      <div className="rounded-12 border border-border-shalon bg-elev p-3">
+      <div
+        ref={areaDoConfigurador}
+        tabIndex={-1}
+        className="rounded-12 border border-border-shalon bg-elev p-3 outline-none"
+      >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="m-0 text-[15px] font-bold text-ink">{titulo}</h3>
           <button
@@ -298,6 +326,16 @@ export function EscolherProduto({
         ref={campoBusca}
         value={termo}
         onChange={(e) => procurar(e.target.value)}
+        // Enter abre o primeiro produto da lista: digitar "calab" e Enter já
+        // chega ao configurador, sem pegar o mouse.
+        onKeyDown={(e) => {
+          if (e.key !== "Enter" || e.ctrlKey || e.metaKey || e.nativeEvent.isComposing || ocupado) return;
+          const primeiro = (categoria !== null ? linhasDaCategoria : resultados).find((p) => p.disponivel);
+          if (primeiro === undefined) return;
+          e.preventDefault();
+          e.stopPropagation();
+          abrir(primeiro);
+        }}
         placeholder={categoria !== null ? "Digite parte do nome…" : "Calabresa, combo, refrigerante…"}
         autoComplete="off"
         className="min-h-touch w-full rounded-11 border-[1.5px] border-border-shalon bg-surface px-3 text-[15px] text-ink focus:border-brand-orange focus:outline-none"

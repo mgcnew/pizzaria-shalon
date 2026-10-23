@@ -412,7 +412,22 @@ export function NucleoConfigurador({
   );
 
   return (
-    <div className={ancoragem === "fixa" ? "pb-[150px]" : ""}>
+    <div
+      className={ancoragem === "fixa" ? "pb-[150px]" : ""}
+      // No balcão (configurador embutido), Ctrl+Enter adiciona o item, e o
+      // evento não sobe: não pode também avançar o passo do pedido.
+      onKeyDown={
+        ancoragem === "embutida"
+          ? (e) => {
+              if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && podeConfirmar) {
+                e.preventDefault();
+                e.stopPropagation();
+                confirmar();
+              }
+            }
+          : undefined
+      }
+    >
       {/* 1 · Tamanho — RN-PIZZA-003. Fixo na fogazza (RN-FOG-004). */}
       {tamanhos.length > 0 && !tamanhoFixo ? (
         <fieldset className="min-w-0 mt-5 border-0 p-0">
