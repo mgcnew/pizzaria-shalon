@@ -189,7 +189,7 @@ export default async function Home({
         combos={combos}
       />
 
-      <div className="pt-4">
+      <div id="cardapio" className="scroll-mt-20 pt-4">
         <ChipsCategorias categorias={categorias} />
       </div>
 
