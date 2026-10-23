@@ -2,19 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { Button, Input, StatusBadge, Textarea } from "@/ui/components";
-import { Aviso, ParDeDados } from "@/ui/patterns";
+import { Aviso } from "@/ui/patterns";
 import { useAvisarOperacaoEmVoo } from "@/ui/operacaoEmVoo";
 import { formatBRL } from "@/lib/format";
-import {
-  abrirCaixa,
-  fecharCaixa,
-  iniciarFechamentoCego,
-  movimentarCaixa,
-} from "@/application/caixa/acoes";
-import type { ResumoDeFechamento } from "@/application/caixa/tipos";
+import { abrirCaixa, movimentarCaixa } from "@/application/caixa/acoes";
 import { HistoricoDeVendas } from "./HistoricoDeVendas";
-import { useImprimirDocumento } from "@/ui/impressao/useImprimirDocumento";
-import { montarFechamentoDeCaixa } from "@/domain/impressao/cupons";
+import { FechamentoDeCaixa, paraNumero } from "./FechamentoDeCaixa";
 
 type Operacao = "abrir" | "reforco" | "sangria" | "fechar" | null;
 
@@ -27,13 +20,6 @@ export type ComandosDoCaixa = {
 export type EstadoVisivelDoCaixa =
   | { aberto: false }
   | { aberto: true; aberta_por: string | null };
-
-function paraNumero(texto: string): number | null {
-  const limpo = texto.replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
-  if (limpo === "") return null;
-  const numero = Number(limpo);
-  return Number.isFinite(numero) ? numero : null;
-}
 
 /** Barra operacional do caixa: oferece ações sem expor o saldo esperado. */
 export function PainelDoCaixa({
@@ -102,21 +88,15 @@ export function PainelDoCaixa({
                   ? `Aberto por ${estado.aberta_por ?? "—"}`
                   : "Abra para iniciar as operações da gaveta"}
               </span>
-              {estado.aberto ? (
-                <button
-                  type="button"
-                  onClick={() => abrir("fechar")}
-                  className="ml-1 min-h-8 cursor-pointer rounded-9 border border-border-shalon bg-transparent px-2.5 text-[12px] font-semibold text-muted transition-colors hover:border-danger hover:text-danger"
-                >
-                  Fechar caixa
-                </button>
-              ) : null}
             </div>
           </div>
 
           {estado.aberto ? (
             <div className="flex flex-1 flex-wrap justify-end gap-2 sm:flex-none">
               <HistoricoDeVendas podeEstornar={podeEstornar} />
+              <Button tamanho="sm" variante="secundario" onClick={() => abrir("fechar")}>
+                Fechar caixa
+              </Button>
               <Button
                 tamanho="sm"
                 disabled={venda.quantidade === 0}
@@ -176,7 +156,7 @@ export function PainelDoCaixa({
           ) : null}
 
           {operacao === "fechar" ? (
-            <FormularioDeFechamento
+            <FechamentoDeCaixa
               erroExterno={erro}
               aoErro={setErro}
               aoCancelar={fecharOperacao}
@@ -285,220 +265,6 @@ function FormularioDeMovimento({ tipo, enviando, erro, aoConfirmar, aoCancelar }
       <Textarea name="motivo" label={sangria ? "Motivo (obrigatório)" : "Motivo (opcional)"} rows={3} required={sangria} />
       <Acoes enviando={enviando} rotulo={sangria ? "Confirmar sangria" : "Confirmar reforço"} aoCancelar={aoCancelar} />
     </form>
-  );
-}
-
-type ConferenciaDoFechamento = {
-  fechado: boolean;
-  esperado: number;
-  contado: number;
-  diferenca: number;
-  resumo: ResumoDeFechamento | null;
-};
-
-function FormularioDeFechamento({ erroExterno, aoErro, aoCancelar }: {
-  erroExterno: string | null; aoErro: (erro: string | null) => void;
-  aoCancelar: () => void;
-}) {
-  const [contadoTexto, setContadoTexto] = useState("");
-  const [conferencia, setConferencia] = useState<ConferenciaDoFechamento | null>(null);
-  const [conferindo, iniciarConferencia] = useTransition();
-  const { imprimir, enviando, erro: erroDeImpressao } = useImprimirDocumento();
-  useAvisarOperacaoEmVoo(conferindo);
-  const contado = paraNumero(contadoTexto);
-  const diferenca = conferencia?.diferenca ?? null;
-  const precisaJustificar = diferenca !== null && diferenca !== 0;
-
-  if (conferencia === null) {
-    return (
-      <form
-        className="flex flex-col gap-4"
-        action={() => {
-          if (contado === null || contado < 0) return;
-          aoErro(null);
-          iniciarConferencia(async () => {
-            const resultado = await iniciarFechamentoCego({ contado });
-            if (!resultado.ok) return aoErro(resultado.erro);
-            if (resultado.resumo === null) aoErro("Não foi possível carregar os totais por forma. A contagem foi registrada.");
-            setConferencia({
-              fechado: resultado.fechado,
-              esperado: resultado.esperado,
-              contado: resultado.contado,
-              diferenca: resultado.diferenca,
-              resumo: resultado.resumo,
-            });
-          });
-        }}
-      >
-        <div className="rounded-12 border border-tib bg-ti p-3 text-[13px] text-tif">
-          <p className="m-0 font-semibold">Conferência cega</p>
-          <p className="m-0 mt-1">Conte o dinheiro da gaveta e informe o total. O valor esperado só será mostrado depois desta etapa.</p>
-        </div>
-        {erroExterno ? <Aviso erro={erroExterno} /> : null}
-        <Input name="contado" label="Valor contado na gaveta" inputMode="decimal" placeholder="0,00" value={contadoTexto} onChange={(evento) => setContadoTexto(evento.target.value)} required autoFocus />
-        <div className="flex flex-wrap gap-2">
-          <Button type="submit" disabled={conferindo || contado === null}>{conferindo ? "Conferindo…" : "Conferir contagem"}</Button>
-          <Button type="button" variante="fantasma" onClick={aoCancelar}>Cancelar</Button>
-        </div>
-      </form>
-    );
-  }
-
-  return (
-    <form className="flex flex-col gap-4" action={(dados) => {
-      if (contado === null || contado < 0) return;
-      const justificativa = String(dados.get("justificativa") ?? "").trim();
-      aoErro(null);
-      iniciarConferencia(async () => {
-        const resultado = await fecharCaixa({
-          contado,
-          ...(justificativa ? { justificativa } : {}),
-        });
-        if (!resultado.ok) return aoErro(resultado.erro);
-        if (resultado.resumo === null) aoErro("Caixa fechado, mas não foi possível carregar os totais por forma.");
-        setConferencia((anterior) => anterior === null ? anterior : {
-          ...anterior,
-          fechado: true,
-          resumo: resultado.resumo ?? anterior.resumo,
-        });
-      });
-    }}>
-      <ResumoVisualDoFechamento conferencia={conferencia} />
-      {conferencia.fechado ? (
-        <p className="m-0 rounded-12 border border-tgb bg-tg p-3 text-[13.5px] font-semibold text-tgf">Contagem correta. O caixa foi fechado com sucesso.</p>
-      ) : (
-        <p className="m-0 rounded-12 border border-twb bg-tw p-3 text-[13.5px] font-semibold text-twf">Há {diferenca !== null && diferenca > 0 ? "sobra" : "falta"} de {formatBRL(Math.abs(diferenca ?? 0))}.</p>
-      )}
-      {erroExterno ? <Aviso erro={erroExterno} /> : null}
-      {erroDeImpressao ? <Aviso erro={erroDeImpressao} /> : null}
-      {precisaJustificar ? <Textarea name="justificativa" label="Justificativa da diferença" rows={3} required autoFocus /> : null}
-      <div className="flex flex-wrap gap-2">
-        {conferencia.fechado ? (
-          <>
-            <Button type="button" onClick={aoCancelar}>Concluir</Button>
-            {conferencia.resumo ? (
-              <Button
-                type="button"
-                variante="secundario"
-                disabled={enviando}
-                onClick={() => {
-                  const resumo = conferencia.resumo;
-                  if (resumo === null) return;
-                  void imprimir((largura) =>
-                    montarFechamentoDeCaixa(
-                      {
-                        data: new Date(`${resumo.data_operacional}T12:00:00`).toLocaleDateString("pt-BR"),
-                        contado: conferencia.contado,
-                        esperado: conferencia.esperado,
-                        diferenca: conferencia.diferenca,
-                        recebimentos: resumo.recebimentos_por_metodo.map((r) => ({ metodo: r.metodo, total: r.total })),
-                        movimentos: {
-                          fundoInicial: resumo.fundo_inicial,
-                          reforcos: resumo.reforcos,
-                          sangrias: resumo.sangrias,
-                          despesas: resumo.despesas_pelo_caixa,
-                          entradas: resumo.entradas_pelo_caixa,
-                          estornos: resumo.estornos,
-                          diferencasDeMotoboy: resumo.diferencas_de_motoboy ?? 0,
-                        },
-                        dinheiroForaDaGaveta: resumo.dinheiro_fora_da_gaveta,
-                      },
-                      largura,
-                    ),
-                  );
-                }}
-              >
-                {enviando ? "Enviando…" : "Imprimir fechamento"}
-              </Button>
-            ) : null}
-          </>
-        ) : (
-          <Button type="submit" disabled={conferindo}>{conferindo ? "Fechando…" : "Fechar com justificativa"}</Button>
-        )}
-        {!conferencia.fechado ? <Button type="button" variante="fantasma" onClick={aoCancelar}>Cancelar</Button> : null}
-      </div>
-    </form>
-  );
-}
-
-function ResumoVisualDoFechamento({
-  conferencia,
-}: {
-  conferencia: ConferenciaDoFechamento;
-}) {
-  const resumo = conferencia.resumo;
-  return (
-    <div id="resumo-impressao-fechamento" className="flex flex-col gap-3 bg-surface">
-      <div className="hidden text-center font-mono text-[13px] text-black print:block">
-        <p className="m-0 text-[15px] font-bold">PIZZARIA SHALON</p>
-        <p className="m-0">FECHAMENTO DE CAIXA</p>
-        {resumo ? <p className="m-0">Data {new Date(`${resumo.data_operacional}T12:00:00`).toLocaleDateString("pt-BR")}</p> : null}
-      </div>
-
-      <div className="rounded-12 border border-border-shalon bg-elev p-3 print:rounded-none print:border-x-0 print:bg-white">
-        <p className="m-0 mb-2 text-[12px] font-bold uppercase tracking-wide text-muted print:text-black">
-          Dinheiro da gaveta
-        </p>
-        <ParDeDados chave="Valor contado" valor={formatBRL(conferencia.contado)} />
-        <ParDeDados chave="Valor esperado" valor={formatBRL(conferencia.esperado)} />
-        <ParDeDados
-          chave="Diferença"
-          valor={
-            <strong className={conferencia.diferenca === 0 ? "text-tgf print:text-black" : "text-tdf print:text-black"}>
-              {formatBRL(conferencia.diferenca)}
-            </strong>
-          }
-        />
-      </div>
-
-      {resumo ? (
-        <>
-          <div className="rounded-12 border border-border-shalon p-3 print:rounded-none print:border-x-0">
-            <p className="m-0 mb-2 text-[12px] font-bold uppercase tracking-wide text-muted print:text-black">
-              Recebimentos por forma
-            </p>
-            {resumo.recebimentos_por_metodo.length > 0 ? (
-              resumo.recebimentos_por_metodo.map((recebimento) => (
-                <ParDeDados
-                  key={`${recebimento.metodo}-${recebimento.familia}`}
-                  chave={recebimento.metodo}
-                  valor={formatBRL(recebimento.total)}
-                />
-              ))
-            ) : (
-              <p className="m-0 text-[13px] text-muted print:text-black">Nenhum recebimento nesta sessão.</p>
-            )}
-          </div>
-
-          <div className="rounded-12 border border-border-shalon p-3 print:rounded-none print:border-x-0">
-            <p className="m-0 mb-2 text-[12px] font-bold uppercase tracking-wide text-muted print:text-black">
-              Movimentos da sessão
-            </p>
-            <ParDeDados chave="Fundo inicial" valor={formatBRL(resumo.fundo_inicial)} />
-            <ParDeDados chave="Reforços" valor={formatBRL(resumo.reforcos)} />
-            <ParDeDados chave="Sangrias" valor={formatBRL(resumo.sangrias)} />
-            <ParDeDados chave="Despesas pelo caixa" valor={formatBRL(resumo.despesas_pelo_caixa)} />
-            <ParDeDados chave="Entradas pelo caixa" valor={formatBRL(resumo.entradas_pelo_caixa)} />
-            <ParDeDados chave="Estornos" valor={formatBRL(resumo.estornos)} />
-            {/* Falta ou sobra já justificada no acerto do motoboy (0144):
-                aparece aqui para o fechamento não cobrar de novo. */}
-            {(resumo.diferencas_de_motoboy ?? 0) !== 0 ? (
-              <ParDeDados
-                chave="Diferenças de motoboy"
-                valor={formatBRL(resumo.diferencas_de_motoboy)}
-              />
-            ) : null}
-          </div>
-
-          {resumo.dinheiro_fora_da_gaveta > 0 ? (
-            <p className="m-0 rounded-12 border border-twb bg-tw p-3 text-[13px] font-semibold text-twf print:rounded-none print:border-x-0 print:bg-white print:text-black">
-              Dinheiro fora da gaveta: {formatBRL(resumo.dinheiro_fora_da_gaveta)}
-            </p>
-          ) : null}
-        </>
-      ) : null}
-
-    </div>
   );
 }
 

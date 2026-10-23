@@ -116,6 +116,38 @@ export async function movimentarCaixa(entrada: unknown): Promise<Resultado> {
   return resposta(data);
 }
 
+export type PreviaDoFechamento =
+  | {
+      ok: true;
+      /** Cartão, Pix e vale: o que NÃO é dinheiro físico. */
+      semDinheiro: { metodo: string; total: number }[];
+      /** Dinheiro recebido que ainda não entrou na gaveta (RN-CAIXA-014). */
+      foraDaGaveta: number;
+    }
+  | { ok: false };
+
+/**
+ * O que a pessoa pode ver ANTES de contar a gaveta.
+ *
+ * O fechamento é cego (RN-CAIXA-011): o dinheiro esperado não pode chegar ao
+ * navegador antes da contagem. Cartão e Pix não são dinheiro físico, então
+ * conferi-los com a maquininha não revela nada da gaveta; e o dinheiro que
+ * ainda está fora dela é justamente o que NÃO se conta. O filtro é feito AQUI,
+ * no servidor: a tela nunca recebe a linha de dinheiro e depois a esconde.
+ * Quem não tem acesso ao resumo recebe `ok: false` e a tela segue sem a prévia.
+ */
+export async function obterPreviaDoFechamento(): Promise<PreviaDoFechamento> {
+  const resumo = await obterResumoDeFechamento();
+  if (resumo === null) return { ok: false };
+  return {
+    ok: true,
+    semDinheiro: resumo.recebimentos_por_metodo
+      .filter((r) => r.familia !== "cash")
+      .map((r) => ({ metodo: r.metodo, total: r.total })),
+    foraDaGaveta: resumo.dinheiro_fora_da_gaveta,
+  };
+}
+
 const fecharSchema = z.object({
   contado: dinheiro,
   justificativa: z.string().max(400).optional(),
