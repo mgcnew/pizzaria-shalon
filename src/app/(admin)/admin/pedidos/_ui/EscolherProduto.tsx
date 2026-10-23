@@ -1,12 +1,15 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { formatBRL } from "@/lib/format";
 import {
   buscarProdutos,
+  carregarAtalhosDoCatalogo,
   carregarConfigurador,
   carregarConfiguradorDaFogazza,
   carregarSaboresDaFogazza,
+  listarProdutosDaCategoria,
+  type AtalhosDoCatalogo,
 } from "@/application/publico/acoes";
 import type { CardDeFogazza } from "@/application/publico/consultas";
 import type { ResultadoBusca } from "@/application/publico/tipos";
@@ -52,9 +55,52 @@ export function EscolherProduto({
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, iniciar] = useTransition();
 
+  // Atalhos para não depender de digitar: os mais pedidos e as categorias. Se
+  // a leitura falhar a tela segue só com a busca, como antes.
+  const [atalhos, setAtalhos] = useState<AtalhosDoCatalogo | null>(null);
+  const [categoria, setCategoria] = useState<{ slug: string; nome: string } | null>(null);
+  const [daCategoria, setDaCategoria] = useState<ResultadoBusca[] | null>(null);
+  const campoBusca = useRef<HTMLInputElement>(null);
+  const naBusca = dados === null && fogazza === null;
+
+  useEffect(() => {
+    let vivo = true;
+    void carregarAtalhosDoCatalogo()
+      .then((a) => vivo && setAtalhos(a))
+      .catch(() => vivo && setAtalhos({ maisPedidos: [], categorias: [] }));
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  // Com mouse e teclado, o cursor já vai para a busca; no celular não: focar
+  // abriria o teclado por cima dos atalhos antes de a pessoa vê-los.
+  useEffect(() => {
+    if (naBusca && window.matchMedia("(pointer: fine)").matches) campoBusca.current?.focus();
+  }, [naBusca]);
+
+  function escolherCategoria(c: { slug: string; nome: string }) {
+    setErro(null);
+    // O que estava digitado era de outra busca: não vale para a nova lista.
+    setTermo("");
+    setResultados([]);
+    if (categoria?.slug === c.slug) {
+      setCategoria(null);
+      setDaCategoria(null);
+      return;
+    }
+    setCategoria(c);
+    setDaCategoria(null);
+    iniciar(async () => {
+      setDaCategoria(await listarProdutosDaCategoria(c.slug));
+    });
+  }
+
   function procurar(valor: string) {
     setTermo(valor);
     setErro(null);
+    // Com uma categoria aberta, a busca só filtra a lista dela (sem ir ao servidor).
+    if (categoria !== null) return;
     if (valor.trim().length < 2) {
       setResultados([]);
       return;
@@ -212,20 +258,52 @@ export function EscolherProduto({
     );
   }
 
+  const buscando = categoria === null && termo.trim().length >= 2;
+  const linhasDaCategoria =
+    categoria !== null && daCategoria !== null ? filtrarSabores(daCategoria, termo) : [];
+  const mostrarAtalhos = !buscando && categoria === null;
+
+  const linha = (p: ResultadoBusca) => (
+    <li key={p.id}>
+      <button
+        type="button"
+        disabled={!p.disponivel}
+        onClick={() => abrir(p)}
+        className={[
+          "flex w-full min-h-touch items-center justify-between gap-3 rounded-11 border-0 bg-transparent px-2 py-2 text-left",
+          p.disponivel ? "cursor-pointer hover:bg-surface" : "cursor-not-allowed opacity-60",
+        ].join(" ")}
+      >
+        <span className="min-w-0">
+          <span className="block text-[14.5px] font-semibold text-ink">
+            {p.nome}
+            {p.disponivel ? "" : " · indisponível hoje"}
+          </span>
+          <span className="block text-[12.5px] text-ink-2">{p.categoria_nome}</span>
+        </span>
+        <span className="whitespace-nowrap text-[14px] tabular-nums text-ink-2">
+          {p.preco !== null ? formatBRL(p.preco) : "—"}
+        </span>
+      </button>
+    </li>
+  );
+
   return (
     <div className="rounded-12 border border-border-shalon bg-elev p-3">
       <label htmlFor="busca-produto" className="mb-[6px] block text-[13.5px] font-semibold text-ink">
-        Procurar produto
+        {categoria !== null ? `Filtrar em ${categoria.nome}` : "Procurar produto"}
       </label>
       <input
         id="busca-produto"
+        ref={campoBusca}
         value={termo}
         onChange={(e) => procurar(e.target.value)}
-        placeholder="Calabresa, combo, refrigerante…"
+        placeholder={categoria !== null ? "Digite parte do nome…" : "Calabresa, combo, refrigerante…"}
+        autoComplete="off"
         className="min-h-touch w-full rounded-11 border-[1.5px] border-border-shalon bg-surface px-3 text-[15px] text-ink focus:border-brand-orange focus:outline-none"
       />
 
-      {ocupado ? <p className="m-0 mt-2 text-[12.5px] text-muted">Procurando…</p> : null}
+      {ocupado ? <p className="m-0 mt-2 text-[12.5px] text-muted">Carregando…</p> : null}
 
       {erro !== null ? (
         <p role="alert" className="m-0 mt-2 text-[13px] font-semibold text-tdf">
@@ -233,34 +311,75 @@ export function EscolherProduto({
         </p>
       ) : null}
 
-      {resultados.length > 0 ? (
-        <ul className="m-0 mt-2 list-none p-0">
-          {resultados.map((p) => (
-            <li key={p.id}>
-              <button
-                type="button"
-                disabled={!p.disponivel}
-                onClick={() => abrir(p)}
-                className={[
-                  "flex w-full min-h-touch items-center justify-between gap-3 rounded-11 border-0 bg-transparent px-2 py-2 text-left",
-                  p.disponivel ? "cursor-pointer hover:bg-surface" : "cursor-not-allowed opacity-60",
-                ].join(" ")}
-              >
-                <span className="min-w-0">
-                  <span className="block text-[14.5px] font-semibold text-ink">
-                    {p.nome}
-                    {p.disponivel ? "" : " · indisponível hoje"}
+      {mostrarAtalhos && atalhos !== null && atalhos.maisPedidos.length > 0 ? (
+        <div className="mt-3">
+          <p className="m-0 mb-1.5 text-[12px] font-bold uppercase tracking-wide text-muted">Mais pedidos</p>
+          <ul className="m-0 grid list-none grid-cols-2 gap-2 p-0">
+            {atalhos.maisPedidos.map((p) => (
+              <li key={p.id}>
+                <button
+                  type="button"
+                  onClick={() => abrir(p)}
+                  className="motion-interactive flex min-h-[56px] w-full cursor-pointer flex-col justify-between gap-0.5 rounded-12 border-[1.5px] border-border-shalon bg-surface px-3 py-2 text-left transition-colors hover:border-brand-orange"
+                >
+                  <span className="line-clamp-2 text-[14px] font-semibold leading-tight text-ink">{p.nome}</span>
+                  <span className="text-[12.5px] tabular-nums text-ink-2">
+                    {p.preco !== null ? formatBRL(p.preco) : "—"}
                   </span>
-                  <span className="block text-[12.5px] text-ink-2">{p.categoria_nome}</span>
-                </span>
-                <span className="whitespace-nowrap text-[14px] tabular-nums text-ink-2">
-                  {p.preco !== null ? formatBRL(p.preco) : "—"}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : termo.trim().length >= 2 && !ocupado ? (
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {!buscando && atalhos !== null && atalhos.categorias.length > 0 ? (
+        <div className="mt-3">
+          <p className="m-0 mb-1.5 text-[12px] font-bold uppercase tracking-wide text-muted">Categorias</p>
+          <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
+            {atalhos.categorias.map((c) => {
+              const ativa = categoria?.slug === c.slug;
+              return (
+                <li key={c.slug}>
+                  <button
+                    type="button"
+                    aria-pressed={ativa}
+                    onClick={() => escolherCategoria(c)}
+                    className={[
+                      "motion-interactive min-h-touch cursor-pointer rounded-pill border-[1.5px] px-3.5 text-[13.5px] font-semibold transition-colors",
+                      ativa
+                        ? "border-brand-red bg-td text-ink"
+                        : "border-border-shalon bg-surface text-ink hover:border-brand-orange",
+                    ].join(" ")}
+                  >
+                    {c.nome}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
+
+      {!buscando && atalhos === null ? (
+        <div aria-hidden="true" className="mt-3 h-[88px] animate-pulse rounded-12 bg-tn" />
+      ) : null}
+
+      {categoria !== null && daCategoria !== null ? (
+        linhasDaCategoria.length > 0 ? (
+          <ul className="scrollbar-subtle m-0 mt-2 max-h-[300px] list-none overflow-y-auto p-0">
+            {linhasDaCategoria.map(linha)}
+          </ul>
+        ) : (
+          <p className="m-0 mt-2 text-[13px] text-ink-2">
+            {termo.trim() === "" ? "Nenhum produto nesta categoria agora." : `Nenhum produto com “${termo.trim()}”.`}
+          </p>
+        )
+      ) : null}
+
+      {buscando && resultados.length > 0 ? (
+        <ul className="m-0 mt-2 list-none p-0">{resultados.map(linha)}</ul>
+      ) : buscando && !ocupado ? (
         <p className="m-0 mt-2 text-[13px] text-ink-2">Nada encontrado para “{termo}”.</p>
       ) : null}
     </div>

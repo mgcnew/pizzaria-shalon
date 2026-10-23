@@ -4936,3 +4936,29 @@ canais WhatsApp/iFood e número pela metade continuam recusados.
 
 Fora desta decisão, ainda abertos da crítica: dashboard "Agora × Período",
 busca e resumo em Encerrados, acessibilidade do menu mobile e alvos de toque.
+
+## D-2026-10-23-159 — Novo pedido: atalhos nos itens e resumo sempre à vista
+
+**Origem:** avaliação do modal de Novo pedido, a pedido do balcão (23/10/2026).
+
+**Decisão (só apresentação; preço, taxa, disponibilidade e permissão seguem
+sendo do servidor):**
+
+1. **Passo dos itens com atalhos**, em vez de uma busca vazia: "Mais pedidos"
+   (os mesmos do cardápio público, `listarMaisPedidos`) em botões de um toque, e
+   as categorias abertas do cardápio como botões. Tocar numa categoria lista os
+   produtos dela; a caixa de busca passa a filtrar dentro dela. A categoria
+   continua aberta depois de adicionar um item, para lançar vários seguidos. Com
+   mouse e teclado o cursor já entra na busca; no celular não, para o teclado não
+   cobrir os atalhos. Vale também onde o mesmo seletor é usado (acrescentar item e
+   alteração de pedido).
+2. **Resumo do pedido sempre à vista** no modal do desktop (≥1024 px), em uma
+   coluna à direita, com o modal mais largo (760 → 1080 px): canal e modalidade,
+   cliente, endereço ou retirada, itens, subtotal, taxa, **total estimado**,
+   pagamento e o que falta para lançar. O total estimado é só a soma do subtotal
+   (totais que o servidor devolveu item a item) com a taxa cotada ou informada,
+   rotulado como estimativa; quem vale é o recálculo de `criar_pedido`
+   (CLAUDE.md §16). No celular nada muda: o passo a passo já cumpre esse papel.
+
+Ainda abertos desta avaliação: passo 1 mais curto (endereço em duas colunas e
+canal abrindo no último usado) e atalhos de teclado.

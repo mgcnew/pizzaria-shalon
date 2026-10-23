@@ -6,6 +6,9 @@ import type { DadosDoConfigurador } from "@/ui/configurador/tipos";
 import { casaPeloNome } from "@/domain/catalogo/buscaDeSabor";
 import {
   buscar,
+  listarCardapio,
+  listarCategoriasPublicas,
+  listarMaisPedidos,
   listarSaboresDaFogazza,
   montarDadosDaFogazza,
   montarDadosDoConfigurador,
@@ -14,7 +17,13 @@ import {
   type CardDeFogazza,
   type DadosDaFogazza,
 } from "./consultas";
-import type { ConfiguracaoItem, ItemMontado, ResultadoBusca, Revalidacao } from "./tipos";
+import type {
+  ConfiguracaoItem,
+  ItemMontado,
+  ProdutoPublico,
+  ResultadoBusca,
+  Revalidacao,
+} from "./tipos";
 
 /**
  * Operações comerciais da experiência pública.
@@ -167,6 +176,68 @@ export async function buscarProdutos(termo: unknown): Promise<ResultadoBusca[]> 
     return resultado;
   } catch (erro) {
     logger.error("publico:buscarProdutos", { code: (erro as { code?: string })?.code });
+    return [];
+  }
+}
+
+/** O produto do cardápio no formato da busca, que é o que o balcão abre. */
+function comoResultadoDeBusca(p: ProdutoPublico): ResultadoBusca {
+  return {
+    id: p.id,
+    nome: p.nome,
+    slug: p.slug,
+    tipo: p.tipo,
+    descricao: p.descricao,
+    categoria_nome: p.categoria_nome,
+    categoria_slug: p.categoria_slug,
+    preco_de: p.preco_de,
+    preco: p.preco,
+    em_promocao: p.em_promocao,
+    disponivel: p.disponivel,
+    imagem_path: p.imagem_path,
+  };
+}
+
+export type AtalhosDoCatalogo = {
+  /** Os mais pedidos dos últimos 30 dias (os mesmos do cardápio público). */
+  maisPedidos: ResultadoBusca[];
+  /** As categorias abertas, na ordem do cardápio. */
+  categorias: { slug: string; nome: string; produtos: number }[];
+};
+
+/**
+ * Atalhos do balcão para escolher um item sem digitar: os mais pedidos e as
+ * categorias.
+ *
+ * É a MESMA leitura do cardápio público (`listarMaisPedidos`,
+ * `listarCategoriasPublicas`): quem monta o pedido vê o mesmo que o cliente
+ * vê, com o mesmo preço e a mesma disponibilidade. Nada aqui decide preço; o
+ * item continua sendo montado e precificado pelo configurador.
+ */
+export async function carregarAtalhosDoCatalogo(): Promise<AtalhosDoCatalogo> {
+  try {
+    const [mais, categorias] = await Promise.all([listarMaisPedidos(8), listarCategoriasPublicas()]);
+    return {
+      maisPedidos: mais.map(comoResultadoDeBusca),
+      categorias: categorias
+        .filter((c) => !c.pausada && c.produtos > 0)
+        .sort((a, b) => a.ordem - b.ordem)
+        .map((c) => ({ slug: c.slug, nome: c.nome, produtos: c.produtos })),
+    };
+  } catch (erro) {
+    logger.error("publico:carregarAtalhosDoCatalogo", { code: (erro as { code?: string })?.code });
+    return { maisPedidos: [], categorias: [] };
+  }
+}
+
+/** Os produtos de uma categoria, na ordem do cardápio. */
+export async function listarProdutosDaCategoria(slug: unknown): Promise<ResultadoBusca[]> {
+  if (typeof slug !== "string" || slug.trim() === "" || slug.length > 120) return [];
+  try {
+    const produtos = await listarCardapio(slug);
+    return produtos.sort((a, b) => a.ordem - b.ordem).map(comoResultadoDeBusca);
+  } catch (erro) {
+    logger.error("publico:listarProdutosDaCategoria", { code: (erro as { code?: string })?.code });
     return [];
   }
 }

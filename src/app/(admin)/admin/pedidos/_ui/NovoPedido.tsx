@@ -22,6 +22,7 @@ import {
 } from "@/application/pedidos/tipos";
 import type { FormaDePagamento } from "@/application/checkout/tipos";
 import { EscolherProduto } from "./EscolherProduto";
+import { ResumoDoPedido } from "./ResumoDoPedido";
 import { AtalhosDoCliente, EnderecosSalvos, ResumoDoCliente } from "./ClienteNoBalcao";
 
 export type EtapaNovoPedido = "cliente" | "itens" | "pagamento";
@@ -283,6 +284,15 @@ export function NovoPedido({
         : `CEP de ${r.cidade}/${r.uf}. Complete a rua e o bairro.`,
     );
   }
+  // Ao entrar no passo dos itens, com mouse e teclado, o cursor já vai para a
+  // busca: o formulário nasce com os três passos montados (e dois escondidos),
+  // então o foco do próprio campo, que roda ao montar, cai num campo invisível.
+  useEffect(() => {
+    if (!emModal || etapa !== "itens") return;
+    if (!window.matchMedia("(pointer: fine)").matches) return;
+    document.getElementById("busca-produto")?.focus();
+  }, [emModal, etapa]);
+
   const [criado, setCriado] = useState<
     { numero: number; token: string | null; status: string } | null
   >(null);
@@ -557,15 +567,53 @@ export function NovoPedido({
     );
   }
 
+  // A taxa que vale na tela, em texto e em número: a informada à mão, a trocada
+  // com motivo, a cotada, ou nada ainda. Usada no bloco do pagamento e no
+  // resumo, para os dois dizerem sempre a mesma coisa.
+  const taxaDaTela: number | null =
+    modalidade === "pickup"
+      ? 0
+      : usarTaxaManual && taxaManualValor !== null
+        ? taxaManualValor
+        : usarTrocaDaTaxa && taxaTrocadaValor !== null
+          ? taxaTrocadaValor
+          : cotacao?.ok
+            ? cotacao.taxa
+            : null;
+  const textoDaTaxa =
+    modalidade === "pickup"
+      ? "retirada"
+      : usarTaxaManual && taxaManualValor !== null
+        ? `${formatBRL(taxaManualValor)} (informada)`
+        : usarTrocaDaTaxa && taxaTrocadaValor !== null
+          ? `${formatBRL(taxaTrocadaValor)} (trocada)`
+          : cotacao?.ok
+            ? formatBRL(cotacao.taxa)
+            : cotando
+              ? "calculando…"
+              : "calculada ao lançar";
+  const enderecoDoResumo =
+    logradouro.trim() !== ""
+      ? [
+          `${logradouro.trim()}${numero.trim() !== "" ? `, ${numero.trim()}` : ""}`,
+          bairro.trim(),
+        ]
+          .filter(Boolean)
+          .join(" — ")
+      : null;
+
   const indiceDaEtapa = ETAPAS.findIndex((item) => item.valor === etapa);
   const classeDaEtapa = (alvo: EtapaNovoPedido) =>
     emModal && etapa !== alvo ? "hidden" : emModal ? "motion-tab-in" : "";
 
   return (
+    // No modal do desktop o formulário ganha, à direita, o resumo do pedido
+    // sempre à vista; fora do modal (página e celular) nada muda.
+    <div className={emModal ? "lg:grid lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start lg:gap-x-5" : undefined}>
     <div
       className={
         emModal
-          ? "flex flex-col gap-4"
+          ? "flex min-w-0 flex-col gap-4"
           : "grid items-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(340px,1fr))]"
       }
     >
@@ -1022,17 +1070,7 @@ export function NovoPedido({
           </div>
           <div className="flex justify-between text-[14.5px] text-ink-2">
             <span>Taxa de entrega</span>
-            <span className="text-[13px]">
-              {modalidade === "pickup"
-                ? "retirada"
-                : usarTaxaManual && taxaManualValor !== null
-                  ? `${formatBRL(taxaManualValor)} (informada)`
-                  : usarTrocaDaTaxa && taxaTrocadaValor !== null
-                    ? `${formatBRL(taxaTrocadaValor)} (trocada)`
-                    : cotacao?.ok
-                    ? formatBRL(cotacao.taxa)
-                    : "calculada ao lançar"}
-            </span>
+            <span className="text-[13px]">{textoDaTaxa}</span>
           </div>
 
           {erro !== null ? (
@@ -1102,6 +1140,24 @@ export function NovoPedido({
           ) : null}
         </div>
       ) : null}
+    </div>
+
+    {emModal ? (
+      <ResumoDoPedido
+        canal={ORIGENS_MANUAIS.find((o) => o.valor === origem)?.rotulo ?? "Outro"}
+        modalidade={modalidade}
+        nome={nome}
+        whatsapp={whatsapp}
+        clienteCadastrado={reconhecido !== null}
+        endereco={enderecoDoResumo}
+        itens={itens}
+        subtotal={subtotal}
+        taxa={{ texto: textoDaTaxa, valor: taxaDaTela }}
+        forma={forma?.nome ?? null}
+        trocoPara={precisaTroco && trocoPara.trim() !== "" ? `R$ ${trocoPara.trim()}` : null}
+        pendencias={pendencias}
+      />
+    ) : null}
     </div>
   );
 }
