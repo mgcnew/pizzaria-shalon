@@ -10,6 +10,10 @@ import type { PreviaDoFechamento } from "@/application/caixa/acoes";
 import type { ResumoDeFechamento } from "@/application/caixa/tipos";
 import { useImprimirDocumento } from "@/ui/impressao/useImprimirDocumento";
 import { montarFechamentoDeCaixa } from "@/domain/impressao/cupons";
+import {
+  montarRelatorioDeFechamento,
+  type RelatorioDeFechamento,
+} from "@/domain/caixa/relatorioDeFechamento";
 
 export function paraNumero(texto: string): number | null {
   const limpo = texto.replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
@@ -316,25 +320,13 @@ export function FechamentoDeCaixa({
                 disabled={enviando}
                 onClick={() => {
                   const resumo = conferencia.resumo;
-                  if (resumo === null) return;
+                  const relatorio = relatorioDe(conferencia);
+                  if (resumo === null || relatorio === null) return;
                   void imprimir((largura) =>
                     montarFechamentoDeCaixa(
                       {
+                        ...relatorio,
                         data: new Date(`${resumo.data_operacional}T12:00:00`).toLocaleDateString("pt-BR"),
-                        contado: conferencia.contado,
-                        esperado: conferencia.esperado,
-                        diferenca: conferencia.diferenca,
-                        recebimentos: resumo.recebimentos_por_metodo.map((r) => ({ metodo: r.metodo, total: r.total })),
-                        movimentos: {
-                          fundoInicial: resumo.fundo_inicial,
-                          reforcos: resumo.reforcos,
-                          sangrias: resumo.sangrias,
-                          despesas: resumo.despesas_pelo_caixa,
-                          entradas: resumo.entradas_pelo_caixa,
-                          estornos: resumo.estornos,
-                          diferencasDeMotoboy: resumo.diferencas_de_motoboy ?? 0,
-                        },
-                        dinheiroForaDaGaveta: resumo.dinheiro_fora_da_gaveta,
                       },
                       largura,
                     ),
@@ -561,6 +553,45 @@ function ContagemPorNotas({
   );
 }
 
+/** O relatório do fechamento, pronto para a tela e para o papel (mesma montagem). */
+function relatorioDe(conferencia: ConferenciaDoFechamento): RelatorioDeFechamento | null {
+  const r = conferencia.resumo;
+  if (r === null) return null;
+  return montarRelatorioDeFechamento({
+    recebimentos: r.recebimentos_por_metodo,
+    totalRecebido: r.total_recebido ?? null,
+    fundoInicial: r.fundo_inicial,
+    movimentos: r.movimentos_da_gaveta ?? null,
+    entrou: r.entrou_na_gaveta ?? null,
+    saiu: r.saiu_da_gaveta ?? null,
+    legado: {
+      recebidoEmDinheiro: r.recebido_em_dinheiro,
+      reforcos: r.reforcos,
+      sangrias: r.sangrias,
+      despesas: r.despesas_pelo_caixa,
+      entradas: r.entradas_pelo_caixa,
+      estornos: r.estornos,
+      diferencasDeMotoboy: r.diferencas_de_motoboy ?? 0,
+    },
+    contado: conferencia.contado,
+    esperado: conferencia.esperado,
+    diferenca: conferencia.diferenca,
+    dinheiroForaDaGaveta: r.dinheiro_fora_da_gaveta,
+  });
+}
+
+/** Linha de total: mesmo desenho do `ParDeDados`, em negrito. */
+function ParTotal({ chave, valor }: { chave: string; valor: string }) {
+  return (
+    <div className="flex justify-between gap-3 border-t border-border-shalon py-[9px] text-[14px] font-bold text-ink">
+      <span className="shrink-0">{chave}</span>
+      <span className="min-w-0 break-words text-right tabular-nums">{valor}</span>
+    </div>
+  );
+}
+
+const subtitulo = "m-0 mt-2 text-[12px] font-bold uppercase tracking-wide text-muted";
+
 function ResumoVisualDoFechamento({
   conferencia,
   aberto,
@@ -570,6 +601,7 @@ function ResumoVisualDoFechamento({
   aberto: boolean;
 }) {
   const resumo = conferencia.resumo;
+  const relatorio = relatorioDe(conferencia);
   return (
     <div id="resumo-impressao-fechamento" className="flex flex-col gap-3 bg-surface">
       <div className="hidden text-center font-mono text-[13px] text-black print:block">
@@ -594,11 +626,11 @@ function ResumoVisualDoFechamento({
         />
       </div>
 
-      {resumo ? (
+      {resumo && relatorio ? (
         <>
-          {resumo.dinheiro_fora_da_gaveta > 0 ? (
+          {relatorio.foraDaGaveta > 0 ? (
             <p className="m-0 rounded-12 border border-twb bg-tw p-3 text-[13px] font-semibold text-twf print:rounded-none print:border-x-0 print:bg-white print:text-black">
-              Dinheiro recebido que ainda não entrou na gaveta (ex.: com o motoboy): {formatBRL(resumo.dinheiro_fora_da_gaveta)}
+              Dinheiro recebido que ainda não entrou na gaveta (ex.: com o motoboy): {formatBRL(relatorio.foraDaGaveta)}
             </p>
           ) : null}
 
@@ -615,40 +647,59 @@ function ResumoVisualDoFechamento({
                 <path d="m6 9 6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </summary>
-          <div className="rounded-12 border border-border-shalon p-3 print:rounded-none print:border-x-0">
-            <p className="m-0 mb-2 text-[12px] font-bold uppercase tracking-wide text-muted print:text-black">
-              Recebido por forma de pagamento
-            </p>
-            {resumo.recebimentos_por_metodo.length > 0 ? (
-              resumo.recebimentos_por_metodo.map((recebimento) => (
-                <ParDeDados
-                  key={`${recebimento.metodo}-${recebimento.familia}`}
-                  chave={recebimento.metodo}
-                  valor={formatBRL(recebimento.total)}
-                />
-              ))
-            ) : (
-              <p className="m-0 text-[13px] text-muted print:text-black">Nenhum recebimento nesta sessão.</p>
-            )}
-          </div>
 
-          <div className="rounded-12 border border-border-shalon p-3 print:rounded-none print:border-x-0">
-            <p className="m-0 mb-2 text-[12px] font-bold uppercase tracking-wide text-muted print:text-black">
-              Movimentos da gaveta
-            </p>
-            <ParDeDados chave="Fundo inicial" valor={formatBRL(resumo.fundo_inicial)} />
-            <ParDeDados chave="Reforços" valor={formatBRL(resumo.reforcos)} />
-            <ParDeDados chave="Sangrias" valor={formatBRL(resumo.sangrias)} />
-            <ParDeDados chave="Despesas pelo caixa" valor={formatBRL(resumo.despesas_pelo_caixa)} />
-            <ParDeDados chave="Entradas pelo caixa" valor={formatBRL(resumo.entradas_pelo_caixa)} />
-            <ParDeDados chave="Estornos" valor={formatBRL(resumo.estornos)} />
-            {/* Falta ou sobra já justificada no acerto do motoboy (0144):
-                aparece aqui para o fechamento não cobrar de novo. */}
-            {(resumo.diferencas_de_motoboy ?? 0) !== 0 ? (
-              <ParDeDados chave="Diferenças de motoboy" valor={formatBRL(resumo.diferencas_de_motoboy)} />
-            ) : null}
-          </div>
+            {/* Só o que teve movimento: forma sem recebimento, sangria zerada e
+                fundo zerado não aparecem. */}
+            <div className="rounded-12 border border-border-shalon p-3 print:rounded-none print:border-x-0">
+              <p className="m-0 mb-2 text-[12px] font-bold uppercase tracking-wide text-muted print:text-black">
+                Recebido por forma de pagamento
+              </p>
+              {relatorio.recebidos.length > 0 ? (
+                <>
+                  {relatorio.recebidos.map((r) => (
+                    <ParDeDados key={r.rotulo} chave={r.rotulo} valor={formatBRL(r.valor)} />
+                  ))}
+                  {relatorio.totalRecebido !== null ? (
+                    <ParTotal chave="Total recebido" valor={formatBRL(relatorio.totalRecebido)} />
+                  ) : null}
+                </>
+              ) : (
+                <p className="m-0 text-[13px] text-muted print:text-black">Nenhum recebimento nesta sessão.</p>
+              )}
+            </div>
 
+            <div className="rounded-12 border border-border-shalon p-3 print:rounded-none print:border-x-0">
+              <p className="m-0 mb-1 text-[12px] font-bold uppercase tracking-wide text-muted print:text-black">
+                Movimento da gaveta (só dinheiro)
+              </p>
+              {relatorio.fundo > 0 ? <ParDeDados chave="Fundo inicial" valor={formatBRL(relatorio.fundo)} /> : null}
+
+              {relatorio.entradas.length > 0 ? (
+                <>
+                  <p className={subtitulo}>Entrou</p>
+                  {relatorio.entradas.map((l) => (
+                    <ParDeDados key={`e-${l.rotulo}`} chave={l.rotulo} valor={formatBRL(l.valor)} />
+                  ))}
+                  {relatorio.totalEntrou !== null ? (
+                    <ParTotal chave="Total que entrou" valor={formatBRL(relatorio.totalEntrou)} />
+                  ) : null}
+                </>
+              ) : null}
+
+              {relatorio.saidas.length > 0 ? (
+                <>
+                  <p className={subtitulo}>Saiu</p>
+                  {relatorio.saidas.map((l) => (
+                    <ParDeDados key={`s-${l.rotulo}`} chave={l.rotulo} valor={formatBRL(l.valor)} />
+                  ))}
+                  {relatorio.totalSaiu !== null ? (
+                    <ParTotal chave="Total que saiu" valor={formatBRL(relatorio.totalSaiu)} />
+                  ) : null}
+                </>
+              ) : null}
+
+              <ParTotal chave="Esperado na gaveta" valor={formatBRL(relatorio.esperado)} />
+            </div>
           </details>
         </>
       ) : null}

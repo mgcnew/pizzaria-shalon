@@ -81,6 +81,15 @@ export type ResumoDeFechamento = {
   justificativa: string | null;
   dinheiro_fora_da_gaveta: number;
   correcoes: { tipo: string; motivo: string; em: string; antes: unknown }[];
+  /**
+   * O movimento todo da gaveta e os totais, calculados pelo servidor (0171).
+   * Opcionais: um servidor sem a 0171 não os devolve, e o relatório segue
+   * saindo com o que já existia, sem as linhas de total.
+   */
+  movimentos_da_gaveta?: { tipo: string; sentido: "in" | "out"; total: number }[];
+  entrou_na_gaveta?: number;
+  saiu_da_gaveta?: number;
+  total_recebido?: number;
 };
 
 export type SessaoHistorica = {

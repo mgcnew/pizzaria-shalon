@@ -5004,3 +5004,35 @@ não é só o peso do texto comum, é o contraste real no papel. Algo como letra
 maior ou espaçamento nos itens e nas observações, mantendo o resto escuro,
 precisa ser testado na própria Diebold/KD-1025 antes de ir ao ar. Um contorno
 de 0,2 px não bastou.
+
+## D-2026-10-23-163 — Fechamento de caixa: só o que teve movimento, nomes curtos e somas
+
+**Pedido do balcão:** o relatório trazia linhas zeradas, quebrava linha no papel
+e não somava o que entrou e o que saiu. Só apresentação e leitura; o esperado e
+a diferença continuam calculados como antes (RN-CAIXA-011).
+
+1. **Só o que teve movimento.** Sangria, reforço, despesa, estorno, adiantamento,
+   fundo, forma de pagamento: sem movimento, a linha não sai (tela e papel). O
+   bloco "Entrou"/"Saiu" inteiro some se estiver vazio.
+2. **Nomes curtos, até 12 caracteres**, escolhidos pela *família* da forma (não
+   pelo nome, que o painel permite mudar): **Dinheiro, Crédito, Débito, Pix
+   máquina** (era "Pix na maquininha") e **Pix chave** (era "Pix antecipado"),
+   Voucher. O papel de 58 mm comporta ~25 colunas com a letra fixa, e cada linha
+   leva o valor à direita; "Cartão de crédito" e "Pix na maquininha" quebravam.
+   Os rótulos dos movimentos também cabem em 12 (Vendas, Reforços, Sangrias,
+   Despesas, Adiantamento, Estornos, Outros, Ajuste, Sobra/Falta moto).
+3. **As somas.** O relatório mostra o **total recebido** (todas as formas) e, na
+   gaveta, **fundo + total que entrou − total que saiu = esperado**. Os totais
+   vêm do **servidor**, não de soma na tela, por duas razões: a lista antiga era
+   incompleta (não trazia adiantamento a funcionário, que sai da gaveta, nem
+   outras saídas) e "estornos" somava `refund` e `adjustment` sem olhar o
+   sentido. O fundo não é um movimento (`abrir_caixa` só grava `opening_amount`),
+   então a conta fecha; conferido nas 9 sessões do DEV.
+4. **Migration 0171** (`20261023140000_fechamento_com_movimento_completo`):
+   `resumo_do_fechamento` ganha `movimentos_da_gaveta` (por tipo e sentido, só os
+   grupos que existem), `entrou_na_gaveta`, `saiu_da_gaveta` e `total_recebido`.
+   Só acrescenta chaves; as que existiam não mudam. **Sem a migration** o
+   relatório continua saindo (com as linhas zeradas escondidas e os nomes
+   curtos), apenas sem as linhas de total.
+5. Um só módulo monta o relatório para a tela e para o papel
+   (`domain/caixa/relatorioDeFechamento.ts`), para nunca divergirem.

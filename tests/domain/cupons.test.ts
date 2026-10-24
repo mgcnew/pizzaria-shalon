@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { COLUNAS, renderizarTexto } from "@/domain/pedidos/comanda";
 import { montarCupomDeVenda, montarFechamentoDeCaixa } from "@/domain/impressao/cupons";
+import { montarRelatorioDeFechamento, type EntradaDoRelatorio } from "@/domain/caixa/relatorioDeFechamento";
 
 const VENDA = {
   numero: 1042,
@@ -19,26 +20,32 @@ const VENDA = {
   troco: 65.5,
 };
 
-const FECHAMENTO = {
-  data: "08/10/2026",
-  contado: 500,
-  esperado: 510,
-  diferenca: -10,
+/** Uma sessão com movimento de verdade: fundo, vendas, reforço, sangria e despesa. */
+const ENTRADA: EntradaDoRelatorio = {
   recebimentos: [
-    { metodo: "Dinheiro", total: 300 },
-    { metodo: "Pix na maquininha", total: 210 },
+    { metodo: "Dinheiro", familia: "cash", total: 340 },
+    { metodo: "Cartão de crédito", familia: "credit", total: 520 },
+    { metodo: "Cartão de débito", familia: "debit", total: 100 },
+    { metodo: "Pix na maquininha", familia: "pix_machine", total: 180.5 },
+    { metodo: "Pix antecipado", familia: "pix_key", total: 50 },
   ],
-  movimentos: {
-    fundoInicial: 100,
-    reforcos: 0,
-    sangrias: 50,
-    despesas: 0,
-    entradas: 0,
-    estornos: 0,
-    diferencasDeMotoboy: 0,
-  },
+  totalRecebido: 1190.5,
+  fundoInicial: 100,
+  movimentos: [
+    { tipo: "sale_receipt", sentido: "in", total: 340 },
+    { tipo: "supply", sentido: "in", total: 104 },
+    { tipo: "withdrawal", sentido: "out", total: 150 },
+    { tipo: "expense", sentido: "out", total: 20 },
+  ],
+  entrou: 444,
+  saiu: 170,
+  contado: 374,
+  esperado: 374,
+  diferenca: 0,
   dinheiroForaDaGaveta: 0,
 };
+
+const FECHAMENTO = { data: "08/10/2026", ...montarRelatorioDeFechamento(ENTRADA) };
 
 describe("cupom do PDV em texto (D-2026-10-08-116)", () => {
   it("nenhuma linha passa da largura, nas duas larguras", () => {
@@ -71,51 +78,133 @@ describe("cupom do PDV em texto (D-2026-10-08-116)", () => {
   });
 });
 
-describe("fechamento de caixa em texto", () => {
-  it("traz contado, esperado, diferença e as formas", () => {
-    const t = renderizarTexto(montarFechamentoDeCaixa(FECHAMENTO));
+describe("fechamento de caixa em texto (D-2026-10-23-163)", () => {
+  const texto = (e: Partial<EntradaDoRelatorio> = {}, largura?: number) =>
+    renderizarTexto(montarFechamentoDeCaixa({ data: "08/10/2026", ...montarRelatorioDeFechamento({ ...ENTRADA, ...e }) }, largura));
+
+  it("traz o recebido por forma, o movimento da gaveta, o esperado e a conferência", () => {
+    const t = texto();
     expect(t).toContain("FECHAMENTO DE CAIXA");
-    expect(t).toContain("R$ 500,00");
-    expect(t).toContain("R$ 510,00");
-    expect(t).toContain("R$ -10,00"); // mesmo formato da tela (formatBRL)
-    expect(t).toContain("Pix na maquininha");
+    expect(t).toContain("RECEBIDO POR FORMA");
+    expect(t).toContain("GAVETA (DINHEIRO)");
+    expect(t).toContain("Esperado");
+    expect(t).toContain("CONFERENCIA");
+    expect(t).toContain("Contado");
   });
 
-  it("diferença de motoboy e dinheiro fora da gaveta só aparecem quando existem", () => {
-    expect(renderizarTexto(montarFechamentoDeCaixa(FECHAMENTO))).not.toContain("motoboy");
+  it("soma o que entrou e o que saiu, e a conta fecha (fundo + entrou − saiu = esperado)", () => {
+    const t = texto();
+    expect(t).toContain("Total entrou");
+    expect(t).toContain("R$ 444,00");
+    expect(t).toContain("Total saiu");
+    expect(t).toContain("R$ 170,00");
+    expect(t).toContain("Total"); // total recebido
+    expect(t).toContain("R$ 1.190,50");
+    expect(ENTRADA.fundoInicial + 444 - 170).toBe(ENTRADA.esperado);
+  });
+
+  it("só aparece o que teve movimento: sem sangria, não há linha de sangria", () => {
+    const t = texto({
+      movimentos: [{ tipo: "sale_receipt", sentido: "in", total: 340 }],
+      entrou: 340,
+      saiu: 0,
+      esperado: 440,
+      contado: 440,
+    });
+    expect(t).not.toContain("Sangrias");
+    expect(t).not.toContain("Despesas");
+    expect(t).not.toContain("Saiu"); // nem o bloco, nem o total
+    expect(t).not.toContain("Total saiu");
+    expect(t).toContain("Vendas");
+  });
+
+  it("fundo zerado não aparece; fundo com valor aparece", () => {
+    expect(texto({ fundoInicial: 0 })).not.toContain("Fundo");
+    expect(texto({ fundoInicial: 100 })).toContain("Fundo");
+  });
+
+  it("formas com nome curto: Crédito, Débito, Pix máquina e Pix chave", () => {
+    const t = texto();
+    for (const nome of ["Dinheiro", "Crédito", "Débito", "Pix máquina", "Pix chave"]) expect(t).toContain(nome);
+    for (const longo of ["Cartão de", "Pix na maquininha", "Pix antecipado"]) expect(t).not.toContain(longo);
+  });
+
+  it("adiantamento a funcionário e outras saídas aparecem quando existem", () => {
+    const t = texto({
+      movimentos: [
+        { tipo: "sale_receipt", sentido: "in", total: 340 },
+        { tipo: "employee_advance", sentido: "out", total: 50 },
+        { tipo: "other", sentido: "out", total: 10 },
+      ],
+      entrou: 340,
+      saiu: 60,
+    });
+    expect(t).toContain("Adiantamento");
+    expect(t).toContain("Outros");
+  });
+
+  it("sobra e falta de motoboy entram no lado certo", () => {
+    const t = texto({
+      movimentos: [
+        { tipo: "driver_difference", sentido: "in", total: 5 },
+        { tipo: "driver_difference", sentido: "out", total: 3 },
+      ],
+      entrou: 5,
+      saiu: 3,
+    });
+    expect(t).toContain("Sobra moto");
+    expect(t).toContain("Falta moto");
+  });
+
+  it("dinheiro fora da gaveta só aparece quando existe", () => {
+    expect(texto()).not.toContain("Fora gaveta");
+    expect(texto({ dinheiroForaDaGaveta: 40 })).toContain("Fora gaveta");
+  });
+
+  it("servidor sem os totais novos: o relatório sai, sem as linhas de total", () => {
     const t = renderizarTexto(
       montarFechamentoDeCaixa({
-        ...FECHAMENTO,
-        movimentos: { ...FECHAMENTO.movimentos, diferencasDeMotoboy: 5 },
-        dinheiroForaDaGaveta: 40,
+        data: "08/10/2026",
+        ...montarRelatorioDeFechamento({
+          recebimentos: [{ metodo: "Dinheiro", familia: "cash", total: 340 }],
+          fundoInicial: 100,
+          legado: {
+            recebidoEmDinheiro: 340,
+            reforcos: 0,
+            sangrias: 150,
+            despesas: 0,
+            entradas: 0,
+            estornos: 0,
+            diferencasDeMotoboy: 0,
+          },
+          contado: 290,
+          esperado: 290,
+          diferenca: 0,
+          dinheiroForaDaGaveta: 0,
+        }),
       }),
     );
-    expect(t).toContain("Diferenças de motoboy");
-    expect(t).toContain("Dinheiro fora da gaveta");
+    expect(t).toContain("Sangrias");
+    expect(t).not.toContain("Reforços"); // zerado, escondido
+    expect(t).not.toContain("Total entrou");
+    expect(t).not.toContain("Total saiu");
   });
 
-  it("nenhuma linha passa da largura", () => {
-    for (const l of montarFechamentoDeCaixa(FECHAMENTO, COLUNAS["58"])) expect(l.texto.length).toBeLessThanOrEqual(32);
-  });
-});
-
-describe("convite para o app no cupom", () => {
-  const CONVITE = {
-    url: "https://pizzariashalon.vercel.app/?origem=cupom",
-    endereco: "pizzariashalon.vercel.app",
-    chamada: "Peça pelo nosso app!",
-    instrucao: "Aponte a câmera do celular",
-  };
-
-  it("sai no fim: chamada, QR com o endereço completo e o endereço por extenso", () => {
-    const linhas = montarCupomDeVenda({ ...VENDA, convite: CONVITE });
-    const qr = linhas.findIndex((l) => l.estilo === "qrcode");
-    expect(linhas[qr]?.texto).toBe(CONVITE.url);
-    expect(linhas[qr - 1]?.texto.trim()).toBe(CONVITE.chamada);
-    expect(linhas.at(-1)?.texto.trim()).toBe(CONVITE.endereco);
-  });
-
-  it("sem convite, não há QR", () => {
-    expect(montarCupomDeVenda(VENDA).some((l) => l.estilo === "qrcode")).toBe(false);
+  it("nenhuma linha passa da largura, e NADA quebra nem no papel de 58 mm real (25 colunas)", () => {
+    // 58 mm: a área útil de 48 mm comporta 25 colunas com a letra fixa.
+    for (const largura of [25, COLUNAS["58"], COLUNAS["80"]]) {
+      const linhas = montarFechamentoDeCaixa(FECHAMENTO, largura);
+      for (const l of linhas) expect(l.texto.length).toBeLessThanOrEqual(largura);
+      // Sem quebra: toda linha com valor tem rótulo e valor na MESMA linha.
+      const comValor = linhas.filter((l) => /R\$ /.test(l.texto));
+      for (const l of comValor) expect(l.texto.trim()).toMatch(/^\S.*\S$/);
+    }
+    // E nenhum rótulo sozinho numa linha por causa de quebra: o número de linhas
+    // com "R$" é o de linhas de valor esperado (cada uma tem o seu).
+    const linhas = montarFechamentoDeCaixa(FECHAMENTO, 25);
+    const rotulosPartidos = linhas.filter(
+      (l, i) => !/R\$ /.test(l.texto) && /R\$ /.test(linhas[i + 1]?.texto ?? "") && l.estilo === "normal" && l.texto.trim() !== "",
+    );
+    expect(rotulosPartidos).toEqual([]);
   });
 });

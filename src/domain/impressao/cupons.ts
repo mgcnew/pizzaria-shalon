@@ -1,5 +1,6 @@
 import { formatBRL } from "@/lib/format";
 import { LARGURA, ladoALado, quebrar, type LinhaComanda } from "@/domain/pedidos/comanda";
+import type { RelatorioDeFechamento } from "@/domain/caixa/relatorioDeFechamento";
 
 /**
  * Cupom do PDV, segunda via e fechamento de caixa em linhas de texto
@@ -121,23 +122,13 @@ export function montarCupomDeVenda(cupom: CupomDeVenda, largura: number = LARGUR
 
 // ---------------------------------------------------- fechamento de caixa
 
-export type FechamentoParaImprimir = {
+/**
+ * O relatório já vem montado (`montarRelatorioDeFechamento`): o que aparece,
+ * como se chama e os totais do servidor. Aqui só se organiza em colunas.
+ */
+export type FechamentoParaImprimir = RelatorioDeFechamento & {
   /** Já formatada por quem chama. */
   data?: string | null;
-  contado: number;
-  esperado: number;
-  diferenca: number;
-  recebimentos: { metodo: string; total: number }[];
-  movimentos: {
-    fundoInicial: number;
-    reforcos: number;
-    sangrias: number;
-    despesas: number;
-    entradas: number;
-    estornos: number;
-    diferencasDeMotoboy: number;
-  };
-  dinheiroForaDaGaveta: number;
 };
 
 export function montarFechamentoDeCaixa(
@@ -150,30 +141,45 @@ export function montarFechamentoDeCaixa(
   ];
   if (f.data) saida.push(centro(`Data ${f.data}`, largura));
 
-  saida.push(separador(largura), { texto: "DINHEIRO DA GAVETA", estilo: "titulo" });
-  saida.push(...comValor("Valor contado", formatBRL(f.contado), largura));
-  saida.push(...comValor("Valor esperado", formatBRL(f.esperado), largura));
-  saida.push(...comValor("Diferença", formatBRL(f.diferenca), largura, "destaque"));
+  const bloco = (linhas: { rotulo: string; valor: number }[]) => {
+    for (const l of linhas) saida.push(...comValor(l.rotulo, formatBRL(l.valor), largura));
+  };
 
-  saida.push(separador(largura), { texto: "RECEBIMENTOS POR FORMA", estilo: "titulo" });
-  if (f.recebimentos.length === 0) saida.push(...texto("Nenhum recebimento nesta sessão.", largura));
-  for (const r of f.recebimentos) saida.push(...comValor(r.metodo, formatBRL(r.total), largura));
-
-  const m = f.movimentos;
-  saida.push(separador(largura), { texto: "MOVIMENTOS DA SESSAO", estilo: "titulo" });
-  saida.push(...comValor("Fundo inicial", formatBRL(m.fundoInicial), largura));
-  saida.push(...comValor("Reforços", formatBRL(m.reforcos), largura));
-  saida.push(...comValor("Sangrias", formatBRL(m.sangrias), largura));
-  saida.push(...comValor("Despesas pelo caixa", formatBRL(m.despesas), largura));
-  saida.push(...comValor("Entradas pelo caixa", formatBRL(m.entradas), largura));
-  saida.push(...comValor("Estornos", formatBRL(m.estornos), largura));
-  if (m.diferencasDeMotoboy !== 0) {
-    saida.push(...comValor("Diferenças de motoboy", formatBRL(m.diferencasDeMotoboy), largura));
+  // Só sai o que teve movimento: seção sem linha nenhuma não aparece.
+  if (f.recebidos.length > 0) {
+    saida.push(separador(largura), { texto: "RECEBIDO POR FORMA", estilo: "titulo" });
+    bloco(f.recebidos);
+    if (f.totalRecebido !== null) {
+      saida.push(...comValor("Total", formatBRL(f.totalRecebido), largura, "titulo"));
+    }
   }
 
-  if (f.dinheiroForaDaGaveta > 0) {
+  // A gaveta: fundo + o que entrou − o que saiu = esperado.
+  saida.push(separador(largura), { texto: "GAVETA (DINHEIRO)", estilo: "titulo" });
+  if (f.fundo > 0) saida.push(...comValor("Fundo", formatBRL(f.fundo), largura));
+  if (f.entradas.length > 0) {
+    saida.push({ texto: "Entrou", estilo: "titulo" });
+    bloco(f.entradas);
+    if (f.totalEntrou !== null) {
+      saida.push(...comValor("Total entrou", formatBRL(f.totalEntrou), largura, "titulo"));
+    }
+  }
+  if (f.saidas.length > 0) {
+    saida.push({ texto: "Saiu", estilo: "titulo" });
+    bloco(f.saidas);
+    if (f.totalSaiu !== null) {
+      saida.push(...comValor("Total saiu", formatBRL(f.totalSaiu), largura, "titulo"));
+    }
+  }
+  saida.push(...comValor("Esperado", formatBRL(f.esperado), largura, "titulo"));
+
+  saida.push(separador(largura), { texto: "CONFERENCIA", estilo: "titulo" });
+  saida.push(...comValor("Contado", formatBRL(f.contado), largura));
+  saida.push(...comValor("Diferença", formatBRL(f.diferenca), largura, "destaque"));
+
+  if (f.foraDaGaveta > 0) {
     saida.push(separador(largura));
-    saida.push(...comValor("Dinheiro fora da gaveta", formatBRL(f.dinheiroForaDaGaveta), largura, "destaque"));
+    saida.push(...comValor("Fora gaveta", formatBRL(f.foraDaGaveta), largura, "destaque"));
   }
   saida.push(separador(largura));
   return saida;
