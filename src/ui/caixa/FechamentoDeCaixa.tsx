@@ -560,6 +560,7 @@ function relatorioDe(conferencia: ConferenciaDoFechamento): RelatorioDeFechament
   return montarRelatorioDeFechamento({
     recebimentos: r.recebimentos_por_metodo,
     totalRecebido: r.total_recebido ?? null,
+    itensVendidos: r.itens_vendidos ?? null,
     fundoInicial: r.fundo_inicial,
     movimentos: r.movimentos_da_gaveta ?? null,
     entrou: r.entrou_na_gaveta ?? null,
@@ -667,6 +668,17 @@ function ResumoVisualDoFechamento({
                 <p className="m-0 text-[13px] text-muted print:text-black">Nenhum recebimento nesta sessão.</p>
               )}
             </div>
+
+            {relatorio.vendidos.length > 0 ? (
+              <div className="rounded-12 border border-border-shalon p-3 print:rounded-none print:border-x-0">
+                <p className="m-0 mb-2 text-[12px] font-bold uppercase tracking-wide text-muted print:text-black">
+                  Vendido na sessão
+                </p>
+                {relatorio.vendidos.map((l) => (
+                  <ParDeDados key={l.rotulo} chave={l.rotulo} valor={String(l.quantidade)} />
+                ))}
+              </div>
+            ) : null}
 
             <div className="rounded-12 border border-border-shalon p-3 print:rounded-none print:border-x-0">
               <p className="m-0 mb-1 text-[12px] font-bold uppercase tracking-wide text-muted print:text-black">

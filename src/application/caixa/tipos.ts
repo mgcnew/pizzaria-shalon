@@ -90,6 +90,8 @@ export type ResumoDeFechamento = {
   entrou_na_gaveta?: number;
   saiu_da_gaveta?: number;
   total_recebido?: number;
+  /** Unidades vendidas na sessão (0173). Ausente em servidor sem a 0173. */
+  itens_vendidos?: { pizzas: number; fogazzas: number; bebidas: number };
 };
 
 export type SessaoHistorica = {

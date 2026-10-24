@@ -18,7 +18,11 @@
 
 export type MovimentoDaGaveta = { tipo: string; sentido: "in" | "out"; total: number };
 
+export type ItensVendidos = { pizzas: number; fogazzas: number; bebidas: number };
+
 export type EntradaDoRelatorio = {
+  /** Unidades vendidas na sessão, contadas pelo servidor (0173). Servidor sem a 0173: não sai. */
+  itensVendidos?: ItensVendidos | null;
   recebimentos: { metodo: string; familia: string; total: number }[];
   /** Total recebido por todas as formas, vindo do servidor. */
   totalRecebido?: number | null;
@@ -49,7 +53,11 @@ export type EntradaDoRelatorio = {
 
 export type LinhaDoRelatorio = { rotulo: string; valor: number };
 
+export type LinhaDeQuantidade = { rotulo: string; quantidade: number };
+
 export type RelatorioDeFechamento = {
+  /** Pizzas, fogazzas e bebidas; só o que vendeu, em linhas. Vazio = nada a mostrar. */
+  vendidos: LinhaDeQuantidade[];
   recebidos: LinhaDoRelatorio[];
   totalRecebido: number | null;
   fundo: number;
@@ -137,9 +145,20 @@ function movimentosDoLegado(l: NonNullable<EntradaDoRelatorio["legado"]>): Movim
   ];
 }
 
+/** Só o que teve venda: "0 fogazzas" é ruído, como linha de dinheiro zerada. */
+function linhasDeVendidos(v: ItensVendidos | null | undefined): LinhaDeQuantidade[] {
+  if (!v) return [];
+  return [
+    { rotulo: "Pizzas", quantidade: v.pizzas },
+    { rotulo: "Fogazzas", quantidade: v.fogazzas },
+    { rotulo: "Bebidas", quantidade: v.bebidas },
+  ].filter((l) => l.quantidade > 0);
+}
+
 export function montarRelatorioDeFechamento(e: EntradaDoRelatorio): RelatorioDeFechamento {
   const movimentos = e.movimentos ?? (e.legado ? movimentosDoLegado(e.legado) : []);
   return {
+    vendidos: linhasDeVendidos(e.itensVendidos),
     recebidos: e.recebimentos
       .filter((r) => r.total !== 0)
       .map((r) => ({ rotulo: nomeCurtoDaForma(r.metodo, r.familia), valor: r.total })),

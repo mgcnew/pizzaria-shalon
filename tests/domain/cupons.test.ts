@@ -92,6 +92,16 @@ describe("fechamento de caixa em texto (D-2026-10-23-163)", () => {
     expect(t).toContain("Contado");
   });
 
+  it("imprime quantas pizzas, fogazzas e bebidas saíram, só as que tiveram venda", () => {
+    const t = texto({ itensVendidos: { pizzas: 25, fogazzas: 0, bebidas: 7 } });
+    expect(t).toContain("VENDIDO");
+    expect(t).toContain("Pizzas");
+    expect(t).toContain("25");
+    expect(t).toContain("Bebidas");
+    expect(t).not.toContain("Fogazzas");
+    expect(texto()).not.toContain("VENDIDO");
+  });
+
   it("soma o que entrou e o que saiu, e a conta fecha (fundo + entrou − saiu = esperado)", () => {
     const t = texto();
     expect(t).toContain("Total entrou");

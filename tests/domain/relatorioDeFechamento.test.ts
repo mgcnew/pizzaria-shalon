@@ -96,3 +96,24 @@ describe("relatório do fechamento", () => {
     expect(r.saidas).toEqual([{ rotulo: "novo_tipo", valor: 9 }]);
   });
 });
+
+describe("itens vendidos no fechamento (D-2026-10-24-166)", () => {
+  it("traz pizzas, fogazzas e bebidas, nessa ordem", () => {
+    const r = montarRelatorioDeFechamento({ ...base, itensVendidos: { pizzas: 25, fogazzas: 3, bebidas: 7 } });
+    expect(r.vendidos).toEqual([
+      { rotulo: "Pizzas", quantidade: 25 },
+      { rotulo: "Fogazzas", quantidade: 3 },
+      { rotulo: "Bebidas", quantidade: 7 },
+    ]);
+  });
+
+  it("não mostra o que não vendeu", () => {
+    const r = montarRelatorioDeFechamento({ ...base, itensVendidos: { pizzas: 4, fogazzas: 0, bebidas: 0 } });
+    expect(r.vendidos).toEqual([{ rotulo: "Pizzas", quantidade: 4 }]);
+  });
+
+  it("servidor sem a contagem: a seção simplesmente não sai", () => {
+    expect(montarRelatorioDeFechamento(base).vendidos).toEqual([]);
+    expect(montarRelatorioDeFechamento({ ...base, itensVendidos: { pizzas: 0, fogazzas: 0, bebidas: 0 } }).vendidos).toEqual([]);
+  });
+});

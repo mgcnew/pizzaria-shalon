@@ -154,6 +154,11 @@ export function montarFechamentoDeCaixa(
     }
   }
 
+  if (f.vendidos.length > 0) {
+    saida.push(separador(largura), { texto: "VENDIDO", estilo: "titulo" });
+    for (const l of f.vendidos) saida.push(...comValor(l.rotulo, String(l.quantidade), largura));
+  }
+
   // A gaveta: fundo + o que entrou − o que saiu = esperado.
   saida.push(separador(largura), { texto: "GAVETA (DINHEIRO)", estilo: "titulo" });
   if (f.fundo > 0) saida.push(...comValor("Fundo", formatBRL(f.fundo), largura));

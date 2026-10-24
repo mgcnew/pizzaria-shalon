@@ -5097,3 +5097,22 @@ CLAUDE.md §46).
 **Também nesta rodada:** o acesso (login) do Erisvan, que nunca foi usado, foi
 desativado pela própria tela de Equipe (auditado como `acesso_desativar`). O
 cadastro de entregador não depende de acesso.
+
+## D-2026-10-24-166 — Fechamento de caixa com pizzas, fogazzas e bebidas vendidas
+
+**Pedido da dona:** o fechamento, além do dinheiro, mostra quantas pizzas,
+quantas fogazzas e quantas bebidas foram vendidas.
+
+**Decisão (migration 0173, `20261024140000_fechamento_com_itens_vendidos`):**
+1. **Base:** pedidos com pagamento confirmado **nesta sessão** — o mesmo conjunto do
+   "Recebido por forma de pagamento". Pedido cancelado/recusado ou com pagamento
+   estornado fica fora; pedido pago em dois pagamentos conta uma vez. Pedido
+   "pagar depois" entra na sessão em que for pago, não na em que foi feito.
+2. **Pizza × fogazza:** pelo tamanho (`pizza_sizes.sold_as`). **Meio a meio é uma
+   pizza.** Bebida é o produto de tipo `drink`. Outros tipos não entram.
+3. **Combo:** contam os componentes (cada um pelo seu tipo) vezes a quantidade de
+   combos; o combo em si não é uma unidade. Um combo de pizza + refrigerante soma
+   1 pizza e 1 bebida.
+4. O servidor conta (`resumo_do_fechamento.itens_vendidos`); a tela e o cupom só
+   mostram, e escondem o que está em zero. Servidor sem a 0173: a seção não sai.
+
