@@ -64,6 +64,25 @@ export type MotoboyDisponivel = {
   funcionario_id: string;
   nome: string;
   ocupado: boolean;
+  /**
+   * Presença de HOJE (dia de trabalho, que vira às 5h): `present`, `absent` ou
+   * `null` quando ninguém marcou. Ausente num servidor sem a 0172.
+   */
+  presenca?: "present" | "absent" | null;
+};
+
+/** O mês de presença dos entregadores (0172). */
+export type PresencaDoMes = {
+  /** Primeiro dia do mês, `YYYY-MM-DD`. */
+  mes: string;
+  funcionarios: {
+    funcionario_id: string;
+    nome: string;
+    ativo: boolean;
+    veio: number;
+    faltou: number;
+    dias: { data: string; status: "present" | "absent" }[];
+  }[];
 };
 
 export type CentralDeEntregas = {

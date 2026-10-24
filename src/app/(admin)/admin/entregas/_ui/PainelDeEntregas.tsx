@@ -13,6 +13,7 @@ import {
   atribuirEntrega,
   conciliarCorrida,
   despacharCorrida,
+  marcarPresenca,
   registrarRetorno,
   transferirEntrega,
 } from "@/application/entregas/acoes";
@@ -23,6 +24,7 @@ import type {
   MotoboyDisponivel,
   PedidoDaCorrida,
 } from "@/application/entregas/tipos";
+import { situacaoDoMotoboy } from "@/domain/entrega/motoboys";
 
 /**
  * A central de entregas.
@@ -58,33 +60,6 @@ const SITUACAO: Record<PedidoDaCorrida["situacao"], string> = {
   transferred: "Transferido em rota",
 };
 
-/**
- * A situação de cada motoboy, lida do que já existe: quem tem corrida em
- * aberto está ocupado, quem não tem está disponível.
- *
- * O motoboy NÃO tem login nem aplicativo na V1 (RN-MOTO-001) e o sistema não o
- * rastreia (sem GPS, CLAUDE.md §46): "disponível" aqui quer dizer "cadastrado
- * como entregador, ativo e sem corrida em aberto" — não "ligado" em algum
- * aparelho. É a equipe do balcão quem monta e despacha a corrida.
- */
-function situacaoDoMotoboy(
-  m: MotoboyDisponivel,
-  corrida: CorridaResumo | undefined,
-): { ordem: number; tom: "sucesso" | "atencao" | "rota"; texto: string; detalhe: string } {
-  const pedidos = (c: CorridaResumo) => `${c.pedidos} ${c.pedidos === 1 ? "pedido" : "pedidos"}`;
-  if (corrida?.status === "out") {
-    return { ordem: 3, tom: "rota", texto: "Na rua", detalhe: pedidos(corrida) };
-  }
-  if (corrida?.status === "settling") {
-    return { ordem: 4, tom: "atencao", texto: "A acertar", detalhe: "Voltou: falta o acerto da corrida" };
-  }
-  if (corrida?.status === "open") {
-    return { ordem: 2, tom: "atencao", texto: "Montando", detalhe: `Corrida aberta · ${pedidos(corrida)}` };
-  }
-  if (m.ocupado) return { ordem: 3, tom: "atencao", texto: "Em corrida", detalhe: "" };
-  return { ordem: 1, tom: "sucesso", texto: "Disponível", detalhe: "Pode receber entregas agora" };
-}
-
 function paraNumero(texto: string): number | null {
   const limpo = texto.replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
   if (limpo === "") return null;
@@ -104,6 +79,7 @@ export function PainelDeEntregas({
   central,
   corrida,
   podeAcertar,
+  podeMarcarPresenca = false,
   podeReceber = false,
   cobraveis = {},
   formasDeRecebimento = [],
@@ -113,6 +89,8 @@ export function PainelDeEntregas({
   corrida: Corrida | null;
   /** `deliveries.settle`. Sem ela o acerto nem aparece (RN-RBAC-004). */
   podeAcertar: boolean;
+  /** `employees.attendance`: marcar Veio ou Faltou. O servidor confere de novo. */
+  podeMarcarPresenca?: boolean;
   /** `payments.register`: receber, no acerto, o que o cliente pagou na porta. */
   podeReceber?: boolean;
   /** Quem está devendo, pela mesma `pedidos_a_receber` da fila de pedidos. */
@@ -167,6 +145,9 @@ export function PainelDeEntregas({
   }
 
   const naRua = central.corridas.reduce((s, c) => s + c.dinheiro_na_rua, 0);
+  // Quem faltou hoje sai da escolha de quem recebe pedido. O servidor recusa
+  // do mesmo jeito (`atribuir_entrega`, `transferir_entrega`).
+  const podeReceberEntrega = (m: MotoboyDisponivel) => (m.presenca ?? null) !== "absent";
   const valorDevolvido = paraNumero(devolvido);
   const diferenca =
     corrida && valorDevolvido !== null ? valorDevolvido - corrida.esperado_em_dinheiro : null;
@@ -193,7 +174,11 @@ export function PainelDeEntregas({
       {/* ------------------------------------------------------ motoboys */}
       <Cartao
         titulo="Motoboys"
-        descricao="Quem leva as entregas. O motoboy não precisa de login: basta estar cadastrado como entregador."
+        descricao={
+          podeMarcarPresenca
+            ? "Marque Veio ou Faltou no começo do turno: quem faltou não aparece na escolha do motoboy. Sem marcação, ele continua escolhível. O motoboy não precisa de login."
+            : "Quem leva as entregas. O motoboy não precisa de login: basta estar cadastrado como entregador."
+        }
         largura="cheio"
       >
         {central.motoboys.length === 0 ? (
@@ -214,7 +199,7 @@ export function PainelDeEntregas({
             .map((m) => ({
               m,
               situacao: situacaoDoMotoboy(
-                m,
+                { ocupado: m.ocupado, presenca: m.presenca ?? null },
                 central.corridas.find((c) => c.motoboy_id === m.funcionario_id),
               ),
             }))
@@ -226,6 +211,45 @@ export function PainelDeEntregas({
                   {situacao.detalhe ? <p className="m-0 text-[12.5px] text-muted">{situacao.detalhe}</p> : null}
                 </div>
                 <StatusBadge tom={situacao.tom}>{situacao.texto}</StatusBadge>
+                {podeMarcarPresenca ? (
+                  <div role="group" aria-label={`Presença de ${m.nome} hoje`} className="flex items-center gap-1.5">
+                    {(
+                      [
+                        { valor: "present", rotulo: "Veio" },
+                        { valor: "absent", rotulo: "Faltou" },
+                      ] as const
+                    ).map((opcao) => {
+                      const ativo = (m.presenca ?? null) === opcao.valor;
+                      return (
+                        <button
+                          key={opcao.valor}
+                          type="button"
+                          aria-pressed={ativo}
+                          disabled={enviando}
+                          // Tocar de novo na marca ativa a desfaz ("sem marcação").
+                          onClick={() =>
+                            executar(() =>
+                              marcarPresenca({
+                                funcionario_id: m.funcionario_id,
+                                status: ativo ? null : opcao.valor,
+                              }),
+                            )
+                          }
+                          className={[
+                            "motion-interactive min-h-touch cursor-pointer rounded-pill border-[1.5px] px-3.5 text-[13.5px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+                            ativo
+                              ? opcao.valor === "present"
+                                ? "border-tgb bg-tg text-tgf"
+                                : "border-tdb bg-td text-tdf"
+                              : "border-border-shalon bg-surface text-ink hover:border-brand-orange",
+                          ].join(" ")}
+                        >
+                          {opcao.rotulo}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
               </LinhaLista>
             ))
         )}
@@ -270,7 +294,7 @@ export function PainelDeEntregas({
                   }
                   opcoes={[
                     { valor: "", texto: "Escolha o motoboy" },
-                    ...central.motoboys.map((m) => ({
+                    ...central.motoboys.filter(podeReceberEntrega).map((m) => ({
                       valor: m.funcionario_id,
                       texto: `${m.nome}${m.ocupado ? " (já em rota)" : ""}`,
                     })),
@@ -484,7 +508,7 @@ export function PainelDeEntregas({
                 opcoes={[
                   { valor: "", texto: "Escolha o motoboy" },
                   ...central.motoboys
-                    .filter((m) => m.funcionario_id !== corrida.motoboy_id)
+                    .filter((m) => m.funcionario_id !== corrida.motoboy_id && podeReceberEntrega(m))
                     .map((m) => ({
                       valor: m.funcionario_id,
                       texto: `${m.nome}${m.ocupado ? " (já em rota)" : ""}`,

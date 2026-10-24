@@ -12,6 +12,7 @@ import {
   obterHistorico,
 } from "@/application/equipe/consultas";
 import { obterCaixa } from "@/application/caixa/consultas";
+import { obterPresencaDoMes } from "@/application/entregas/consultas";
 import { PainelDaEquipe } from "./_ui/PainelDaEquipe";
 
 export const metadata: Metadata = { title: "Funcionários / Equipe" };
@@ -54,7 +55,9 @@ export default async function Page({
   const abaEfetiva =
     aba === "equipe"
       ? "equipe"
-      : aba === "livro" && podeVerFinanceiro
+      : aba === "presenca"
+        ? "presenca"
+        : aba === "livro" && podeVerFinanceiro
         ? "livro"
         : aba === "permissoes" && podeGerirPermissoes
           ? "permissoes"
@@ -66,13 +69,18 @@ export default async function Page({
   const mesConferencia = /^\d{4}-(0[1-9]|1[0-2])$/.test(mes ?? "") ? mes! : mesAtual;
   const nenhum = <T,>(valor: T) => Promise.resolve(valor);
 
+  // Só busca a presença com a aba aberta (D-2026-09-29-90).
+  const presenca = abaEfetiva === "presenca" ? await obterPresencaDoMes(`${mesConferencia}-01`) : null;
+
   const permissoesDosPapeis =
     abaEfetiva === "permissoes"
       ? await listarPapeisComPermissoes()
       : { catalogo: [], papeis: [] };
 
   const [funcionarios, equipe, papeis, movimentos, historico, caixa, referencias, lancamentosDoMes, diferencas] = await Promise.all([
-    abaEfetiva === "equipe" || abaEfetiva === "permissoes" ? nenhum([]) : listarFuncionarios(),
+    abaEfetiva === "equipe" || abaEfetiva === "permissoes" || abaEfetiva === "presenca"
+      ? nenhum([])
+      : listarFuncionarios(),
     abaEfetiva === "equipe" ? listarEquipe() : nenhum([]),
     // A lista já vem marcando o que ESTE usuário pode conceder (RN-RBAC-005).
     abaEfetiva === "equipe" && podeGerirEquipe ? listarPapeis() : nenhum([]),
@@ -122,6 +130,8 @@ export default async function Page({
         caixaAberto={caixa.aberto}
         podeGerirPermissoes={podeGerirPermissoes}
         permissoesDosPapeis={permissoesDosPapeis}
+        presenca={presenca}
+        mesAtual={mesAtual}
       />
     </div>
   );

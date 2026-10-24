@@ -50,6 +50,34 @@ function resposta(data: unknown): Resultado {
   };
 }
 
+const presencaSchema = z.object({
+  funcionario_id: z.string().uuid(),
+  /** `null` desfaz a marca do dia. */
+  status: z.enum(["present", "absent"]).nullable(),
+});
+
+/**
+ * Marca o motoboy como Veio ou Faltou hoje, ou desfaz a marca (D-2026-10-24-165).
+ *
+ * Quem decide o DIA é o servidor: a tela não manda data, então não há como
+ * marcar presença de outro dia. A permissão (`employees.attendance`) também é
+ * conferida lá, e a marca fica em `audit_logs`.
+ */
+export async function marcarPresenca(entrada: unknown): Promise<Resultado> {
+  const v = presencaSchema.safeParse(entrada);
+  if (!v.success) return { ok: false, erro: "Escolha o motoboy e a situação." };
+
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("marcar_presenca", {
+    p_dados: { funcionario_id: v.data.funcionario_id, status: v.data.status },
+  });
+  if (error) return falha("marcarPresenca", error);
+
+  revalidatePath(ROTA_ENTREGAS);
+  revalidatePath("/admin/equipe");
+  return resposta(data);
+}
+
 const atribuirSchema = z.object({
   pedido_id: z.string().uuid(),
   motoboy_id: z.string().uuid(),

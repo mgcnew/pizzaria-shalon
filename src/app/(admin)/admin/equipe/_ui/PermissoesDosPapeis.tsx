@@ -80,6 +80,7 @@ const GRUPOS: { titulo: string; itens: [string, string][] }[] = [
     itens: [
       ["employees.view", "Ver a equipe"],
       ["employees.manage", "Cadastrar funcionários e dar acesso"],
+      ["employees.attendance", "Marcar presença e falta dos funcionários"],
       ["employees.finance.view", "Ver salário e histórico financeiro"],
       ["employees.finance.manage", "Lançar adiantamento e consumo no livro"],
       ["internal.view", "Ver cortesia, consumo e perda"],

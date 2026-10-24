@@ -4,6 +4,8 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Badge, Button, Input, SelectMenu, Textarea } from "@/ui/components";
 import { Abas, Aviso, Cartao, EmptyState, LinhaLista, ParDeDados } from "@/ui/patterns";
+import type { PresencaDoMes } from "@/application/entregas/tipos";
+import { PresencaDosEntregadores } from "./PresencaDosEntregadores";
 import { formatBRL } from "@/lib/format";
 import { EscolherProduto } from "../../pedidos/_ui/EscolherProduto";
 import { PermissoesDosPapeis } from "./PermissoesDosPapeis";
@@ -105,6 +107,8 @@ export function PainelDaEquipe({
   caixaAberto,
   podeGerirPermissoes = false,
   permissoesDosPapeis = { catalogo: [], papeis: [] },
+  presenca = null,
+  mesAtual = "",
 }: {
   /** Aba corrente, vinda da URL: o estado de navegação mora lá, não aqui. */
   aba: string;
@@ -135,6 +139,10 @@ export function PainelDaEquipe({
     catalogo: { id: string; codigo: string }[];
     papeis: import("@/application/equipe/tipos").PapelComPermissoes[];
   };
+  /** O mês de presença dos entregadores (0172); só vem com a aba aberta. */
+  presenca?: PresencaDoMes | null;
+  /** `YYYY-MM` de hoje, para limitar a navegação por mês. */
+  mesAtual?: string;
 }) {
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, iniciar] = useTransition();
@@ -619,6 +627,7 @@ export function PainelDaEquipe({
         abas={[
           { nome: "Movimentações", valor: "movimentos" },
           { nome: "Equipe", valor: "equipe" },
+          { nome: "Presença", valor: "presenca" },
           // A aba do dinheiro só existe para quem tem a permissão dele.
           ...(podeVerFinanceiro
             ? [{ nome: "Histórico financeiro", valor: "livro" }]
@@ -630,7 +639,9 @@ export function PainelDaEquipe({
         base="/admin/equipe"
       />
 
-      {aba === "equipe" ? (
+      {aba === "presenca" ? (
+        <PresencaDosEntregadores presenca={presenca} mes={mesConferencia} mesAtual={mesAtual} />
+      ) : aba === "equipe" ? (
         <GestaoDaEquipe
           equipe={equipe}
           papeis={papeis}

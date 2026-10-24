@@ -2,7 +2,7 @@ import "server-only";
 
 import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
 import { logger } from "@/lib/logger";
-import type { CentralDeEntregas, Corrida, CorridaHistorica } from "./tipos";
+import type { CentralDeEntregas, Corrida, CorridaHistorica, PresencaDoMes } from "./tipos";
 
 /**
  * Leitura da operação de entrega.
@@ -24,6 +24,21 @@ export async function obterCentral(): Promise<CentralDeEntregas> {
     return VAZIO;
   }
   return { ...VAZIO, ...(data as Partial<CentralDeEntregas>) };
+}
+
+/**
+ * Presença dos entregadores num mês (0172). `mes` é qualquer data do mês; sem
+ * ele, o mês de hoje. Quem não pode ver a equipe recebe a lista vazia.
+ */
+export async function obterPresencaDoMes(mes?: string): Promise<PresencaDoMes | null> {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("presenca_do_mes", { p_mes: mes ?? null });
+
+  if (error) {
+    logger.error("entregas:obterPresencaDoMes", { code: (error as { code?: string }).code });
+    return null;
+  }
+  return (data as PresencaDoMes | null) ?? null;
 }
 
 /** Uma corrida, pedido a pedido — §18: não somar tudo e perder o rastro. */

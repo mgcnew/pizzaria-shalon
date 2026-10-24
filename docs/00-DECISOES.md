@@ -5063,3 +5063,37 @@ eles só apareciam dentro do seletor, quando havia pedido pronto esperando.
 **Fora desta decisão (precisa de decisão):** um controle "de folga hoje" para o
 motoboy que não está trabalhando, que exigiria um campo novo e definir se quem
 está de folga some do seletor.
+
+## D-2026-10-24-165 — Presença do motoboy: Veio ou Faltou, por dia
+
+**Pedido da dona:** o motoboy não tem login; é preciso controlar se ele veio
+trabalhar ou faltou. Opções avaliadas: (A) uma chave simples "trabalhando" —
+sem histórico, esquece ligada no dia seguinte e não registra quem marcou; (B)
+presença por dia — **escolhida**; (C) ponto com hora de entrada e saída —
+descartada: mais do que se pediu e perto de folha de pagamento (fora da V1,
+CLAUDE.md §46).
+
+**Decisão (migration 0172, `20261024100000_presenca_do_motoboy`):**
+1. **Uma marca por funcionário por dia de trabalho:** Veio ou Faltou; sem linha =
+   "não marcado". Tocar de novo na marca ativa a desfaz. Tabela
+   `employee_attendance` (única por funcionário e dia).
+2. **O dia de trabalho vira às 5h**, no fuso da loja (`dia_de_trabalho()`): a
+   pizzaria passa da meia-noite. **O servidor escolhe o dia; a tela não manda
+   data**, então não há como marcar o de outro dia.
+3. **"Faltou" tira o motoboy da escolha de quem recebe pedido, no servidor**
+   (`atribuir_entrega` e `transferir_entrega` recusam) e na tela. **Sem marca ou
+   "Veio": continua escolhível** — esquecer de marcar nunca trava o balcão.
+   Desfazer a marca libera de novo. Corrida já em andamento não é afetada.
+4. **Permissão nova `employees.attendance`** para a Proprietária e o Atendente,
+   editável em Permissões. A tabela só se lê por quem tem `employees.view`;
+   escrita só pela função `marcar_presenca`. Toda marcação e todo desfazer ficam
+   em `audit_logs` (`presenca_marcar`, `presenca_desfazer`).
+5. **Telas:** em Entregas, a seção Motoboys ganha os botões Veio e Faltou e a
+   situação ("Disponível · Veio hoje", "Faltou hoje"…); em Equipe, a aba
+   **Presença** mostra o mês de cada entregador (dias que veio, faltas e as datas
+   das faltas), navegável por mês. Dia sem marcação não conta como falta nem como
+   presença, e **falta não vira desconto de ninguém**: não há folha na V1.
+
+**Também nesta rodada:** o acesso (login) do Erisvan, que nunca foi usado, foi
+desativado pela própria tela de Equipe (auditado como `acesso_desativar`). O
+cadastro de entregador não depende de acesso.

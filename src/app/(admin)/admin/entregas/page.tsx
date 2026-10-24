@@ -52,6 +52,7 @@ export default async function Page({
         central={central}
         corrida={corrida}
         podeAcertar={podeNaUI(sessao, "deliveries.settle")}
+        podeMarcarPresenca={podeNaUI(sessao, "employees.attendance")}
         podeReceber={podeNaUI(sessao, "payments.register")}
         cobraveis={cobraveis}
         formasDeRecebimento={formasDeRecebimento}
