@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { IndicadorDeNavegacao } from "@/ui/components/IndicadorDeNavegacao";
 import { listarRelatorios, obterRelatorio } from "@/application/relatorios/consultas";
+import { listarSessoes } from "@/application/caixa/consultas";
 import type { Relatorio } from "@/application/relatorios/tipos";
 import type { ChaveDePeriodo } from "@/application/analitico/tipos";
 import { Cartao, EmptyState } from "@/ui/patterns";
@@ -143,6 +144,17 @@ export default async function Page({
   );
 }
 
+/**
+ * O relatório de caixa não traz o id da sessão; ele vem de `sessoes_de_caixa`,
+ * casando pela hora de abertura (única por sessão). Linha sem par fica sem o
+ * botão de detalhe em vez de abrir a sessão errada.
+ */
+async function idsDasSessoes(relatorio: Relatorio): Promise<(string | null)[]> {
+  const porAbertura = new Map<number, string>();
+  for (const s of await listarSessoes(200)) porAbertura.set(new Date(s.aberta_em).getTime(), s.sessao_id);
+  return relatorio.linhas.map((l) => porAbertura.get(new Date(String(l["aberta_em"])).getTime()) ?? null);
+}
+
 async function BlocoDoRelatorio({
   relatorio: consulta,
   chave,
@@ -153,6 +165,7 @@ async function BlocoDoRelatorio({
   podeExportar: boolean;
 }) {
   const relatorio = await consulta;
+  const sessoes = relatorio?.tipo === "caixa" ? await idsDasSessoes(relatorio) : undefined;
     return relatorio ? (
       <Cartao
         titulo={relatorio.titulo}
@@ -197,7 +210,7 @@ async function BlocoDoRelatorio({
             descricao="Escolha outro período ou outro relatório."
           />
         ) : (
-          <ListaDoRelatorio relatorio={relatorio} />
+          <ListaDoRelatorio relatorio={relatorio} sessoes={sessoes} />
         )}
 
         {!podeExportar ? (

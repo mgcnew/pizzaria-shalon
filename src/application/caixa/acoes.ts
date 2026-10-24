@@ -215,6 +215,23 @@ export async function iniciarFechamentoCego(
   };
 }
 
+/**
+ * O fechamento completo de UMA sessão, para quem abre o detalhe no relatório
+ * de caixa. Só leitura: quem decide o que aparece é a RLS de `cash.view`
+ * (a projeção é SECURITY INVOKER), então chamada direta sem permissão volta
+ * como "não encontrada", sem revelar que a sessão existe.
+ */
+export async function obterResumoDaSessao(
+  sessaoId: unknown,
+): Promise<{ ok: true; resumo: ResumoDeFechamento } | { ok: false; erro: string }> {
+  const v = z.string().uuid().safeParse(sessaoId);
+  if (!v.success) return { ok: false, erro: "Sessão inválida." };
+
+  const resumo = await obterResumoDeFechamento(v.data);
+  if (!resumo) return { ok: false, erro: "Não foi possível carregar o fechamento desta sessão." };
+  return { ok: true, resumo };
+}
+
 /** RN-CAIXA-011/012: o esperado é do servidor; a pessoa informa o contado. */
 export async function fecharCaixa(entrada: unknown): Promise<Resultado & { resumo?: ResumoDeFechamento | null }> {
   const v = fecharSchema.safeParse(entrada);

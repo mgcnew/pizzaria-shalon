@@ -1,5 +1,6 @@
 import { formatarCelula } from "@/application/relatorios/formato";
 import type { Coluna, Relatorio } from "@/application/relatorios/tipos";
+import { DetalheNoCartao, LinhaExpansivel } from "@/ui/caixa/DetalheDaSessao";
 
 /**
  * As linhas do relatório: tabela a partir do `md`, cartões abaixo disso.
@@ -41,7 +42,17 @@ function Selo({ texto }: { texto: string }) {
   );
 }
 
-export function ListaDoRelatorio({ relatorio }: { relatorio: Relatorio }) {
+export function ListaDoRelatorio({
+  relatorio,
+  sessoes,
+}: {
+  relatorio: Relatorio;
+  /**
+   * Só no relatório de caixa: o id da sessão de cada linha (mesma ordem de
+   * `linhas`), que permite abrir o fechamento completo dela. `null` = sem detalhe.
+   */
+  sessoes?: (string | null)[] | undefined;
+}) {
   const { colunas, linhas } = relatorio;
   const totais = Object.entries(relatorio.totais ?? {});
   const [titulo, ...resto] = colunas;
@@ -83,6 +94,7 @@ export function ListaDoRelatorio({ relatorio }: { relatorio: Relatorio }) {
                 );
               })}
             </dl>
+            {sessoes?.[i] ? <DetalheNoCartao sessaoId={sessoes[i]} /> : null}
           </li>
         ))}
         {totais.length > 0 ? (
@@ -121,45 +133,58 @@ export function ListaDoRelatorio({ relatorio }: { relatorio: Relatorio }) {
                   {c.rotulo}
                 </th>
               ))}
+              {sessoes ? <th scope="col" className="border-b border-border-shalon py-2 pl-2"><span className="sr-only">Detalhes</span></th> : null}
             </tr>
           </thead>
           <tbody>
-            {linhas.map((linha, i) => (
-              <tr key={i}>
-                {colunas.map((c) => {
-                  const texto = formatarCelula(linha[c.chave], c.tipo);
-                  return (
-                    <td
-                      key={c.chave}
-                      className={[
-                        "border-b border-border-shalon px-2 py-2 align-top first:pl-0 last:pr-0",
-                        ehNumerica(c) ? "whitespace-nowrap text-right tabular-nums" : "",
-                        c.tipo === "datahora" ? "whitespace-nowrap" : "",
-                        ehDiferenca(c) ? `font-bold ${tomDaDiferenca(linha[c.chave])}` : "text-ink",
-                      ].join(" ")}
-                    >
-                      {ehSituacao(c) ? (
-                        <Selo texto={texto} />
-                      ) : c.tipo === "texto" ? (
-                        <span
-                          className="line-clamp-3 max-w-[280px] whitespace-pre-line break-words"
-                          title={texto.length > 80 ? texto : undefined}
-                        >
-                          {texto}
-                        </span>
-                      ) : (
-                        texto
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
+            {linhas.map((linha, i) => {
+              const celulas = colunas.map((c) => {
+                const texto = formatarCelula(linha[c.chave], c.tipo);
+                return (
+                  <td
+                    key={c.chave}
+                    className={[
+                      "border-b border-border-shalon px-2 py-2 align-top first:pl-0 last:pr-0",
+                      ehNumerica(c) ? "whitespace-nowrap text-right tabular-nums" : "",
+                      c.tipo === "datahora" ? "whitespace-nowrap" : "",
+                      ehDiferenca(c) ? `font-bold ${tomDaDiferenca(linha[c.chave])}` : "text-ink",
+                    ].join(" ")}
+                  >
+                    {ehSituacao(c) ? (
+                      <Selo texto={texto} />
+                    ) : c.tipo === "texto" ? (
+                      <span
+                        className="line-clamp-3 max-w-[280px] whitespace-pre-line break-words"
+                        title={texto.length > 80 ? texto : undefined}
+                      >
+                        {texto}
+                      </span>
+                    ) : (
+                      texto
+                    )}
+                  </td>
+                );
+              });
+              const id = sessoes?.[i] ?? null;
+              if (id) {
+                return (
+                  <LinhaExpansivel key={i} sessaoId={id} colunas={colunas.length}>
+                    {celulas}
+                  </LinhaExpansivel>
+                );
+              }
+              return (
+                <tr key={i}>
+                  {celulas}
+                  {sessoes ? <td className="border-b border-border-shalon" /> : null}
+                </tr>
+              );
+            })}
           </tbody>
           {totais.length > 0 ? (
             <tfoot>
               <tr>
-                <td colSpan={colunas.length} className="py-3 text-right text-[13px] font-semibold text-ink">
+                <td colSpan={colunas.length + (sessoes ? 1 : 0)} className="py-3 text-right text-[13px] font-semibold text-ink">
                   {totais.map(([chave, valor]) => {
                     const coluna = colunas.find((c) => c.chave === chave);
                     return (
