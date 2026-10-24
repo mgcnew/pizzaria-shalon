@@ -1,11 +1,12 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { GavetaDeCobranca } from "../../pedidos/_ui/GavetaDeCobranca";
 import type { FormaParaRecebimento } from "../../pedidos/_ui/Recebimento";
 import type { PedidoAReceber } from "@/application/pdv/tipos";
-import { Badge, Button, Input, SelectMenu, Textarea } from "@/ui/components";
+import { Badge, Button, Input, SelectMenu, StatusBadge, Textarea } from "@/ui/components";
 import { Aviso, Cartao, EmptyState, LinhaLista, ParDeDados } from "@/ui/patterns";
 import { formatBRL } from "@/lib/format";
 import {
@@ -19,6 +20,7 @@ import type {
   CentralDeEntregas,
   Corrida,
   CorridaResumo,
+  MotoboyDisponivel,
   PedidoDaCorrida,
 } from "@/application/entregas/tipos";
 
@@ -55,6 +57,33 @@ const SITUACAO: Record<PedidoDaCorrida["situacao"], string> = {
   reassigned: "Trocado antes da saída",
   transferred: "Transferido em rota",
 };
+
+/**
+ * A situação de cada motoboy, lida do que já existe: quem tem corrida em
+ * aberto está ocupado, quem não tem está disponível.
+ *
+ * O motoboy NÃO tem login nem aplicativo na V1 (RN-MOTO-001) e o sistema não o
+ * rastreia (sem GPS, CLAUDE.md §46): "disponível" aqui quer dizer "cadastrado
+ * como entregador, ativo e sem corrida em aberto" — não "ligado" em algum
+ * aparelho. É a equipe do balcão quem monta e despacha a corrida.
+ */
+function situacaoDoMotoboy(
+  m: MotoboyDisponivel,
+  corrida: CorridaResumo | undefined,
+): { ordem: number; tom: "sucesso" | "atencao" | "rota"; texto: string; detalhe: string } {
+  const pedidos = (c: CorridaResumo) => `${c.pedidos} ${c.pedidos === 1 ? "pedido" : "pedidos"}`;
+  if (corrida?.status === "out") {
+    return { ordem: 3, tom: "rota", texto: "Na rua", detalhe: pedidos(corrida) };
+  }
+  if (corrida?.status === "settling") {
+    return { ordem: 4, tom: "atencao", texto: "A acertar", detalhe: "Voltou: falta o acerto da corrida" };
+  }
+  if (corrida?.status === "open") {
+    return { ordem: 2, tom: "atencao", texto: "Montando", detalhe: `Corrida aberta · ${pedidos(corrida)}` };
+  }
+  if (m.ocupado) return { ordem: 3, tom: "atencao", texto: "Em corrida", detalhe: "" };
+  return { ordem: 1, tom: "sucesso", texto: "Disponível", detalhe: "Pode receber entregas agora" };
+}
 
 function paraNumero(texto: string): number | null {
   const limpo = texto.replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
@@ -160,6 +189,47 @@ export function PainelDeEntregas({
           </p>
         </Cartao>
       ) : null}
+
+      {/* ------------------------------------------------------ motoboys */}
+      <Cartao
+        titulo="Motoboys"
+        descricao="Quem leva as entregas. O motoboy não precisa de login: basta estar cadastrado como entregador."
+        largura="cheio"
+      >
+        {central.motoboys.length === 0 ? (
+          <EmptyState
+            titulo="Nenhum motoboy cadastrado"
+            descricao="Cadastre em Equipe e marque “Faz entregas”. Ele aparece aqui e na escolha do motoboy de cada pedido, sem precisar de acesso ao sistema."
+            acao={
+              <Link
+                href="/admin/equipe"
+                className="inline-flex min-h-touch items-center rounded-11 bg-cta px-4 text-[14px] font-semibold text-cta-fg no-underline"
+              >
+                Ir para Equipe
+              </Link>
+            }
+          />
+        ) : (
+          [...central.motoboys]
+            .map((m) => ({
+              m,
+              situacao: situacaoDoMotoboy(
+                m,
+                central.corridas.find((c) => c.motoboy_id === m.funcionario_id),
+              ),
+            }))
+            .sort((a, b) => a.situacao.ordem - b.situacao.ordem || a.m.nome.localeCompare(b.m.nome, "pt-BR"))
+            .map(({ m, situacao }) => (
+              <LinhaLista key={m.funcionario_id}>
+                <div className="min-w-[180px] flex-1">
+                  <p className="m-0 text-[14px] font-semibold text-ink">{m.nome}</p>
+                  {situacao.detalhe ? <p className="m-0 text-[12.5px] text-muted">{situacao.detalhe}</p> : null}
+                </div>
+                <StatusBadge tom={situacao.tom}>{situacao.texto}</StatusBadge>
+              </LinhaLista>
+            ))
+        )}
+      </Cartao>
 
       {/* ---------------------------------------------- fila de entrega */}
       <Cartao

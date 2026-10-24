@@ -5036,3 +5036,30 @@ a diferença continuam calculados como antes (RN-CAIXA-011).
    curtos), apenas sem as linhas de total.
 5. Um só módulo monta o relatório para a tela e para o papel
    (`domain/caixa/relatorioDeFechamento.ts`), para nunca divergirem.
+
+## D-2026-10-23-164 — Entregas: lista de motoboys com a situação de cada um
+
+**Pedido do balcão:** o motoboy não tem login; ao cadastrá-lo, ele precisa ficar
+disponível para as entregas, e o que já estava cadastrado não aparecia como
+"online".
+
+**Diagnóstico:** o cadastro já funcionava. Funcionário **ativo** marcado como
+"Faz entregas" (`is_driver`) entra na escolha do motoboy de cada pedido
+(`central_de_entregas`), sem precisar de acesso (RN-MOTO-001). O que faltava era
+o sistema **mostrar** os motoboys: a tela de Entregas não tinha lista nenhuma, e
+eles só apareciam dentro do seletor, quando havia pedido pronto esperando.
+
+**Decisão (só leitura; nenhum dado novo, nenhuma regra mudou):**
+1. A tela de Entregas ganha a seção **Motoboys**, com a situação de cada um,
+   lida do que já existe: **Disponível** (sem corrida em aberto), **Montando**
+   (corrida aberta), **Na rua** e **A acertar** (voltou, falta o acerto). Quem
+   está disponível vem primeiro. Sem nenhum motoboy cadastrado, a seção explica
+   como cadastrar e leva a Equipe.
+2. **"Disponível" não é "online".** O motoboy não tem app nem login e o sistema
+   não o rastreia (sem GPS, CLAUDE.md §46): disponível = cadastrado, ativo e sem
+   corrida em aberto. Quem monta e despacha a corrida é a equipe do balcão.
+3. O cadastro de funcionário explica que "Faz entregas" já basta, sem acesso.
+
+**Fora desta decisão (precisa de decisão):** um controle "de folga hoje" para o
+motoboy que não está trabalhando, que exigiria um campo novo e definir se quem
+está de folga some do seletor.

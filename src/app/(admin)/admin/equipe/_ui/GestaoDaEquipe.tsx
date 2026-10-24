@@ -177,14 +177,20 @@ export function GestaoDaEquipe({
                 opcoes={TIPOS.map((t) => ({ valor: t.valor, texto: t.texto }))}
               />
 
-              <label className="flex items-center gap-2 text-[13.5px] text-ink">
-                <input
-                  type="checkbox"
-                  checked={rascunho.entregador}
-                  onChange={(e) => setRascunho({ ...rascunho, entregador: e.target.checked })}
-                />
-                Faz entregas
-              </label>
+              <div>
+                <label className="flex items-center gap-2 text-[13.5px] text-ink">
+                  <input
+                    type="checkbox"
+                    checked={rascunho.entregador}
+                    onChange={(e) => setRascunho({ ...rascunho, entregador: e.target.checked })}
+                  />
+                  Faz entregas
+                </label>
+                <p className="m-0 mt-1 text-[12.5px] text-muted">
+                  Marcado, ele já aparece em Entregas como motoboy e pode receber pedidos. Não precisa de acesso ao
+                  sistema.
+                </p>
+              </div>
 
               <CampoDataHora
                 label="Admitido em"
