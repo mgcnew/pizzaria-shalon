@@ -107,7 +107,7 @@ export function montarEscPos(
       bytes.push(...qrNativo(linha.texto));
       continue;
     }
-    const forte = linha.estilo === "titulo" || linha.estilo === "destaque" || linha.estilo === "forte";
+    const forte = linha.estilo === "titulo" || linha.estilo === "destaque";
     if (forte) bytes.push(...NEGRITO(true));
     bytes.push(...codificarTexto(linha.texto, tabela), LF);
     if (forte) bytes.push(...NEGRITO(false));

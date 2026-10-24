@@ -40,23 +40,6 @@ describe("ESC/POS da 58 mm (D-2026-10-08-116, entrega 2)", () => {
     expect(bytes).not.toContain(0x56); // sem comando de corte (GS V)
   });
 
-  it("negrito seletivo: só a linha 'forte' liga o negrito; a normal não", () => {
-    const bytes = Array.from(
-      montarEscPos(
-        [
-          { texto: "A", estilo: "normal" },
-          { texto: "B", estilo: "forte" },
-          { texto: "C", estilo: "normal" },
-        ],
-        "sem-acento",
-      ),
-    );
-    // INICIAR · "A" LF · ESC E 1 · "B" LF · ESC E 0 · "C" LF · ESC d 4
-    expect(bytes).toEqual([
-      0x1b, 0x40, 0x41, 0x0a, 0x1b, 0x45, 1, 0x42, 0x0a, 0x1b, 0x45, 0, 0x43, 0x0a, 0x1b, 0x64, 4,
-    ]);
-  });
-
   it("sem acento não manda o comando de tabela", () => {
     const bytes = Array.from(montarEscPos([{ texto: "x", estilo: "normal" }], "sem-acento"));
     expect(bytes.slice(0, 3)).toEqual([0x1b, 0x40, "x".charCodeAt(0)]);

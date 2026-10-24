@@ -19,9 +19,7 @@ const TRANSPORTE = "balcao-80mm";
 /** Mesmo prazo do banco: o que passou disso ele recusa. */
 const PRAZO_MS = 2 * 60 * 1000;
 
-// "forte" precisa estar aqui: o que não está na lista vira texto comum, e a
-// comanda que o celular manda ao balcão perderia o negrito dos itens.
-const ESTILOS: readonly EstiloLinha[] = ["normal", "titulo", "destaque", "forte", "separador", "vazio"];
+const ESTILOS: readonly EstiloLinha[] = ["normal", "titulo", "destaque", "separador", "vazio"];
 
 /** As linhas vêm do banco, mas são tratadas como entrada (CLAUDE.md §36). */
 const linhasSchema = z
