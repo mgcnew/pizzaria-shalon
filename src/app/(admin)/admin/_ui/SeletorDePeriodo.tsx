@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FaixaRolavel } from "./FaixaRolavel";
 import { IndicadorDeNavegacao } from "@/ui/components/IndicadorDeNavegacao";
 import type { ChaveDePeriodo } from "@/application/analitico/tipos";
 
@@ -29,7 +30,8 @@ export function SeletorDePeriodo({
   extras?: Record<string, string | undefined>;
 }) {
   return (
-    <nav aria-label="Período" className="flex flex-wrap gap-2">
+    <nav aria-label="Período" className="min-w-0 max-w-full">
+      <FaixaRolavel rotulo="Período">
       {PERIODOS.map((p) => {
         const parametros = new URLSearchParams();
         for (const [chave, valor] of Object.entries(extras)) {
@@ -43,7 +45,7 @@ export function SeletorDePeriodo({
             href={`${base}?${parametros.toString()}`}
             aria-current={ativo ? "page" : undefined}
             className={[
-              "motion-interactive relative inline-flex min-h-touch items-center rounded-11 px-[14px] text-[13.5px] font-semibold transition-colors",
+              "motion-interactive relative inline-flex min-h-touch shrink-0 items-center whitespace-nowrap rounded-11 px-[14px] text-[13.5px] font-semibold transition-colors",
               ativo
                 ? "bg-cta text-cta-fg"
                 : "border-[1.5px] border-border-shalon text-ink hover:border-brand-orange",
@@ -54,6 +56,7 @@ export function SeletorDePeriodo({
           </Link>
         );
       })}
+      </FaixaRolavel>
     </nav>
   );
 }

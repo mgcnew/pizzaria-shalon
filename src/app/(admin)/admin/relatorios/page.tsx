@@ -3,12 +3,13 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { IndicadorDeNavegacao } from "@/ui/components/IndicadorDeNavegacao";
 import { listarRelatorios, obterRelatorio } from "@/application/relatorios/consultas";
-import { formatarCelula } from "@/application/relatorios/formato";
 import type { Relatorio } from "@/application/relatorios/tipos";
 import type { ChaveDePeriodo } from "@/application/analitico/tipos";
 import { Cartao, EmptyState } from "@/ui/patterns";
 import { SeletorDePeriodo } from "../_ui/SeletorDePeriodo";
 import { CartaoCarregando, TabelaCarregando } from "../_ui/Esqueletos";
+import { FaixaRolavel } from "../_ui/FaixaRolavel";
+import { ListaDoRelatorio } from "./_ui/ListaDoRelatorio";
 
 export const metadata: Metadata = { title: "Relatórios" };
 
@@ -84,7 +85,7 @@ export default async function Page({
 
   return (
     <div className="flex flex-col gap-5">
-      <header className="flex flex-wrap items-end justify-between gap-3">
+      <header className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end md:justify-between">
         <div>
           <h1 className="m-0 font-display text-[24px] font-bold text-ink">Relatórios</h1>
           <p className="m-0 mt-1 text-[13.5px] text-muted">
@@ -99,14 +100,14 @@ export default async function Page({
       </header>
 
       <Cartao largura="cheio">
-        <div className="flex flex-wrap gap-2">
+        <FaixaRolavel rotulo="Tipo de relatório">
           {catalogo.relatorios.map((r) => (
             <Link
               key={r.tipo}
               href={`/admin/relatorios?tipo=${r.tipo}&periodo=${chave}`}
               aria-current={r.tipo === escolhido ? "true" : undefined}
               className={[
-                "motion-interactive relative inline-flex min-h-touch items-center rounded-11 px-[13px] text-[13px] font-semibold transition-colors",
+                "motion-interactive relative inline-flex min-h-touch shrink-0 items-center whitespace-nowrap rounded-11 px-[13px] text-[13px] font-semibold transition-colors",
                 r.tipo === escolhido
                   ? "bg-cta text-cta-fg"
                   : "border-[1.5px] border-border-shalon text-ink hover:border-brand-orange",
@@ -116,7 +117,7 @@ export default async function Page({
               <IndicadorDeNavegacao forma="traco" tom={r.tipo === escolhido ? "texto" : "marca"} />
             </Link>
           ))}
-        </div>
+        </FaixaRolavel>
       </Cartao>
 
       {/*
@@ -159,12 +160,12 @@ async function BlocoDoRelatorio({
         largura="cheio"
         acao={
           podeExportar ? (
-            <span className="flex flex-wrap gap-2">
+            <span className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto">
               {FORMATOS.map((f) => (
                 <a
                   key={f.valor}
                   href={`/admin/relatorios/exportar?tipo=${relatorio.tipo}&periodo=${chave}&formato=${f.valor}`}
-                  className="motion-interactive inline-flex min-h-touch items-center rounded-11 border-[1.5px] border-border-shalon px-[13px] text-[13px] font-semibold text-ink transition-colors hover:border-brand-orange"
+                  className="motion-interactive inline-flex min-h-touch items-center justify-center rounded-11 border-[1.5px] border-border-shalon px-[13px] text-[13px] font-semibold text-ink transition-colors hover:border-brand-orange"
                 >
                   {f.rotulo}
                 </a>
@@ -196,64 +197,7 @@ async function BlocoDoRelatorio({
             descricao="Escolha outro período ou outro relatório."
           />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[680px] border-collapse text-[13px]">
-              <thead>
-                <tr className="text-left text-muted">
-                  {relatorio.colunas.map((c) => (
-                    <th
-                      key={c.chave}
-                      className={[
-                        "border-b border-border-shalon py-2 font-semibold",
-                        c.tipo === "dinheiro" || c.tipo === "numero" ? "text-right" : "",
-                      ].join(" ")}
-                    >
-                      {c.rotulo}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {relatorio.linhas.map((linha, i) => (
-                  <tr key={i}>
-                    {relatorio.colunas.map((c) => (
-                      <td
-                        key={c.chave}
-                        className={[
-                          "border-b border-border-shalon py-2",
-                          c.tipo === "dinheiro" || c.tipo === "numero"
-                            ? "text-right text-ink"
-                            : "text-ink",
-                        ].join(" ")}
-                      >
-                        {formatarCelula(linha[c.chave], c.tipo)}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-              {Object.keys(relatorio.totais ?? {}).length > 0 ? (
-                <tfoot>
-                  <tr>
-                    <td
-                      colSpan={relatorio.colunas.length}
-                      className="py-3 text-right text-[13px] font-semibold text-ink"
-                    >
-                      {Object.entries(relatorio.totais).map(([chave, valor]) => {
-                        const coluna = relatorio.colunas.find((c) => c.chave === chave);
-                        return (
-                          <span key={chave} className="ml-4 inline-block">
-                            {coluna?.rotulo ?? chave}:{" "}
-                            {formatarCelula(valor, coluna?.tipo ?? "numero")}
-                          </span>
-                        );
-                      })}
-                    </td>
-                  </tr>
-                </tfoot>
-              ) : null}
-            </table>
-          </div>
+          <ListaDoRelatorio relatorio={relatorio} />
         )}
 
         {!podeExportar ? (

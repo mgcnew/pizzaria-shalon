@@ -61,6 +61,9 @@ describe("formatarCelula", () => {
   it("formata dinheiro no padrão brasileiro", () => {
     expect(formatarCelula(61.5, "dinheiro")).toBe("R$ 61,50");
     expect(formatarCelula(0, "dinheiro")).toBe("R$ 0,00");
+    expect(formatarCelula(-11, "dinheiro")).toBe("-R$ 11,00");
+    expect(formatarCelula("closed", "texto")).toBe("Fechada");
+    expect(formatarCelula("open", "texto")).toBe("Aberta");
   });
 });
 

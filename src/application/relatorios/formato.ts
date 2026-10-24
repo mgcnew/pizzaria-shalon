@@ -50,7 +50,8 @@ export function formatarDinheiro(valor: unknown): string {
   if (valor === null || valor === undefined || valor === "") return "—";
   const n = Number(valor);
   if (!Number.isFinite(n)) return "—";
-  return `R$ ${NUMERO.format(n)}`;
+  // Sinal antes do símbolo ("-R$ 11,00"): "R$ -11,00" lê-se como um erro.
+  return n < 0 ? `-R$ ${NUMERO.format(-n)}` : `R$ ${NUMERO.format(n)}`;
 }
 
 export function formatarCelula(valor: unknown, tipo: TipoDeColuna): string {
@@ -72,9 +73,12 @@ export function formatarCelula(valor: unknown, tipo: TipoDeColuna): string {
       return Number.isInteger(n) ? String(n) : NUMERO.format(n);
     }
     default:
-      return String(valor);
+      // Situação da sessão de caixa vem do banco como `open`/`closed`.
+      return SITUACAO_DO_CAIXA[String(valor)] ?? String(valor);
   }
 }
+
+const SITUACAO_DO_CAIXA: Record<string, string> = { open: "Aberta", closed: "Fechada" };
 
 /** O valor bruto para a planilha: número continua número, e o Excel formata. */
 export function valorDeCelula(
