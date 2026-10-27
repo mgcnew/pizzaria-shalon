@@ -70,6 +70,7 @@ export default async function Page() {
         tentativa={randomUUID()}
         podeMovimentar={podeNaUI(sessao, "cash.adjust")}
         podeEstornar={podeNaUI(sessao, "finance.reverse")}
+        podeTrocarForma={podeNaUI(sessao, "finance.reverse") && podeNaUI(sessao, "payments.register")}
       />
     </div>
   );

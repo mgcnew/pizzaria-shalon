@@ -5116,3 +5116,37 @@ quantas fogazzas e quantas bebidas foram vendidas.
 4. O servidor conta (`resumo_do_fechamento.itens_vendidos`); a tela e o cupom só
    mostram, e escondem o que está em zero. Servidor sem a 0173: a seção não sai.
 
+## D-2026-10-24-167 — Trocar a forma de pagamento de um pedido já pago
+
+**Problema (dona):** o pedido é lançado numa forma (ex.: dinheiro) e o cliente paga
+em outra (ex.: débito), ou o contrário. O fechamento sai errado: em 22/10, R$ 150
+contados contra R$ 33 esperados, porque o dinheiro que entrou foi lançado como
+cartão e Pix.
+
+**Já existia:** estornar o pagamento e registrar de novo, em dois passos. O estorno
+de um dinheiro de sessão fechada saía do caixa **aberto agora** — o caixa de hoje
+ficava errado e o do dia continuava errado.
+
+**Decisão (opção A, aprovada em 24/10/2026; migration 0174
+`20261024160000_trocar_forma_de_pagamento`):**
+1. **Um ato só** (`trocar_forma_de_pagamento`): o pagamento antigo vira estornado
+   (motivo, quem, quando; dinheiro da gaveta ganha um `refund` vinculado) e o novo
+   entra, tudo ou nada.
+2. **Vale na sessão ORIGINAL do pagamento**, aberta ou já fechada. O caixa de hoje
+   não é tocado. O `received_at` do original é mantido: a receita não muda de dia.
+3. **Sessão fechada:** o fechamento original é guardado em `cash_session_corrections`
+   (`payment_change`, antes/depois, pedido, de/para, motivo, quem). O esperado e a
+   diferença gravados são recalculados; **a contagem física não é tocada**. Se a
+   correção cria uma diferença onde não havia, a própria troca vira a justificativa.
+4. **Permissão:** estornar (`finance.reverse`) **e** registrar pagamento
+   (`payments.register`). Motivo obrigatório. Auditado (`pagamento_trocar_forma` e,
+   em sessão fechada, `caixa_correcao_pagamento`).
+5. A **intenção do checkout nunca é alterada** (RN-PGTO-003). A soma tem de fechar
+   com o que já foi pago.
+6. **Fora desta versão (recusado com mensagem):** pedido de entrega ligado a uma saída
+   (o acerto do motoboy tem contabilidade própria), pagamento que não entrou em
+   nenhum caixa, pagamento em mais de uma sessão.
+7. **Tela:** botão **Trocar forma** no Histórico de vendas do PDV (escolhe a forma
+   certa, a bandeira se for cartão, e o motivo). Troca para uma forma só; trocar para
+   uma divisão em várias formas continua sendo estorno + novo recebimento.
+

@@ -1070,6 +1070,9 @@ Movimento confirmado não é apagado ou sobrescrito para correção.
 ### RN-FIN-004
 Correção ocorre por estorno/reversão autorizada, com motivo, responsável e timestamp. O movimento original permanece preservado e o movimento correto é novo registro.
 
+### RN-FIN-004-A
+Trocar a forma de um pagamento confirmado (registrada errada, ou o cliente pagou de outro jeito) é um ato único: o pagamento original é estornado e o correto é registrado novo, **na sessão de caixa original** do pagamento e com o mesmo dia de recebimento. Se essa sessão já fechou, o fechamento original é preservado como correção (antes/depois, motivo e responsável), esperado e diferença são recalculados e a contagem física não muda. Exige permissão de estornar e de registrar pagamento, com motivo (D-2026-10-24-167).
+
 ### RN-FIN-005
 Sem modelo de custos completo, o sistema não deve chamar saldo operacional de lucro líquido, margem real ou CMV.
 

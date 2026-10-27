@@ -7,6 +7,7 @@ import { useAvisarOperacaoEmVoo } from "@/ui/operacaoEmVoo";
 import { formatBRL } from "@/lib/format";
 import { abrirCaixa, movimentarCaixa } from "@/application/caixa/acoes";
 import { HistoricoDeVendas } from "./HistoricoDeVendas";
+import type { FormaParaRecebimento } from "@/app/(admin)/admin/pedidos/_ui/Recebimento";
 import { FechamentoDeCaixa, paraNumero } from "./FechamentoDeCaixa";
 
 type Operacao = "abrir" | "reforco" | "sangria" | "fechar" | null;
@@ -29,6 +30,8 @@ export function PainelDoCaixa({
   venda,
   aoConcluirVenda,
   podeEstornar,
+  podeTrocarForma = false,
+  formas = [],
 }: {
   estado: EstadoVisivelDoCaixa;
   tentativa: string;
@@ -36,6 +39,9 @@ export function PainelDoCaixa({
   venda: { quantidade: number; total: number };
   aoConcluirVenda: () => void;
   podeEstornar: boolean;
+  /** Estornar E registrar pagamento: a troca de forma é as duas coisas. */
+  podeTrocarForma?: boolean;
+  formas?: FormaParaRecebimento[];
 }) {
   const [operacao, setOperacao] = useState<Operacao>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -93,7 +99,7 @@ export function PainelDoCaixa({
 
           {estado.aberto ? (
             <div className="flex flex-1 flex-wrap justify-end gap-2 sm:flex-none">
-              <HistoricoDeVendas podeEstornar={podeEstornar} />
+              <HistoricoDeVendas podeEstornar={podeEstornar} podeTrocarForma={podeTrocarForma} formas={formas} />
               <Button tamanho="sm" variante="secundario" onClick={() => abrir("fechar")}>
                 Fechar caixa
               </Button>
@@ -114,7 +120,7 @@ export function PainelDoCaixa({
               <Button tamanho="sm" onClick={() => abrir("abrir")}>
                 Abrir caixa
               </Button>
-              <HistoricoDeVendas podeEstornar={podeEstornar} />
+              <HistoricoDeVendas podeEstornar={podeEstornar} podeTrocarForma={podeTrocarForma} formas={formas} />
               <Button tamanho="sm" variante="secundario" disabled={venda.quantidade === 0} onClick={aoConcluirVenda}>
                 Concluir venda
                 {venda.quantidade > 0 ? ` · ${venda.quantidade} · ${formatBRL(venda.total)}` : ""}

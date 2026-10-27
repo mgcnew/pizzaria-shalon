@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { estornarPagamento } from "@/application/caixa/acoes";
+import { estornarPagamento, trocarFormaDePagamento } from "@/application/caixa/acoes";
+import type { FormaParaRecebimento } from "@/app/(admin)/admin/pedidos/_ui/Recebimento";
 import {
   listarHistoricoDeVendas,
   obterItensDaSegundaVia,
@@ -35,7 +36,15 @@ function formatarData(valor: string | null) {
   }).format(new Date(valor));
 }
 
-export function HistoricoDeVendas({ podeEstornar }: { podeEstornar: boolean }) {
+export function HistoricoDeVendas({
+  podeEstornar,
+  podeTrocarForma = false,
+  formas = [],
+}: {
+  podeEstornar: boolean;
+  podeTrocarForma?: boolean;
+  formas?: FormaParaRecebimento[];
+}) {
   const [aberto, setAberto] = useState(false);
   const [vendas, setVendas] = useState<VendaNoHistoricoDoPdv[]>([]);
   const [busca, setBusca] = useState("");
@@ -48,6 +57,8 @@ export function HistoricoDeVendas({ podeEstornar }: { podeEstornar: boolean }) {
   } | null>(null);
   const [preparandoVia, setPreparandoVia] = useState<string | null>(null);
   const [motivo, setMotivo] = useState("");
+  const [troca, setTroca] = useState<{ venda: VendaNoHistoricoDoPdv; forma: string; bandeira: string } | null>(null);
+  const tentativaDaTroca = useRef(crypto.randomUUID());
   const [carregando, iniciar] = useTransition();
   const painel = useRef<HTMLDivElement>(null);
 
@@ -72,6 +83,7 @@ export function HistoricoDeVendas({ podeEstornar }: { podeEstornar: boolean }) {
     if (carregando) return;
     setAberto(false);
     setSelecionada(null);
+    setTroca(null);
     setSegundaVia(null);
     setMotivo("");
   }
@@ -123,6 +135,41 @@ export function HistoricoDeVendas({ podeEstornar }: { podeEstornar: boolean }) {
       setSelecionada(null);
       setMotivo("");
       setMensagem(`Pagamento da venda #${numero} estornado com sucesso.`);
+      await consultar();
+    });
+  }
+
+  function confirmarTroca() {
+    if (troca === null || troca.forma === "" || motivo.trim().length < 3) return;
+    const escolhida = formas.find((f) => f.id === troca.forma);
+    if (escolhida?.exige_bandeira && troca.bandeira === "") {
+      setErro("Escolha a bandeira do cartão.");
+      return;
+    }
+    setErro(null);
+    setMensagem(null);
+    iniciar(async () => {
+      const resultado = await trocarFormaDePagamento({
+        pedido_id: troca.venda.pedido_id,
+        forma_id: troca.forma,
+        ...(escolhida?.exige_bandeira ? { bandeira_id: troca.bandeira } : {}),
+        valor: troca.venda.valor_pago,
+        motivo: motivo.trim(),
+        tentativa: tentativaDaTroca.current,
+      });
+      if (!resultado.ok) {
+        setErro(resultado.erro);
+        return;
+      }
+      tentativaDaTroca.current = crypto.randomUUID();
+      const numero = troca.venda.numero;
+      setTroca(null);
+      setMotivo("");
+      setMensagem(
+        resultado.sessaoFechada
+          ? `Forma da venda #${numero} trocada para ${escolhida?.nome ?? "a nova forma"}. O fechamento do caixa daquele dia foi corrigido; o original ficou guardado.`
+          : `Forma da venda #${numero} trocada para ${escolhida?.nome ?? "a nova forma"}.`,
+      );
       await consultar();
     });
   }
@@ -253,9 +300,20 @@ export function HistoricoDeVendas({ podeEstornar }: { podeEstornar: boolean }) {
                             >
                               {preparandoVia === venda.pedido_id ? "Preparando…" : "Imprimir 2ª via"}
                             </Button>
+                            {!estornada && venda.pode_estornar && podeTrocarForma && formas.length > 0 ? (
+                              <Button variante="secundario" tamanho="sm" onClick={() => {
+                                setTroca({ venda, forma: "", bandeira: "" });
+                                setSelecionada(null);
+                                setMotivo("");
+                                setErro(null);
+                              }}>
+                                Trocar forma
+                              </Button>
+                            ) : null}
                             {!estornada && venda.pode_estornar && podeEstornar ? (
                               <Button variante="perigo" tamanho="sm" onClick={() => {
                                 setSelecionada(venda);
+                                setTroca(null);
                                 setMotivo("");
                                 setErro(null);
                               }}>
@@ -270,6 +328,64 @@ export function HistoricoDeVendas({ podeEstornar }: { podeEstornar: boolean }) {
                 </div>
               )}
             </div>
+
+            {troca ? (
+              <div className="border-t border-border-shalon bg-elev px-4 py-4 sm:px-5">
+                <p className="m-0 mb-1 text-[13px] font-semibold text-ink">
+                  Trocar a forma da venda #{troca.venda.numero} · {formatBRL(troca.venda.valor_pago)}
+                </p>
+                <p className="m-0 mb-3 text-[12px] text-muted">Hoje registrada como: {troca.venda.formas || "—"}</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="flex flex-col gap-1 text-[13px] font-semibold text-ink">
+                    Como o cliente pagou de verdade
+                    <select
+                      value={troca.forma}
+                      onChange={(evento) => setTroca({ ...troca, forma: evento.target.value, bandeira: "" })}
+                      className="min-h-touch rounded-11 border-[1.5px] border-border-shalon bg-surface px-3 text-[14px] font-normal text-ink focus:border-brand-orange focus:outline-none"
+                    >
+                      <option value="">Escolha a forma…</option>
+                      {formas.map((f) => (
+                        <option key={f.id} value={f.id}>{f.nome}</option>
+                      ))}
+                    </select>
+                  </label>
+                  {formas.find((f) => f.id === troca.forma)?.exige_bandeira ? (
+                    <label className="flex flex-col gap-1 text-[13px] font-semibold text-ink">
+                      Bandeira
+                      <select
+                        value={troca.bandeira}
+                        onChange={(evento) => setTroca({ ...troca, bandeira: evento.target.value })}
+                        className="min-h-touch rounded-11 border-[1.5px] border-border-shalon bg-surface px-3 text-[14px] font-normal text-ink focus:border-brand-orange focus:outline-none"
+                      >
+                        <option value="">Escolha a bandeira…</option>
+                        {(formas.find((f) => f.id === troca.forma)?.bandeiras ?? []).map((b) => (
+                          <option key={b.id} value={b.id}>{b.nome}</option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+                  <div className="sm:col-span-2">
+                    <Input
+                      label="Motivo da troca"
+                      value={motivo}
+                      onChange={(evento) => setMotivo(evento.target.value)}
+                      placeholder="Ex.: cliente pagou no débito, não em dinheiro"
+                    />
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button tamanho="md" disabled={carregando || troca.forma === "" || motivo.trim().length < 3} onClick={confirmarTroca}>
+                    {carregando ? "Trocando…" : "Confirmar troca"}
+                  </Button>
+                  <Button variante="fantasma" tamanho="md" disabled={carregando} onClick={() => setTroca(null)}>
+                    Cancelar
+                  </Button>
+                </div>
+                <p className="m-0 mt-2 text-[11.5px] text-muted">
+                  A troca vale no caixa em que a venda foi feita. Se esse caixa já fechou, o fechamento dele é corrigido (esperado e diferença) e o original fica guardado. O valor e o dia da venda não mudam.
+                </p>
+              </div>
+            ) : null}
 
             {selecionada ? (
               <div className="border-t border-border-shalon bg-elev px-4 py-4 sm:px-5">

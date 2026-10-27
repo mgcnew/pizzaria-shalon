@@ -73,6 +73,7 @@ export function PdvComTeclado({
   tentativa,
   podeMovimentar,
   podeEstornar,
+  podeTrocarForma,
 }: {
   formas: FormaParaRecebimento[];
   autorizado: boolean;
@@ -80,6 +81,7 @@ export function PdvComTeclado({
   tentativa: string;
   podeMovimentar: boolean;
   podeEstornar: boolean;
+  podeTrocarForma: boolean;
 }) {
   /**
    * O PDV acorda sozinho — Etapa 10.
@@ -304,6 +306,8 @@ export function PdvComTeclado({
             venda={{ quantidade: quantidadeItens, total: totalVenda }}
             aoConcluirVenda={() => executar("venda:concluir")}
             podeEstornar={podeEstornar}
+            podeTrocarForma={podeTrocarForma}
+            formas={formas}
           />
         </div>
       </div>

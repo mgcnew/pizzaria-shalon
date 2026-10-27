@@ -372,6 +372,52 @@ export async function estornarPagamento(entrada: unknown): Promise<Resultado> {
   return resposta(data);
 }
 
+const trocaDeFormaSchema = z.object({
+  pedido_id: z.string().uuid(),
+  forma_id: z.string().uuid(),
+  bandeira_id: z.string().uuid().optional(),
+  /** O valor pago, só para a conferência: o servidor exige que feche com o que já foi pago. */
+  valor: z.number().finite().positive(),
+  motivo: z.string().trim().min(3).max(400),
+  tentativa: chave,
+});
+
+/**
+ * D-2026-10-24-167: troca a forma de pagamento de um pedido já pago, em um ato
+ * só e NA SESSÃO ORIGINAL do pagamento (aberta ou já fechada).
+ *
+ * Quem decide tudo — permissão (estornar E registrar), soma, sessão, o que
+ * muda no fechamento — é `trocar_forma_de_pagamento`; aqui só se valida o
+ * formato e se devolve se a sessão era uma já fechada, para a tela dizer.
+ */
+export async function trocarFormaDePagamento(
+  entrada: unknown,
+): Promise<Resultado & { sessaoFechada?: boolean }> {
+  const v = trocaDeFormaSchema.safeParse(entrada);
+  if (!v.success) return { ok: false, erro: "Escolha a forma de pagamento e informe o motivo da troca." };
+
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("trocar_forma_de_pagamento", {
+    p_order_id: v.data.pedido_id,
+    p_dados: {
+      linhas: [{ forma_id: v.data.forma_id, bandeira_id: v.data.bandeira_id ?? null, valor: v.data.valor }],
+      motivo: v.data.motivo,
+      idempotency_key: v.data.tentativa,
+    },
+  });
+  if (error) return falha("trocarFormaDePagamento", error);
+
+  const resultado = resposta(data);
+  if (!resultado.ok) return resultado;
+
+  revalidatePath(ROTA_PDV);
+  revalidatePath(ROTA_FIN);
+  revalidatePath(`${ROTA_PEDIDOS}/${v.data.pedido_id}`);
+  revalidatePath("/admin/relatorios");
+  const bruto = (data ?? {}) as Record<string, unknown>;
+  return { ok: true, sessaoFechada: Boolean(bruto["sessao_fechada"]) };
+}
+
 // ============================================================ financeiro
 
 const categoriaSchema = z.object({
