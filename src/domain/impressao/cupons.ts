@@ -148,7 +148,11 @@ export function montarFechamentoDeCaixa(
   // Só sai o que teve movimento: seção sem linha nenhuma não aparece.
   if (f.recebidos.length > 0) {
     saida.push(separador(largura), { texto: "RECEBIDO POR FORMA", estilo: "titulo" });
-    bloco(f.recebidos);
+    for (const l of f.recebidos) {
+      saida.push(...comValor(l.rotulo, formatBRL(l.valor), largura));
+      // O Pix por origem, recuado, logo abaixo da linha "Pix".
+      for (const d of l.detalhe ?? []) saida.push(...comValor(`  ${d.rotulo}`, formatBRL(d.valor), largura));
+    }
     if (f.totalRecebido !== null) {
       saida.push(...comValor("Total", formatBRL(f.totalRecebido), largura, "titulo"));
     }
@@ -157,6 +161,12 @@ export function montarFechamentoDeCaixa(
   if (f.vendidos.length > 0) {
     saida.push(separador(largura), { texto: "VENDIDO", estilo: "titulo" });
     for (const l of f.vendidos) saida.push(...comValor(l.rotulo, String(l.quantidade), largura));
+  }
+
+  // Pedidos que contam no vendido, mas cujo valor não entrou neste caixa (0176).
+  if (f.semRecebimento.length > 0) {
+    saida.push(separador(largura), { texto: "SEM RECEBIMENTO", estilo: "titulo" });
+    for (const p of f.semRecebimento) saida.push(...comValor(`#${p.numero}`, formatBRL(p.total), largura));
   }
 
   // A gaveta: fundo + o que entrou − o que saiu = esperado.

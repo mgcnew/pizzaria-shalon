@@ -10,6 +10,7 @@ import type { PreviaDoFechamento } from "@/application/caixa/acoes";
 import { useImprimirDocumento } from "@/ui/impressao/useImprimirDocumento";
 import { montarFechamentoDeCaixa } from "@/domain/impressao/cupons";
 import { relatorioDe, ResumoVisualDoFechamento, type ConferenciaDoFechamento } from "./ResumoVisualDoFechamento";
+import { PedidosSemRecebimento } from "./PedidosSemRecebimento";
 
 export function paraNumero(texto: string): number | null {
   const limpo = texto.replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
@@ -373,6 +374,8 @@ function PreviaDosRecebimentos({ previa }: { previa: PreviaDoFechamento | null }
           <p className="m-0 text-[13px] text-ink-2">Nenhum recebimento por cartão ou Pix.</p>
         )}
       </div>
+
+      <PedidosSemRecebimento pedidos={previa.semRecebimento} antesDeFechar />
 
       {previa.foraDaGaveta > 0 ? (
         <p className="m-0 rounded-12 border border-twb bg-tw p-3 text-[13px] leading-snug text-twf">

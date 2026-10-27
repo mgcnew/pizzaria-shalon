@@ -1042,6 +1042,16 @@ Sessão fechada não pode ser editada/reaberta por atendente comum.
 ### RN-CAIXA-016
 Correção/reabertura excepcional exige Owner/Admin ou permissão específica, motivo obrigatório e auditoria, preservando o fechamento original.
 
+### RN-CAIXA-017 — Pedidos do turno e o que ficou sem recebimento
+O "Vendido na sessão" conta os pedidos **do turno**: os que têm pagamento
+confirmado na sessão e os criados entre a abertura e o fechamento que ainda não
+têm pagamento confirmado em caixa nenhum (já aceitos; cancelado e recusado
+ficam fora). Um pedido conta numa sessão só: recebido depois em outra sessão,
+passa a contar nela. Os pedidos do turno sem recebimento no caixa aparecem no
+fechamento — antes da contagem e no relatório — com acesso ao pedido para
+registrar o recebimento. Os valores em dinheiro não mudam: recebido, esperado e
+diferença continuam sendo só o que entrou na sessão (D-2026-10-27-169).
+
 ---
 
 ## 30. Movimentos financeiros
@@ -1428,6 +1438,13 @@ Ocultar botão não substitui autorização no backend/RLS.
 
 ### RN-RBAC-004
 Ações sensíveis dependem da permissão efetiva do usuário no momento da operação.
+
+### RN-RBAC-004-A — Cada permissão vale pelo que o nome diz
+Uma permissão não pode ser pré-requisito escondido de outra tarefa. Ler o que
+uma tarefa precisa (formas de pagamento para registrar pagamento, totais da
+sessão para fechar o caixa) é garantido pela permissão da própria tarefa. A tela
+de permissões diz o que cada item libera e de quais outros ele precisa para
+funcionar (D-2026-10-27-168).
 
 ### RN-RBAC-005 — Ninguém concede o que não tem
 Decisão de 22/09/2026.

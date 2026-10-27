@@ -1,4 +1,5 @@
 import { ParDeDados } from "@/ui/patterns";
+import { PedidosSemRecebimento } from "./PedidosSemRecebimento";
 import { formatBRL } from "@/lib/format";
 import type { ResumoDeFechamento } from "@/application/caixa/tipos";
 import {
@@ -29,6 +30,7 @@ export function relatorioDe(conferencia: ConferenciaDoFechamento): RelatorioDeFe
     recebimentos: r.recebimentos_por_metodo,
     totalRecebido: r.total_recebido ?? null,
     itensVendidos: r.itens_vendidos ?? null,
+    semRecebimento: r.sem_recebimento ?? null,
     fundoInicial: r.fundo_inicial,
     movimentos: r.movimentos_da_gaveta ?? null,
     entrou: r.entrou_na_gaveta ?? null,
@@ -109,6 +111,8 @@ export function ResumoVisualDoFechamento({
 
       {resumo && relatorio ? (
         <>
+          <PedidosSemRecebimento pedidos={relatorio.semRecebimento} />
+
           {relatorio.foraDaGaveta > 0 ? (
             <p className="m-0 rounded-12 border border-twb bg-tw p-3 text-[13px] font-semibold text-twf print:rounded-none print:border-x-0 print:bg-white print:text-black">
               Dinheiro recebido que ainda não entrou na gaveta (ex.: com o motoboy): {formatBRL(relatorio.foraDaGaveta)}
@@ -138,7 +142,14 @@ export function ResumoVisualDoFechamento({
               {relatorio.recebidos.length > 0 ? (
                 <>
                   {relatorio.recebidos.map((r) => (
-                    <ParDeDados key={r.rotulo} chave={r.rotulo} valor={formatBRL(r.valor)} />
+                    <div key={r.rotulo}>
+                      <ParDeDados chave={r.rotulo} valor={formatBRL(r.valor)} />
+                      {r.detalhe && r.detalhe.length > 0 ? (
+                        <p className="m-0 -mt-1 pb-[6px] text-[12px] text-muted print:text-black">
+                          {r.detalhe.map((d) => `${d.rotulo} ${formatBRL(d.valor)}`).join(" · ")}
+                        </p>
+                      ) : null}
+                    </div>
                   ))}
                   {relatorio.totalRecebido !== null ? (
                     <ParTotal chave="Total recebido" valor={formatBRL(relatorio.totalRecebido)} />

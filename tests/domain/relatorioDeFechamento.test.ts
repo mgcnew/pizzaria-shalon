@@ -117,3 +117,47 @@ describe("itens vendidos no fechamento (D-2026-10-24-166)", () => {
     expect(montarRelatorioDeFechamento({ ...base, itensVendidos: { pizzas: 0, fogazzas: 0, bebidas: 0 } }).vendidos).toEqual([]);
   });
 });
+
+describe("Pix numa linha só (D-2026-10-27-170)", () => {
+  it("soma maquininha e antecipado, no lugar do primeiro Pix, com a origem no detalhe", () => {
+    const r = montarRelatorioDeFechamento({
+      ...base,
+      recebimentos: [
+        { metodo: "Dinheiro", familia: "cash", total: 100 },
+        { metodo: "Pix antecipado", familia: "pix_key", total: 0.1 },
+        { metodo: "Cartão de débito", familia: "debit", total: 40 },
+        { metodo: "Pix na maquininha", familia: "pix_machine", total: 0.2 },
+      ],
+    });
+    expect(r.recebidos.map((l) => l.rotulo)).toEqual(["Dinheiro", "Pix", "Débito"]);
+    const pix = r.recebidos[1]!;
+    expect(pix.valor).toBe(0.3);
+    expect(pix.detalhe).toEqual([
+      { rotulo: "máquina", valor: 0.2 },
+      { rotulo: "antecipado", valor: 0.1 },
+    ]);
+  });
+
+  it("só um tipo de Pix: a linha Pix diz de onde veio", () => {
+    const r = montarRelatorioDeFechamento({
+      ...base,
+      recebimentos: [{ metodo: "Pix antecipado", familia: "pix_key", total: 50 }],
+    });
+    expect(r.recebidos).toEqual([{ rotulo: "Pix", valor: 50, detalhe: [{ rotulo: "antecipado", valor: 50 }] }]);
+  });
+
+  it("Pix zerado não aparece, e formas sem Pix não ganham detalhe", () => {
+    const r = montarRelatorioDeFechamento({
+      ...base,
+      recebimentos: [
+        { metodo: "Pix na maquininha", familia: "pix_machine", total: 0 },
+        { metodo: "Dinheiro", familia: "cash", total: 10 },
+      ],
+    });
+    expect(r.recebidos).toEqual([{ rotulo: "Dinheiro", valor: 10 }]);
+  });
+
+  it("servidor sem a 0176: lista de sem recebimento vazia", () => {
+    expect(montarRelatorioDeFechamento(base).semRecebimento).toEqual([]);
+  });
+});

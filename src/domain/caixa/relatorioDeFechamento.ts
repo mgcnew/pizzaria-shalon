@@ -14,15 +14,32 @@
  *    maquininha" quebravam e empurravam o valor para outra linha. Todo rótulo
  *    aqui tem até 12 caracteres.
  *  - A CONTA FECHA. fundo + o que entrou − o que saiu = esperado na gaveta.
+ *  - PIX É UMA LINHA SÓ (D-2026-10-27-170). Pix na maquininha e Pix antecipado
+ *    somam na linha "Pix"; o detalhe por origem vai logo abaixo, porque cada um
+ *    cai num lugar (maquininha × conta da loja) e a conferência precisa saber.
  */
 
 export type MovimentoDaGaveta = { tipo: string; sentido: "in" | "out"; total: number };
 
 export type ItensVendidos = { pizzas: number; fogazzas: number; bebidas: number };
 
+/** Pedido do turno que não teve recebimento no caixa (0176, D-2026-10-27-169). */
+export type PedidoSemRecebimento = {
+  pedido_id: string;
+  numero: number;
+  cliente: string | null;
+  modalidade: string;
+  status: string;
+  total: number;
+  pago_fora_do_caixa: boolean;
+  fiado: boolean;
+};
+
 export type EntradaDoRelatorio = {
   /** Unidades vendidas na sessão, contadas pelo servidor (0173). Servidor sem a 0173: não sai. */
   itensVendidos?: ItensVendidos | null;
+  /** Pedidos do turno sem recebimento no caixa (0176). Servidor sem a 0176: lista vazia. */
+  semRecebimento?: PedidoSemRecebimento[] | null;
   recebimentos: { metodo: string; familia: string; total: number }[];
   /** Total recebido por todas as formas, vindo do servidor. */
   totalRecebido?: number | null;
@@ -51,13 +68,19 @@ export type EntradaDoRelatorio = {
   dinheiroForaDaGaveta: number;
 };
 
-export type LinhaDoRelatorio = { rotulo: string; valor: number };
+export type LinhaDoRelatorio = {
+  rotulo: string;
+  valor: number;
+  /** Partes da linha, para mostrar logo abaixo (o Pix por origem). */
+  detalhe?: { rotulo: string; valor: number }[];
+};
 
 export type LinhaDeQuantidade = { rotulo: string; quantidade: number };
 
 export type RelatorioDeFechamento = {
   /** Pizzas, fogazzas e bebidas; só o que vendeu, em linhas. Vazio = nada a mostrar. */
   vendidos: LinhaDeQuantidade[];
+  semRecebimento: PedidoSemRecebimento[];
   recebidos: LinhaDoRelatorio[];
   totalRecebido: number | null;
   fundo: number;
@@ -93,6 +116,36 @@ export function nomeCurtoDaForma(metodo: string, familia: string): string {
     default:
       return metodo;
   }
+}
+
+const FAMILIAS_PIX: Record<string, string> = { pix_machine: "máquina", pix_key: "antecipado" };
+
+/**
+ * Recebido por forma, com os Pix somados numa linha só, no lugar do primeiro
+ * Pix que aparecer. O detalhe guarda cada origem, em até 10 caracteres.
+ */
+function linhasDeRecebidos(recebimentos: EntradaDoRelatorio["recebimentos"]): LinhaDoRelatorio[] {
+  const linhas: LinhaDoRelatorio[] = [];
+  let pix: LinhaDoRelatorio | null = null;
+  for (const r of recebimentos) {
+    if (r.total === 0) continue;
+    const origem = FAMILIAS_PIX[r.familia];
+    if (origem === undefined) {
+      linhas.push({ rotulo: nomeCurtoDaForma(r.metodo, r.familia), valor: r.total });
+      continue;
+    }
+    if (pix === null) {
+      pix = { rotulo: "Pix", valor: 0, detalhe: [] };
+      linhas.push(pix);
+    }
+    // Centavos inteiros: somar reais em ponto flutuante deixa 0,30000000000000004.
+    pix.valor = Math.round((pix.valor + r.total) * 100) / 100;
+    const parte = pix.detalhe!.find((d) => d.rotulo === origem);
+    if (parte) parte.valor = Math.round((parte.valor + r.total) * 100) / 100;
+    else pix.detalhe!.push({ rotulo: origem, valor: r.total });
+  }
+  pix?.detalhe!.sort((a, b) => (a.rotulo === "máquina" ? -1 : b.rotulo === "máquina" ? 1 : 0));
+  return linhas;
 }
 
 /** Ordem em que cada tipo aparece, e o rótulo (até 12 caracteres). */
@@ -159,9 +212,8 @@ export function montarRelatorioDeFechamento(e: EntradaDoRelatorio): RelatorioDeF
   const movimentos = e.movimentos ?? (e.legado ? movimentosDoLegado(e.legado) : []);
   return {
     vendidos: linhasDeVendidos(e.itensVendidos),
-    recebidos: e.recebimentos
-      .filter((r) => r.total !== 0)
-      .map((r) => ({ rotulo: nomeCurtoDaForma(r.metodo, r.familia), valor: r.total })),
+    semRecebimento: e.semRecebimento ?? [],
+    recebidos: linhasDeRecebidos(e.recebimentos),
     totalRecebido: e.totalRecebido ?? null,
     fundo: e.fundoInicial,
     entradas: linhasDe(movimentos, "in", ENTRADAS),

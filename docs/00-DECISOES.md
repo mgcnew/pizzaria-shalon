@@ -5150,3 +5150,62 @@ ficava errado e o do dia continuava errado.
    certa, a bandeira se for cartão, e o motivo). Troca para uma forma só; trocar para
    uma divisão em várias formas continua sendo estorno + novo recebimento.
 
+## D-2026-10-27-168 — Permissões sem dependência escondida, explicadas na tela
+
+**Problema (dona):** a Julia, como Balconista, não conseguia fechar uma venda
+escolhendo a forma de pagamento e teve de virar Owner/Admin. Não dava para saber,
+na tela de permissões, o que cada item afeta.
+
+**Causa:** em 15/10 "Ver configurações" foi tirado do Atendente. As formas de
+pagamento e as bandeiras só eram legíveis com essa permissão, e o PDV e o
+recebimento abriam com a lista de formas vazia. Do mesmo jeito, o Histórico de
+vendas do PDV exigia "Ver o financeiro", e o resumo do fechamento (SECURITY
+INVOKER, lendo `payments`) vinha zerado para quem só tinha "Ver o caixa".
+
+**Decisão (aprovada em 27/10/2026; migration 0175
+`20261027100000_permissoes_sem_dependencia_escondida`):**
+1. Formas de pagamento e bandeiras: leitura para toda a equipe interna ativa.
+2. Histórico de vendas do PDV: `cash.view` + `orders.view` (era `finance.view`).
+3. `resumo_do_fechamento` vira SECURITY DEFINER com checagem de `cash.view`; a
+   tabela `payments` continua atrás de `finance.view` (03 §17.3, esclarecido).
+4. Tela de permissões: cada item diz o que libera; marcar traz junto o que ele
+   precisa; item sem dependência mostra "Não funciona sem…" com "Marcar o que
+   falta"; atalhos por tarefa ("Vender no balcão", "Atender pedidos do link",
+   "Abrir e fechar o caixa", "Cuidar das entregas") só acrescentam. O catálogo
+   fica em `src/domain/equipe/permissoes.ts`, com teste.
+5. Sem tooltip: a explicação fica sempre visível, porque tooltip não funciona no
+   celular.
+
+## D-2026-10-27-169 — O fechamento conta os pedidos do turno e avisa o que ficou sem recebimento
+
+**Problema (dona):** a contagem de pizzas do fechamento não batia com o que ela
+vendeu. Os pedidos do link estavam sendo contados; os que faltavam eram, quase
+todos, **entregas concluídas sem recebimento no caixa**: concluídas fora de uma
+saída do motoboy (o recebimento de entrega acontece no acerto) ou pagas em
+dinheiro com "Este dinheiro entrou na gaveta agora" desmarcado. De 16 a 25/10,
+31 pedidos; o dinheiro deles também não estava em fechamento nenhum.
+
+**Decisão (aprovada em 27/10/2026; migration 0176
+`20261027110000_fechamento_conta_pedidos_do_turno`; RN-CAIXA-017; substitui o
+item 1 de D-2026-10-24-166):**
+1. `pedidos_do_caixa(sessão)`: pagos na sessão + criados no turno sem pagamento
+   confirmado em caixa nenhum (já aceitos; cancelado/recusado fora). Um pedido
+   não conta em duas sessões.
+2. A contagem de pizzas, fogazzas e bebidas usa esse conjunto.
+3. `resumo_do_fechamento.sem_recebimento` lista esses pedidos; a prévia do
+   fechamento pede para receber antes de contar, e o resumo, o relatório e o
+   cupom mostram a lista. Cada linha abre o pedido.
+4. Dinheiro não muda: recebido, esperado e diferença seguem só o que entrou.
+
+## D-2026-10-27-170 — Pix numa linha só no fechamento
+
+**Pedido (dona):** juntar no relatório de caixa o Pix antecipado e o Pix da
+maquininha.
+
+**Decisão (aprovada em 27/10/2026; só apresentação, sem migration):** no
+"Recebido por forma de pagamento" — tela, relatório de caixa e cupom — os dois
+somam na linha **Pix**; logo abaixo, em letra menor (no cupom, recuado), o valor
+de cada origem ("máquina", "antecipado"), porque um cai na maquininha e o outro
+na conta da loja. A prévia de antes da contagem continua por forma, para
+conferir com a maquininha.
+

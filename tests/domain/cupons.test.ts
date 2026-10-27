@@ -133,10 +133,29 @@ describe("fechamento de caixa em texto (D-2026-10-23-163)", () => {
     expect(texto({ fundoInicial: 100 })).toContain("Fundo");
   });
 
-  it("formas com nome curto: Crédito, Débito, Pix máquina e Pix chave", () => {
+  it("formas com nome curto: Crédito, Débito e Pix", () => {
     const t = texto();
-    for (const nome of ["Dinheiro", "Crédito", "Débito", "Pix máquina", "Pix chave"]) expect(t).toContain(nome);
-    for (const longo of ["Cartão de", "Pix na maquininha", "Pix antecipado"]) expect(t).not.toContain(longo);
+    for (const nome of ["Dinheiro", "Crédito", "Débito", "Pix"]) expect(t).toContain(nome);
+    for (const longo of ["Cartão de", "Pix na maquininha", "Pix antecipado", "Pix máquina", "Pix chave"])
+      expect(t).not.toContain(longo);
+  });
+
+  it("os Pix somam numa linha, com a origem recuada logo abaixo (D-2026-10-27-170)", () => {
+    const linhas = texto().split("\n");
+    const i = linhas.findIndex((l) => /^Pix\b/.test(l));
+    expect(linhas[i]).toContain("230,50");
+    expect(linhas[i + 1]).toMatch(/^ {2}máquina .*180,50$/);
+    expect(linhas[i + 2]).toMatch(/^ {2}antecipado .*50,00$/);
+  });
+
+  it("pedidos sem recebimento saem com número e valor", () => {
+    const t = texto({
+      semRecebimento: [{ pedido_id: "x", numero: 140, cliente: "Ana", modalidade: "delivery",
+        status: "completed", total: 89.9, pago_fora_do_caixa: false, fiado: false }],
+    });
+    expect(t).toContain("SEM RECEBIMENTO");
+    expect(t).toMatch(/#140 .*89,90/);
+    expect(texto()).not.toContain("SEM RECEBIMENTO");
   });
 
   it("adiantamento a funcionário e outras saídas aparecem quando existem", () => {

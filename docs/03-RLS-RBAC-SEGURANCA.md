@@ -780,6 +780,19 @@ Estorno exige permissão, motivo e auditoria.
 
 RLS deve impedir que usuário sem `finance.view` obtenha dados financeiros por consultas alternativas, views ou endpoints de relatório.
 
+**Caixa não é financeiro (D-2026-10-27-168).** Os totais de uma sessão de caixa
+— recebido por forma, vendido, movimento da gaveta, histórico de vendas do PDV —
+são dado de **caixa**: quem tem `cash.view` os vê, porque quem fecha o caixa
+precisa conferir. Chegam só por RPC `SECURITY DEFINER` com checagem própria
+(`resumo_do_fechamento`, `historico_vendas_pdv`). `finance.view` continua
+protegendo as linhas de `payments`, o módulo Financeiro (lançamentos,
+categorias, saldo operacional) e os relatórios financeiros.
+
+**Cadastros de leitura.** Formas de pagamento e bandeiras são legíveis por toda
+a equipe interna ativa (`current_app_user_id() is not null`): quem registra um
+pagamento precisa escolher a forma. Alterar continua exigindo `settings.manage`
+(§7.2). A chave Pix continua atrás de `settings.view`.
+
 Exportação exige `reports.export` e respeita também permissões sobre dados sensíveis.
 
 ---

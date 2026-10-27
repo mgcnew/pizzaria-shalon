@@ -7,6 +7,7 @@ import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
 import { logger } from "@/lib/logger";
 import { obterResumoDeFechamento } from "./consultas";
 import type { ResumoDeFechamento, Resultado } from "./tipos";
+import type { PedidoSemRecebimento } from "@/domain/caixa/relatorioDeFechamento";
 
 /**
  * Operações de caixa, pagamento realizado e financeiro.
@@ -123,6 +124,8 @@ export type PreviaDoFechamento =
       semDinheiro: { metodo: string; total: number }[];
       /** Dinheiro recebido que ainda não entrou na gaveta (RN-CAIXA-014). */
       foraDaGaveta: number;
+      /** Pedidos do turno ainda sem recebimento no caixa (0176): receber antes de fechar. */
+      semRecebimento: PedidoSemRecebimento[];
     }
   | { ok: false };
 
@@ -145,6 +148,7 @@ export async function obterPreviaDoFechamento(): Promise<PreviaDoFechamento> {
       .filter((r) => r.familia !== "cash")
       .map((r) => ({ metodo: r.metodo, total: r.total })),
     foraDaGaveta: resumo.dinheiro_fora_da_gaveta,
+    semRecebimento: resumo.sem_recebimento ?? [],
   };
 }
 

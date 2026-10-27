@@ -1,3 +1,5 @@
+import type { PedidoSemRecebimento } from "@/domain/caixa/relatorioDeFechamento";
+
 /**
  * Tipos da operação de caixa e do financeiro.
  *
@@ -92,6 +94,8 @@ export type ResumoDeFechamento = {
   total_recebido?: number;
   /** Unidades vendidas na sessão (0173). Ausente em servidor sem a 0173. */
   itens_vendidos?: { pizzas: number; fogazzas: number; bebidas: number };
+  /** Pedidos do turno sem recebimento no caixa (0176). Ausente em servidor sem a 0176. */
+  sem_recebimento?: PedidoSemRecebimento[];
 };
 
 export type SessaoHistorica = {
