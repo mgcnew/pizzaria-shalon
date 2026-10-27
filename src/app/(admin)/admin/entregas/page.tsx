@@ -15,8 +15,9 @@ export const metadata: Metadata = { title: "Entregas" };
  *
  * A central operacional da rua. Servidor busca; o painel exibe e age.
  *
- * `deliveries.settle` esconde o acerto da interface — mas quem esconde de
- * verdade é a RPC, que recusa a chamada direta do mesmo jeito (CLAUDE.md §12).
+ * Sem `deliveries.manage` o acerto nem aparece (0178: era `deliveries.settle`,
+ * que agora só vale para acerto com diferença) — mas quem decide de verdade é
+ * a RPC, que recusa a chamada direta do mesmo jeito (CLAUDE.md §12).
  */
 export default async function Page({
   searchParams,
@@ -51,7 +52,7 @@ export default async function Page({
       <PainelDeEntregas
         central={central}
         corrida={corrida}
-        podeAcertar={podeNaUI(sessao, "deliveries.settle")}
+        podeAcertar={podeNaUI(sessao, "deliveries.manage")}
         podeMarcarPresenca={podeNaUI(sessao, "employees.attendance")}
         podeReceber={podeNaUI(sessao, "payments.register")}
         cobraveis={cobraveis}

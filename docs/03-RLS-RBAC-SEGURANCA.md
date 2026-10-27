@@ -862,25 +862,31 @@ semântica, nunca por nome de cargo (RN-RBAC-004).
 | Permissão | Owner/Admin | Atendente | O que abre |
 |---|---|---|---|
 | `deliveries.view` | ✓ | ✓ | Ver corridas, atribuições e acertos |
-| `deliveries.manage` | ✓ | ✓ | Atribuir, despachar e conferir o retorno |
-| `deliveries.settle` | ✓ | ✗ | **Fazer o acerto** — é o ato que move dinheiro |
+| `deliveries.manage` | ✓ | ✓ | Atribuir, despachar ("Saiu com…"), conferir o retorno e **fazer o acerto sem diferença** |
+| `deliveries.settle` | ✓ | ✗ | **Concluir acerto com diferença** (o motoboy trouxe mais ou menos) |
 | `internal.view` | ✓ | ✓ | Ver cortesia, consumo e perda |
 | `internal.register` | ✓ | ✓ | Registrar e estornar movimento interno |
 | `employees.finance.view` | ✓ | ✗ | Ler o livro do funcionário |
 | `employees.finance.manage` | ✓ | ✗ | Lançar e estornar no livro |
 
-O balcão **opera a entrega inteira** e **não fecha o acerto**: conferir que o
-pedido chegou e recolher o dinheiro do motoboy são atos diferentes, e só o
-segundo mexe na gaveta.
+**Mudança de 27/10/2026 (D-2026-10-27-172), substitui a decisão de 22/09:** o
+balcão opera a entrega inteira **e fecha o acerto quando o motoboy traz
+exatamente o esperado**. Na prática, com o acerto restrito à dona, nenhuma
+saída era usada e o dinheiro da rua entrava na gaveta por fora. O que continua
+restrito é a **diferença**: acerto em que o motoboy trouxe mais ou menos que o
+esperado só é concluído por quem tem `deliveries.settle`.
 
-`deliveries.settle` é checada em `conciliar_corrida` **antes** de qualquer
-leitura da corrida, para que a recusa seja por permissão e não por acaso de
-estado.
+`deliveries.manage` é checada em `conciliar_corrida` **antes** de qualquer
+leitura da corrida; `deliveries.settle`, depois de calcular a diferença, só
+quando ela não é zero.
 
 ## 19.5 O único caminho do dinheiro da rua para a gaveta
 
 `conciliar_corrida` é a **única** rotina que cria `cash_movements` a partir de
-um recebimento feito na rua. Ela percorre os recebimentos em dinheiro dos
+um recebimento feito na rua **por um pedido de saída de motoboy**. O dinheiro
+registrado com "entrou na gaveta" desmarcado em pedido que não saiu em saída
+nenhuma entra por `dinheiro_entrou_na_gaveta` (D-2026-10-27-171), que recusa
+pedido de saída. Ela percorre os recebimentos em dinheiro dos
 pedidos entregues daquela corrida que ainda não têm `cash_session_id`,
 carimba a sessão e cria o movimento físico.
 
@@ -1438,7 +1444,7 @@ Aprovada por `D-2026-09-25-78`; modelo em `02` §5.4-A, desenho em
 
 - público: somente estado apropriado via tracking do próprio pedido;
 - interno: `deliveries.view/manage`;
-- acerto: operação transacional, e exige `deliveries.settle`.
+- acerto: operação transacional; exige `deliveries.manage`, e `deliveries.settle` quando há diferença (D-2026-10-27-172).
 
 `driver_runs`, `driver_run_orders` e `driver_run_settlements` têm RLS com
 `enable` + `force` e **nenhuma policy alcança `anon`**. Não há policy de

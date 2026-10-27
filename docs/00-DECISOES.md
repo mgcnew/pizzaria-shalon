@@ -5242,3 +5242,29 @@ pela gaveta sem passar pelo sistema:
    (sem comanda de papel) e como cobrar casos como "pedaço de brigadeiro" e
    "massa grossa" (cadastro × ajuste de preço com motivo).
 
+## D-2026-10-27-172 — "Saiu com…": toda entrega sai com um motoboy, e a balconista faz o acerto
+
+**Problema (dona):** muitas entregas sem motoboy atribuído. Dados de 14 a 27/10:
+91 entregas concluídas, **nenhuma** em saída de motoboy (`driver_runs` vazia desde
+sempre). O "Despachar" da tela Pedidos punha a entrega na rua sem motoboy, contra
+RN-STATE-007; o acerto exigia `deliveries.settle`, que a balconista não tem. Sem
+saída e sem acerto, o dinheiro das entregas entrava na gaveta por fora — entrega
+concluída sem recebimento e dinheiro "fora da gaveta" esquecido (D-169, D-171).
+
+**Decisão (aprovada em 27/10/2026; migration 0178 `20261027150000_saiu_com_motoboy`;
+RN-STATE-007 e RN-RUN-004 detalhados; 03 §19.4 alterado):**
+1. **"Saiu com…"** no lugar de "Despachar" (`sair_com_motoboy`): toca-se no motoboy
+   e o pedido é vinculado (`atribuir_entrega`) e posto na rua; motoboy já na rua
+   leva o pedido na mesma saída. `comando_pedido 'despachar'` recusa entrega sem
+   vínculo ativo. Lista em `motoboys_para_despacho`: ativos, sem falta hoje.
+2. **Concluir/Falhou pelo vínculo** (`finalizar_pedido`, usado por todos os
+   comandos da tela Pedidos): entrega vinculada passa por `registrar_retorno`;
+   o resto segue `comando_pedido`. Entrega que já estava na rua antes da 0178
+   continua podendo ser concluída como antes.
+3. **Acerto pela balconista:** `conciliar_corrida` exige `deliveries.manage`;
+   `deliveries.settle` só para diferença ≠ 0 (mensagem diz quanto e pede quem
+   pode conciliar). Substitui a decisão de 22/09 (03 §19.4) de o balcão não
+   fechar acerto.
+4. **Para a dona:** cadastrar todos os motoboys em Equipe como entregadores
+   (hoje só o Erisvan). Não precisam de login.
+

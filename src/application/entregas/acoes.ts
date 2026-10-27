@@ -214,3 +214,55 @@ export async function transferirEntrega(entrada: unknown): Promise<Resultado> {
   revalidatePath(ROTA_PEDIDOS);
   return resposta(data);
 }
+
+export type MotoboyParaDespacho = {
+  id: string;
+  nome: string;
+  presente: boolean;
+  na_rua: boolean;
+  entregas_na_rua: number;
+};
+
+/**
+ * Quem pode levar uma entrega agora (D-2026-10-27-172): entregadores ativos,
+ * sem quem faltou hoje. Lido na hora em que o "Saiu com…" abre.
+ */
+export async function listarMotoboysParaDespacho(): Promise<
+  { ok: true; motoboys: MotoboyParaDespacho[] } | { ok: false; erro: string }
+> {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("motoboys_para_despacho");
+  if (error) {
+    logger.error("entregas:listarMotoboysParaDespacho", { code: (error as { code?: string }).code });
+    return { ok: false, erro: "Não foi possível carregar os motoboys agora." };
+  }
+  const r = (data ?? {}) as { ok?: boolean; erro?: string; motoboys?: MotoboyParaDespacho[] };
+  return r.ok ? { ok: true, motoboys: r.motoboys ?? [] } : { ok: false, erro: r.erro ?? "Não foi possível carregar os motoboys." };
+}
+
+const saidaComMotoboySchema = z.object({
+  pedido_id: z.string().uuid(),
+  motoboy_id: z.string().uuid(),
+});
+
+/**
+ * "Saiu com…" (D-2026-10-27-172, RN-STATE-007): vincula a entrega ao motoboy e
+ * a põe na rua num ato. Motoboy já na rua leva este pedido na mesma saída.
+ */
+export async function sairComMotoboy(entrada: unknown): Promise<Resultado> {
+  const v = saidaComMotoboySchema.safeParse(entrada);
+  if (!v.success) return { ok: false, erro: "Escolha o motoboy." };
+
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("sair_com_motoboy", {
+    p_order_id: v.data.pedido_id,
+    p_motoboy_id: v.data.motoboy_id,
+  });
+  if (error) return falha("sairComMotoboy", error);
+
+  revalidatePath(ROTA_ENTREGAS);
+  revalidatePath(ROTA_PEDIDOS);
+  revalidatePath(`${ROTA_PEDIDOS}/${v.data.pedido_id}`);
+  return resposta(data);
+}
+

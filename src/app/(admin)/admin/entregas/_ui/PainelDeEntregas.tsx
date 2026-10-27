@@ -87,7 +87,10 @@ export function PainelDeEntregas({
 }: {
   central: CentralDeEntregas;
   corrida: Corrida | null;
-  /** `deliveries.settle`. Sem ela o acerto nem aparece (RN-RBAC-004). */
+  /**
+   * `deliveries.manage` (0178): quem monta a saída faz o acerto. Diferença no
+   * acerto o servidor só aceita de quem tem `deliveries.settle`.
+   */
   podeAcertar: boolean;
   /** `employees.attendance`: marcar Veio ou Faltou. O servidor confere de novo. */
   podeMarcarPresenca?: boolean;

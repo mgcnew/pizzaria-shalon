@@ -60,16 +60,25 @@ export async function executarComando(entrada: unknown): Promise<ResultadoComand
   if (!validado.success) return { ok: false, erro: "Dados inválidos para esta ação." };
 
   const supabase = await getSupabaseServerClient();
-  const { data, error } = await supabase.rpc("comando_pedido", {
+  // `finalizar_pedido` (0178): concluir e falhou de entrega vinculada passam
+  // pelo retorno do motoboy; todo o resto segue para `comando_pedido`.
+  const parametros = {
     p_order_id: validado.data.pedido_id,
     p_comando: validado.data.comando,
     p_dados: { motivo: validado.data.motivo ?? null, taxa: validado.data.taxa ?? null },
-  });
+  };
+  let { data, error } = await supabase.rpc("finalizar_pedido", parametros);
+  // Banco sem a 0178 (função inexistente): o caminho antigo, para a tela de
+  // Pedidos não parar enquanto a migration não entra.
+  if (error && (error as { code?: string }).code === "PGRST202") {
+    ({ data, error } = await supabase.rpc("comando_pedido", parametros));
+  }
 
   if (error) return falha("executarComando", error);
 
   revalidatePath(ROTA);
   revalidatePath(`${ROTA}/${validado.data.pedido_id}`);
+  revalidatePath("/admin/entregas");
   return data as ResultadoComando;
 }
 

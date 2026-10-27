@@ -733,6 +733,13 @@ Fluxo normal:
 ### RN-STATE-007 — Saída de entrega
 Vinculação do pedido a uma saída de entrega/motoboy é a operação que o coloca como “Saiu para entrega”.
 
+**Como (D-2026-10-27-172).** O "Despachar" da tela Pedidos é **"Saiu com…"**:
+escolhe-se o motoboy (entregadores ativos, sem quem faltou hoje) e o pedido é
+vinculado e despachado num ato; motoboy já na rua leva o pedido na mesma saída.
+O servidor recusa pôr entrega na rua sem vínculo ativo. "Concluir" e "Falhou" de
+entrega vinculada registram o retorno daquela saída; sem entrega pendente, a
+saída vai para o acerto.
+
 ### RN-STATE-008 — Falha
 Falha de entrega:
 
@@ -1153,6 +1160,10 @@ existe caminho para dinheiro da rua entrar no caixa sem pedido por trás.
 
 ### RN-RUN-004
 Diferença registra valor, motivo, responsável, data/hora, notas e anexo opcional.
+
+**Quem faz o acerto (D-2026-10-27-172).** Quem monta a saída (`deliveries.manage`)
+conclui o acerto quando o motoboy traz exatamente o esperado. Com diferença, só
+quem pode conciliá-la (`deliveries.settle`).
 
 ### RN-RUN-005
 Diferença de motoboy nunca gera desconto salarial automático.
