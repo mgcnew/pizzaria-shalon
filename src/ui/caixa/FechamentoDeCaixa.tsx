@@ -12,6 +12,7 @@ import { montarFechamentoDeCaixa } from "@/domain/impressao/cupons";
 import { relatorioDe, ResumoVisualDoFechamento, type ConferenciaDoFechamento } from "./ResumoVisualDoFechamento";
 import { PedidosSemRecebimento } from "./PedidosSemRecebimento";
 import { CausasDaDiferenca } from "./CausasDaDiferenca";
+import { PerguntaDoFundo, type RespostaDoFundo } from "./PerguntaDoFundo";
 
 /**
  * Causas que a pessoa marca ao justificar (D-2026-10-27-171). Viram o começo do
@@ -64,6 +65,8 @@ const ACOES_REAIS: AcoesDoFechamento = {
  * O esperado é fundo + entradas − saídas em dinheiro (`esperado_em_caixa`),
  * por isso o fundo entra na contagem. Cartão e Pix não são dinheiro físico, e
  * dinheiro que ainda está com o motoboy não está na gaveta (RN-CAIXA-014).
+ * Antes da contagem, a pessoa diz se o fundo ainda está lá: o que a dona levou
+ * vira retirada registrada e sai do esperado (D-2026-10-27-173).
  */
 export function FechamentoDeCaixa({
   erroExterno,
@@ -92,6 +95,7 @@ export function FechamentoDeCaixa({
   // Muda a cada nova conferência: as causas são buscadas de novo.
   const [versaoDaConferencia, setVersaoDaConferencia] = useState(0);
   const [causasMarcadas, setCausasMarcadas] = useState<string[]>([]);
+  const [fundo, setFundo] = useState<RespostaDoFundo | null>(null);
   const { imprimir, enviando, erro: erroDeImpressao } = useImprimirDocumento();
   const resultado = useRef<HTMLDivElement>(null);
   useAvisarOperacaoEmVoo(conferindo);
@@ -134,6 +138,24 @@ export function FechamentoDeCaixa({
       });
       setVersaoDaConferencia((v) => v + 1);
     });
+  }
+
+  if (conferencia === null && fundo === null) {
+    // A pergunta depende do fundo, que vem com a prévia. Sem prévia, segue sem ela.
+    if (previa === null) {
+      return <div aria-hidden="true" className="h-[180px] animate-pulse rounded-12 bg-tn" />;
+    }
+    if (previa.ok && previa.fundo > 0) {
+      return (
+        <div className="flex flex-col gap-4">
+          <Passo atual={1} />
+          <PerguntaDoFundo fundo={previa.fundo} retiradas={previa.retiradas} aoResponder={setFundo} />
+          <Button type="button" variante="fantasma" onClick={aoCancelar}>
+            Cancelar
+          </Button>
+        </div>
+      );
+    }
   }
 
   if (conferencia === null) {
@@ -198,9 +220,7 @@ export function FechamentoDeCaixa({
               <ul className="m-0 mt-3 flex list-none flex-col gap-2 p-0 text-[14px] leading-snug text-ink-2">
                 <li className="flex gap-2">
                   <Marca tipo="sim" />
-                  <span>
-                    <strong className="text-ink">Conte o fundo de troco também</strong>, junto com as notas e moedas das vendas.
-                  </span>
+                  <span>{instrucaoDoFundo(fundo)}</span>
                 </li>
                 <li className="flex gap-2">
                   <Marca tipo="nao" />
@@ -419,6 +439,30 @@ export function FechamentoDeCaixa({
 
       <ResumoVisualDoFechamento conferencia={conferencia} aberto={conferencia.fechado} />
     </form>
+  );
+}
+
+/** O que dizer do fundo, conforme a resposta dada antes da contagem. */
+function instrucaoDoFundo(fundo: RespostaDoFundo | null) {
+  if (fundo !== null && fundo.levado >= fundo.fundo) {
+    return (
+      <>
+        <strong className="text-ink">O fundo já saiu da gaveta</strong>: conte só as notas e moedas que ficaram.
+      </>
+    );
+  }
+  if (fundo !== null && fundo.levado > 0) {
+    return (
+      <>
+        <strong className="text-ink">Conte o que ficou do fundo</strong> ({formatBRL(fundo.fundo - fundo.levado)}),
+        junto com as notas e moedas das vendas.
+      </>
+    );
+  }
+  return (
+    <>
+      <strong className="text-ink">Conte o fundo de troco também</strong>, junto com as notas e moedas das vendas.
+    </>
   );
 }
 

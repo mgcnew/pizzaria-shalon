@@ -1042,6 +1042,16 @@ Decisão de 25/09/2026 (`D-2026-09-25-78`). Desenho em
 ### RN-CAIXA-011
 Fechamento calcula caixa esperado e compara com valor contado.
 
+### RN-CAIXA-011-A — O fundo antes da contagem
+Quando o caixa foi aberto com fundo maior que zero, o fechamento pergunta, antes
+da contagem, se o fundo ainda está na gaveta: **sim** (conta-se tudo, fundo
+incluído), **a dona levou tudo** ou **a dona levou só uma parte** (informa-se
+quanto, menos que o fundo). Levar o fundo, inteiro ou em parte, é registrado
+como retirada da dona (sangria, RN-CAIXA-010-A) e sai do esperado. O fundo
+**continua** no esperado quando fica na gaveta: não é excluído por regra. Se já
+há retiradas da dona registradas no caixa, a pergunta avisa, para não registrar
+o fundo duas vezes. A contagem continua cega (D-2026-10-27-173).
+
 ### RN-CAIXA-012
 Diferença positiva ou negativa não impede necessariamente o fechamento, mas exige justificativa e auditoria.
 

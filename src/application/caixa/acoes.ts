@@ -187,6 +187,10 @@ export type PreviaDoFechamento =
       foraDaGaveta: number;
       /** Pedidos do turno ainda sem recebimento no caixa (0176): receber antes de fechar. */
       semRecebimento: PedidoSemRecebimento[];
+      /** Fundo da abertura: quem abriu já sabe, não revela o esperado. */
+      fundo: number;
+      /** Retiradas da dona (sangrias) já registradas, para não registrar o fundo duas vezes. */
+      retiradas: number;
     }
   | { ok: false };
 
@@ -210,6 +214,8 @@ export async function obterPreviaDoFechamento(): Promise<PreviaDoFechamento> {
       .map((r) => ({ metodo: r.metodo, total: r.total })),
     foraDaGaveta: resumo.dinheiro_fora_da_gaveta,
     semRecebimento: resumo.sem_recebimento ?? [],
+    fundo: resumo.fundo_inicial,
+    retiradas: resumo.sangrias,
   };
 }
 

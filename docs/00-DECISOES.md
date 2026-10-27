@@ -5268,3 +5268,23 @@ RN-STATE-007 e RN-RUN-004 detalhados; 03 §19.4 alterado):**
 4. **Para a dona:** cadastrar todos os motoboys em Equipe como entregadores
    (hoje só o Erisvan). Não precisam de login.
 
+## D-2026-10-27-173 — O fechamento pergunta pelo fundo antes da contagem
+
+**Problema (dona):** o fundo "conta no fechamento", mas ela leva o fundo antes
+de a balconista contar. Caso de 25/10: fundo R$ 85,00 + R$ 476,00 de vendas em
+dinheiro = esperado R$ 561,00; contado R$ 422,00; diferença mostrada
+−R$ 139,00. Os R$ 85,00 foram levados sem registro: a falta real era −R$ 54,00.
+
+**Decisão (aprovada em 27/10/2026; sem migration; RN-CAIXA-011-A):**
+1. O fundo segue no esperado (`esperado_em_caixa` inalterado): enquanto fica na
+   gaveta, ele está lá e tem de ser contado.
+2. Com fundo > 0, o fechamento pergunta antes da contagem: "Sim, está na
+   gaveta" / "Não, a dona levou tudo" / "A dona levou só uma parte" (valor
+   menor que o fundo). As duas últimas registram retirada da dona
+   (`tirar_dinheiro_da_gaveta`, motivo `retirada`, exige `cash.adjust`) e o
+   esperado desce.
+3. A prévia do fechamento passa a trazer o fundo e as retiradas já registradas;
+   nenhum dos dois revela o esperado, e a contagem continua cega
+   (RN-CAIXA-011). Havendo retiradas, a pergunta avisa para não descontar duas
+   vezes.
+4. O fechamento de 25/10 fica como foi registrado (decisão do Marcelo).
