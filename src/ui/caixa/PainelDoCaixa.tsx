@@ -9,8 +9,9 @@ import { abrirCaixa, movimentarCaixa } from "@/application/caixa/acoes";
 import { HistoricoDeVendas } from "./HistoricoDeVendas";
 import type { FormaParaRecebimento } from "@/app/(admin)/admin/pedidos/_ui/Recebimento";
 import { FechamentoDeCaixa, paraNumero } from "./FechamentoDeCaixa";
+import { SaidaDaGaveta } from "./SaidaDaGaveta";
 
-type Operacao = "abrir" | "reforco" | "sangria" | "fechar" | null;
+type Operacao = "abrir" | "reforco" | "sangria" | "saida" | "fechar" | null;
 
 export type ComandosDoCaixa = {
   abrirReforco: () => void;
@@ -31,6 +32,7 @@ export function PainelDoCaixa({
   aoConcluirVenda,
   podeEstornar,
   podeTrocarForma = false,
+  podeMovimentar = false,
   formas = [],
 }: {
   estado: EstadoVisivelDoCaixa;
@@ -41,6 +43,8 @@ export function PainelDoCaixa({
   podeEstornar: boolean;
   /** Estornar E registrar pagamento: a troca de forma é as duas coisas. */
   podeTrocarForma?: boolean;
+  /** Sangria, reforço e a saída rápida (`cash.adjust`). */
+  podeMovimentar?: boolean;
   formas?: FormaParaRecebimento[];
 }) {
   const [operacao, setOperacao] = useState<Operacao>(null);
@@ -100,6 +104,13 @@ export function PainelDoCaixa({
           {estado.aberto ? (
             <div className="flex flex-1 flex-wrap justify-end gap-2 sm:flex-none">
               <HistoricoDeVendas podeEstornar={podeEstornar} podeTrocarForma={podeTrocarForma} formas={formas} />
+              {/* D-2026-10-27-171: a saída da gaveta à vista. Antes só existia
+                  por tecla (F9), e nenhuma saída era registrada. */}
+              {podeMovimentar ? (
+                <Button tamanho="sm" variante="secundario" onClick={() => abrir("saida")}>
+                  Tirar dinheiro
+                </Button>
+              ) : null}
               <Button tamanho="sm" variante="secundario" onClick={() => abrir("fechar")}>
                 Fechar caixa
               </Button>
@@ -161,6 +172,10 @@ export function PainelDoCaixa({
             />
           ) : null}
 
+          {operacao === "saida" ? (
+            <SaidaDaGaveta aoConcluir={fecharOperacao} aoCancelar={fecharOperacao} />
+          ) : null}
+
           {operacao === "fechar" ? (
             <FechamentoDeCaixa
               erroExterno={erro}
@@ -178,6 +193,7 @@ function tituloDaOperacao(operacao: Exclude<Operacao, null>) {
   if (operacao === "abrir") return "Abrir caixa";
   if (operacao === "reforco") return "Registrar reforço";
   if (operacao === "sangria") return "Registrar sangria";
+  if (operacao === "saida") return "Tirar dinheiro da gaveta";
   return "Fechar caixa";
 }
 

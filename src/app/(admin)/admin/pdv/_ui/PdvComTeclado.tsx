@@ -307,6 +307,7 @@ export function PdvComTeclado({
             aoConcluirVenda={() => executar("venda:concluir")}
             podeEstornar={podeEstornar}
             podeTrocarForma={podeTrocarForma}
+            podeMovimentar={podeMovimentar}
             formas={formas}
           />
         </div>

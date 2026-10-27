@@ -11,6 +11,21 @@ import { useImprimirDocumento } from "@/ui/impressao/useImprimirDocumento";
 import { montarFechamentoDeCaixa } from "@/domain/impressao/cupons";
 import { relatorioDe, ResumoVisualDoFechamento, type ConferenciaDoFechamento } from "./ResumoVisualDoFechamento";
 import { PedidosSemRecebimento } from "./PedidosSemRecebimento";
+import { CausasDaDiferenca } from "./CausasDaDiferenca";
+
+/**
+ * Causas que a pessoa marca ao justificar (D-2026-10-27-171). Viram o começo do
+ * texto da justificativa, para a dona ler o porquê sem depender da memória de
+ * quem fechou. O que o sistema consegue ver ele mostra antes, com o gesto que
+ * corrige; estas são as que só quem estava no balcão sabe.
+ */
+const CAUSAS_DA_JUSTIFICATIVA = [
+  "Venda feita fora do sistema",
+  "Preço cobrado diferente do sistema",
+  "Dinheiro tirado da gaveta sem registrar",
+  "Troco dado errado",
+  "Não sei explicar",
+] as const;
 
 export function paraNumero(texto: string): number | null {
   const limpo = texto.replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
@@ -74,6 +89,9 @@ export function FechamentoDeCaixa({
   const [confirmando, setConfirmando] = useState(false);
   const [previa, setPrevia] = useState<PreviaDoFechamento | null>(null);
   const [conferindo, iniciarConferencia] = useTransition();
+  // Muda a cada nova conferência: as causas são buscadas de novo.
+  const [versaoDaConferencia, setVersaoDaConferencia] = useState(0);
+  const [causasMarcadas, setCausasMarcadas] = useState<string[]>([]);
   const { imprimir, enviando, erro: erroDeImpressao } = useImprimirDocumento();
   const resultado = useRef<HTMLDivElement>(null);
   useAvisarOperacaoEmVoo(conferindo);
@@ -99,6 +117,24 @@ export function FechamentoDeCaixa({
   useEffect(() => {
     if (etapa > 0) resultado.current?.focus();
   }, [etapa]);
+
+  /** Depois de uma correção, confere de novo com a MESMA contagem: se bater, fecha. */
+  function conferirDeNovo() {
+    if (contado === null || contado < 0) return;
+    aoErro(null);
+    iniciarConferencia(async () => {
+      const r = await acoes.conferir({ contado });
+      if (!r.ok) return aoErro(r.erro);
+      setConferencia({
+        fechado: r.fechado,
+        esperado: r.esperado,
+        contado: r.contado,
+        diferenca: r.diferenca,
+        resumo: r.resumo,
+      });
+      setVersaoDaConferencia((v) => v + 1);
+    });
+  }
 
   if (conferencia === null) {
     return (
@@ -230,7 +266,12 @@ export function FechamentoDeCaixa({
       className="flex flex-col gap-4"
       action={(dados) => {
         if (contado === null || contado < 0) return;
-        const justificativa = String(dados.get("justificativa") ?? "").trim();
+        const texto = String(dados.get("justificativa") ?? "").trim();
+        const justificativa = [causasMarcadas.join("; "), texto].filter(Boolean).join(". ");
+        if (precisaJustificar && justificativa.length < 3) {
+          aoErro("Marque uma causa ou escreva o que aconteceu.");
+          return;
+        }
         aoErro(null);
         iniciarConferencia(async () => {
           const r = await acoes.fechar({
@@ -282,18 +323,51 @@ export function FechamentoDeCaixa({
       {erroDeImpressao ? <Aviso erro={erroDeImpressao} /> : null}
 
       {precisaJustificar && !conferencia.fechado ? (
-        <div>
-          <Textarea
-            name="justificativa"
-            label="O que aconteceu? (obrigatório para fechar com diferença)"
-            rows={3}
-            required
+        <>
+          <CausasDaDiferenca
+            key={versaoDaConferencia}
+            diferenca={diferenca ?? 0}
+            semRecebimento={conferencia.resumo?.sem_recebimento ?? []}
+            aoCorrigir={conferirDeNovo}
           />
-          <p className="m-0 mt-[6px] text-[12px] text-muted">
-            Ex.: troco dado a mais, sangria que não foi registrada, nota rasgada. O sistema não desconta diferença de
-            caixa de ninguém automaticamente.
-          </p>
-        </div>
+
+          <fieldset className="m-0 min-w-0 border-0 p-0">
+            <legend className="mb-1 p-0 text-[14px] font-semibold text-ink">
+              Se ainda sobrou diferença, o que aconteceu?
+            </legend>
+            <p className="m-0 mb-2 text-[12.5px] text-muted">Marque o que for o caso e, se quiser, explique embaixo.</p>
+            <div className="flex flex-col">
+              {CAUSAS_DA_JUSTIFICATIVA.map((causa) => (
+                <label key={causa} className="flex min-h-[44px] cursor-pointer items-center gap-3 text-[14px] text-ink">
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 shrink-0 accent-[var(--shalon-red,#b91c1c)]"
+                    checked={causasMarcadas.includes(causa)}
+                    onChange={() =>
+                      setCausasMarcadas((atuais) =>
+                        atuais.includes(causa) ? atuais.filter((c) => c !== causa) : [...atuais, causa],
+                      )
+                    }
+                  />
+                  {causa}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <div>
+            <Textarea
+              name="justificativa"
+              label={causasMarcadas.length > 0 ? "Detalhes (opcional)" : "O que aconteceu? (obrigatório para fechar com diferença)"}
+              rows={3}
+              required={causasMarcadas.length === 0}
+            />
+            <p className="m-0 mt-[6px] text-[12px] text-muted">
+              Ex.: qual pedido foi feito na comanda de papel, quanto foi cobrado a mais ou a menos. O sistema não
+              desconta diferença de caixa de ninguém automaticamente.
+            </p>
+          </div>
+        </>
       ) : null}
 
       <div className="flex flex-wrap gap-2">

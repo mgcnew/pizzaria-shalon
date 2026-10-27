@@ -5209,3 +5209,36 @@ de cada origem ("máquina", "antecipado"), porque um cai na maquininha e o outro
 na conta da loja. A prévia de antes da contagem continua por forma, para
 conferir com a maquininha.
 
+## D-2026-10-27-171 — Saída rápida da gaveta e fechamento que aponta as causas da diferença
+
+**Problema (dona):** o caixa fecha com diferença quase todo dia e a balconista não
+sabe explicar. Análise de 14 a 25/10: o sistema calcula certo (25/10: vendas em
+dinheiro R$ 476 + fundo R$ 85 = esperado R$ 561); as diferenças vêm do que passa
+pela gaveta sem passar pelo sistema:
+- **nenhuma saída registrada em 12 dias** (sangria, despesa, motoboy). A sangria
+  só existia por tecla (F9) e a despesa pelo caixa só no Financeiro, que a
+  balconista não abre → faltas (25/10 −R$ 139; 23/10 "foi retirado 10 do caixa");
+- vendas feitas em comanda de papel → sobras (20/10 +R$ 193,50);
+- preço cobrado diferente do sistema (24/10 e 22/10);
+- dinheiro de entrega com "entrou na gaveta" desmarcado → sobra no dia e um
+  "fora da gaveta" que só crescia (R$ 296,98 em 25/10, desde 17/10).
+
+**Decisão (aprovada em 27/10/2026; migration 0177
+`20261027130000_saida_rapida_e_causas_da_diferenca`; RN-CAIXA-010-A e 012-A):**
+1. **Tirar dinheiro** à vista no painel do caixa (`tirar_dinheiro_da_gaveta`,
+   `cash.adjust`): motoboy, compra, retirada da dona, outro. Retirada é sangria;
+   os demais são despesa paga pelo caixa, nas categorias novas "Pagamento de
+   motoboy", "Compras do dia" e "Outras despesas do caixa" (achadas pelo nome).
+2. **Fechamento com causas** (`causas_da_diferenca`, `cash.view`): com diferença,
+   mostra dinheiro fora da gaveta ("Está na gaveta"), nenhuma saída registrada
+   ("Registrar dinheiro que saiu"), forma diferente da escolhida, pedidos sem
+   recebimento e vendas com troco. Corrigiu → confere de novo com a mesma
+   contagem. A justificativa ganha causas marcáveis + texto opcional.
+3. **Dinheiro fora da gaveta** (`dinheiro_entrou_na_gaveta`) entra no caixa do
+   turno em que foi recebido; turno fechado é corrigido com o original em
+   `cash_session_corrections` (`cash_collected`, tipo novo) e exige `cash.reopen`.
+   Pedido de saída de entrega fica com o acerto do motoboy.
+4. **Fica para a dona decidir, sem implementação:** vender tudo pelo sistema
+   (sem comanda de papel) e como cobrar casos como "pedaço de brigadeiro" e
+   "massa grossa" (cadastro × ajuste de preço com motivo).
+

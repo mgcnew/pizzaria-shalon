@@ -192,3 +192,36 @@ export type Resultado =
        */
       jaPago?: boolean;
     };
+
+/** O que pode explicar a diferença de uma sessão (`causas_da_diferenca`, 0177). */
+export type CausasDaDiferenca = {
+  ok: true;
+  sessao_id: string;
+  /** Dinheiro registrado com "entrou na gaveta" desmarcado e nunca recolhido. */
+  fora_da_gaveta: {
+    pagamento_id: string;
+    pedido_id: string;
+    numero: number;
+    cliente: string | null;
+    valor: number;
+    recebido_em: string;
+    deste_turno: boolean;
+    turno_id: string | null;
+    turno_data: string | null;
+    turno_fechado: boolean | null;
+  }[];
+  /** Dinheiro escolhido no pedido e registrado outra forma, ou o contrário. */
+  forma_diferente: {
+    pedido_id: string;
+    numero: number;
+    cliente: string | null;
+    valor: number;
+    escolhida: string;
+    registrada: string;
+  }[];
+  /** Vendas em dinheiro com troco, para conferir o valor entregue. */
+  trocos: { pedido_id: string; numero: number; valor: number; entregue: number | null; troco: number }[];
+  /** Sangrias, despesas e adiantamentos registrados na sessão. */
+  saidas_registradas: number;
+};
+

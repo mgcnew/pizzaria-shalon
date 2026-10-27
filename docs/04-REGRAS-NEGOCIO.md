@@ -976,6 +976,14 @@ Reforço/suprimento representa dinheiro físico adicionado e aumenta o caixa fí
 ### RN-CAIXA-010 — Despesa
 Despesa representa gasto do negócio. Se paga com o caixa da sessão, reduz o físico esperado. Não deve ser confundida com sangria.
 
+### RN-CAIXA-010-A — Saída rápida da gaveta
+Quem opera o caixa (`cash.adjust`) registra qualquer saída de dinheiro da gaveta
+num só gesto, escolhendo o motivo: **pagamento do motoboy**, **compra** ou
+**outro** são despesa paga pelo caixa (lançamento no Financeiro, na categoria do
+motivo, mais a saída da gaveta); **retirada da dona** é sangria. "Outro" exige
+dizer para que foi. A saída não pode ser maior que o esperado na gaveta
+(D-2026-10-27-171).
+
 Na implementação isso são **dois registros com significados diferentes**: o
 lançamento (`financial_entries`) diz que houve um gasto, com categoria e
 motivo; o movimento (`cash_movements`) diz que saiu dinheiro da gaveta. Uma
@@ -1029,6 +1037,21 @@ Fechamento calcula caixa esperado e compara com valor contado.
 
 ### RN-CAIXA-012
 Diferença positiva ou negativa não impede necessariamente o fechamento, mas exige justificativa e auditoria.
+
+### RN-CAIXA-012-A — Causas antes da justificativa
+Com diferença, antes de pedir a justificativa o fechamento mostra o que o
+sistema encontrou no turno e pode explicá-la — dinheiro registrado fora da
+gaveta, nenhuma saída registrada (quando falta), forma registrada diferente da
+escolhida no pedido, pedidos sem recebimento e vendas com troco — cada um com o
+gesto que corrige. Depois de corrigir, o caixa é conferido de novo com a mesma
+contagem; se bater, fecha. A justificativa pode ser feita marcando causas
+("venda fora do sistema", "preço diferente", "dinheiro tirado sem registrar",
+"troco errado", "não sei explicar") e um texto opcional.
+
+Dinheiro registrado fora da gaveta que de fato entrou entra no caixa **do turno
+em que foi recebido**. Turno fechado é corrigido como em RN-CAIXA-016: esperado
+e diferença recalculados, original preservado, contagem física intocada, e
+exige permissão de corrigir caixa fechado (D-2026-10-27-171).
 
 ### RN-CAIXA-013
 Caixa pode ser fechado com saídas de motoboy ainda pendentes, desde que o sistema destaque a pendência.

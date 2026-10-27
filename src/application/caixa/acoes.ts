@@ -6,7 +6,7 @@ import { z } from "zod";
 import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
 import { logger } from "@/lib/logger";
 import { obterResumoDeFechamento } from "./consultas";
-import type { ResumoDeFechamento, Resultado } from "./tipos";
+import type { CausasDaDiferenca, ResumoDeFechamento, Resultado } from "./tipos";
 import type { PedidoSemRecebimento } from "@/domain/caixa/relatorioDeFechamento";
 
 /**
@@ -115,6 +115,67 @@ export async function movimentarCaixa(entrada: unknown): Promise<Resultado> {
 
   revalidatePath(ROTA_PDV);
   return resposta(data);
+}
+
+const saidaSchema = z.object({
+  motivo: z.enum(["motoboy", "compra", "retirada", "outro"]),
+  valor: dinheiro.refine((n) => n > 0, "Informe um valor maior que zero."),
+  observacao: z.string().trim().max(300).optional(),
+  tentativa: chave,
+});
+
+/**
+ * D-2026-10-27-171: tirar dinheiro da gaveta com o motivo num toque.
+ * Retirada da dona é sangria; motoboy, compra e outro são despesa paga pelo
+ * caixa (aparece no Financeiro). Quem decide e grava é `tirar_dinheiro_da_gaveta`.
+ */
+export async function tirarDinheiroDaGaveta(entrada: unknown): Promise<Resultado> {
+  const v = saidaSchema.safeParse(entrada);
+  if (!v.success) return { ok: false, erro: "Escolha o motivo e informe o valor." };
+
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("tirar_dinheiro_da_gaveta", {
+    p_dados: {
+      motivo: v.data.motivo,
+      valor: v.data.valor,
+      observacao: v.data.observacao || null,
+      idempotency_key: v.data.tentativa,
+    },
+  });
+  if (error) return falha("tirarDinheiroDaGaveta", error);
+
+  revalidatePath(ROTA_PDV);
+  revalidatePath(ROTA_FIN);
+  return resposta(data);
+}
+
+/**
+ * D-2026-10-27-171: o dinheiro registrado fora da gaveta entra no caixa do
+ * turno em que foi recebido. Turno já fechado é corrigido no servidor.
+ */
+export async function dinheiroEntrouNaGaveta(pagamentoId: unknown): Promise<Resultado> {
+  const v = z.string().uuid().safeParse(pagamentoId);
+  if (!v.success) return { ok: false, erro: "Pagamento inválido." };
+
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("dinheiro_entrou_na_gaveta", { p_pagamento_id: v.data });
+  if (error) return falha("dinheiroEntrouNaGaveta", error);
+
+  revalidatePath(ROTA_PDV);
+  revalidatePath("/admin/relatorios");
+  return resposta(data);
+}
+
+/** O que o banco sabe e pode explicar a diferença da sessão aberta. Só leitura. */
+export async function obterCausasDaDiferenca(): Promise<CausasDaDiferenca | null> {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("causas_da_diferenca", { p_sessao: null });
+  if (error) {
+    logger.error("caixa:obterCausasDaDiferenca", { code: (error as { code?: string }).code });
+    return null;
+  }
+  const bruto = data as { ok?: boolean } | null;
+  return bruto?.ok ? (data as CausasDaDiferenca) : null;
 }
 
 export type PreviaDoFechamento =
