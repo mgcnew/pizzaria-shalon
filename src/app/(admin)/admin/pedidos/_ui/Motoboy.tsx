@@ -424,7 +424,7 @@ export function ModalMotoboyVoltou({
       ) : recebendo ? (
         <div className="flex flex-col gap-3">
           <p className="m-0 text-[14px] text-ink-2">
-            Receber <strong className="text-ink">#{recebendo.pedido.numero}</strong>
+            Como o cliente pagou <strong className="text-ink">#{recebendo.pedido.numero}</strong>
             {recebendo.pedido.cliente ? ` · ${recebendo.pedido.cliente}` : ""}
           </p>
           <Recebimento
@@ -448,7 +448,7 @@ export function ModalMotoboyVoltou({
       ) : (
         <div className="flex flex-col gap-4">
           <p className="m-0 text-[13.5px] text-ink-2">
-            Receba cada entrega como o cliente pagou e marque a que não foi entregue. No fim, confira o dinheiro
+            Lance o pagamento de cada entrega como o cliente pagou e marque a que não foi entregue. No fim, confira o dinheiro
             que {nomeDoMotoboy} entrega.
           </p>
 
@@ -486,7 +486,7 @@ export function ModalMotoboyVoltou({
                         onClick={() => abrirRecebimento(p)}
                         className="min-h-10 cursor-pointer rounded-10 border border-tgb bg-transparent px-3 text-[13px] font-semibold text-tgf hover:bg-tg disabled:opacity-60"
                       >
-                        Receber {formatBRL(Math.max(0, p.total - p.pago))}
+                        Lançar pagamento {formatBRL(Math.max(0, p.total - p.pago))}
                         {p.forma_esperada ? ` · ${p.forma_esperada}` : ""}
                       </button>
                     )}
@@ -536,7 +536,7 @@ export function ModalMotoboyVoltou({
 
           {faltaReceber.length > 0 ? (
             <p className="m-0 text-[13px] text-ink-2">
-              Falta receber {faltaReceber.length === 1 ? "1 entrega" : `${faltaReceber.length} entregas`} acima.
+              Falta lançar o pagamento de {faltaReceber.length === 1 ? "1 entrega" : `${faltaReceber.length} entregas`} acima.
             </p>
           ) : null}
 

@@ -262,7 +262,8 @@ export function CentralDePedidos({
                   pedido={p}
                   hora={hora[p.id] ?? ""}
                   espera={espera[p.id] ?? ""}
-                  cobravel={podeReceber ? (cobraveis[p.id] ?? null) : null}
+                  // Na rua, o pagamento é lançado na volta do motoboy.
+                  cobravel={podeReceber && !p.motoboy ? (cobraveis[p.id] ?? null) : null}
                   aoCobrar={abrirCobranca}
                 />
               ))}

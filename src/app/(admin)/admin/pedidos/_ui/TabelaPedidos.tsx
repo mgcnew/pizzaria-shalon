@@ -148,7 +148,8 @@ export function TabelaPedidos({
               p.motoboy ? `Com ${p.motoboy.nome} na rua` : null,
             ].filter((t): t is string => t !== null);
 
-            const cobravel = cobraveis?.[p.id] ?? null;
+            // Na rua, o pagamento é lançado na volta do motoboy (D-2026-10-27-174).
+            const cobravel = p.motoboy ? null : (cobraveis?.[p.id] ?? null);
 
             const esperaAgora =
               agora === null
