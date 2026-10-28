@@ -82,6 +82,11 @@ describe("fechamento de caixa em texto (D-2026-10-23-163)", () => {
   const texto = (e: Partial<EntradaDoRelatorio> = {}, largura?: number) =>
     renderizarTexto(montarFechamentoDeCaixa({ data: "08/10/2026", ...montarRelatorioDeFechamento({ ...ENTRADA, ...e }) }, largura));
 
+  it("diz os descontos do caixa, e só quando houve (0180)", () => {
+    expect(texto({ descontos: { total: 8, pedidos: 2 } })).toMatch(/Descontos \(2\)\s+R\$ 8,00/);
+    expect(texto({ descontos: { total: 0, pedidos: 0 } })).not.toContain("Descontos");
+  });
+
   it("traz o recebido por forma, o movimento da gaveta, o esperado e a conferência", () => {
     const t = texto();
     expect(t).toContain("FECHAMENTO DE CAIXA");

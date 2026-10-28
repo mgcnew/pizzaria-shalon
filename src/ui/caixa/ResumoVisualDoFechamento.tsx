@@ -31,6 +31,7 @@ export function relatorioDe(conferencia: ConferenciaDoFechamento): RelatorioDeFe
     totalRecebido: r.total_recebido ?? null,
     itensVendidos: r.itens_vendidos ?? null,
     semRecebimento: r.sem_recebimento ?? null,
+    descontos: r.descontos ?? null,
     fundoInicial: r.fundo_inicial,
     movimentos: r.movimentos_da_gaveta ?? null,
     entrou: r.entrou_na_gaveta ?? null,
@@ -112,6 +113,14 @@ export function ResumoVisualDoFechamento({
       {resumo && relatorio ? (
         <>
           <PedidosSemRecebimento pedidos={relatorio.semRecebimento} />
+
+          {relatorio.descontos ? (
+            <p className="m-0 text-[13px] text-ink-2 print:text-black">
+              Descontos dados neste caixa: <strong className="text-ink print:text-black">{formatBRL(relatorio.descontos.total)}</strong>{" "}
+              em {relatorio.descontos.pedidos} {relatorio.descontos.pedidos === 1 ? "pedido" : "pedidos"}. Já estão fora do
+              recebido.
+            </p>
+          ) : null}
 
           {relatorio.foraDaGaveta > 0 ? (
             <p className="m-0 rounded-12 border border-twb bg-tw p-3 text-[13px] font-semibold text-twf print:rounded-none print:border-x-0 print:bg-white print:text-black">

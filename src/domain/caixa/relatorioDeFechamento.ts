@@ -40,6 +40,8 @@ export type EntradaDoRelatorio = {
   itensVendidos?: ItensVendidos | null;
   /** Pedidos do turno sem recebimento no caixa (0176). Servidor sem a 0176: lista vazia. */
   semRecebimento?: PedidoSemRecebimento[] | null;
+  /** Descontos dados nos pedidos recebidos neste caixa (0180). Servidor sem a 0180: não sai. */
+  descontos?: { total: number; pedidos: number } | null;
   recebimentos: { metodo: string; familia: string; total: number }[];
   /** Total recebido por todas as formas, vindo do servidor. */
   totalRecebido?: number | null;
@@ -81,6 +83,8 @@ export type RelatorioDeFechamento = {
   /** Pizzas, fogazzas e bebidas; só o que vendeu, em linhas. Vazio = nada a mostrar. */
   vendidos: LinhaDeQuantidade[];
   semRecebimento: PedidoSemRecebimento[];
+  /** Já descontados do recebido; dito à parte para a dona saber quanto deu. */
+  descontos: { total: number; pedidos: number } | null;
   recebidos: LinhaDoRelatorio[];
   totalRecebido: number | null;
   fundo: number;
@@ -215,6 +219,9 @@ export function montarRelatorioDeFechamento(e: EntradaDoRelatorio): RelatorioDeF
   return {
     vendidos: linhasDeVendidos(e.itensVendidos),
     semRecebimento: e.semRecebimento ?? [],
+    descontos: e.descontos && Number(e.descontos.total) > 0
+      ? { total: Number(e.descontos.total), pedidos: Number(e.descontos.pedidos) }
+      : null,
     recebidos: linhasDeRecebidos(e.recebimentos),
     totalRecebido: e.totalRecebido ?? null,
     fundo: e.fundoInicial,

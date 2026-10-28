@@ -639,6 +639,21 @@ Com a permissão `orders.defer_payment`, um pedido de **cliente identificado** p
 - desfazer exige motivo e não vale para retirada já concluída no fiado;
 - tudo é auditado. Sem limite por cliente; o balcão avisa quando o cliente tem fiado em aberto. *(Decisão de 17/10/2026; D-2026-10-17-153.)*
 
+### RN-PGTO-016 — Desconto na hora do pagamento
+Desconto manual, em reais, **com motivo**, dado **antes** de registrar o
+pagamento. Quem recebe (`payments.register`) dá até **R$ 5,00** sozinho;
+acima disso, só quem tem `orders.discount` (por padrão, a dona). Não é cupom
+nem promoção (CLAUDE.md §19).
+- O pedido guarda o desconto à parte: total = subtotal + taxa − desconto. O
+  servidor recalcula; a tela não manda total.
+- Pedido já pago não recebe desconto: o caminho é estornar e receber de novo.
+- Alteração aplicada ou taxa definida depois mantêm o desconto, limitado ao
+  novo valor; acréscimo soma ao total com desconto.
+- Dar, trocar ou tirar desconto é auditado (quem, quando, antes e depois).
+- O fechamento diz quanto foi dado em descontos no caixa; o recebido já vem
+  com o desconto. A comanda mostra a linha "Desconto" antes do total.
+*(Decisão de 27/10/2026; D-2026-10-28-175.)*
+
 ---
 
 ## 18. Revisão e envio

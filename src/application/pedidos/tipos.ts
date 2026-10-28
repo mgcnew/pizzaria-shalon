@@ -144,6 +144,8 @@ export type PedidoAdministrativo = {
   subtotal: number;
   taxa_entrega: number;
   total: number;
+  /** Desconto dado na hora do pagamento (0180). Ausente sem a 0180. */
+  desconto?: { valor: number; motivo: string | null };
   observacao: string | null;
   estimativa_min: number | null;
   estimativa_max: number | null;

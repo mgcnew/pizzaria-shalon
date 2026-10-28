@@ -307,6 +307,7 @@ export async function emitirDocumento(
         subtotal: Number(pedido.subtotal),
         taxa: Number(pedido.taxa_entrega),
         total: Number(pedido.total),
+        desconto: Number(pedido.desconto?.valor ?? 0),
       },
     }, largura);
   } else {

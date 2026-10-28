@@ -111,7 +111,8 @@ Exemplos:
 - `orders.cancel`
 - `orders.override_delivery_fee`
 - `orders.reprint`
-- `payments.register` — registrar o pagamento efetivamente recebido
+- `payments.register` — registrar o pagamento efetivamente recebido (inclui dar até R$ 5,00 de desconto, RN-PGTO-016)
+- `orders.discount` — dar desconto acima de R$ 5,00 no pagamento (Owner/Admin por padrão; D-2026-10-28-175)
 - `cash.view`
 - `cash.open`
 - `cash.close`

@@ -422,6 +422,43 @@ export async function registrarPagamento(entrada: unknown): Promise<Resultado> {
   return resposta(data);
 }
 
+const descontoSchema = z.object({
+  pedido_id: z.string().uuid(),
+  valor: dinheiro,
+  motivo: z.string().trim().max(200).optional(),
+});
+
+/**
+ * D-2026-10-28-175: dá, troca ou tira o desconto de um pedido ainda sem
+ * pagamento. Até R$ 5,00 quem recebe dá sozinho; acima, só com
+ * `orders.discount`. O servidor recalcula o total e devolve.
+ */
+export async function darDesconto(
+  entrada: unknown,
+): Promise<{ ok: true; total: number; desconto: number } | { ok: false; erro: string; exigePermissao?: boolean }> {
+  const v = descontoSchema.safeParse(entrada);
+  if (!v.success) return { ok: false, erro: "Informe o valor e o motivo do desconto." };
+
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("dar_desconto", {
+    p_order_id: v.data.pedido_id,
+    p_dados: { valor: v.data.valor, motivo: v.data.motivo ?? null },
+  });
+  if (error) {
+    logger.error("caixa:darDesconto", { code: (error as { code?: string }).code });
+    return { ok: false, erro: "Não foi possível dar o desconto agora. Tente de novo." };
+  }
+  const r = (data ?? {}) as { ok?: boolean; erro?: string; total?: number; desconto?: number; exige_permissao?: boolean };
+  if (!r.ok) {
+    return { ok: false, erro: r.erro ?? "Não foi possível dar o desconto.", ...(r.exige_permissao ? { exigePermissao: true } : {}) };
+  }
+
+  revalidatePath(ROTA_PDV);
+  revalidatePath(ROTA_PEDIDOS);
+  revalidatePath(`${ROTA_PEDIDOS}/${v.data.pedido_id}`);
+  return { ok: true, total: Number(r.total), desconto: Number(r.desconto) };
+}
+
 const estornoPagamentoSchema = z.object({
   pedido_id: z.string().uuid(),
   motivo: z.string().min(3).max(400),

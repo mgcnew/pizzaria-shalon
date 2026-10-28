@@ -5318,3 +5318,24 @@ RN-RUN-004-A):**
    "Esperando motoboy", o despachar e o acerto antigo.
 6. **Fechamento:** as causas da diferença mostram o que cada motoboy entregou
    naquela gaveta e as diferenças da volta.
+
+## D-2026-10-28-175 — Desconto na hora do pagamento
+
+**Problema (Marcelo/dona):** às vezes a loja dá desconto na hora de receber, e o
+sistema não tinha como: o pagamento tinha de fechar no total do pedido. O
+desconto virava pagamento que não batia ou diferença no fechamento.
+
+**Decisão (aprovada em 27/10/2026; migration 0180 `20261028100000_desconto_no_pagamento`;
+RN-PGTO-016):**
+1. **"Dar desconto"** na tela de receber (PDV, fila de pedidos, volta do
+   motoboy): valor em reais e motivo (arredondamento, cliente da casa,
+   reclamação ou outro). Só antes de pagar.
+2. **Limite:** quem recebe dá até **R$ 5,00**; acima, só com a permissão nova
+   `orders.discount`, dada ao Owner/Admin (escolha da dona entre as opções:
+   balconista até um limite, limite de R$ 5,00).
+3. **Pedido guarda o bruto:** `orders.discount_amount` (+ motivo, quem, quando);
+   `total = subtotal + taxa − desconto`. `dar_desconto` recalcula no servidor;
+   taxa aprovada e alteração aplicada respeitam o desconto.
+4. **Fechamento** mostra "Descontos dados neste caixa" (tela e papel); a
+   comanda mostra a linha "Desconto" antes do total.
+5. **Fora:** cupom, desconto em %, desconto depois de pago (estorna-se).

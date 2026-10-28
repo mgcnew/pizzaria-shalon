@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Button, Input, SelectMenu, StatusBadge } from "@/ui/components";
 import { Aviso, ParDeDados } from "@/ui/patterns";
 import { formatBRL } from "@/lib/format";
-import { estornarPagamento, registrarPagamento } from "@/application/caixa/acoes";
+import { darDesconto, estornarPagamento, registrarPagamento } from "@/application/caixa/acoes";
 import { useAvisarOperacaoEmVoo } from "@/ui/operacaoEmVoo";
 import {
   dinheiroNaGavetaPorPadrao,
@@ -142,7 +142,11 @@ export function Recebimento({
   const pagoAntes = (pagamento?.realizado ?? [])
     .filter((p) => p.status === "confirmed")
     .reduce((soma, p) => soma + Number(p.valor), 0);
-  const total = Math.max(0, Math.round((totalDoPedido - pagoAntes) * 100) / 100);
+  // Desconto dado aqui (D-2026-10-28-175): o servidor devolve o total novo, e
+  // ele vale até a tela de quem abriu este painel recarregar.
+  const [descontoAqui, setDescontoAqui] = useState<{ total: number; valor: number; motivo: string } | null>(null);
+  const totalComDesconto = descontoAqui?.total ?? totalDoPedido;
+  const total = Math.max(0, Math.round((totalComDesconto - pagoAntes) * 100) / 100);
   const complemento = pagoAntes > 0 && total > 0;
   const totalTexto = total.toFixed(2).replace(".", ",");
   const naGavetaPadrao = dinheiroNaGavetaPorPadrao(momento);
@@ -402,6 +406,28 @@ export function Recebimento({
         </p>
       ) : null}
 
+      {/* ---------------------------------------------------- desconto */}
+      {!jaPago && pagoAntes === 0 && receberAgora ? (
+        <DescontoNoPagamento
+          pedidoId={pedidoId}
+          bruto={Number(pagamento?.desconto?.bruto ?? totalDoPedido)}
+          atual={
+            descontoAqui
+              ? descontoAqui.valor > 0
+                ? { valor: descontoAqui.valor, motivo: descontoAqui.motivo }
+                : null
+              : pagamento?.desconto
+                ? { valor: Number(pagamento.desconto.valor), motivo: pagamento.desconto.motivo }
+                : null
+          }
+          aoMudar={(novo) => {
+            setDescontoAqui(novo);
+            const restante = Math.max(0, Math.round(novo.total * 100) / 100);
+            setLinhas([linhaVazia(formas, restante.toFixed(2).replace(".", ","), formaInicialId, naGavetaPadrao)]);
+          }}
+        />
+      ) : null}
+
       {/* -------------------------------------------------- registrar */}
       {!jaPago && receberAgora ? (
         <form
@@ -580,6 +606,150 @@ export function Recebimento({
           )}
         </div>
       ) : null}
+    </div>
+  );
+}
+
+const MOTIVOS_DE_DESCONTO = ["Arredondamento", "Cliente da casa", "Reclamação"] as const;
+
+/**
+ * Desconto na hora do pagamento (D-2026-10-28-175, RN-PGTO-016).
+ *
+ * Em reais e com motivo, antes de registrar o pagamento. Até R$ 5,00 quem
+ * recebe dá sozinho; acima, o servidor só aceita de quem tem
+ * `orders.discount`. A tela não manda total: o servidor recalcula.
+ */
+function DescontoNoPagamento({
+  pedidoId,
+  bruto,
+  atual,
+  aoMudar,
+}: {
+  pedidoId: string;
+  /** O pedido sem desconto. */
+  bruto: number;
+  atual: { valor: number; motivo: string } | null;
+  aoMudar: (novo: { total: number; valor: number; motivo: string }) => void;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const [valorTexto, setValorTexto] = useState("");
+  const [motivo, setMotivo] = useState<string>("");
+  const [outro, setOutro] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
+  const [enviando, iniciar] = useTransition();
+  useAvisarOperacaoEmVoo(enviando);
+
+  const valor = paraNumero(valorTexto);
+  const motivoFinal = motivo === "Outro" ? outro.trim() : motivo;
+  const pronto = valor !== null && valor > 0 && valor <= bruto && motivoFinal.length >= 3;
+
+  function enviar(novoValor: number, novoMotivo: string) {
+    setErro(null);
+    iniciar(async () => {
+      const r = await darDesconto({ pedido_id: pedidoId, valor: novoValor, motivo: novoMotivo || undefined });
+      if (!r.ok) {
+        setErro(r.erro);
+        return;
+      }
+      aoMudar({ total: r.total, valor: r.desconto, motivo: novoMotivo });
+      setAberto(false);
+      setValorTexto("");
+      setMotivo("");
+      setOutro("");
+    });
+  }
+
+  if (atual && !aberto) {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-10 border border-border-shalon bg-elev px-3 py-2">
+        <p className="m-0 text-[13.5px] text-ink">
+          Desconto de <strong>{formatBRL(atual.valor)}</strong> · {atual.motivo}
+          <span className="block text-[12.5px] text-muted">
+            De {formatBRL(bruto)} por {formatBRL(Math.max(0, bruto - atual.valor))}
+          </span>
+        </p>
+        <Button tamanho="sm" variante="fantasma" disabled={enviando} onClick={() => enviar(0, "")}>
+          {enviando ? "Tirando…" : "Tirar desconto"}
+        </Button>
+        {erro ? <Aviso erro={erro} /> : null}
+      </div>
+    );
+  }
+
+  if (!aberto) {
+    return (
+      <div>
+        <Button tamanho="sm" variante="fantasma" onClick={() => setAberto(true)}>
+          Dar desconto
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-12 border border-border-shalon bg-elev p-3">
+      <p className="m-0 text-[13.5px] font-bold text-ink">Desconto neste pedido</p>
+      <Input
+        name="desconto"
+        label="Valor do desconto (R$)"
+        inputMode="decimal"
+        placeholder="0,00"
+        value={valorTexto}
+        onChange={(e) => setValorTexto(e.target.value)}
+        autoFocus
+      />
+      {valor !== null && valor > 5 ? (
+        <p className="m-0 text-[12.5px] font-semibold text-twf">
+          Acima de R$ 5,00, só quem pode dar desconto livre (a dona) consegue aplicar.
+        </p>
+      ) : null}
+      <fieldset className="m-0 min-w-0 border-0 p-0">
+        <legend className="mb-2 p-0 text-[13px] font-bold text-ink">Motivo</legend>
+        <div className="flex flex-wrap gap-2">
+          {[...MOTIVOS_DE_DESCONTO, "Outro"].map((m) => (
+            <button
+              key={m}
+              type="button"
+              aria-pressed={motivo === m}
+              onClick={() => setMotivo(m)}
+              className={[
+                "min-h-10 cursor-pointer rounded-pill border px-3 text-[13px] font-semibold",
+                motivo === m ? "border-ink bg-ink text-surface" : "border-border-shalon bg-surface text-ink",
+              ].join(" ")}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+      {motivo === "Outro" ? (
+        <Input
+          name="motivo-desconto"
+          label="Qual o motivo?"
+          value={outro}
+          onChange={(e) => setOutro(e.target.value)}
+          maxLength={200}
+        />
+      ) : null}
+      {valor !== null && valor > 0 && valor <= bruto ? (
+        <p className="m-0 text-[13px] text-ink-2">
+          De {formatBRL(bruto)} por <strong className="text-ink">{formatBRL(bruto - valor)}</strong>
+        </p>
+      ) : null}
+      {erro ? <Aviso erro={erro} /> : null}
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          tamanho="sm"
+          disabled={!pronto || enviando}
+          onClick={() => valor !== null && enviar(valor, motivoFinal)}
+        >
+          {enviando ? "Aplicando…" : "Aplicar desconto"}
+        </Button>
+        <Button type="button" tamanho="sm" variante="fantasma" disabled={enviando} onClick={() => setAberto(false)}>
+          Cancelar
+        </Button>
+      </div>
     </div>
   );
 }

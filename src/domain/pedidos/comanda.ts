@@ -105,7 +105,7 @@ export type PedidoDaComanda = {
    * Valores do pedido, já calculados pelo servidor (D-2026-10-17-147): o
    * motoboy cobra pelo que está no papel. Taxa só aparece na entrega.
    */
-  valores?: { subtotal: number; taxa: number; total: number } | null;
+  valores?: { subtotal: number; taxa: number; total: number; desconto?: number } | null;
 };
 
 // ----------------------------------------------------------------- texto
@@ -271,6 +271,13 @@ export function montarComanda(
     if (pedido.modalidade === "delivery") {
       saida.push({
         texto: ladoALado("Taxa de entrega", reais(pedido.valores.taxa), largura),
+        estilo: "normal",
+      });
+    }
+    // Desconto dado na hora do pagamento (0180): o papel fecha com o total.
+    if ((pedido.valores.desconto ?? 0) > 0) {
+      saida.push({
+        texto: ladoALado("Desconto", `-${reais(pedido.valores.desconto ?? 0)}`, largura),
         estilo: "normal",
       });
     }

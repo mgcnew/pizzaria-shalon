@@ -158,6 +158,11 @@ export function montarFechamentoDeCaixa(
     }
   }
 
+  // Já fora do recebido: dito para a dona saber quanto foi dado (0180).
+  if (f.descontos) {
+    saida.push(...comValor(`Descontos (${f.descontos.pedidos})`, formatBRL(f.descontos.total), largura));
+  }
+
   if (f.vendidos.length > 0) {
     saida.push(separador(largura), { texto: "VENDIDO", estilo: "titulo" });
     for (const l of f.vendidos) saida.push(...comValor(l.rotulo, String(l.quantidade), largura));

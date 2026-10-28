@@ -283,6 +283,20 @@ describe("valores na comanda (D-2026-10-17-147)", () => {
     expect(total?.estilo).toBe("destaque");
   });
 
+  it("desconto dado no pagamento sai antes do TOTAL (0180)", () => {
+    const linhas = montarComanda({ ...base, modalidade: "pickup", valores: { subtotal: 50, taxa: 0, total: 47, desconto: 3 } });
+    const textos = linhas.map((l) => l.texto);
+    const i = textos.findIndex((t) => t.startsWith("Desconto"));
+    expect(i).toBeGreaterThan(-1);
+    expect(textos[i]?.endsWith("-R$ 3,00")).toBe(true);
+    expect(textos.findIndex((t) => t.startsWith("TOTAL"))).toBeGreaterThan(i);
+  });
+
+  it("sem desconto, sem a linha", () => {
+    const linhas = montarComanda({ ...base, modalidade: "pickup", valores: { subtotal: 37, taxa: 0, total: 37, desconto: 0 } });
+    expect(linhas.some((l) => l.texto.startsWith("Desconto"))).toBe(false);
+  });
+
   it("retirada: sem linha de taxa", () => {
     const linhas = montarComanda({ ...base, modalidade: "pickup", valores: { subtotal: 37, taxa: 0, total: 37 } });
     expect(linhas.some((l) => l.texto.startsWith("Taxa de entrega"))).toBe(false);

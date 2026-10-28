@@ -96,6 +96,8 @@ export type ResumoDeFechamento = {
   itens_vendidos?: { pizzas: number; fogazzas: number; bebidas: number };
   /** Pedidos do turno sem recebimento no caixa (0176). Ausente em servidor sem a 0176. */
   sem_recebimento?: PedidoSemRecebimento[];
+  /** Descontos dados nos pedidos recebidos neste caixa (0180). */
+  descontos?: { total: number; pedidos: number };
 };
 
 export type SessaoHistorica = {
@@ -171,6 +173,8 @@ export type PagamentoDoPedido = {
   }[];
   total_realizado: number;
   total_do_pedido: number;
+  /** Desconto dado na hora do pagamento (0180). `null` sem desconto; ausente sem a 0180. */
+  desconto?: { valor: number; motivo: string; bruto: number; em: string } | null;
   situacao: "pending" | "confirmed" | "reversed";
 };
 
