@@ -87,6 +87,7 @@ export function Recebimento({
   tentativa,
   formaInicialId = null,
   momento = "agora",
+  naVoltaDoMotoboy = false,
   aoConcluir,
   aoRegistrarComandos,
 }: {
@@ -108,6 +109,12 @@ export function Recebimento({
    * vem marcado como "com o motoboy". Retirada e balcão: recebe-se agora.
    */
   momento?: MomentoDoRecebimento;
+  /**
+   * Na tela "Fulano voltou" (D-2026-10-27-174) o dinheiro passa sempre pela
+   * conferência do que o motoboy entrega: a caixinha "entrou na gaveta" some
+   * e o dinheiro fica "com o motoboy" até o fim da volta.
+   */
+  naVoltaDoMotoboy?: boolean;
   /**
    * Registra os comandos de teclado do painel — Etapa 9, §3.
    *
@@ -388,7 +395,7 @@ export function Recebimento({
         </div>
       ) : null}
 
-      {!jaPago && momento === "depois_da_saida" ? (
+      {!jaPago && momento === "depois_da_saida" && !naVoltaDoMotoboy ? (
         <p className="m-0 rounded-10 bg-tw px-3 py-2 text-[12.5px] font-semibold text-twf">
           Registre o que o motoboy recebeu. Dinheiro fica como &ldquo;com o motoboy&rdquo; até o
           acerto da saída.
@@ -410,7 +417,7 @@ export function Recebimento({
                 ...(l.bandeira_id ? { bandeira_id: l.bandeira_id } : {}),
                 valor: paraNumero(l.valor) ?? 0,
                 ...(forma?.familia === "cash" && recebido !== null ? { recebido } : {}),
-                na_gaveta: forma?.familia === "cash" ? l.na_gaveta : true,
+                na_gaveta: forma?.familia === "cash" ? !naVoltaDoMotoboy && l.na_gaveta : true,
               };
             });
             executar(() =>
@@ -489,15 +496,17 @@ export function Recebimento({
                           : `Troco a devolver: ${formatBRL(diferencaEmCentavos / 100)}`}
                       </p>
                     ) : null}
-                    <label className="flex items-center gap-[10px] text-[13px] text-ink">
-                      <input
-                        type="checkbox"
-                        checked={linha.na_gaveta}
-                        onChange={(e) => atualizar(i, "na_gaveta", e.target.checked)}
-                        className="h-[18px] w-[18px] accent-[var(--cta)]"
-                      />
-                      <span>Este dinheiro entrou na gaveta agora</span>
-                    </label>
+                    {naVoltaDoMotoboy ? null : (
+                      <label className="flex items-center gap-[10px] text-[13px] text-ink">
+                        <input
+                          type="checkbox"
+                          checked={linha.na_gaveta}
+                          onChange={(e) => atualizar(i, "na_gaveta", e.target.checked)}
+                          className="h-[18px] w-[18px] accent-[var(--cta)]"
+                        />
+                        <span>Este dinheiro entrou na gaveta agora</span>
+                      </label>
+                    )}
                   </>
                 ) : null}
 

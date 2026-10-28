@@ -436,6 +436,7 @@ export function ModalMotoboyVoltou({
             tentativa={recebendo.tentativa}
             formaInicialId={formas.find((f) => f.nome === recebendo.pedido.forma_esperada)?.id ?? null}
             momento="depois_da_saida"
+            naVoltaDoMotoboy
             aoConcluir={() => {
               setRecebendo(null);
               void carregar();
