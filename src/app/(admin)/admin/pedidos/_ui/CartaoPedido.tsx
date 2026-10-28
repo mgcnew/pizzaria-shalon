@@ -56,6 +56,7 @@ export function CartaoPedido({
         : null,
     pedido.aguarda_cliente ? "Alteração aguardando o cliente" : null,
     pedido.fiado ? "Fiado (pagar depois)" : null,
+    pedido.motoboy ? `Com ${pedido.motoboy.nome} na rua` : null,
   ].filter((t): t is string => t !== null);
 
   return (
@@ -129,6 +130,7 @@ export function CartaoPedido({
         <AcoesDoPedido
           pedidoId={pedido.id}
           acoes={pedido.acoes}
+          motoboy={pedido.motoboy ?? null}
           tetoDaTaxa={pedido.taxa_a_definir ?? null}
           compacto
           modo="linha"

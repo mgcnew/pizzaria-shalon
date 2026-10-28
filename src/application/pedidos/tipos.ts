@@ -61,6 +61,8 @@ export type PedidoNaFila = {
   taxa_a_definir?: number | null;
   /** Pagamento deixado para depois e ainda não pago (D-2026-10-17-153). */
   fiado?: boolean;
+  /** Com quem a entrega está na rua (0179). Ausente num servidor sem a 0179. */
+  motoboy?: { corrida_id: string; nome: string } | null;
   acoes: AcaoDoPedido[];
 };
 
@@ -186,6 +188,9 @@ export type ResultadoComando =
       bloqueio?: "pix" | "entrega" | "alteracao";
       /** Aprovar a entrega pede a taxa (endereço não localizado, 0164). */
       exige_taxa?: boolean;
+      /** Entrega na rua: conclui pelo "Motoboy voltou" desta corrida (0179). */
+      motoboy_voltou?: boolean;
+      corrida_id?: string;
     };
 
 /**

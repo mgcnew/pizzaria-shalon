@@ -4,17 +4,14 @@ import Link from "next/link";
 import { createPortal } from "react-dom";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { executarComando } from "@/application/pedidos/acoes";
-import {
-  listarMotoboysParaDespacho,
-  sairComMotoboy,
-  type MotoboyParaDespacho,
-} from "@/application/entregas/acoes";
 import type { AcaoDoPedido } from "@/application/pedidos/tipos";
 import { IndicadorDeNavegacao } from "@/ui/components/IndicadorDeNavegacao";
 import { useFecharAoNavegar } from "@/ui/hooks/useFecharAoNavegar";
 import { usePopoverFixo } from "@/ui/hooks/usePopoverFixo";
 import { formatBRL } from "@/lib/format";
 import { estiloDoComando } from "./estiloDasAcoes";
+import { ModalMotoboyVoltou, ModalSaiuCom } from "./Motoboy";
+import { comAVolta, VOLTOU } from "@/domain/entrega/voltaDoMotoboy";
 
 /**
  * "Despachar" de entrega vira "Saiu com…" (D-2026-10-27-172): toda entrega sai
@@ -54,7 +51,8 @@ function rotuloDaAcao(acao: AcaoDoPedido): string {
  */
 export function AcoesDoPedido({
   pedidoId,
-  acoes,
+  acoes: acoesDoServidor,
+  motoboy = null,
   compacto = false,
   modo = "lista",
   comPrimaria = true,
@@ -63,6 +61,8 @@ export function AcoesDoPedido({
 }: {
   pedidoId: string;
   acoes: AcaoDoPedido[];
+  /** Com quem a entrega está na rua (0179): "Concluir" vira "Fulano voltou". */
+  motoboy?: { corrida_id: string; nome: string } | null;
   compacto?: boolean;
   modo?: "lista" | "linha";
   /**
@@ -83,6 +83,8 @@ export function AcoesDoPedido({
   const [pedindoTaxa, setPedindoTaxa] = useState<{ acao: AcaoDoPedido; teto: number | null } | null>(null);
   const [taxa, setTaxa] = useState("");
   const [escolhendoMotoboy, setEscolhendoMotoboy] = useState(false);
+  const [voltou, setVoltou] = useState<{ corrida_id: string; nome: string | null } | null>(null);
+  const acoes = comAVolta(acoesDoServidor, motoboy);
   const [motivo, setMotivo] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [menuAberto, setMenuAberto] = useState(false);
@@ -151,6 +153,13 @@ export function AcoesDoPedido({
           setPedindoTaxa({ acao, teto: tetoDaTaxa });
           return;
         }
+        // Entrega na rua (0179): a tela não sabia; o banco diz qual saída abrir.
+        if (r.motoboy_voltou && r.corrida_id) {
+          setPedindoMotivo(null);
+          setMotivo("");
+          setVoltou({ corrida_id: r.corrida_id, nome: null });
+          return;
+        }
         setErro(r.erro);
         return;
       }
@@ -167,6 +176,11 @@ export function AcoesDoPedido({
     if (acao.comando === "despachar") {
       setErro(null);
       setEscolhendoMotoboy(true);
+      return;
+    }
+    if (acao.comando === VOLTOU && motoboy !== null) {
+      setErro(null);
+      setVoltou(motoboy);
       return;
     }
     if (acao.comando === "aprovar_entrega" && tetoDaTaxa !== null) {
@@ -344,9 +358,20 @@ export function AcoesDoPedido({
 
       {escolhendoMotoboy
         ? createPortal(
-            <ModalDoMotoboy
+            <ModalSaiuCom
               pedidoId={pedidoId}
               aoFechar={() => setEscolhendoMotoboy(false)}
+            />,
+            document.body,
+          )
+        : null}
+
+      {voltou
+        ? createPortal(
+            <ModalMotoboyVoltou
+              corridaId={voltou.corrida_id}
+              nome={voltou.nome}
+              aoFechar={() => setVoltou(null)}
             />,
             document.body,
           )
@@ -636,147 +661,3 @@ function ModalDaTaxa({
     </div>
   );
 }
-
-/**
- * "Saiu com…" (D-2026-10-27-172): quem leva a entrega, num toque.
- *
- * A lista vem do servidor na hora (`motoboys_para_despacho`): só entregadores
- * ativos e sem falta hoje, primeiro quem já está na rua. Tocar num nome
- * vincula e despacha (`sair_com_motoboy`); motoboy na rua leva o pedido na
- * mesma saída, e o acerto acontece na volta, em Entregas.
- */
-function ModalDoMotoboy({ pedidoId, aoFechar }: { pedidoId: string; aoFechar: () => void }) {
-  const [lista, setLista] = useState<MotoboyParaDespacho[] | null>(null);
-  const [erro, setErro] = useState<string | null>(null);
-  const [enviando, iniciar] = useTransition();
-  const painel = useRef<HTMLDivElement>(null);
-  const tituloId = `motoboy-${pedidoId}-titulo`;
-  const fechar = useRef(aoFechar);
-  useEffect(() => {
-    fechar.current = aoFechar;
-  }, [aoFechar]);
-
-  useEffect(() => {
-    let ativo = true;
-    listarMotoboysParaDespacho()
-      .then((r) => {
-        if (!ativo) return;
-        if (r.ok) setLista(r.motoboys);
-        else {
-          setLista([]);
-          setErro(r.erro);
-        }
-      })
-      .catch(() => ativo && (setLista([]), setErro("Não foi possível carregar os motoboys agora.")));
-    return () => {
-      ativo = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    const anterior = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    painel.current?.focus();
-    function aoTeclar(evento: KeyboardEvent) {
-      if (evento.key === "Escape") fechar.current();
-    }
-    document.addEventListener("keydown", aoTeclar);
-    return () => {
-      document.removeEventListener("keydown", aoTeclar);
-      document.body.style.overflow = overflow;
-      anterior?.focus();
-    };
-  }, []);
-
-  function escolher(motoboy: MotoboyParaDespacho) {
-    setErro(null);
-    iniciar(async () => {
-      const r = await sairComMotoboy({ pedido_id: pedidoId, motoboy_id: motoboy.id });
-      if (!r.ok) {
-        setErro(r.erro ?? "Não foi possível despachar.");
-        return;
-      }
-      aoFechar();
-    });
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-[95] flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-4"
-      onMouseDown={(evento) => {
-        if (evento.target === evento.currentTarget && !enviando) aoFechar();
-      }}
-    >
-      <div
-        ref={painel}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={tituloId}
-        tabIndex={-1}
-        className="max-h-[92dvh] w-full overflow-y-auto rounded-t-20 border border-border-shalon bg-surface p-5 shadow-2xl outline-none sm:max-w-[480px] sm:rounded-20"
-      >
-        <div className="mb-2 flex items-center justify-between gap-3">
-          <h2 id={tituloId} className="m-0 font-display text-[19px] font-bold text-ink">
-            Quem vai levar?
-          </h2>
-          <button
-            type="button"
-            aria-label="Fechar"
-            onClick={aoFechar}
-            disabled={enviando}
-            className="flex size-10 cursor-pointer items-center justify-center rounded-full border border-border-shalon bg-elev text-[20px] text-ink"
-          >
-            ×
-          </button>
-        </div>
-        <p className="m-0 mb-4 text-[13.5px] text-ink-2">
-          Toque no motoboy que está saindo com este pedido. Na volta, o acerto dele é feito em Entregas.
-        </p>
-
-        {lista === null ? (
-          <div aria-hidden="true" className="flex flex-col gap-2">
-            <div className="h-[52px] animate-pulse rounded-12 bg-tn" />
-            <div className="h-[52px] animate-pulse rounded-12 bg-tn" />
-          </div>
-        ) : lista.length === 0 ? (
-          <p className="m-0 rounded-12 border-[1.5px] border-twb bg-tw p-3 text-[13.5px] leading-snug text-twf">
-            Nenhum motoboy disponível. Cadastre os motoboys em Equipe, marcados como entregadores. Quem foi
-            marcado como ausente hoje não aparece aqui.
-          </p>
-        ) : (
-          <ul className="m-0 flex list-none flex-col gap-2 p-0">
-            {lista.map((m) => (
-              <li key={m.id}>
-                <button
-                  type="button"
-                  disabled={enviando}
-                  onClick={() => escolher(m)}
-                  className="flex min-h-[52px] w-full cursor-pointer items-center justify-between gap-3 rounded-12 border-[1.5px] border-border-shalon bg-surface px-4 text-left hover:bg-elev disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <span className="text-[15px] font-semibold text-ink">{m.nome}</span>
-                  <span className="text-[12.5px] text-muted">
-                    {m.na_rua
-                      ? `na rua · ${m.entregas_na_rua} ${m.entregas_na_rua === 1 ? "entrega" : "entregas"}`
-                      : m.presente
-                        ? "veio hoje"
-                        : "presença não marcada"}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {erro !== null ? (
-          <p role="alert" className="m-0 mt-3 rounded-10 bg-td px-3 py-2 text-[13px] font-semibold text-tdf">
-            {erro}
-          </p>
-        ) : null}
-
-        {enviando ? <p role="status" className="m-0 mt-3 text-[13px] text-muted">Despachando…</p> : null}
-      </div>
-    </div>
-  );
-}
-

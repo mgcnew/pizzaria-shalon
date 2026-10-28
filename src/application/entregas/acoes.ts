@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
 import { logger } from "@/lib/logger";
-import type { Resultado } from "./tipos";
+import { formasParaRecebimento } from "@/application/configuracoes/consultas";
+import type { AReceberDoMotoboy, Resultado } from "./tipos";
 
 /**
  * Operações de entrega: atribuir, despachar, conferir o retorno e acertar.
@@ -42,6 +43,7 @@ function resposta(data: unknown): Resultado {
     ok: false,
     erro: String(r["erro"] ?? "Não foi possível concluir esta ação."),
     ...(r["exige_motivo"] ? { exigeMotivo: true } : {}),
+    ...(r["exige_conciliacao"] ? { exigeConciliacao: true } : {}),
     ...(r["sem_caixa"] ? { semCaixa: true } : {}),
     ...(typeof r["esperado"] === "number" ? { esperado: r["esperado"] as number } : {}),
     ...(r["ja_conferida"] ? { jaConferida: true } : {}),
@@ -223,12 +225,21 @@ export type MotoboyParaDespacho = {
   entregas_na_rua: number;
 };
 
+/** Entrega pronta sem motoboy, para sair junto (D-2026-10-27-174). */
+export type EntregaPronta = {
+  pedido_id: string;
+  numero: number;
+  cliente: string | null;
+  bairro: string | null;
+  total: number;
+};
+
 /**
  * Quem pode levar uma entrega agora (D-2026-10-27-172): entregadores ativos,
  * sem quem faltou hoje. Lido na hora em que o "Saiu com…" abre.
  */
 export async function listarMotoboysParaDespacho(): Promise<
-  { ok: true; motoboys: MotoboyParaDespacho[] } | { ok: false; erro: string }
+  { ok: true; motoboys: MotoboyParaDespacho[]; prontas: EntregaPronta[] } | { ok: false; erro: string }
 > {
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase.rpc("motoboys_para_despacho");
@@ -236,33 +247,97 @@ export async function listarMotoboysParaDespacho(): Promise<
     logger.error("entregas:listarMotoboysParaDespacho", { code: (error as { code?: string }).code });
     return { ok: false, erro: "Não foi possível carregar os motoboys agora." };
   }
-  const r = (data ?? {}) as { ok?: boolean; erro?: string; motoboys?: MotoboyParaDespacho[] };
-  return r.ok ? { ok: true, motoboys: r.motoboys ?? [] } : { ok: false, erro: r.erro ?? "Não foi possível carregar os motoboys." };
+  const r = (data ?? {}) as {
+    ok?: boolean;
+    erro?: string;
+    motoboys?: MotoboyParaDespacho[];
+    prontas?: EntregaPronta[];
+  };
+  return r.ok
+    ? { ok: true, motoboys: r.motoboys ?? [], prontas: r.prontas ?? [] }
+    : { ok: false, erro: r.erro ?? "Não foi possível carregar os motoboys." };
 }
 
-const saidaComMotoboySchema = z.object({
-  pedido_id: z.string().uuid(),
+const saidaComEntregasSchema = z.object({
   motoboy_id: z.string().uuid(),
+  pedidos: z.array(z.string().uuid()).min(1).max(15),
+  troco: dinheiro.optional(),
 });
 
 /**
- * "Saiu com…" (D-2026-10-27-172, RN-STATE-007): vincula a entrega ao motoboy e
- * a põe na rua num ato. Motoboy já na rua leva este pedido na mesma saída.
+ * "Saiu com…" (D-2026-10-27-174, RN-STATE-007): uma ou várias entregas saem
+ * com o motoboy num ato, e o troco que ele levou da gaveta fica registrado.
+ * Motoboy já na rua leva as entregas na mesma saída.
  */
-export async function sairComMotoboy(entrada: unknown): Promise<Resultado> {
-  const v = saidaComMotoboySchema.safeParse(entrada);
-  if (!v.success) return { ok: false, erro: "Escolha o motoboy." };
+export async function sairComEntregas(entrada: unknown): Promise<Resultado> {
+  const v = saidaComEntregasSchema.safeParse(entrada);
+  if (!v.success) return { ok: false, erro: "Escolha o motoboy e ao menos uma entrega." };
 
   const supabase = await getSupabaseServerClient();
-  const { data, error } = await supabase.rpc("sair_com_motoboy", {
-    p_order_id: v.data.pedido_id,
-    p_motoboy_id: v.data.motoboy_id,
+  const { data, error } = await supabase.rpc("sair_com_entregas", {
+    p_dados: { motoboy_id: v.data.motoboy_id, pedidos: v.data.pedidos, troco: v.data.troco ?? 0 },
   });
-  if (error) return falha("sairComMotoboy", error);
+  if (error) return falha("sairComEntregas", error);
 
   revalidatePath(ROTA_ENTREGAS);
   revalidatePath(ROTA_PEDIDOS);
-  revalidatePath(`${ROTA_PEDIDOS}/${v.data.pedido_id}`);
+  revalidatePath(ROTA_PDV);
   return resposta(data);
 }
 
+/** O que a tela "Motoboy voltou" mostra. Só leitura; quem confere é o servidor. */
+export async function obterAReceberDoMotoboy(
+  corridaId: unknown,
+): Promise<{ ok: true; corrida: AReceberDoMotoboy } | { ok: false; erro: string }> {
+  const v = z.string().uuid().safeParse(corridaId);
+  if (!v.success) return { ok: false, erro: "Corrida inválida." };
+
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("a_receber_do_motoboy", { p_run_id: v.data });
+  if (error) {
+    logger.error("entregas:obterAReceberDoMotoboy", { code: (error as { code?: string }).code });
+    return { ok: false, erro: "Não foi possível carregar as entregas do motoboy agora." };
+  }
+  const r = (data ?? {}) as { ok?: boolean; erro?: string } & AReceberDoMotoboy;
+  return r.ok ? { ok: true, corrida: r } : { ok: false, erro: r.erro ?? "Não foi possível carregar a corrida." };
+}
+
+const voltouSchema = z.object({
+  corrida_id: z.string().uuid(),
+  falhas: z
+    .array(z.object({ pedido_id: z.string().uuid(), motivo: z.string().trim().min(3).max(300) }))
+    .max(15),
+  devolvido: dinheiro,
+  motivo: z.string().trim().max(300).optional(),
+});
+
+/**
+ * "Motoboy voltou" (D-2026-10-27-174): conclui as entregas da corrida (as que
+ * falharam, com o motivo) e faz o acerto com o que ele entregou. Tudo ou
+ * nada: se o acerto recusar, nenhuma entrega é concluída.
+ */
+export async function motoboyVoltou(entrada: unknown): Promise<Resultado> {
+  const v = voltouSchema.safeParse(entrada);
+  if (!v.success) return { ok: false, erro: "Confira o valor entregue e o motivo de cada entrega que falhou." };
+
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("motoboy_voltou", {
+    p_run_id: v.data.corrida_id,
+    p_dados: {
+      falhas: v.data.falhas,
+      devolvido: v.data.devolvido,
+      motivo: v.data.motivo || null,
+    },
+  });
+  if (error) return falha("motoboyVoltou", error);
+
+  revalidatePath(ROTA_ENTREGAS);
+  revalidatePath(ROTA_PEDIDOS);
+  revalidatePath(ROTA_PDV);
+  return resposta(data);
+}
+
+/** Formas de recebimento ativas, para receber na tela "Motoboy voltou". */
+export async function listarFormasDeRecebimento() {
+  return formasParaRecebimento();
+}

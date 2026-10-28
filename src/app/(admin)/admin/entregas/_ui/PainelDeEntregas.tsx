@@ -2,21 +2,11 @@
 
 import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { GavetaDeCobranca } from "../../pedidos/_ui/GavetaDeCobranca";
-import type { FormaParaRecebimento } from "../../pedidos/_ui/Recebimento";
-import type { PedidoAReceber } from "@/application/pdv/tipos";
-import { Badge, Button, Input, SelectMenu, StatusBadge, Textarea } from "@/ui/components";
+import { createPortal } from "react-dom";
+import { Badge, Button, SelectMenu, StatusBadge, Textarea } from "@/ui/components";
 import { Aviso, Cartao, EmptyState, LinhaLista, ParDeDados } from "@/ui/patterns";
 import { formatBRL } from "@/lib/format";
-import {
-  atribuirEntrega,
-  conciliarCorrida,
-  despacharCorrida,
-  marcarPresenca,
-  registrarRetorno,
-  transferirEntrega,
-} from "@/application/entregas/acoes";
+import { marcarPresenca, transferirEntrega } from "@/application/entregas/acoes";
 import type {
   CentralDeEntregas,
   Corrida,
@@ -25,16 +15,17 @@ import type {
   PedidoDaCorrida,
 } from "@/application/entregas/tipos";
 import { situacaoDoMotoboy } from "@/domain/entrega/motoboys";
+import { ModalMotoboyVoltou } from "../../pedidos/_ui/Motoboy";
 
 /**
  * A central de entregas.
  *
- * A PERGUNTA QUE ELA RESPONDE EM UM OLHAR: o que está esperando motoboy, o
- * que está na rua, e quanto dinheiro da Shalon está fora da gaveta agora.
+ * A PERGUNTA QUE ELA RESPONDE EM UM OLHAR: quem está livre, quem está na rua
+ * com o quê, e quanto dinheiro da Shalon está fora da gaveta agora.
  *
- * O QUE ELA NÃO FAZ: somar dinheiro. Cada número aqui vem do servidor, e o
- * acerto recalcula o esperado no momento de gravar — o valor exibido enquanto
- * a pessoa digita é conferência, não autoridade (03 §16.4).
+ * O QUE ELA NÃO FAZ MAIS (D-2026-10-27-174): despachar e acertar. A saída é o
+ * "Saiu com…" e a volta é o "Fulano voltou", na tela Pedidos — o mesmo modal
+ * que esta página abre para quem está aqui. Cada número vem do servidor.
  *
  * `Na rua` NUNCA aparece junto do saldo do caixa, e isso é deliberado: é o
  * erro que faria a Shalon acreditar que tem dinheiro que ainda está com o
@@ -52,124 +43,75 @@ const STATUS: Record<
 };
 
 const SITUACAO: Record<PedidoDaCorrida["situacao"], string> = {
-  pending: "A conferir",
+  pending: "Na rua",
   delivered: "Entregue",
   failed: "Não entregue",
-  // Antes de sair × depois de sair. A diferença importa no acerto.
   reassigned: "Trocado antes da saída",
   transferred: "Transferido em rota",
 };
-
-function paraNumero(texto: string): number | null {
-  const limpo = texto.replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
-  if (limpo === "") return null;
-  const n = Number(limpo);
-  return Number.isFinite(n) ? n : null;
-}
-
-function endereco(dados: Record<string, unknown> | null): string {
-  if (!dados) return "—";
-  const rua = String(dados["logradouro"] ?? "");
-  const numero = String(dados["numero"] ?? "");
-  const bairro = String(dados["bairro"] ?? "");
-  return [`${rua}${numero ? `, ${numero}` : ""}`, bairro].filter(Boolean).join(" · ") || "—";
-}
 
 export function PainelDeEntregas({
   central,
   corrida,
   podeAcertar,
   podeMarcarPresenca = false,
-  podeReceber = false,
-  cobraveis = {},
-  formasDeRecebimento = [],
-  caixaAberto = false,
 }: {
   central: CentralDeEntregas;
   corrida: Corrida | null;
-  /**
-   * `deliveries.manage` (0178): quem monta a saída faz o acerto. Diferença no
-   * acerto o servidor só aceita de quem tem `deliveries.settle`.
-   */
+  /** `deliveries.manage`: abrir o "Fulano voltou" e transferir em rota. O servidor confere. */
   podeAcertar: boolean;
   /** `employees.attendance`: marcar Veio ou Faltou. O servidor confere de novo. */
   podeMarcarPresenca?: boolean;
-  /** `payments.register`: receber, no acerto, o que o cliente pagou na porta. */
-  podeReceber?: boolean;
-  /** Quem está devendo, pela mesma `pedidos_a_receber` da fila de pedidos. */
-  cobraveis?: Record<string, PedidoAReceber>;
-  formasDeRecebimento?: FormaParaRecebimento[];
-  caixaAberto?: boolean;
 }) {
-  const router = useRouter();
-  /**
-   * Receber no acerto (D-2026-10-01-111): a MESMA gaveta e a MESMA
-   * `registrar_pagamento` da fila de pedidos. Pedido e chave da tentativa
-   * nascem juntos no clique, como lá.
-   */
-  const [cobrando, setCobrando] = useState<{ pedido: PedidoAReceber; tentativa: string } | null>(
-    null,
-  );
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, iniciar] = useTransition();
-  const [motoboyEscolhido, setMotoboyEscolhido] = useState<Record<string, string>>({});
-  const [falhando, setFalhando] = useState<string | null>(null);
-  const [motivoFalha, setMotivoFalha] = useState("");
   const [transferindo, setTransferindo] = useState<string | null>(null);
   const [motivoTransferencia, setMotivoTransferencia] = useState("");
   const [destino, setDestino] = useState("");
-  const [acertando, setAcertando] = useState(false);
-  const [devolvido, setDevolvido] = useState("");
-  const [motivoAcerto, setMotivoAcerto] = useState("");
-  const [exigeMotivo, setExigeMotivo] = useState(false);
+  const [voltou, setVoltou] = useState<{ corrida_id: string; nome: string } | null>(null);
 
   const chave = useRef(crypto.randomUUID());
 
-  function executar(acao: () => Promise<{ ok: boolean; erro?: string; exigeMotivo?: boolean }>) {
+  function executar(acao: () => Promise<{ ok: boolean; erro?: string }>) {
     setErro(null);
     iniciar(async () => {
       const r = await acao();
       if (!r.ok) {
         setErro(r.erro ?? "Não foi possível concluir esta ação.");
-        if (r.exigeMotivo) setExigeMotivo(true);
         return;
       }
       chave.current = crypto.randomUUID();
-      setFalhando(null);
-      setMotivoFalha("");
       setTransferindo(null);
       setMotivoTransferencia("");
       setDestino("");
-      setExigeMotivo(false);
-      setAcertando(false);
-      setDevolvido("");
-      setMotivoAcerto("");
     });
   }
 
   const naRua = central.corridas.reduce((s, c) => s + c.dinheiro_na_rua, 0);
+  const trocoNaRua = central.corridas.reduce((s, c) => s + (c.troco ?? 0), 0);
   // Quem faltou hoje sai da escolha de quem recebe pedido. O servidor recusa
-  // do mesmo jeito (`atribuir_entrega`, `transferir_entrega`).
+  // do mesmo jeito (`transferir_entrega`).
   const podeReceberEntrega = (m: MotoboyDisponivel) => (m.presenca ?? null) !== "absent";
-  const valorDevolvido = paraNumero(devolvido);
-  const diferenca =
-    corrida && valorDevolvido !== null ? valorDevolvido - corrida.esperado_em_dinheiro : null;
 
   return (
     <div className="flex flex-col gap-5">
       <Aviso {...(erro ? { erro } : {})} />
 
       {/* RN-CAIXA-014: dito com todas as letras, longe do saldo do caixa. */}
-      {naRua > 0 ? (
+      {naRua + trocoNaRua > 0 ? (
         <Cartao largura="cheio">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <p className="m-0 text-[13.5px] text-muted">
               Dinheiro com os motoboys, ainda fora da gaveta
             </p>
-            <p className="m-0 font-display text-[22px] font-bold text-ink">{formatBRL(naRua)}</p>
+            <p className="m-0 font-display text-[22px] font-bold text-ink">
+              {formatBRL(naRua + trocoNaRua)}
+            </p>
           </div>
           <p className="m-0 mt-1 text-[12.5px] text-muted">
-            Esse valor não está no caixa. Ele entra quando o acerto da corrida for feito.
+            {formatBRL(naRua)} recebido das entregas
+            {trocoNaRua > 0 ? ` + ${formatBRL(trocoNaRua)} de troco levado da gaveta` : ""}. Entra no caixa
+            quando o motoboy voltar.
           </p>
         </Cartao>
       ) : null}
@@ -258,86 +200,26 @@ export function PainelDeEntregas({
         )}
       </Cartao>
 
-      {/* ---------------------------------------------- fila de entrega */}
+      {/* ------------------------------------------------ corridas vivas */}
       <Cartao
-        titulo="Esperando motoboy"
-        descricao="Pedidos prontos para entrega, ainda sem alguém para levar."
+        titulo="Na rua agora"
+        descricao="Quem saiu e com quais entregas. A volta é feita aqui ou na tela Pedidos."
         largura="cheio"
       >
-        {central.aguardando.length === 0 ? (
-          <EmptyState titulo="Nada esperando" descricao="Nenhum pedido pronto para sair agora." />
-        ) : (
-          central.aguardando.map((p) => (
-            <LinhaLista key={p.pedido_id}>
-              <div className="min-w-[180px] flex-1">
-                <p className="m-0 text-[14px] font-semibold text-ink">
-                  #{p.numero} · {p.cliente}
-                </p>
-                <p className="m-0 text-[12.5px] text-muted">{endereco(p.endereco)}</p>
-              </div>
-
-              <div className="text-right">
-                <p className="m-0 text-[14px] font-semibold text-ink">{formatBRL(p.total)}</p>
-                <p className="m-0 text-[12.5px] text-muted">
-                  {p.ja_pago
-                    ? "Já pago"
-                    : p.fiado
-                      ? "Fiado — não cobrar"
-                      : `A receber · ${p.pagamento_esperado ?? "—"}`}
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <SelectMenu
-                  label={`Motoboy para o pedido ${p.numero}`}
-                  labelOculto
-                  valor={motoboyEscolhido[p.pedido_id] ?? ""}
-                  aoMudar={(valor) =>
-                    setMotoboyEscolhido((m) => ({ ...m, [p.pedido_id]: valor }))
-                  }
-                  opcoes={[
-                    { valor: "", texto: "Escolha o motoboy" },
-                    ...central.motoboys.filter(podeReceberEntrega).map((m) => ({
-                      valor: m.funcionario_id,
-                      texto: `${m.nome}${m.ocupado ? " (já em rota)" : ""}`,
-                    })),
-                  ]}
-                />
-                <Button
-                  variante="primario"
-                  disabled={enviando || !motoboyEscolhido[p.pedido_id]}
-                  onClick={() =>
-                    executar(() =>
-                      atribuirEntrega({
-                        pedido_id: p.pedido_id,
-                        motoboy_id: motoboyEscolhido[p.pedido_id],
-                      }),
-                    )
-                  }
-                >
-                  Atribuir
-                </Button>
-              </div>
-            </LinhaLista>
-          ))
-        )}
-      </Cartao>
-
-      {/* ------------------------------------------------ corridas vivas */}
-      <Cartao titulo="Corridas" descricao="Montando, na rua ou esperando acerto." largura="cheio">
         {central.corridas.length === 0 ? (
-          <EmptyState titulo="Nenhuma corrida aberta" descricao="Ninguém na rua agora." />
+          <EmptyState titulo="Ninguém na rua" descricao="As saídas aparecem aqui pelo “Saiu com…” da tela Pedidos." />
         ) : (
           central.corridas.map((c) => (
             <LinhaLista key={c.corrida_id}>
               <div className="min-w-[180px] flex-1">
                 <p className="m-0 text-[14px] font-semibold text-ink">{c.motoboy}</p>
                 <p className="m-0 text-[12.5px] text-muted">
-                  {c.pedidos} {c.pedidos === 1 ? "pedido" : "pedidos"}
-                  {c.pendentes > 0 ? ` · ${c.pendentes} a conferir` : ""}
-                  {c.transferidos > 0
-                    ? ` · ${c.transferidos} passou para outro motoboy`
+                  {c.saiu_em
+                    ? `saiu às ${new Date(c.saiu_em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · `
                     : ""}
+                  {c.pendentes} {c.pendentes === 1 ? "entrega" : "entregas"}
+                  {c.transferidos > 0 ? ` · ${c.transferidos} passou para outro motoboy` : ""}
+                  {(c.troco ?? 0) > 0 ? ` · levou ${formatBRL(c.troco ?? 0)} de troco` : ""}
                 </p>
               </div>
 
@@ -345,18 +227,17 @@ export function PainelDeEntregas({
 
               {c.dinheiro_na_rua > 0 ? (
                 <span className="text-[13px] font-semibold text-tdf">
-                  {formatBRL(c.dinheiro_na_rua)} na rua
+                  {formatBRL(c.dinheiro_na_rua)} recebido
                 </span>
               ) : null}
 
               <div className="flex items-center gap-2">
-                {c.status === "open" ? (
+                {podeAcertar && (c.status === "out" || c.status === "settling") ? (
                   <Button
                     variante="primario"
-                    disabled={enviando}
-                    onClick={() => executar(() => despacharCorrida({ corrida_id: c.corrida_id }))}
+                    onClick={() => setVoltou({ corrida_id: c.corrida_id, nome: c.motoboy })}
                   >
-                    Despachar
+                    {c.motoboy} voltou
                   </Button>
                 ) : null}
                 <a
@@ -374,7 +255,7 @@ export function PainelDeEntregas({
       {/* --------------------------------------------- uma corrida aberta */}
       {corrida ? (
         <Cartao
-          titulo={`Corrida de ${corrida.motoboy}`}
+          titulo={`Saída de ${corrida.motoboy}`}
           descricao={STATUS[corrida.status].texto}
           largura="cheio"
         >
@@ -395,16 +276,9 @@ export function PainelDeEntregas({
                 ) : null}
               </div>
 
-              {/* Esperado e recebido lado a lado: são coisas diferentes. */}
               <div className="text-right">
                 <p className="m-0 text-[13px] text-muted">
                   Pedido {formatBRL(p.total)} · {p.pagamento_esperado ?? "—"}
-                </p>
-                <p className="m-0 text-[13px] font-semibold text-ink">
-                  {p.recebido > 0 ? `Recebido ${formatBRL(p.recebido)}` : "Sem recebimento"}
-                  {p.recebido_em_dinheiro > 0 && !p.ja_entrou_na_gaveta
-                    ? ` · em dinheiro, com o motoboy`
-                    : ""}
                 </p>
                 {/* RN-RUN-009: dito na linha, porque é o que o acerto NÃO vai cobrar. */}
                 {p.dinheiro_com_o_anterior ? (
@@ -414,86 +288,18 @@ export function PainelDeEntregas({
                 ) : null}
               </div>
 
-              {corrida.status === "settling" &&
-              p.situacao === "delivered" &&
-              p.recebido === 0 &&
-              podeReceber &&
-              cobraveis[p.pedido_id] ? (
+              {/* RN-RUN-008: a moto quebrou e outro vai buscar. */}
+              {podeAcertar && p.situacao === "pending" && corrida.status === "out" ? (
                 <Button
-                  variante="primario"
-                  onClick={() => {
-                    const pedido = cobraveis[p.pedido_id];
-                    if (pedido) setCobrando({ pedido, tentativa: crypto.randomUUID() });
-                  }}
+                  variante="secundario"
+                  disabled={enviando}
+                  onClick={() => setTransferindo(p.vinculo_id)}
                 >
-                  Receber
+                  Transferir
                 </Button>
-              ) : null}
-
-              {p.situacao === "pending" && corrida.status === "out" ? (
-                <div className="flex items-center gap-2">
-                  <Button
-                    variante="primario"
-                    disabled={enviando}
-                    onClick={() =>
-                      executar(() =>
-                        registrarRetorno({ vinculo_id: p.vinculo_id, entregue: true }),
-                      )
-                    }
-                  >
-                    Entregue
-                  </Button>
-                  <Button
-                    variante="secundario"
-                    disabled={enviando}
-                    onClick={() => setFalhando(p.vinculo_id)}
-                  >
-                    Não entregou
-                  </Button>
-                  {/* RN-RUN-008: a moto quebrou e outro vai buscar. */}
-                  <Button
-                    variante="secundario"
-                    disabled={enviando}
-                    onClick={() => setTransferindo(p.vinculo_id)}
-                  >
-                    Transferir
-                  </Button>
-                </div>
               ) : null}
             </LinhaLista>
           ))}
-
-          {/* RN-STATE-008: falha exige motivo, e a tela pede antes de enviar. */}
-          {falhando ? (
-            <div className="mt-3 flex flex-col gap-2">
-              <Textarea
-                label="Por que a entrega não aconteceu?"
-                value={motivoFalha}
-                onChange={(e) => setMotivoFalha(e.target.value)}
-                rows={2}
-              />
-              <div className="flex gap-2">
-                <Button
-                  variante="primario"
-                  disabled={enviando || motivoFalha.trim().length < 3}
-                  onClick={() =>
-                    executar(() =>
-                      registrarRetorno({
-                        vinculo_id: falhando,
-                        entregue: false,
-                        motivo: motivoFalha.trim(),
-                      }),
-                    )
-                  }
-                >
-                  Registrar a falha
-                </Button>
-                <Button variante="secundario" onClick={() => setFalhando(null)}>
-                  Cancelar
-                </Button>
-              </div>
-            </div>
-          ) : null}
 
           {/* RN-RUN-008: quem saiu com o pedido não é apagado; a transferência
               é um fato novo, com motivo obrigatório. */}
@@ -548,78 +354,6 @@ export function PainelDeEntregas({
             </div>
           ) : null}
 
-          {/* ------------------------------------------------------ acerto */}
-          {corrida.status === "settling" && podeAcertar ? (
-            <div className="mt-4 border-t border-border-shalon pt-4">
-              <ParDeDados
-                chave="Deveria trazer em dinheiro"
-                valor={formatBRL(corrida.esperado_em_dinheiro)}
-              />
-              {corrida.pedidos_sem_pagamento > 0 ? (
-                <p className="m-0 mt-2 text-[12.5px] font-semibold text-tdf">
-                  {corrida.pedidos_sem_pagamento}{" "}
-                  {corrida.pedidos_sem_pagamento === 1 ? "entrega" : "entregas"} sem recebimento.
-                  Use &ldquo;Receber&rdquo; em cada uma, com o que o cliente pagou, antes de acertar.
-                </p>
-              ) : null}
-
-              {acertando ? (
-                <div className="mt-3 flex flex-col gap-2">
-                  <Input
-                    label="Quanto ele trouxe em dinheiro"
-                    inputMode="decimal"
-                    value={devolvido}
-                    onChange={(e) => setDevolvido(e.target.value)}
-                  />
-                  {diferenca !== null && diferenca !== 0 ? (
-                    <p className="m-0 text-[13px] font-semibold text-tdf">
-                      {diferenca < 0 ? "Falta" : "Sobra"} de {formatBRL(Math.abs(diferenca))}. O caixa
-                      registra o que entrou de fato, e a diferença vai para o histórico do motoboy
-                      (Equipe › Livro), onde a dona decide se lança no funcionário. Nada é
-                      descontado sozinho.
-                    </p>
-                  ) : null}
-                  {(diferenca !== null && diferenca !== 0) || exigeMotivo ? (
-                    <Textarea
-                      label="Motivo da diferença"
-                      value={motivoAcerto}
-                      onChange={(e) => setMotivoAcerto(e.target.value)}
-                      rows={2}
-                    />
-                  ) : null}
-                  <div className="flex gap-2">
-                    <Button
-                      variante="primario"
-                      disabled={enviando || valorDevolvido === null || corrida.pedidos_sem_pagamento > 0}
-                      onClick={() =>
-                        executar(() =>
-                          conciliarCorrida({
-                            corrida_id: corrida.corrida_id,
-                            devolvido: valorDevolvido ?? 0,
-                            motivo: motivoAcerto.trim() || undefined,
-                          }),
-                        )
-                      }
-                    >
-                      Concluir o acerto
-                    </Button>
-                    <Button variante="secundario" onClick={() => setAcertando(false)}>
-                      Cancelar
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <Button
-                  variante="primario"
-                  disabled={corrida.pedidos_sem_pagamento > 0}
-                  onClick={() => setAcertando(true)}
-                >
-                  Fazer o acerto
-                </Button>
-              )}
-            </div>
-          ) : null}
-
           {corrida.acerto ? (
             <div className="mt-4 border-t border-border-shalon pt-4">
               <ParDeDados chave="Esperado" valor={formatBRL(corrida.acerto.esperado)} />
@@ -633,18 +367,16 @@ export function PainelDeEntregas({
         </Cartao>
       ) : null}
 
-      <GavetaDeCobranca
-        key={cobrando?.pedido.id ?? "fechada"}
-        pedido={cobrando?.pedido ?? null}
-        tentativa={cobrando?.tentativa ?? null}
-        formas={formasDeRecebimento}
-        caixaAberto={caixaAberto}
-        aoFechar={() => setCobrando(null)}
-        aoConcluir={() => {
-          setCobrando(null);
-          router.refresh();
-        }}
-      />
+      {voltou
+        ? createPortal(
+            <ModalMotoboyVoltou
+              corridaId={voltou.corrida_id}
+              nome={voltou.nome}
+              aoFechar={() => setVoltou(null)}
+            />,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

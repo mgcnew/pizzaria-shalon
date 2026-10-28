@@ -139,6 +139,33 @@ export function CausasDaDiferenca({
     blocos.push(<PedidosSemRecebimento key="sem" pedidos={semRecebimento} antesDeFechar />);
   }
 
+  // Não é "achado": é por onde começar quando o dinheiro das entregas não bate.
+  const motoboys = causas?.motoboys ?? [];
+  if (motoboys.length > 0) {
+    blocos.push(
+      <Bloco
+        key="motoboys"
+        titulo="Dinheiro que os motoboys entregaram nesta gaveta"
+        texto="Conferido na volta de cada um. Se a falta for do dinheiro das entregas, comece por aqui."
+      >
+        {motoboys.map((m) => (
+          <div
+            key={m.nome}
+            className="flex min-h-[40px] flex-wrap items-center justify-between gap-2 border-t border-border-shalon pt-1 first:border-t-0 first:pt-0"
+          >
+            <span className="text-[13px] text-ink">
+              <strong>{m.nome}</strong> · {m.entregas} {m.entregas === 1 ? "entrega" : "entregas"}
+              {m.diferenca !== 0
+                ? ` · ${m.diferenca < 0 ? "faltaram" : "sobraram"} ${formatBRL(Math.abs(m.diferenca))} na volta`
+                : ""}
+            </span>
+            <span className="text-[13px] tabular-nums text-ink">{formatBRL(m.dinheiro)}</span>
+          </div>
+        ))}
+      </Bloco>,
+    );
+  }
+
   if (causas && causas.trocos.length > 0) {
     achados += 1;
     blocos.push(

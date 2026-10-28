@@ -145,6 +145,7 @@ export function TabelaPedidos({
                   : null,
               p.aguarda_cliente ? "Alteração aguardando o cliente" : null,
               p.fiado ? "Fiado (pagar depois)" : null,
+              p.motoboy ? `Com ${p.motoboy.nome} na rua` : null,
             ].filter((t): t is string => t !== null);
 
             const cobravel = cobraveis?.[p.id] ?? null;
@@ -288,6 +289,7 @@ export function TabelaPedidos({
                       <AcoesDoPedido
                         pedidoId={p.id}
                         acoes={p.acoes}
+                        motoboy={p.motoboy ?? null}
                         tetoDaTaxa={p.taxa_a_definir ?? null}
                         compacto
                         modo="linha"

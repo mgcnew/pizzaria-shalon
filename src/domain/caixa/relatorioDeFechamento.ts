@@ -155,6 +155,7 @@ const ENTRADAS: Record<string, { ordem: number; rotulo: string }> = {
   other: { ordem: 3, rotulo: "Outros" },
   adjustment: { ordem: 4, rotulo: "Ajuste" },
   driver_difference: { ordem: 5, rotulo: "Sobra moto" },
+  driver_change: { ordem: 6, rotulo: "Troco volta" },
 };
 
 const SAIDAS: Record<string, { ordem: number; rotulo: string }> = {
@@ -165,6 +166,7 @@ const SAIDAS: Record<string, { ordem: number; rotulo: string }> = {
   other: { ordem: 5, rotulo: "Outros" },
   adjustment: { ordem: 6, rotulo: "Ajuste" },
   driver_difference: { ordem: 7, rotulo: "Falta moto" },
+  driver_change: { ordem: 8, rotulo: "Troco moto" },
 };
 
 function linhasDe(

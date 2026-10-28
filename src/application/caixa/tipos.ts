@@ -14,7 +14,7 @@ export type MovimentoDoCaixa = {
   id: string;
   tipo:
     | "opening" | "sale_receipt" | "supply" | "withdrawal" | "expense" | "refund" | "adjustment"
-    | "other" | "employee_advance" | "driver_difference";
+    | "other" | "employee_advance" | "driver_difference" | "driver_change";
   sentido: "in" | "out";
   valor: number;
   motivo: string | null;
@@ -197,6 +197,8 @@ export type Resultado =
 export type CausasDaDiferenca = {
   ok: true;
   sessao_id: string;
+  /** O que cada motoboy entregou nesta gaveta, sem o troco (0179). Ausente sem a 0179. */
+  motoboys?: { nome: string; entregas: number; dinheiro: number; diferenca: number }[];
   /** Dinheiro registrado com "entrou na gaveta" desmarcado e nunca recolhido. */
   fora_da_gaveta: {
     pagamento_id: string;

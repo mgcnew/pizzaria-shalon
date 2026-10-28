@@ -58,6 +58,8 @@ export type CorridaResumo = {
   transferidos: number;
   /** RN-CAIXA-014: dinheiro COM O MOTOBOY. Não é caixa, e pertence a uma corrida só. */
   dinheiro_na_rua: number;
+  /** Troco que o motoboy levou da gaveta (0179). Ausente num servidor sem a 0179. */
+  troco?: number;
 };
 
 export type MotoboyDisponivel = {
@@ -168,6 +170,8 @@ export type Resultado =
       erro: string;
       /** RN-RUN-004: há diferença; a tela precisa pedir o motivo. */
       exigeMotivo?: boolean;
+      /** Diferença no acerto que só quem concilia (`deliveries.settle`) aceita. */
+      exigeConciliacao?: boolean;
       /** Dinheiro a recolher sem caixa aberto. */
       semCaixa?: boolean;
       /** Quanto o servidor calculou que deveria voltar. */
@@ -179,3 +183,48 @@ export type Resultado =
       /** O dinheiro deste pedido já entrou no caixa. */
       jaConciliado?: boolean;
     };
+
+/** Uma entrega da corrida, na tela "Motoboy voltou" (D-2026-10-27-174). */
+export type EntregaAReceber = {
+  pedido_id: string;
+  numero: number;
+  cliente: string | null;
+  bairro: string | null;
+  total: number;
+  forma_esperada: string | null;
+  fiado: boolean;
+  /** Já recebido do cliente, em qualquer forma. */
+  pago: number;
+  /** Dinheiro recebido que ainda está com o motoboy. */
+  dinheiro_com_ele: number;
+};
+
+/** O que o motoboy precisa entregar ao voltar: as entregas e o troco. */
+export type AReceberDoMotoboy = {
+  corrida_id: string;
+  status: StatusDaCorrida;
+  motoboy: string;
+  saiu_em: string | null;
+  troco: number;
+  /** Receber exige caixa aberto (RN-CAIXA-001). */
+  caixa_aberto: boolean;
+  pedidos: EntregaAReceber[];
+  /** Dinheiro das entregas com ele mais o troco — o que o acerto cobra. */
+  a_entregar: number;
+};
+
+/** Uma saída do dia, no histórico da página Entregas. */
+export type SaidaDoDia = {
+  corrida_id: string;
+  status: StatusDaCorrida;
+  motoboy: string;
+  saiu_em: string | null;
+  voltou_em: string | null;
+  acertada_em: string | null;
+  troco: number;
+  entregas: { numero: number; cliente: string | null; bairro: string | null; total: number; situacao: SituacaoDaEntrega }[];
+  esperado: number | null;
+  devolvido: number | null;
+  diferenca: number | null;
+  motivo: string | null;
+};

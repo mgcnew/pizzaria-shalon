@@ -2,7 +2,7 @@ import "server-only";
 
 import { getSupabaseServerClient } from "@/infrastructure/supabase/server";
 import { logger } from "@/lib/logger";
-import type { CentralDeEntregas, Corrida, CorridaHistorica, PresencaDoMes } from "./tipos";
+import type { CentralDeEntregas, Corrida, CorridaHistorica, PresencaDoMes, SaidaDoDia } from "./tipos";
 
 /**
  * Leitura da operação de entrega.
@@ -63,4 +63,19 @@ export async function listarCorridas(limite = 20): Promise<CorridaHistorica[]> {
     return [];
   }
   return (data as CorridaHistorica[]) ?? [];
+}
+
+/**
+ * As saídas de um dia de trabalho (vira às 5h), com as entregas, o troco e o
+ * acerto (D-2026-10-27-174). Sem dia, o de hoje.
+ */
+export async function listarSaidasDoDia(dia?: string): Promise<SaidaDoDia[]> {
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("corridas_do_dia", { p_dia: dia ?? null });
+
+  if (error) {
+    logger.error("entregas:listarSaidasDoDia", { code: (error as { code?: string }).code });
+    return [];
+  }
+  return (data as SaidaDoDia[]) ?? [];
 }

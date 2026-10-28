@@ -1175,6 +1175,25 @@ Diferença registra valor, motivo, responsável, data/hora, notas e anexo opcion
 conclui o acerto quando o motoboy traz exatamente o esperado. Com diferença, só
 quem pode conciliá-la (`deliveries.settle`).
 
+### RN-RUN-004-A — Várias entregas, troco e a volta do motoboy
+**Decisão de 27/10/2026 (D-2026-10-27-174).**
+
+- **Saída.** O "Saiu com…" leva uma ou várias entregas prontas na mesma saída e
+  registra o **troco que o motoboy levou da gaveta**. O troco sai do esperado
+  da gaveta na saída e volta a ele no acerto.
+- **Recebimento.** Cada entrega é recebida na tela Pedidos como o cliente
+  pagou; o dinheiro fica "com o motoboy" até a volta (RN-CAIXA-017).
+- **Volta.** "Fulano voltou" conclui todas as entregas da saída — as que
+  falharam, com motivo — e faz o acerto com o que ele entrega: dinheiro das
+  entregas mais o troco. É um ato só: se o acerto recusar, nenhuma entrega é
+  concluída.
+- **Entrega só sai dos pedidos em aberto com o recebimento registrado** (ou
+  fiado). Concluir e Falhou de uma entrega na rua passam pela volta do motoboy.
+  RN-PGTO-014 continua valendo: concluir não é receber; são dois registros,
+  e o segundo passa a ser exigido antes do primeiro.
+- O fechamento do caixa mostra, entre as causas, o que cada motoboy entregou
+  na gaveta e as diferenças registradas na volta.
+
 ### RN-RUN-005
 Diferença de motoboy nunca gera desconto salarial automático.
 

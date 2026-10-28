@@ -5288,3 +5288,33 @@ dinheiro = esperado R$ 561,00; contado R$ 422,00; diferença mostrada
    (RN-CAIXA-011). Havendo retiradas, a pergunta avisa para não descontar duas
    vezes.
 4. O fechamento de 25/10 fica como foi registrado (decisão do Marcelo).
+
+## D-2026-10-27-174 — Várias entregas por saída, troco da gaveta e "Fulano voltou"
+
+**Problema (Marcelo/dona):** o motoboy sai com várias entregas na mesma viagem e
+o "Saiu com…" despachava uma por vez; ele leva troco tirado da gaveta sem
+registro; a página Entregas quase não seria usada, porque o recebimento já é
+feito pedido a pedido em Pedidos; e, sem acerto, as saídas ficariam "esperando
+acerto" para sempre.
+
+**Decisão (aprovada em 27/10/2026; migration 0179 `20261027180000_motoboy_voltou`;
+RN-RUN-004-A):**
+1. **"Saiu com…" com várias entregas e troco** (`sair_com_entregas`): escolhe o
+   motoboy, marca as outras entregas prontas que vão junto e informa o troco
+   levado da gaveta. O troco é um movimento novo da gaveta (`driver_change`):
+   sai na saída, volta no acerto. `driver_runs.change_float` guarda o valor.
+2. **Recebimento pedido a pedido** em Pedidos, como já era, com o dinheiro
+   "com o motoboy".
+3. **"Fulano voltou"** (`motoboy_voltou`): mostra as entregas da saída, recebe o
+   que falta, marca as não entregues (com motivo) e confere o que o motoboy
+   entrega — dinheiro das entregas + troco. Conclui tudo e faz o acerto num ato;
+   diferença continua exigindo motivo e `deliveries.settle` (D-172).
+4. **Entrega só sai dos abertos com recebimento** (ou fiado): `registrar_retorno`
+   recusa concluir sem ele; `finalizar_pedido` manda Concluir/Falhou de entrega
+   na rua para a volta do motoboy. Fiado não trava o acerto.
+5. **Página Entregas enxuta:** motoboys (livre / na rua, Veio/Faltou), quem está
+   na rua com o quê (com o "Fulano voltou" e a transferência em rota,
+   RN-RUN-008) e o histórico das saídas por dia (`corridas_do_dia`). Saem o
+   "Esperando motoboy", o despachar e o acerto antigo.
+6. **Fechamento:** as causas da diferença mostram o que cada motoboy entregou
+   naquela gaveta e as diferenças da volta.

@@ -60,8 +60,9 @@ export async function executarComando(entrada: unknown): Promise<ResultadoComand
   if (!validado.success) return { ok: false, erro: "Dados inválidos para esta ação." };
 
   const supabase = await getSupabaseServerClient();
-  // `finalizar_pedido` (0178): concluir e falhou de entrega vinculada passam
-  // pelo retorno do motoboy; todo o resto segue para `comando_pedido`.
+  // `finalizar_pedido` (0178/0179): concluir e falhou de entrega na rua são
+  // recusados com a corrida, para a tela abrir o "Motoboy voltou"; todo o
+  // resto segue para `comando_pedido`.
   const parametros = {
     p_order_id: validado.data.pedido_id,
     p_comando: validado.data.comando,
