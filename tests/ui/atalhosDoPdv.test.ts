@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   decidirAtalho,
+  faixaDeAtalhos,
   teclasAtivas,
   TECLAS_RESERVADAS,
   type ContextoDoPdv,
@@ -117,5 +118,19 @@ describe("faixa de ajuda", () => {
 
   it("fica vazia quando a tela cede a vez", () => {
     expect(teclasAtivas({ ...PARADO, cedendoAVez: true })).toHaveLength(0);
+  });
+});
+
+describe("faixa clicável (D-2026-10-30-179)", () => {
+  it("mantém todos os atalhos, apagando os que não valem agora", () => {
+    const faixa = faixaDeAtalhos({ ...PARADO, podeMovimentarCaixa: false });
+    expect(faixa.map((a) => a.tecla)).toEqual(["F2", "F3", "F4", "F7", "F9", "+", "−", "Del", "↑", "↓", "Esc"]);
+    expect(faixa.find((a) => a.tecla === "F2")?.acao).toBe("venda:nova");
+    expect(faixa.find((a) => a.tecla === "F4")?.ativo).toBe(false);
+    expect(faixa.find((a) => a.tecla === "F7")?.ativo).toBe(false);
+  });
+
+  it("fica toda apagada com modal por cima", () => {
+    expect(faixaDeAtalhos({ ...PARADO, cedendoAVez: true }).some((a) => a.ativo)).toBe(false);
   });
 });

@@ -16,6 +16,7 @@ import { IndicadorDeNavegacao } from "@/ui/components/IndicadorDeNavegacao";
 import { listarPedidosAReceber } from "@/application/pdv/consultas";
 import { formasParaRecebimento } from "@/application/configuracoes/consultas";
 import { obterCaixa } from "@/application/caixa/consultas";
+import { AtalhosDePedidos } from "./_ui/AtalhosDePedidos";
 import { CentralDePedidos } from "./_ui/CentralDePedidos";
 import { CartaoPedido } from "./_ui/CartaoPedido";
 import { TabelaPedidos } from "./_ui/TabelaPedidos";
@@ -138,17 +139,6 @@ export default async function Page({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {/* RN-MAN-001: o balcão lança pedidos de WhatsApp, telefone,
-              balcão, iFood ou outro canal. A permissão real é conferida no
-              servidor; aqui o botão só não aparece para quem não a tem. */}
-          {podeCriarPedido ? (
-            <Link
-              href="/admin/pedidos/novo"
-              className="min-h-touch inline-flex items-center rounded-11 border-0 bg-cta px-[14px] text-[13.5px] font-semibold text-cta-fg no-underline"
-            >
-              Novo pedido
-            </Link>
-          ) : null}
           <Link
             href="/admin/pedidos?aba=abertos"
             className="min-h-touch inline-flex items-center rounded-11 border-[1.5px] border-border-shalon px-[14px] text-[13.5px] font-semibold text-ink no-underline"
@@ -157,6 +147,14 @@ export default async function Page({
           </Link>
         </div>
       </header>
+
+      {/* RN-MAN-001: o balcão lança pedidos de WhatsApp, telefone, balcão, iFood
+          ou outro canal. A permissão real é conferida no servidor. */}
+      <AtalhosDePedidos
+        podeLancar={podeCriarPedido}
+        podeMovimentar={podeNaUI(sessao, "cash.adjust")}
+        caixaAberto={caixa.aberto}
+      />
 
       <Abas abas={ABAS} atual={encerrados ? "encerrados" : "abertos"} parametro="aba" base="/admin/pedidos" />
 

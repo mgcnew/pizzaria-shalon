@@ -5379,3 +5379,18 @@ sair o menu ☰ e entrar uma barra com botão + central. Desktop sem mudança.
    aparece nela com cadeado; o + exige `orders.create_manual`.
 3. A barra some em `/admin/pedidos/novo` e `/admin/pdv`, que têm rodapé próprio.
 4. Anotações e sino seguem no topo, porque têm contador e painel próprios.
+
+## D-2026-10-30-179 — Atalhos sempre visíveis e clicáveis, também em Pedidos
+
+**Pedido (Marcelo):** atalhos do PDV sempre à vista e também em Pedidos, para
+lançar por lá.
+
+**Decisão (aprovada em 30/10/2026; 09 §4.5 alterado):**
+1. **PDV:** a faixa vira botões, presa sob o cabeçalho, em todos os aparelhos. O
+   atalho que não vale no momento fica apagado, sem sumir. A ação vem da mesma
+   tabela do teclado (`decidirAtalho`). No celular ficam F2, F3, F4, F7 e F9, porque
+   setas e Esc pedem teclado, e `+`, `−` e `Del` têm botão na linha do carrinho.
+2. **Pedidos:** faixa com F2 (novo pedido, no lugar do botão do cabeçalho), F4
+   (reforço) e F9 (sangria), por tecla ou clique. Só aparece o que a pessoa pode
+   (`orders.create_manual`, `cash.adjust`); com o caixa fechado, F4 e F9 ficam
+   apagados. A janela e a ação são as do PDV (`movimentarCaixa`).

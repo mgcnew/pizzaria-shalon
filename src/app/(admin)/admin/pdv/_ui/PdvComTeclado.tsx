@@ -9,9 +9,11 @@ import {
   type ComandosDoCaixa,
   type EstadoVisivelDoCaixa,
 } from "@/ui/caixa/PainelDoCaixa";
+import { FaixaDeAtalhos } from "@/ui/caixa/FaixaDeAtalhos";
 import {
   decidirAtalho,
-  teclasAtivas,
+  faixaDeAtalhos,
+  type AtalhoDoPdv,
   type AcaoDoPdv,
   type ContextoDoPdv,
 } from "./atalhos";
@@ -55,6 +57,20 @@ const SELETOR_POR_CIMA = [
   '[aria-haspopup="menu"][aria-expanded="true"]',
   '[aria-haspopup="listbox"][aria-expanded="true"]',
 ].join(", ");
+
+/** Antes de a venda informar o estado: a faixa já ocupa o lugar, toda apagada. */
+const CONTEXTO_INICIAL: ContextoDoPdv = {
+  focoEmCampo: false,
+  focoNaLeitura: false,
+  leituraPreenchida: false,
+  cedendoAVez: true,
+  temItens: false,
+  podeSalvar: false,
+  temResultados: false,
+  quantidadeItens: 0,
+  totalVenda: 0,
+  podeMovimentarCaixa: false,
+};
 
 /** Quanto tempo parado antes de o campo de leitura reconquistar o foco (§2.2). */
 const OCIOSO_MS = 15_000;
@@ -103,7 +119,7 @@ export function PdvComTeclado({
    * quando devia. Então a faixa é recalculada em `avisar()`, chamada de dentro
    * de manipuladores de evento e dos efeitos dos painéis: nunca no render.
    */
-  const [faixa, setFaixa] = useState<{ tecla: string; rotulo: string }[]>([]);
+  const [faixa, setFaixa] = useState<AtalhoDoPdv[]>(() => faixaDeAtalhos(CONTEXTO_INICIAL));
   const [quantidadeItens, setQuantidadeItens] = useState(0);
   const [totalVenda, setTotalVenda] = useState(0);
 
@@ -135,7 +151,7 @@ export function PdvComTeclado({
 
   const avisar = useCallback(() => {
     const contexto = lerContexto();
-    setFaixa(teclasAtivas(contexto));
+    setFaixa(faixaDeAtalhos(contexto));
     setQuantidadeItens(contexto.quantidadeItens);
     setTotalVenda(contexto.totalVenda);
   }, [lerContexto]);
@@ -265,6 +281,16 @@ export function PdvComTeclado({
           </p>
         ) : null}
 
+        <FaixaDeAtalhos
+          atalhos={faixa}
+          aoAcionar={(atalho) => {
+            const { acao } = atalho as AtalhoDoPdv;
+            if (acao === null) return;
+            executar(acao);
+            avisar();
+          }}
+        />
+
         <NovaVenda
           formas={formas}
           autorizado={autorizado}
@@ -274,31 +300,6 @@ export function PdvComTeclado({
         />
 
         <div className="mt-auto flex flex-col gap-2 pt-2">
-          {/*
-         * A FAIXA DE ATALHOS — §3, último parágrafo: "quem está aprendendo não
-         * precisa decorar".
-         *
-         * Some onde não há teclado. `pointer: coarse` é dedo; abaixo de `lg` é
-         * tablet e celular. Anunciar F7 para quem não tem F7 é ocupar altura da
-         * tela para não informar nada. Quem decide é o CSS, nunca uma medição de
-         * largura em JavaScript (CLAUDE.md §8).
-         */}
-          {faixa.length > 0 ? (
-            <div
-              aria-hidden="true"
-              className="hidden flex-wrap items-center gap-x-4 gap-y-1 rounded-12 border border-border-shalon bg-elev/95 px-3 py-2 backdrop-blur lg:flex [@media(pointer:coarse)]:!hidden"
-            >
-              {faixa.map((t) => (
-                <span key={t.tecla} className="flex items-center gap-1.5 text-[12px] text-ink-2">
-                  <kbd className="rounded-8 border border-border-shalon bg-surface px-1.5 py-[1px] font-mono text-[11px] font-semibold text-ink">
-                    {t.tecla}
-                  </kbd>
-                  {t.rotulo}
-                </span>
-              ))}
-            </div>
-          ) : null}
-
           <PainelDoCaixa
             estado={caixa}
             tentativa={tentativa}

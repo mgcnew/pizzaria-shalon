@@ -229,6 +229,48 @@ export function decidirAtalho(
   return null;
 }
 
+export type AtalhoDoPdv = {
+  tecla: string;
+  rotulo: string;
+  /** O que a tecla faria agora; `null` deixa o botão apagado. */
+  acao: AcaoDoPdv | null;
+  ativo: boolean;
+  soTeclado?: boolean;
+};
+
+/**
+ * Todos os atalhos, para a faixa clicável (D-2026-10-30-179). A ação vem da
+ * mesma tabela da tecla. Setas e Esc só servem com teclado; `+`, `−` e `Del`
+ * têm botão em cada linha do carrinho no celular.
+ */
+export function faixaDeAtalhos(ctx: ContextoDoPdv): AtalhoDoPdv[] {
+  const item = (
+    tecla: string,
+    rotulo: string,
+    key: string,
+    soTeclado = false,
+  ): AtalhoDoPdv => {
+    const acao = decidirAtalho(
+      { key, ctrlKey: false, metaKey: false, altKey: false, shiftKey: false },
+      ctx,
+    );
+    return { tecla, rotulo, acao, ativo: acao !== null, ...(soTeclado ? { soTeclado } : {}) };
+  };
+  return [
+    item("F2", "Nova venda", "F2"),
+    item("F3", "Busca", "F3"),
+    item("F4", "Reforço", "F4"),
+    item("F7", "Concluir", "F7"),
+    item("F9", "Sangria", "F9"),
+    item("+", "Mais", "+", true),
+    item("−", "Menos", "-", true),
+    item("Del", "Remover", "Delete", true),
+    item("↑", "Subir", "ArrowUp", true),
+    item("↓", "Descer", "ArrowDown", true),
+    item("Esc", "Limpar", "Escape", true),
+  ];
+}
+
 /**
  * As teclas ATIVAS agora, para a faixa inferior.
  *

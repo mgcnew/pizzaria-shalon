@@ -197,6 +197,49 @@ function tituloDaOperacao(operacao: Exclude<Operacao, null>) {
   return "Fechar caixa";
 }
 
+/** Reforço ou sangria fora do PDV: mesma janela, formulário e ação. */
+export function JanelaDeMovimento({
+  tipo,
+  aoFechar,
+}: {
+  tipo: "reforco" | "sangria";
+  aoFechar: () => void;
+}) {
+  const [erro, setErro] = useState<string | null>(null);
+  const [enviando, iniciar] = useTransition();
+  // Uma tentativa por abertura: o reenvio da mesma não lança duas vezes.
+  const [tentativa] = useState(() => crypto.randomUUID());
+
+  useAvisarOperacaoEmVoo(enviando);
+
+  return (
+    <ModalDeCaixa titulo={tituloDaOperacao(tipo)} aoFechar={aoFechar}>
+      <FormularioDeMovimento
+        tipo={tipo}
+        enviando={enviando}
+        erro={erro}
+        aoCancelar={aoFechar}
+        aoConfirmar={(valor, motivo) => {
+          setErro(null);
+          iniciar(async () => {
+            const resultado = await movimentarCaixa({
+              tipo: tipo === "sangria" ? "withdrawal" : "supply",
+              valor,
+              ...(motivo ? { motivo } : {}),
+              tentativa,
+            });
+            if (!resultado.ok) {
+              setErro(resultado.erro ?? "Não foi possível concluir esta ação.");
+              return;
+            }
+            aoFechar();
+          });
+        }}
+      />
+    </ModalDeCaixa>
+  );
+}
+
 function ModalDeCaixa({ titulo, aoFechar, children }: { titulo: string; aoFechar: () => void; children: ReactNode }) {
   const painel = useRef<HTMLDivElement>(null);
 

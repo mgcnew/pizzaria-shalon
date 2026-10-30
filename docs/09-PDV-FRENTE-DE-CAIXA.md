@@ -637,9 +637,10 @@ um tablet no salão precisa funcionar.
 alcance quando as áreas empilham e os dois saem da tela; ela só aparece com
 carrinho montado, porque barra fixa vazia é altura roubada, e respeita
 `safe-area-inset-bottom` para não ficar sob a barra de gestos do iOS. A **faixa
-de atalhos some** onde não há teclado (`pointer: coarse` ou abaixo de `lg`):
-anunciar F7 para quem não tem F7 é ocupar a tela sem informar nada. Quem decide
-o corte é o CSS, nunca uma medição de largura em JavaScript.
+de atalhos** fica sempre à vista e é clicável, presa sob o cabeçalho
+(D-2026-10-30-179, que substitui o corte por falta de teclado). No celular ficam
+F2, F3, F4, F7 e F9, sem o nome da tecla; `+`, `−`, `Del`, setas e `Esc` só a
+partir de `lg`. Quem decide o corte é o CSS.
 
 ---
 
