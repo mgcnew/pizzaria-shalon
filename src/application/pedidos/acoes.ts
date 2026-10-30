@@ -729,3 +729,21 @@ async function enderecoSalvoConferido(
   const campos = ["logradouro", "numero", "complemento", "bairro", "cidade", "uf", "cep", "referencia"] as const;
   return campos.every((c) => mesmoTexto(salvo[c], digitado[c])) ? id : null;
 }
+
+/**
+ * Pedidos em aberto, para o contador da barra inferior: o mesmo recorte da aba
+ * "Em aberto" da fila. Sob o RLS de `orders`; `null` quando a consulta falha,
+ * para a tela manter o último número em vez de mostrar zero.
+ */
+export async function contarPedidosAbertos(): Promise<number | null> {
+  const supabase = await getSupabaseServerClient();
+  const { count, error } = await supabase
+    .from("orders")
+    .select("id", { count: "exact", head: true })
+    .not("status", "in", "(completed,rejected,cancelled)");
+  if (error) {
+    logger.error("pedidos:contarPedidosAbertos", { code: (error as { code?: string }).code });
+    return null;
+  }
+  return count;
+}

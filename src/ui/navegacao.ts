@@ -54,6 +54,16 @@ export const PERMISSAO_DA_ROTA: Readonly<Record<string, readonly string[]>> = {
   "/admin/configuracoes": ["settings.view"],
 };
 
+/**
+ * Telas sem a barra inferior do celular: têm botões próprios no rodapé, e duas
+ * barras empilhadas tomariam a tela e causariam toque errado.
+ */
+export function barraInferiorOculta(rota: string): boolean {
+  return ["/admin/pedidos/novo", "/admin/pdv"].some(
+    (r) => rota === r || rota.startsWith(`${r}/`),
+  );
+}
+
 /** A rota (ou a página dentro dela) está fora do que esta pessoa pode abrir? */
 export function rotaBloqueada(rota: string, permissoes: readonly string[]): boolean {
   const modulo = Object.keys(PERMISSAO_DA_ROTA).find(

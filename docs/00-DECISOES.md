@@ -5366,3 +5366,16 @@ transições e rolagem suave no cardápio público e no painel. Exceção: o gir
 "processando" (`animate-spin`, `animate-shalon-spin`). O indicador de navegação
 pendente fica aceso, parado, e skeletons ficam estáticos. Suspende o movimento do
 doc 07; retirar a regra o restaura. Realtime, sons e notificações não mudam.
+
+## D-2026-10-30-178 — Barra inferior no celular, com + para lançar pedido
+
+**Pedido (Marcelo):** no celular, o painel deve favorecer o lançamento de pedidos:
+sair o menu ☰ e entrar uma barra com botão + central. Desktop sem mudança.
+
+**Decisão (aprovada em 30/10/2026):**
+1. Abaixo de `lg`, barra fixa: Início, Pedidos (com contador de abertos em tempo
+   real), + (novo pedido), Entregas e Mais. O menu ☰ foi removido.
+2. "Mais" abre uma folha com os demais módulos e o tema. Módulo sem permissão
+   aparece nela com cadeado; o + exige `orders.create_manual`.
+3. A barra some em `/admin/pedidos/novo` e `/admin/pdv`, que têm rodapé próprio.
+4. Anotações e sino seguem no topo, porque têm contador e painel próprios.

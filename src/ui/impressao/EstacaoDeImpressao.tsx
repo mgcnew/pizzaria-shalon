@@ -135,7 +135,7 @@ function Estacao({ impressora }: { impressora: ImpressoraDoAparelho }) {
     <p
       role={aviso.tipo === "erro" ? "alert" : "status"}
       className={[
-        "fixed bottom-4 right-4 z-50 m-0 max-w-[340px] rounded-12 border px-3 py-[10px] text-[13.5px] font-semibold shadow-[0_4px_18px_rgb(0_0_0/0.12)]",
+        "fixed bottom-[84px] right-4 z-50 lg:bottom-4 m-0 max-w-[340px] rounded-12 border px-3 py-[10px] text-[13.5px] font-semibold shadow-[0_4px_18px_rgb(0_0_0/0.12)]",
         aviso.tipo === "erro" ? "border-tdb bg-td text-tdf" : "border-tgb bg-tg text-tgf",
       ].join(" ")}
     >

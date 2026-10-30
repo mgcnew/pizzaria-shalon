@@ -25,7 +25,7 @@ const GRUPOS = [
   },
 ] as const;
 
-function IconeMenu({ href }: { href: string }) {
+export function IconeMenu({ href }: { href: string }) {
   const classe = "h-[18px] w-[18px]";
 
   if (href === "/admin") {
@@ -121,10 +121,13 @@ function IconeMenu({ href }: { href: string }) {
 export function MenuLateralAdmin({
   aoClicarEmLink,
   permissoes = null,
+  excluir = [],
 }: {
   aoClicarEmLink?: (evento: MouseEvent<HTMLAnchorElement>) => void;
   /** As permissões de quem está logado; nulo = não bloqueia nada. */
   permissoes?: readonly string[] | null;
+  /** Rotas que já estão à vista em outro lugar (a barra inferior do celular). */
+  excluir?: readonly string[];
 }) {
   const pathname = usePathname();
   // Item bloqueado tocado: a explicação aparece logo abaixo dele.
@@ -132,13 +135,17 @@ export function MenuLateralAdmin({
 
   return (
     <div className="scrollbar-hidden flex min-h-0 flex-1 flex-col gap-2 overflow-x-hidden overflow-y-auto overscroll-contain px-3 py-3 [@media(max-height:720px)]:gap-0 [@media(max-height:720px)]:py-2">
-      {GRUPOS.map((grupo) => (
+      {GRUPOS.map((grupo) => {
+        const itens = MENU_ADMIN.filter(
+          (item) => grupo.rotas.some((rota) => rota === item.href) && !excluir.includes(item.href),
+        );
+        return itens.length === 0 ? null : (
         <div key={grupo.titulo}>
           <p className="mb-1 mt-0 px-3 text-[10px] font-bold uppercase tracking-[0.12em] text-admin-nav-muted [@media(max-height:720px)]:sr-only">
             {grupo.titulo}
           </p>
           <div className="flex flex-col gap-0.5 [@media(max-height:720px)]:gap-0">
-            {MENU_ADMIN.filter((item) => grupo.rotas.some((rota) => rota === item.href)).map((item) => {
+            {itens.map((item) => {
               const ativo =
                 item.href === "/admin"
                   ? pathname === item.href
@@ -212,7 +219,8 @@ export function MenuLateralAdmin({
             })}
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

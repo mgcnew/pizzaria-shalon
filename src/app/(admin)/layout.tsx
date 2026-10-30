@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { Suspense } from "react";
-import { DrawerAdmin } from "@/ui/components/DrawerAdmin";
+import { BarraInferiorAdmin } from "@/ui/components/BarraInferiorAdmin";
 import { BarreiraDePermissao } from "@/ui/components/BarreiraDePermissao";
 import { MenuLateralAdmin } from "@/ui/components/MenuLateralAdmin";
 import { MenuUsuarioAdmin } from "@/ui/components/MenuUsuarioAdmin";
@@ -77,7 +77,6 @@ export default async function LayoutAdmin({
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex min-h-[53px] flex-nowrap items-center gap-2 border-b border-admin-nav-border bg-admin-nav-bg px-3 py-1 sm:gap-3 sm:px-4">
-          <DrawerAdmin permissoes={sessao.permissoes} />
           <Link
             href="/admin"
             aria-label="Ir para o painel administrativo"
@@ -92,7 +91,10 @@ export default async function LayoutAdmin({
               className="h-[30px] w-auto sm:h-[38px]"
             />
           </Link>
-          <SeletorDeTema atual={temaAtual} />
+          {/* No celular, o tema fica na folha "Mais" da barra inferior. */}
+          <div className="hidden lg:block">
+            <SeletorDeTema atual={temaAtual} />
+          </div>
           <NotasRapidas />
           {podeNaUI(sessao, "orders.view") ? (
             <Suspense fallback={<Skeleton className="h-10 w-10 shrink-0 rounded-12 sm:h-touch sm:w-touch" />}>
@@ -105,6 +107,10 @@ export default async function LayoutAdmin({
         <main className="flex-1 px-4 pb-10 pt-[18px]">
           <BarreiraDePermissao permissoes={sessao.permissoes}>{children}</BarreiraDePermissao>
         </main>
+        <BarraInferiorAdmin
+          permissoes={sessao.permissoes}
+          seletorDeTema={<SeletorDeTema atual={temaAtual} />}
+        />
       </div>
     </div>
   );
