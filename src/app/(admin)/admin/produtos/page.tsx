@@ -12,7 +12,7 @@ import { PainelBanners } from "./_ui/PainelBanners";
 import { ModalFerramentaCatalogo } from "./_ui/ModalFerramentaCatalogo";
 import { FormularioProduto } from "./_ui/FormularioProduto";
 import { EdicaoProduto } from "./_ui/EdicaoProduto";
-import { Abas } from "@/ui/patterns";
+import { AbasComIcones } from "@/ui/patterns";
 import { IndicadorDeNavegacao } from "@/ui/components/IndicadorDeNavegacao";
 
 export const metadata: Metadata = { title: "Produtos" };
@@ -38,14 +38,22 @@ export const metadata: Metadata = { title: "Produtos" };
  * mobile ocupa a página, sempre com navegação SPA e URL compartilhável.
  */
 
+function Icone({ d }: { d: string }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" className="h-5 w-5" fill="none">
+      <path d={d} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 const FERRAMENTAS = [
-  { nome: "Categorias", valor: "categorias" },
-  { nome: "Tamanhos", valor: "tamanhos" },
-  { nome: "Bordas", valor: "bordas" },
-  { nome: "Adicionais", valor: "adicionais" },
-  { nome: "Combos", valor: "combos" },
-  { nome: "Promoções", valor: "promocoes" },
-  { nome: "Banners", valor: "banners" },
+  { nome: "Categorias", valor: "categorias", icone: <Icone d="M4 5h6v6H4zM14 5h6v6h-6zM4 15h6v4H4zM14 15h6v4h-6z" /> },
+  { nome: "Tamanhos", valor: "tamanhos", icone: <Icone d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z" /> },
+  { nome: "Bordas", valor: "bordas", icone: <Icone d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18ZM12 6.5v.01M17.5 12v.01M12 17.5v.01M6.5 12v.01" /> },
+  { nome: "Adicionais", valor: "adicionais", icone: <Icone d="M12 5v14M5 12h14" /> },
+  { nome: "Combos", valor: "combos", icone: <Icone d="M12 3 4 7l8 4 8-4-8-4ZM4 12l8 4 8-4M4 17l8 4 8-4" /> },
+  { nome: "Promoções", valor: "promocoes", icone: <Icone d="M12 3H5a2 2 0 0 0-2 2v7l9 9 9-9-9-9ZM8 8v.01" /> },
+  { nome: "Banners", valor: "banners", icone: <Icone d="M4 5h16v14H4zM4 16l5-5 4 4 2-2 5 5" /> },
 ] as const;
 
 export default async function Page({
@@ -126,7 +134,7 @@ export default async function Page({
           titulo="Gerenciar cardápio"
           // Largura única: o modal não muda de tamanho a cada troca de aba.
           tamanho="medio"
-          abas={<Abas abas={FERRAMENTAS} atual={aba} parametro="aba" base="/admin/produtos" />}
+          abas={<AbasComIcones abas={FERRAMENTAS} atual={aba} parametro="aba" base="/admin/produtos" />}
         >
           {aba === "categorias" ? <PainelCategorias podeGerenciar={podeGerenciar} /> : null}
           {aba === "tamanhos" ? <PainelTamanhos podeGerenciar={podeGerenciar} /> : null}

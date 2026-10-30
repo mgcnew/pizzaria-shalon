@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { IndicadorDeNavegacao } from "@/ui/components/IndicadorDeNavegacao";
 
 /**
@@ -55,6 +56,68 @@ export function Abas({
           </Link>
         );
       })}
+    </div>
+  );
+}
+
+export type AbaComIcone = Aba & { icone: ReactNode };
+
+/**
+ * As mesmas abas, para quando são muitas e não cabem no celular: abaixo de
+ * `md`, uma grade de ícones sem rolagem lateral, com o nome da aba ativa logo
+ * abaixo; a partir de 480px cada ícone já leva o nome. De `md` em diante, as
+ * pílulas de sempre.
+ */
+export function AbasComIcones({
+  abas,
+  atual,
+  parametro,
+  base,
+}: {
+  abas: readonly AbaComIcone[];
+  atual: string;
+  parametro: string;
+  base: string;
+}) {
+  const nomeAtivo = abas.find((aba) => aba.valor === atual)?.nome;
+  return (
+    <div>
+      <div
+        className="grid gap-1 md:flex md:gap-2"
+        style={{ gridTemplateColumns: `repeat(${abas.length}, minmax(0, 1fr))` }}
+        role="tablist"
+        aria-label="Seções"
+      >
+        {abas.map((aba) => {
+          const ativa = aba.valor === atual;
+          return (
+            <Link
+              key={aba.valor}
+              href={`${base}?${parametro}=${aba.valor}`}
+              role="tab"
+              aria-selected={ativa}
+              aria-label={aba.nome}
+              title={aba.nome}
+              className={[
+                "relative flex min-h-touch min-w-0 flex-col items-center justify-center gap-[2px] rounded-12 border-[1.5px] py-1",
+                "md:inline-flex md:min-h-[42px] md:flex-row md:rounded-pill md:px-[14px] md:py-0",
+                ativa
+                  ? "border-cta bg-cta text-cta-fg"
+                  : "border-border-shalon bg-surface text-ink-2 hover:border-brand-orange",
+              ].join(" ")}
+            >
+              <span className="flex md:hidden">{aba.icone}</span>
+              <span className="hidden truncate text-[10.5px] font-semibold min-[480px]:block md:block md:text-[13.5px]">
+                {aba.nome}
+              </span>
+              <IndicadorDeNavegacao forma="traco" tom={ativa ? "texto" : "marca"} />
+            </Link>
+          );
+        })}
+      </div>
+      <p className="mb-0 mt-2 text-center text-[13px] font-semibold text-ink min-[480px]:hidden">
+        {nomeAtivo}
+      </p>
     </div>
   );
 }
