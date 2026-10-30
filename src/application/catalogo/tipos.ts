@@ -182,7 +182,7 @@ export type Borda = {
   sort_order: number;
 };
 
-export type Adicional = Borda;
+export type Adicional = Borda & { kind: "ingrediente" | "massa" };
 
 export type PrecoPorTamanho = {
   id: string;

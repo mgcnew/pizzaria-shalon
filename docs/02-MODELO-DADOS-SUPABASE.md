@@ -375,6 +375,7 @@ Por padrão a borda compatível com o tamanho vale para pizzas daquele tamanho; 
 
 - `id uuid PK`
 - `name text`
+- `kind text` — `ingrediente` (padrão) ou `massa` (RN-ADD-007); massa tem nome iniciado por "Massa"
 - `is_active boolean`
 - `is_temporarily_available boolean`
 - `sort_order integer`

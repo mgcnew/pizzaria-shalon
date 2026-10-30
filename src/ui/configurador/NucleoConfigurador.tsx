@@ -196,6 +196,16 @@ export function NucleoConfigurador({
   const bordaAtual = dadosDoTamanho?.bordas.find((b) => b.id === config.bordaId) ?? null;
   const todosAdicionais = dadosDoTamanho?.adicionais ?? [];
 
+  // RN-ADD-007: a massa viaja junto dos adicionais até o servidor, mas não é
+  // ingrediente: fica fora da conta dos inclusos.
+  const massas = dadosDoTamanho?.massas ?? [];
+  const massaEscolhida = massas.find((m) => config.adicionais.includes(m.id)) ?? null;
+  const ingredientesEscolhidos = config.adicionais.filter((id) => id !== massaEscolhida?.id);
+
+  function escolherMassa(id: string | null) {
+    aplicar({ adicionais: id === null ? ingredientesEscolhidos : [...ingredientesEscolhidos, id] });
+  }
+
   const textoDosAdicionais =
     (produto.adicionais_inclusos
       ? `${produto.limite_adicionais ?? 0} ingredientes inclusos no preço · cada um a mais soma o seu valor`
@@ -209,8 +219,8 @@ export function NucleoConfigurador({
   function detalheDoAdicional(a: OpcaoPreco): string {
     if (!produto.adicionais_inclusos) return `+ ${formatBRL(a.preco)}`;
     const inclusos = produto.limite_adicionais ?? 0;
-    const ativo = config.adicionais.includes(a.id);
-    const posicao = ativo ? config.adicionais.indexOf(a.id) : config.adicionais.length;
+    const ativo = ingredientesEscolhidos.includes(a.id);
+    const posicao = ativo ? ingredientesEscolhidos.indexOf(a.id) : ingredientesEscolhidos.length;
     return posicao < inclusos ? "Incluso" : `+ ${formatBRL(a.preco)}`;
   }
 
@@ -642,6 +652,39 @@ export function NucleoConfigurador({
         </section>
       ) : null}
 
+      {/* Massa — RN-ADD-007: a normal já vem no preço; as outras somam o seu valor. */}
+      {massas.length > 0 ? (
+        <section className="mt-[22px]" aria-labelledby="titulo-massa">
+          <h3 id="titulo-massa" className="m-0 mb-[10px] text-[16px] font-bold text-ink">
+            Escolha a massa
+          </h3>
+          <div className="flex flex-col gap-2">
+            {[{ id: null, nome: "Massa normal", detalhe: "—" }, ...massas.map((m) => ({
+              id: m.id as string | null,
+              nome: m.nome,
+              detalhe: `+ ${formatBRL(m.preco)}`,
+            }))].map((opcao) => {
+              const ativa = (massaEscolhida?.id ?? null) === opcao.id;
+              return (
+                <button
+                  key={opcao.id ?? "normal"}
+                  type="button"
+                  aria-pressed={ativa}
+                  onClick={() => escolherMassa(opcao.id)}
+                  className={[
+                    "motion-interactive flex min-h-[56px] w-full cursor-pointer items-center gap-3 rounded-13 border-2 px-[14px] py-[13px] text-left transition-colors",
+                    ativa ? "border-brand-red bg-td" : "border-border-shalon bg-surface hover:border-brand-orange",
+                  ].join(" ")}
+                >
+                  <span className="min-w-0 flex-1 truncate text-[15px] font-semibold text-ink">{opcao.nome}</span>
+                  <span className="shrink-0 text-[14px] font-semibold tabular-nums text-ink-2">{opcao.detalhe}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+
       {/* 4 · Adicionais — RN-ADD-003: entra ou não entra, sem quantidade. Os
           escolhidos aparecem em linha; os 39 ingredientes ficam na folha. */}
       {produto.adicionais_ligados && dadosDoTamanho && todosAdicionais.length > 0 ? (
@@ -686,7 +729,7 @@ export function NucleoConfigurador({
               >
                 <span className="min-w-0 flex-1">
                   <span className="block text-[15px] font-semibold text-ink">
-                    {config.adicionais.length === 0 ? "Escolher ingredientes" : "Adicionar mais ingredientes"}
+                    {ingredientesEscolhidos.length === 0 ? "Escolher ingredientes" : "Adicionar mais ingredientes"}
                   </span>
                   <span className="block text-[13px] text-ink-2">
                     {todosAdicionais.length} ingredientes para escolher

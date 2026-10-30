@@ -75,7 +75,7 @@ export async function PainelBordasAdicionais({
       <p className="m-0 max-w-[70ch] text-[13.5px] text-ink-2">
         {ehBorda
           ? "Cada borda tem preço e disponibilidade por tamanho. Deixar o preço em branco significa que a borda não é oferecida naquele tamanho. O cliente escolhe no máximo uma borda por pizza."
-          : "Cada adicional tem preço por tamanho. Um adicional entra ou não entra — não existe quantidade repetida do mesmo item. Em pizza meio a meio, o adicional vale para a pizza inteira."}
+          : "Cada adicional tem preço por tamanho. Um adicional entra ou não entra — não existe quantidade repetida do mesmo item. Em pizza meio a meio, o adicional vale para a pizza inteira. A massa grossa fica aqui só para ter o preço: o cliente a escolhe em seção própria, só em pizza, e ela é sempre cobrada."}
       </p>
 
       {tamanhosAtivos.length === 0 ? (
@@ -139,6 +139,11 @@ export async function PainelBordasAdicionais({
           </div>
 
           {itens.map((item) => {
+            // RN-ADD-007: massa não existe em fogazza, nem há onde digitar o preço.
+            const ehMassa = "kind" in item && item.kind === "massa";
+            const tamanhosDoItem = ehMassa
+              ? tamanhosAtivos.filter((t) => t.sold_as === "pizza")
+              : tamanhosAtivos;
             const situacao = !item.is_active ? (
               <StatusBadge tom="neutro">Inativ{ehBorda ? "a" : "o"}</StatusBadge>
             ) : item.is_temporarily_available ? (
@@ -209,7 +214,7 @@ export async function PainelBordasAdicionais({
                         <input type="hidden" name="tipo" value={tipo} />
                         <input type="hidden" name="entidade_id" value={item.id} />
                         <div className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-3 lg:grid-cols-4">
-                          {tamanhosAtivos.map((t) => {
+                          {tamanhosDoItem.map((t) => {
                             const preco = precoDe(item.id, t.id);
                             return (
                               <label key={t.id} className="flex min-w-0 flex-col gap-1">

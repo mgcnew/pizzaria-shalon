@@ -8,6 +8,7 @@ import { ChavePix } from "../../_ui/ChavePix";
 import { DecidirAlteracao } from "../../_ui/DecidirAlteracao";
 import { AcompanharAoVivo } from "../../_ui/AcompanharAoVivo";
 import { assinaturaDoPedido } from "@/domain/pedidos/acompanhamento";
+import { separarMassa } from "@/domain/pedidos/comanda";
 import { tetoDaTaxaAConfirmar } from "@/domain/pedidos/taxaAConfirmar";
 
 export const metadata: Metadata = {
@@ -142,11 +143,17 @@ export default async function Page({
               {item.borda ? (
                 <p className="m-0 text-[13px] text-ink-2">Borda: {item.borda}</p>
               ) : null}
-              {item.adicionais && item.adicionais.length > 0 ? (
-                <p className="m-0 text-[13px] text-ink-2">
-                  Adicionais: {item.adicionais.join(", ")}
-                </p>
-              ) : null}
+              {(() => {
+                const { massa, ingredientes } = separarMassa(item.adicionais);
+                return (
+                  <>
+                    {massa ? <p className="m-0 text-[13px] font-semibold text-ink-2">{massa}</p> : null}
+                    {ingredientes.length > 0 ? (
+                      <p className="m-0 text-[13px] text-ink-2">Adicionais: {ingredientes.join(", ")}</p>
+                    ) : null}
+                  </>
+                );
+              })()}
               {item.observacao ? (
                 <p className="m-0 text-[13px] italic text-muted">“{item.observacao}”</p>
               ) : null}

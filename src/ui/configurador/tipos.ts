@@ -21,7 +21,7 @@ import type {
 /** Sabores, bordas e adicionais são POR TAMANHO (RN-BORDA-002, RN-ADD-002). */
 export type DadosPorTamanho = Record<
   string,
-  { sabores: SaborPublico[]; bordas: OpcaoPreco[]; adicionais: OpcaoPreco[] }
+  { sabores: SaborPublico[]; bordas: OpcaoPreco[]; adicionais: OpcaoPreco[]; massas: OpcaoPreco[] }
 >;
 
 /** Tudo que o núcleo precisa para funcionar, venha de onde vier. */

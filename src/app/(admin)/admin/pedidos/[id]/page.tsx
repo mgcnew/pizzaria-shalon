@@ -18,6 +18,7 @@ import { FiadoDoPedido } from "../_ui/FiadoDoPedido";
 import { PainelAcrescimo } from "../_ui/PainelAcrescimo";
 import { obterSessaoInterna, podeNaUI } from "@/application/auth/sessao";
 import { momentoDoRecebimento } from "@/domain/pedidos/recebimentoNaEntrega";
+import { separarMassa } from "@/domain/pedidos/comanda";
 import { tetoDaTaxaAConfirmar } from "@/domain/pedidos/taxaAConfirmar";
 
 export const metadata: Metadata = { title: "Pedido" };
@@ -157,11 +158,17 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
                   {item.borda !== null ? (
                     <p className="m-0 text-[13px] text-ink-2">Borda: {item.borda}</p>
                   ) : null}
-                  {item.adicionais !== null && item.adicionais.length > 0 ? (
-                    <p className="m-0 text-[13px] text-ink-2">
-                      Adicionais: {item.adicionais.join(", ")}
-                    </p>
-                  ) : null}
+                  {(() => {
+                const { massa, ingredientes } = separarMassa(item.adicionais);
+                return (
+                  <>
+                    {massa ? <p className="m-0 text-[13px] font-semibold text-ink-2">{massa}</p> : null}
+                    {ingredientes.length > 0 ? (
+                      <p className="m-0 text-[13px] text-ink-2">Adicionais: {ingredientes.join(", ")}</p>
+                    ) : null}
+                  </>
+                );
+              })()}
                   {item.combo?.map((c) => (
                     <p key={c.nome} className="m-0 text-[13px] text-ink-2">
                       – {c.quantidade}× {c.nome}

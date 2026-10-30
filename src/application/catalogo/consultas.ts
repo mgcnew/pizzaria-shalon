@@ -95,7 +95,7 @@ export const listarAdicionais = cache(async (): Promise<Adicional[]> => {
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase
     .from("addons")
-    .select("id, name, is_active, is_temporarily_available, sort_order")
+    .select("id, name, kind, is_active, is_temporarily_available, sort_order")
     .order("sort_order")
     .order("name");
   if (error) throw error;

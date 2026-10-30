@@ -174,6 +174,9 @@ Essa permissão por omissão **não dispensa nenhuma das demais condições**. O
 
 Uma regra cadastrada como proibição prevalece sobre o padrão; entre regras aplicáveis, a mais específica (com tamanho) prevalece sobre a genérica. *(Decisão aprovada em 18/09/2026; histórico em `docs/00-DECISOES.md` D-2026-09-18-21.)*
 
+### RN-ADD-007 — Massa grossa
+A massa grossa é opção paga da pizza, escolhida em seção própria ("Escolha a massa"), pelo cliente e pela balconista. Vale para a pizza inteira, inclusive no meio a meio, e é sempre cobrada pelo preço do tamanho. Não conta no limite de adicionais nem nos ingredientes inclusos e não depende do interruptor global de adicionais. Não existe em fogazza. Sem preço cadastrado no tamanho, não é oferecida. Na comanda sai em destaque, separada dos adicionais. *(D-2026-10-30-176.)*
+
 ### RN-OBS-001
 Remoção de ingredientes e pedidos especiais são registrados como observação livre do item. Não existe ficha técnica estrutural na V1.
 

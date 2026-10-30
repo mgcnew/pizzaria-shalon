@@ -6,6 +6,7 @@ import {
   montarAlteracao,
   montarComanda,
   quebrar,
+  separarMassa,
   renderizarTexto,
   type ItemDaComanda,
   type PedidoDaComanda,
@@ -319,5 +320,19 @@ describe("montarAcrescimo", () => {
     expect(texto).toContain("CONTINUA valendo");
     expect(texto).toContain("Coca 2L");
     expect(texto).not.toContain("NAO vale mais");
+  });
+});
+
+describe("separarMassa (RN-ADD-007)", () => {
+  it("separa a massa dos ingredientes", () => {
+    expect(separarMassa(["Bacon", "Massa grossa", "Cebola"])).toEqual({
+      massa: "Massa grossa",
+      ingredientes: ["Bacon", "Cebola"],
+    });
+  });
+
+  it("sem massa, mantém os ingredientes; sem adicionais, devolve vazio", () => {
+    expect(separarMassa(["Bacon"])).toEqual({ massa: null, ingredientes: ["Bacon"] });
+    expect(separarMassa(null)).toEqual({ massa: null, ingredientes: [] });
   });
 });

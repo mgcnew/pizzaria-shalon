@@ -174,6 +174,22 @@ function reais(valor: number): string {
 
 // ---------------------------------------------------------------- itens
 
+/**
+ * RN-ADD-007: o snapshot do pedido guarda só o nome, e o banco garante que toda
+ * massa cadastrada comece com "Massa". Separa-a dos ingredientes para exibir.
+ */
+export function separarMassa(adicionais: string[] | null | undefined): {
+  massa: string | null;
+  ingredientes: string[];
+} {
+  const lista = adicionais ?? [];
+  const ehMassa = (nome: string) => /^massa/i.test(nome);
+  return {
+    massa: lista.find(ehMassa) ?? null,
+    ingredientes: lista.filter((nome) => !ehMassa(nome)),
+  };
+}
+
 function bloqueDoItem(item: ItemDaComanda, largura: number): LinhaComanda[] {
   const saida: LinhaComanda[] = [];
   const txt = (texto: string, estilo?: EstiloLinha) => linhas(texto, largura, estilo);
@@ -187,8 +203,11 @@ function bloqueDoItem(item: ItemDaComanda, largura: number): LinhaComanda[] {
     saida.push(...txt("  MEIO A MEIO", "destaque"));
   }
   if (item.borda) saida.push(...txt(`  Borda: ${item.borda}`));
-  if (item.adicionais?.length) {
-    saida.push(...txt(`  Adicionais: ${item.adicionais.join(", ")}`));
+  const { massa, ingredientes } = separarMassa(item.adicionais);
+  // Em destaque: muda a pizza inteira, e a cozinha não pode deixar passar.
+  if (massa) saida.push(...txt(`  ${massa.toUpperCase()}`, "destaque"));
+  if (ingredientes.length > 0) {
+    saida.push(...txt(`  Adicionais: ${ingredientes.join(", ")}`));
   }
   for (const componente of item.combo ?? []) {
     saida.push(

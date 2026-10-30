@@ -5339,3 +5339,19 @@ RN-PGTO-016):**
 4. **Fechamento** mostra "Descontos dados neste caixa" (tela e papel); a
    comanda mostra a linha "Desconto" antes do total.
 5. **Fora:** cupom, desconto em %, desconto depois de pago (estorna-se).
+
+## D-2026-10-30-176 — Massa grossa
+
+**Pedido (Marcelo):** oferecer massa grossa, com custo, para o cliente e para a
+balconista. Resolve o caso "massa grossa" deixado em aberto na D-2026-10-27-171.
+
+**Decisão (aprovada em 30/10/2026; migration 0181 `20261030100000_massa_grossa`;
+RN-ADD-007):**
+1. **Seção própria** "Escolha a massa" no configurador (público, pedido manual e
+   PDV), com "Massa normal" e "Massa grossa + R$".
+2. **Cadastro em `addons`** com `kind = 'massa'`, preço em `addon_size_prices`; o
+   snapshot do pedido segue em `order_item_addons`. `montar_item` a separa antes
+   do teto e dos inclusos e sempre a cobra.
+3. **Só em pizza:** `massa_permitida` recusa fogazza, e "Copiar preços" não a leva.
+4. **Preço:** a loja cadastra em Produtos › Adicionais; sem preço, não aparece.
+5. **Comanda:** linha em destaque, separada dos adicionais.

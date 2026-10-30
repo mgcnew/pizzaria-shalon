@@ -149,6 +149,14 @@ export function listarAdicionais(produtoId: string, tamanhoId: string): Promise<
   });
 }
 
+/** RN-ADD-007: a massa é opção à parte, não depende de adicionais ligados. */
+export function listarMassas(produtoId: string, tamanhoId: string): Promise<OpcaoPreco[]> {
+  return rpc<OpcaoPreco>("massas_publicas", {
+    p_product_id: produtoId,
+    p_size_id: tamanhoId,
+  });
+}
+
 /** RN-COMBO-001: composição exata, para exibição. O cliente não escolhe nada. */
 export function listarComponentesDoCombo(produtoId: string): Promise<ComponenteCombo[]> {
   return rpc<ComponenteCombo>("combo_publico", { p_product_id: produtoId });
@@ -246,14 +254,15 @@ export async function montarDadosDoConfigurador(
         })
       : Promise.resolve<ItemMontado>({ ok: false, erro: "Indisponível no momento." }),
     Promise.all(tamanhos.map(async (t) => {
-      const [sabores, bordas, adicionais] = await Promise.all([
+      const [sabores, bordas, adicionais, massas] = await Promise.all([
         t.max_sabores > 1 ? listarSabores(t.tamanho_id) : Promise.resolve([]),
         listarBordas(produto.id, t.tamanho_id),
         produto.adicionais_ligados
           ? listarAdicionais(produto.id, t.tamanho_id)
           : Promise.resolve([]),
+        listarMassas(produto.id, t.tamanho_id),
       ]);
-      porTamanho[t.tamanho_id] = { sabores, bordas, adicionais };
+      porTamanho[t.tamanho_id] = { sabores, bordas, adicionais, massas };
     })),
   ]);
 
@@ -358,7 +367,7 @@ async function montarDadosDaFogazzaSemCache(
     sabor,
     produto,
     tamanhos: [tamanho],
-    porTamanho: { [sabor.tamanho_id]: { sabores: [], bordas: [], adicionais } },
+    porTamanho: { [sabor.tamanho_id]: { sabores: [], bordas: [], adicionais, massas: [] } },
     montadoInicial,
     tamanhoFixo: true,
     caminho: `${aberto.card.slug}/${sabor.slug}`,
