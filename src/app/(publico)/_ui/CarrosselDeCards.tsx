@@ -51,7 +51,7 @@ export function CarrosselDeCards({
   function rolar(sentido: 1 | -1) {
     const faixa = faixaRef.current;
     if (!faixa) return;
-    faixa.scrollBy({ left: sentido * faixa.clientWidth * 0.85, behavior: "smooth" });
+    faixa.scrollBy({ left: sentido * faixa.clientWidth * 0.85, behavior: "auto" });
   }
 
   const seta =

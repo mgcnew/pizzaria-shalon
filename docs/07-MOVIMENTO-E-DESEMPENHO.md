@@ -3,6 +3,11 @@
 **Status:** padrão técnico obrigatório
 **Escopo:** cardápio público e painel administrativo
 
+> **Suspenso em 30/10/2026 (D-2026-10-30-177):** por decisão de desempenho, uma
+> regra global em `src/app/globals.css` desliga animações e transições nas duas
+> áreas; só o giro de "processando" continua. O restante deste documento descreve
+> o movimento que volta se essa regra for retirada.
+
 Este documento define como adicionar transições sem tornar a interface lenta,
 inconsistente ou desconfortável. Ele é a referência para qualquer alteração
 futura em hover, abas, menus, drawers, modais e estados de carregamento.

@@ -5355,3 +5355,14 @@ RN-ADD-007):**
 3. **Só em pizza:** `massa_permitida` recusa fogazza, e "Copiar preços" não a leva.
 4. **Preço:** a loja cadastra em Produtos › Adicionais; sem preço, não aparece.
 5. **Comanda:** linha em destaque, separada dos adicionais.
+
+## D-2026-10-30-177 — Sem animações na interface
+
+**Pedido (Marcelo):** o máximo de velocidade, eliminando qualquer animação, sem
+sacrificar o tempo real.
+
+**Decisão (30/10/2026):** regra global em `src/app/globals.css` zera animações,
+transições e rolagem suave no cardápio público e no painel. Exceção: o giro de
+"processando" (`animate-spin`, `animate-shalon-spin`). O indicador de navegação
+pendente fica aceso, parado, e skeletons ficam estáticos. Suspende o movimento do
+doc 07; retirar a regra o restaura. Realtime, sons e notificações não mudam.

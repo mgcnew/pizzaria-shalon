@@ -123,14 +123,8 @@
   }
 
   /*
-   * Navegação pendente (`IndicadorDeNavegacao`, via useLinkStatus).
-   *
-   * O elemento existe sempre e só muda de opacidade: aparecer não desloca
-   * nada (07 §4). Espera o tempo rápido antes de surgir, para que a navegação
-   * já pré-carregada, que troca de tela em poucas dezenas de ms, não pisque;
-   * depois entra em fade e pulsa no mesmo ritmo do skeleton do design.
-   * Com movimento reduzido, a regra global zera as durações e o indicador
-   * fica aceso, parado.
+   * Navegação pendente (`IndicadorDeNavegacao`, via useLinkStatus). O elemento
+   * existe sempre e só muda de opacidade: aparecer não desloca nada.
    */
   .indicador-navegacao {
     opacity: 0;
@@ -138,9 +132,31 @@
   }
 
   .indicador-navegacao[data-pendente] {
-    animation:
-      shalonFadeIn var(--shalon-motion-base) ease-out var(--shalon-motion-fast) both,
-      shalonPulse 1.4s ease-in-out calc(var(--shalon-motion-fast) + var(--shalon-motion-base)) infinite;
+    opacity: 1;
+  }
+}
+
+/*
+ * SEM ANIMAÇÃO (D-2026-10-30-177). Tudo troca de estado na hora, nas duas
+ * áreas, inclusive transições de hover, modais, drawers e skeletons. A única
+ * exceção é o giro de "processando", que é a prova de que o sistema não travou.
+ * Esta regra é o interruptor: tirá-la devolve o movimento descrito no doc 07.
+ */
+*,
+*::before,
+*::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .animate-spin {
+    animation: var(--animate-spin) !important;
+  }
+
+  .animate-shalon-spin {
+    animation: var(--animate-shalon-spin) !important;
   }
 }
 
