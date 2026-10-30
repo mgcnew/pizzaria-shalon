@@ -253,7 +253,7 @@ async function removerSeOrfao(assetId: string): Promise<void> {
   const { count: emBanners } = await supabase
     .from("banners")
     .select("id", { count: "exact", head: true })
-    .eq("image_asset_id", assetId);
+    .or(`image_asset_id.eq.${assetId},popup_image_asset_id.eq.${assetId}`);
 
   if ((emProdutos ?? 0) > 0 || (emBanners ?? 0) > 0) return;
   await removerAsset(assetId);
@@ -262,7 +262,16 @@ async function removerSeOrfao(assetId: string): Promise<void> {
 /** Ação de tela: descartar uma imagem que não está em uso. */
 export async function descartarImagem(form: FormData): Promise<void> {
   const assetId = String(form.get("asset_id") ?? "");
-  if (!assetId) return;
+  // O id entra num filtro do PostgREST; e só imagem de catálogo sai por aqui.
+  if (!/^[0-9a-f-]{36}$/i.test(assetId)) return;
+  const supabase = await getSupabaseServerClient();
+  const { data } = await supabase
+    .from("media_assets")
+    .select("asset_type")
+    .eq("id", assetId)
+    .maybeSingle();
+  const tipo = (data as { asset_type: string } | null)?.asset_type;
+  if (tipo !== "product" && tipo !== "banner") return;
   await removerSeOrfao(assetId);
   revalidatePath("/admin/produtos");
 }

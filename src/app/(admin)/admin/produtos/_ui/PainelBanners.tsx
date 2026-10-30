@@ -6,11 +6,12 @@ import {
   listarBanners,
   listarCategorias,
   listarImagens,
+  listarImagensEmUso,
   listarProdutos,
   listarPromocoes,
 } from "@/application/catalogo/consultas";
 import { salvarBanner, alternarAtivoBanner, removerBanner } from "@/application/catalogo/acoes";
-import { enviarImagem, urlPublica } from "@/application/midia/imagem";
+import { descartarImagem, enviarImagem, urlPublica } from "@/application/midia/imagem";
 import { urlDaImagem } from "@/application/publico/consultas";
 import { FormularioAcao } from "./FormularioAcao";
 import { BotaoAcao } from "./BotaoAcao";
@@ -40,12 +41,13 @@ const DIA_CURTO: Record<number, string> = {
 };
 
 export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean }) {
-  const [banners, imagens, produtos, categorias, promocoes] = await Promise.all([
+  const [banners, imagens, produtos, categorias, promocoes, emUso] = await Promise.all([
     listarBanners(),
     listarImagens("banner"),
     listarProdutos(),
     listarCategorias(),
     listarPromocoes(),
+    listarImagensEmUso(),
   ]);
 
   // Banner é peça larga (2:1); o popup é em retrato (1:2). Cada seletor mostra
@@ -66,6 +68,7 @@ export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean 
     );
   const opcoesLargas = await comUrl(imagensLargas);
   const opcoesRetrato = await comUrl(imagensRetrato);
+  const todasAsOpcoes = [...opcoesLargas, ...opcoesRetrato];
 
   // Foto dos produtos do destaque (prévia no seletor).
   const caminhosDeFoto = [
@@ -190,6 +193,41 @@ export async function PainelBanners({ podeGerenciar }: { podeGerenciar: boolean 
                   required
                 />
               </FormularioAcao>
+
+              {/* Fora do formulário do passo 2: cada exclusão é um formulário próprio. */}
+              {todasAsOpcoes.length > 0 ? (
+                <details className="mt-1 rounded-12 border border-border-shalon bg-surface">
+                  <summary className="flex min-h-touch cursor-pointer items-center px-3 text-[13.5px] font-semibold text-ink">
+                    Excluir imagens enviadas ({todasAsOpcoes.length})
+                  </summary>
+                  <p className="m-0 px-3 pb-2 text-[12.5px] text-muted">
+                    A exclusão é definitiva. Imagem em uso num banner ou produto não pode ser excluída.
+                  </p>
+                  <ul className="m-0 grid list-none grid-cols-1 gap-3 p-3 pt-0 min-[360px]:grid-cols-2 sm:grid-cols-3">
+                    {todasAsOpcoes.map((o) => (
+                      <li key={o.id} className="flex min-w-0 flex-col gap-1">
+                        <div className="relative aspect-[2/1] overflow-hidden rounded-10 border border-border-shalon bg-elev">
+                          <Image src={o.url} alt={o.nome} fill sizes="200px" className="object-contain" />
+                        </div>
+                        {emUso.has(o.id) ? (
+                          <span className="flex min-h-[42px] items-center text-[12.5px] font-semibold text-muted">
+                            Em uso
+                          </span>
+                        ) : (
+                          <BotaoAcao
+                            acao={descartarImagem}
+                            campos={{ asset_id: o.id }}
+                            tom="perigo"
+                            confirmar="Excluir?"
+                          >
+                            Excluir
+                          </BotaoAcao>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              ) : null}
             </section>
 
             <hr className="m-0 border-0 border-t border-border-shalon" />

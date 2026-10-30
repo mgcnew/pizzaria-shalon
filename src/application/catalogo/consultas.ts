@@ -358,6 +358,25 @@ export async function listarImagensDeProdutoSemUso() {
   }[]).filter((i) => !emUso.has(i.id));
 }
 
+/** Imagens que produto ou banner usam: estas não podem ser excluídas. */
+export async function listarImagensEmUso(): Promise<Set<string>> {
+  const supabase = await getSupabaseServerClient();
+  const [produtos, banners] = await Promise.all([
+    supabase.from("products").select("image_asset_id").not("image_asset_id", "is", null),
+    supabase.from("banners").select("image_asset_id, popup_image_asset_id"),
+  ]);
+  if (produtos.error) throw produtos.error;
+  if (banners.error) throw banners.error;
+  const ids = [
+    ...(produtos.data ?? []).map((p) => (p as { image_asset_id: string }).image_asset_id),
+    ...(banners.data ?? []).flatMap((b) => {
+      const banner = b as { image_asset_id: string; popup_image_asset_id: string | null };
+      return [banner.image_asset_id, banner.popup_image_asset_id];
+    }),
+  ];
+  return new Set(ids.filter((id): id is string => id !== null));
+}
+
 /**
  * Códigos de barras de um produto ou de uma variante (09 §2.3).
  *
