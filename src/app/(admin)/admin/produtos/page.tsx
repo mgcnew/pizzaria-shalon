@@ -76,18 +76,18 @@ export default async function Page({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="min-w-0">
           <h2 className="m-0 font-display text-[22px] font-extrabold text-ink">Produtos</h2>
           <p className="mb-0 mt-1 text-[13.5px] text-muted">
             Gerencie os itens e a estrutura do cardápio.
           </p>
         </div>
-        <div className="flex flex-wrap justify-end gap-2">
+        <div className="flex flex-wrap gap-2 sm:shrink-0 sm:justify-end">
           {podeGerenciar ? (
             <Link
               href="/admin/produtos/novo"
-              className="inline-flex min-h-touch items-center rounded-11 bg-cta px-4 text-[14px] font-bold text-cta-fg shadow-[0_5px_16px_rgb(30_24_20/0.08)]"
+              className="inline-flex min-h-touch flex-1 items-center justify-center whitespace-nowrap rounded-11 bg-cta px-4 sm:flex-none text-[14px] font-bold text-cta-fg shadow-[0_5px_16px_rgb(30_24_20/0.08)]"
             >
               + Novo produto
             </Link>
@@ -95,7 +95,7 @@ export default async function Page({
           {/* Um botão só: dentro do modal, as seções viram abas. */}
           <Link
             href="/admin/produtos?aba=categorias"
-            className="motion-interactive relative inline-flex min-h-touch items-center gap-2 rounded-11 border-[1.5px] border-border-shalon bg-surface px-[14px] text-[14px] font-semibold text-ink transition-colors hover:border-brand-orange"
+            className="motion-interactive relative inline-flex min-h-touch flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-11 border-[1.5px] border-border-shalon bg-surface px-[14px] sm:flex-none text-[14px] font-semibold text-ink transition-colors hover:border-brand-orange"
           >
             <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" className="h-[18px] w-[18px]" fill="none">
               <path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
