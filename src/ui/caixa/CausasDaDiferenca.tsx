@@ -239,7 +239,7 @@ function Bloco({ titulo, texto, children }: { titulo: string; texto: string; chi
   );
 }
 
-function Linha({
+export function Linha({
   pedidoId,
   numero,
   detalhe,

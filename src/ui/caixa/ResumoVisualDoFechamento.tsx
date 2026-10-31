@@ -1,4 +1,5 @@
 import { ParDeDados } from "@/ui/patterns";
+import { DinheiroForaDaGaveta } from "./DinheiroForaDaGaveta";
 import { PedidosSemRecebimento } from "./PedidosSemRecebimento";
 import { formatBRL } from "@/lib/format";
 import type { ResumoDeFechamento } from "@/application/caixa/tipos";
@@ -69,7 +70,10 @@ export function ResumoVisualDoFechamento({
   aberto,
   semConferencia = false,
   idDoDocumento = "resumo-impressao-fechamento",
+  aoCorrigir,
 }: {
+  /** Dinheiro entrou no caixa de agora: confere de novo. */
+  aoCorrigir?: () => void;
   conferencia: ConferenciaDoFechamento;
   /** Sessão ainda aberta: não há contagem nem diferença para mostrar. */
   semConferencia?: boolean;
@@ -123,9 +127,12 @@ export function ResumoVisualDoFechamento({
           ) : null}
 
           {relatorio.foraDaGaveta > 0 ? (
-            <p className="m-0 rounded-12 border border-twb bg-tw p-3 text-[13px] font-semibold text-twf print:rounded-none print:border-x-0 print:bg-white print:text-black">
-              Dinheiro recebido que ainda não entrou na gaveta (ex.: com o motoboy): {formatBRL(relatorio.foraDaGaveta)}
-            </p>
+            <DinheiroForaDaGaveta
+              key={relatorio.foraDaGaveta}
+              total={relatorio.foraDaGaveta}
+              corrigivel={!conferencia.fechado}
+              {...(aoCorrigir ? { aoCorrigir } : {})}
+            />
           ) : null}
 
           <details open={aberto} className="group flex flex-col gap-3">

@@ -5417,3 +5417,22 @@ recolher ajustes finos e o passo a passo do atalho.
 **Onde foi formalizada:** `src/ui/impressao/diebold.ts`, `rasterizar.ts`,
 `serial.ts` e `SecaoImpressora.tsx`.
 
+
+---
+
+## D-2026-10-31-181 — Aviso de dinheiro sem caixa mostra os pedidos e corrige o dia
+
+**Contexto.** O fechamento avisava "dinheiro que ainda não entrou na gaveta (ex.:
+com o motoboy)" somando, sem limite de data, todo pagamento em dinheiro sem caixa.
+Entregas de antes do "Saiu com…" (D-172) ficaram assim, mesmo com o dinheiro já na
+gaveta, e o aviso não dizia quais eram.
+
+**Decisão (Marcelo, 31/10/2026).** Corrigir os caixas, e não só esconder o aviso.
+O aviso passa a dizer "ainda não está em nenhum caixa" e, em "Ver os pedidos", lista
+cada pagamento com "Está/Estava na gaveta", usando `dinheiro_entrou_na_gaveta`
+(D-171): entra no caixa do dia e, se ele já fechou, o fechamento é corrigido e o
+original fica guardado. Dia anterior exige `cash.reopen`. Dinheiro ligado a saída de
+motoboy segue fora da lista: entra pelo acerto (RN-CAIXA-014). A lista depende de um
+caixa aberto.
+
+**Onde foi formalizada:** `src/ui/caixa/DinheiroForaDaGaveta.tsx`. Sem migration.

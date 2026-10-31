@@ -9,6 +9,7 @@ import { fecharCaixa, iniciarFechamentoCego, obterPreviaDoFechamento } from "@/a
 import type { PreviaDoFechamento } from "@/application/caixa/acoes";
 import { useImprimirDocumento } from "@/ui/impressao/useImprimirDocumento";
 import { montarFechamentoDeCaixa } from "@/domain/impressao/cupons";
+import { DinheiroForaDaGaveta } from "./DinheiroForaDaGaveta";
 import { relatorioDe, ResumoVisualDoFechamento, type ConferenciaDoFechamento } from "./ResumoVisualDoFechamento";
 import { PedidosSemRecebimento } from "./PedidosSemRecebimento";
 import { CausasDaDiferenca } from "./CausasDaDiferenca";
@@ -437,7 +438,7 @@ export function FechamentoDeCaixa({
         )}
       </div>
 
-      <ResumoVisualDoFechamento conferencia={conferencia} aberto={conferencia.fechado} />
+      <ResumoVisualDoFechamento conferencia={conferencia} aberto={conferencia.fechado} aoCorrigir={conferirDeNovo} />
     </form>
   );
 }
@@ -495,12 +496,7 @@ function PreviaDosRecebimentos({ previa }: { previa: PreviaDoFechamento | null }
 
       <PedidosSemRecebimento pedidos={previa.semRecebimento} antesDeFechar />
 
-      {previa.foraDaGaveta > 0 ? (
-        <p className="m-0 rounded-12 border border-twb bg-tw p-3 text-[13px] leading-snug text-twf">
-          <strong>{formatBRL(previa.foraDaGaveta)} em dinheiro ainda estão fora da gaveta</strong> (ex.: com o
-          motoboy). Esse valor não entra na contagem. Você pode fechar assim, e ele aparece no fechamento.
-        </p>
-      ) : null}
+      {previa.foraDaGaveta > 0 ? <DinheiroForaDaGaveta total={previa.foraDaGaveta} /> : null}
     </div>
   );
 }
