@@ -350,6 +350,12 @@ cupom (o QR code). Criada a opção "Espaço no fim do papel"
 (D-2026-10-13-118). **Revalidar com "Grande" (20 mm)**; se ainda cortar,
 ajustar também o avanço antes do corte no driver da Diebold.
 
+**Diebold pela porta USB (D-2026-10-31-180), a validar no papel:** a porta
+aparece na lista do Chrome; o teste sai sem janela e sem corte lateral; a imagem
+não sai embaralhada (impressora configurada em bobina de 57 mm usaria 54 bytes por
+linha, e isso embaralharia); documento longo não perde trecho; a guilhotina corta
+depois do fim; o 99 continua imprimindo com o painel aberto.
+
 **Entrega 3 (celular → balcão), também a validar com o equipamento:**
 
 | # | Teste | O que observar |

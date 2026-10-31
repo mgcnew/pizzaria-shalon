@@ -1,10 +1,12 @@
 "use client";
 
 import { COLUNAS, type LinhaComanda } from "@/domain/pedidos/comanda";
+import { montarDiebold } from "./diebold";
 import { montarEscPos } from "./escpos";
 import { ESPACO_FINAL_MM, MARGEM_ESQUERDA_MM, type ImpressoraDoAparelho } from "./impressoraDoAparelho";
 import { AREA_UTIL_MM, colunasNaLargura, imprimirLinhas, type FaixaDeImpressao } from "./imprimir";
-import { imprimirSerial } from "./serial";
+import { rasterizar } from "./rasterizar";
+import { imprimirSerial, PORTA_USB } from "./serial";
 
 /**
  * Manda o documento pela impressora configurada NESTE aparelho
@@ -45,6 +47,11 @@ export async function imprimirNoAparelho(
 ): Promise<void> {
   const espaco = ESPACO_FINAL_MM[impressora.espacoFinal];
   if (impressora.modo === "serial") {
+    if (impressora.comandos === "diebold") {
+      const imagem = rasterizar(linhas, colunasDoAparelho(impressora));
+      await imprimirSerial(montarDiebold(imagem, espaco), PORTA_USB);
+      return;
+    }
     await imprimirSerial(montarEscPos(linhas, impressora.tabela, espaco));
     return;
   }

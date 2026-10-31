@@ -5394,3 +5394,26 @@ lançar por lá.
    (reforço) e F9 (sangria), por tecla ou clique. Só aparece o que a pessoa pode
    (`orders.create_manual`, `cash.adjust`); com o caixa fechado, F4 e F9 ficam
    apagados. A janela e a ação são as do PDV (`movimentarCaixa`).
+
+---
+
+## D-2026-10-31-180 — Diebold IM433T imprime direto pela porta USB virtual
+
+**Contexto.** A Diebold cortava nas laterais pelo Chrome, mas o app da 99 imprime
+certo no mesmo notebook e sem janela. A auditoria achou duas causas:
+`@page { size: 80mm auto }` é inválido, e o Chromium descartava a regra (provado
+em PDF: saiu em Carta), deixando o tamanho por conta do driver; e as margens e a
+régua de 13/10 só compensavam o sintoma. O modo Bluetooth também não servia: no
+conjunto de comandos IM4X3T, `ESC d` liga a altura dupla e `ESC t 3` escolhe CP437.
+
+**Decisão (pedido do Marcelo, 31/10/2026).** Novo caminho "Diebold pela porta
+USB" em Configurações → Impressora: Web Serial na porta virtual, sem driver, sem
+janela e sem SDK. O documento vai como imagem de 576 pontos (`ESC k`, 72 bytes por
+linha), seguido de avanço de pelo menos 20 mm (`ESC J`) e corte (`ESC w`),
+conforme o Manual do Firmware I4X.51.01.PD5.XX, seção 7.2. A letra segue as 42
+colunas de `COLUNAS["80"]`. Os outros caminhos continuam iguais, e a aba passa a
+recolher ajustes finos e o passo a passo do atalho.
+
+**Onde foi formalizada:** `src/ui/impressao/diebold.ts`, `rasterizar.ts`,
+`serial.ts` e `SecaoImpressora.tsx`.
+

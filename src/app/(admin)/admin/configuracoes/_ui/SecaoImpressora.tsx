@@ -43,17 +43,30 @@ const PAPEIS: { valor: Papel; titulo: string; detalhe: string }[] = [
   { valor: "58", titulo: "58 mm", detalhe: `Impressora portátil. ${COLUNAS["58"]} colunas.` },
 ];
 
-const MODOS: { valor: ModoDeImpressao; titulo: string; detalhe: string }[] = [
+/** O que a pessoa escolhe: cada opção é um modo e, no direto, a língua da impressora. */
+type Caminho = ModoDeImpressao | "diebold";
+
+function caminhoDe(i: ImpressoraDoAparelho): Caminho {
+  return i.modo === "serial" && i.comandos === "diebold" ? "diebold" : i.modo;
+}
+
+const MODOS: { valor: Caminho; titulo: string; detalhe: string }[] = [
   {
-    valor: "sistema",
-    titulo: "Imprimir direto",
-    detalhe: "Manda para a impressora padrão deste aparelho assim que a comanda é emitida.",
+    valor: "diebold",
+    titulo: "Diebold pela porta USB",
+    detalhe:
+      "Fala direto com a Diebold IM433, sem janela e sem driver, na largura exata da impressão. A porta é escolhida uma vez, aqui.",
   },
   {
     valor: "serial",
     titulo: "Bluetooth direto",
     detalhe:
       "Fala direto com a impressora Bluetooth, como a de 58 mm, sem RawBT. A impressora é escolhida uma vez, aqui.",
+  },
+  {
+    valor: "sistema",
+    titulo: "Pela impressora do Windows",
+    detalhe: "Manda para a impressora padrão deste aparelho. Precisa do atalho do Chrome para não abrir janela.",
   },
   {
     valor: "balcao",
@@ -181,6 +194,21 @@ export function SecaoImpressora() {
     }
   }
 
+  const caminho = caminhoDe(impressora);
+  const ehDiebold = caminho === "diebold";
+  const pelaTela = impressora.modo === "sistema" || impressora.modo === "tela";
+  // A Diebold já garante o avanço até a guilhotina; o resto depende do aparelho.
+  const temEspaco = impressora.modo !== "balcao" && !ehDiebold;
+  const temAjustes = impressora.modo !== "balcao";
+
+  function escolherCaminho(novo: Caminho) {
+    if (novo === "diebold") {
+      salvar({ ...impressora, modo: "serial", comandos: "diebold", papel: "80", letrasPorLinha: "auto" });
+      return;
+    }
+    salvar({ ...impressora, modo: novo, comandos: "escpos" });
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <Cartao
@@ -188,94 +216,142 @@ export function SecaoImpressora() {
         descricao="Vale só para este computador ou celular. Cada aparelho guarda a sua — mudar aqui não muda nos outros."
       >
         <div className="flex flex-col gap-4">
-          <Opcoes
-            rotulo="Papel"
-            opcoes={PAPEIS}
-            atual={impressora.papel}
-            aoEscolher={(papel) => salvar({ ...impressora, papel, letrasPorLinha: "auto" })}
-          />
-          <Opcoes
-            rotulo="Ao emitir a comanda"
-            opcoes={MODOS}
-            atual={impressora.modo}
-            aoEscolher={(modo) => salvar({ ...impressora, modo })}
-          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Opcoes rotulo="Como imprimir" opcoes={MODOS} atual={caminho} aoEscolher={escolherCaminho} />
+            {ehDiebold ? (
+              <ParDeDados chave="Papel" valor="80 mm" />
+            ) : (
+              <Opcoes
+                rotulo="Papel"
+                opcoes={PAPEIS}
+                atual={impressora.papel}
+                aoEscolher={(papel) => salvar({ ...impressora, papel, letrasPorLinha: "auto" })}
+              />
+            )}
+          </div>
+
           {impressora.modo === "serial" ? (
-            <BluetoothDireto
-              impressora={impressora}
-              aoSalvar={salvar}
-              aoAvisar={setAviso}
-            />
-          ) : null}
-          {podeSerBalcao(impressora) ? (
-            <Opcoes
-              rotulo="Imprimir também o que os celulares pedirem?"
-              opcoes={ESTACAO}
-              atual={impressora.estacao ? "sim" : "nao"}
-              aoEscolher={(v) => salvar({ ...impressora, estacao: v === "sim" })}
-            />
-          ) : null}
-          {impressora.estacao && impressora.modo === "sistema" ? (
-            <p className="m-0 rounded-12 border border-tib bg-ti px-3 py-[10px] text-[13px] font-semibold text-tif">
-              Deixe o Chrome aberto pelo atalho do balcão (abaixo). Sem ele, cada pedido dos celulares abre a
-              janela de impressão e fica parado esperando alguém clicar.
-            </p>
+            <ImpressoraDireta impressora={impressora} aoSalvar={salvar} aoAvisar={setAviso} />
           ) : null}
 
-          {impressora.modo !== "balcao" ? (
-            <Opcoes
-              rotulo="Espaço no fim do papel"
-              opcoes={ESPACOS}
-              atual={impressora.espacoFinal}
-              aoEscolher={(espacoFinal) => salvar({ ...impressora, espacoFinal })}
-            />
-          ) : null}
-          {impressora.modo !== "balcao" ? (
-            <SelectMenu
-              label="Letras por linha"
-              valor={impressora.letrasPorLinha}
-              aoMudar={(letrasPorLinha) => salvar({ ...impressora, letrasPorLinha })}
-              hint="Se o fim das linhas sai cortado (ex.: R$ 57,0 em vez de 57,00), imprima o teste e escolha o maior número da régua que sai inteiro."
-              opcoes={[
-                { valor: "auto", texto: "Automático", descricao: "O padrão do papel (ou o da régua, se calibrou)." },
-                ...LETRAS_POR_LINHA[impressora.papel].map((n) => ({ valor: String(n), texto: `${n} letras` })),
-              ]}
-            />
-          ) : null}
-          {(impressora.modo === "sistema" || impressora.modo === "tela") && impressora.areaMedida === null ? (
-            <Opcoes
-              rotulo="Margem nas laterais"
-              opcoes={MARGENS}
-              atual={impressora.margemEsquerda}
-              aoEscolher={(margemEsquerda) => salvar({ ...impressora, margemEsquerda })}
-            />
-          ) : null}
-          {impressora.modo === "sistema" || impressora.modo === "tela" ? (
-            <CalibrarComRegua impressora={impressora} aoSalvar={salvar} aoAvisar={setAviso} />
-          ) : null}
+          <Aviso {...aviso} />
+
+          <div>
+            <Button type="button" disabled={imprimindo} onClick={testar}>
+              {imprimindo ? "Enviando…" : "Teste de impressão"}
+            </Button>
+          </div>
 
           <div>
             <ParDeDados chave="Documento" valor="Comanda não fiscal" />
             <ParDeDados chave="Reimpressão" valor="Fica registrada, com autor e horário" />
             <ParDeDados chave="Cupons do PDV e fechamento de caixa" valor={`Saem em ${impressora.papel} mm`} />
           </div>
-
-          <Aviso {...aviso} />
-
-          <div>
-            <Button type="button" variante="secundario" disabled={imprimindo} onClick={testar}>
-              {imprimindo ? "Enviando…" : "Teste de impressão"}
-            </Button>
-          </div>
         </div>
       </Cartao>
 
-      {impressora.modo !== "serial" ? (
-        <ConfigurarImpressaoDireta atalhoChrome={ATALHO_CHROME} copiado={copiado} aoCopiar={copiarAtalho} />
+      {podeSerBalcao(impressora) ? (
+        <Cartao titulo="Balcão" descricao="Para os celulares imprimirem nesta impressora.">
+          <div className="flex flex-col gap-3">
+            <Opcoes
+              rotulo="Imprimir também o que os celulares pedirem?"
+              opcoes={ESTACAO}
+              atual={impressora.estacao ? "sim" : "nao"}
+              aoEscolher={(v) => salvar({ ...impressora, estacao: v === "sim" })}
+            />
+            {impressora.estacao && impressora.modo === "sistema" ? (
+              <p className="m-0 rounded-12 border border-tib bg-ti px-3 py-[10px] text-[13px] font-semibold text-tif">
+                Deixe o Chrome aberto pelo atalho do balcão. Sem ele, cada pedido dos celulares abre a janela de
+                impressão e fica parado esperando alguém clicar.
+              </p>
+            ) : null}
+          </div>
+        </Cartao>
       ) : null}
 
-      {impressora.modo !== "serial" ? <GuiaDaJanelaDeImpressao /> : null}
+      {temAjustes ? (
+        <Recolhivel
+          titulo="Ajustes do papel"
+          detalhe={
+            ehDiebold
+              ? "Só se quiser mudar o tamanho da letra."
+              : "Espaço no fim, letras por linha, margens e régua. Só mexa se o teste sair errado."
+          }
+        >
+          <div className="flex flex-col gap-4">
+            {temEspaco ? (
+              <Opcoes
+                rotulo="Espaço no fim do papel"
+                opcoes={ESPACOS}
+                atual={impressora.espacoFinal}
+                aoEscolher={(espacoFinal) => salvar({ ...impressora, espacoFinal })}
+              />
+            ) : null}
+            <SelectMenu
+              label="Letras por linha"
+              valor={impressora.letrasPorLinha}
+              aoMudar={(letrasPorLinha) => salvar({ ...impressora, letrasPorLinha })}
+              hint={
+                ehDiebold
+                  ? "Menos letras por linha deixam a letra maior."
+                  : "Se o fim das linhas sai cortado (ex.: R$ 57,0 em vez de 57,00), imprima o teste e escolha o maior número da régua que sai inteiro."
+              }
+              opcoes={[
+                { valor: "auto", texto: "Automático", descricao: "O padrão do papel (ou o da régua, se calibrou)." },
+                ...LETRAS_POR_LINHA[impressora.papel].map((n) => ({ valor: String(n), texto: `${n} letras` })),
+              ]}
+            />
+            {pelaTela && impressora.areaMedida === null ? (
+              <Opcoes
+                rotulo="Margem nas laterais"
+                opcoes={MARGENS}
+                atual={impressora.margemEsquerda}
+                aoEscolher={(margemEsquerda) => salvar({ ...impressora, margemEsquerda })}
+              />
+            ) : null}
+            {pelaTela ? <CalibrarComRegua impressora={impressora} aoSalvar={salvar} aoAvisar={setAviso} /> : null}
+          </div>
+        </Recolhivel>
+      ) : null}
+
+      {impressora.modo === "sistema" ? (
+        <Recolhivel
+          titulo="Imprimir sem a janela de escolha"
+          detalhe="Passo a passo do atalho do Chrome, e o que fazer se a janela ainda abrir."
+        >
+          <div className="flex flex-col gap-4">
+            <ConfigurarImpressaoDireta atalhoChrome={ATALHO_CHROME} copiado={copiado} aoCopiar={copiarAtalho} />
+            <GuiaDaJanelaDeImpressao />
+          </div>
+        </Recolhivel>
+      ) : null}
     </div>
+  );
+}
+
+/** Bloco que fica fechado até alguém precisar: a aba mostra primeiro o que importa. */
+function Recolhivel({
+  titulo,
+  detalhe,
+  children,
+}: {
+  titulo: string;
+  detalhe: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <details className="group rounded-12 border border-border-shalon bg-surface open:border-brand-orange">
+      <summary className="flex min-h-touch cursor-pointer list-none items-center gap-3 rounded-12 px-4 py-3 marker:hidden hover:bg-elev [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14.5px] font-bold text-ink">{titulo}</span>
+          <span className="block text-[12.5px] text-muted">{detalhe}</span>
+        </span>
+        <span aria-hidden="true" className="text-muted group-open:rotate-180">
+          ⌄
+        </span>
+      </summary>
+      <div className="border-t border-border-shalon p-4">{children}</div>
+    </details>
   );
 }
 
@@ -286,10 +362,10 @@ async function situacaoDoBluetooth(): Promise<"sem-suporte" | "nenhuma" | "escol
 }
 
 /**
- * A impressora Bluetooth deste aparelho: escolher (uma vez), trocar,
- * esquecer, e a tabela de acentos.
+ * A impressora direta deste aparelho, Bluetooth ou porta USB da Diebold:
+ * escolher (uma vez), trocar, esquecer e, no Bluetooth, a tabela de acentos.
  */
-function BluetoothDireto({
+function ImpressoraDireta({
   impressora,
   aoSalvar,
   aoAvisar,
@@ -332,11 +408,14 @@ function BluetoothDireto({
     await verificar();
   }
 
+  const ehDiebold = impressora.comandos === "diebold";
+
   if (situacao === "sem-suporte") {
     return (
       <p role="alert" className="m-0 rounded-12 border border-twb bg-tw px-3 py-[10px] text-[13px] font-semibold text-twf">
-        Este navegador não fala com impressora Bluetooth. Use o Google Chrome atualizado — no Android, no
-        Windows ou no Mac. No iPhone não funciona.
+        {ehDiebold
+          ? "Este navegador não fala com a porta USB. Use o Google Chrome ou o Edge atualizado, no Windows."
+          : "Este navegador não fala com impressora Bluetooth. Use o Google Chrome atualizado — no Android, no Windows ou no Mac. No iPhone não funciona."}
       </p>
     );
   }
@@ -344,17 +423,21 @@ function BluetoothDireto({
   return (
     <div className="flex flex-col gap-4 rounded-12 border border-border-shalon bg-elev p-3">
       <div>
-        <p className="m-0 text-[12px] font-bold uppercase tracking-[0.06em] text-muted">Impressora Bluetooth</p>
+        <p className="m-0 text-[12px] font-bold uppercase tracking-[0.06em] text-muted">
+          {ehDiebold ? "Porta da Diebold" : "Impressora Bluetooth"}
+        </p>
         <p className="m-0 mt-1 text-[13.5px] text-ink" role="status">
           {situacao === "verificando"
             ? "Verificando…"
             : situacao === "escolhida"
               ? "Escolhida neste aparelho. Imprimir não pergunta mais nada."
-              : "Nenhuma escolhida ainda. Pareie a impressora no Bluetooth do aparelho e depois escolha aqui."}
+              : ehDiebold
+                ? "Nenhuma escolhida ainda. Clique abaixo e escolha a porta COM da impressora, a mesma que aparece no Gerenciador de Dispositivos."
+                : "Nenhuma escolhida ainda. Pareie a impressora no Bluetooth do aparelho e depois escolha aqui."}
         </p>
         <div className="mt-2 flex flex-wrap gap-2">
           <Button type="button" variante="secundario" onClick={escolher} disabled={situacao === "verificando"}>
-            {situacao === "escolhida" ? "Trocar impressora" : "Escolher impressora"}
+            {situacao !== "escolhida" ? (ehDiebold ? "Escolher porta" : "Escolher impressora") : ehDiebold ? "Trocar porta" : "Trocar impressora"}
           </Button>
           {situacao === "escolhida" ? (
             <Button type="button" variante="fantasma" onClick={esquecer}>
@@ -364,12 +447,14 @@ function BluetoothDireto({
         </div>
       </div>
 
-      <Opcoes
-        rotulo="Acentos"
-        opcoes={TABELAS}
-        atual={impressora.tabela}
-        aoEscolher={(tabela) => aoSalvar({ ...impressora, tabela })}
-      />
+      {ehDiebold ? null : (
+        <Opcoes
+          rotulo="Acentos"
+          opcoes={TABELAS}
+          atual={impressora.tabela}
+          aoEscolher={(tabela) => aoSalvar({ ...impressora, tabela })}
+        />
+      )}
     </div>
   );
 }

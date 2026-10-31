@@ -82,33 +82,46 @@ export async function esquecerImpressoraSerial(): Promise<void> {
 /** Uma impressão por vez: duas conexões na mesma porta falham. */
 let fila: Promise<unknown> = Promise.resolve();
 
-export function imprimirSerial(bytes: Uint8Array): Promise<void> {
-  const tarefa = fila.then(() => enviar(bytes));
+/** Como falar com a porta. O padrão serve ao Bluetooth. */
+export type RitmoDaPorta = { baudRate: number; pedaco: number; pausaMs: number };
+
+const BLUETOOTH: RitmoDaPorta = { baudRate: 9600, pedaco: 256, pausaMs: 0 };
+
+/**
+ * Porta USB virtual da Diebold. A memória de recepção dela tem só 8 KB, e imagem é
+ * muito mais dado que texto: 4 KB a cada 100 ms ficam abaixo do que a cabeça
+ * imprime (cerca de 57 KB/s a 100 mm/s), sem transbordar a memória.
+ */
+export const PORTA_USB: RitmoDaPorta = { baudRate: 115200, pedaco: 4096, pausaMs: 100 };
+
+export function imprimirSerial(bytes: Uint8Array, ritmo: RitmoDaPorta = BLUETOOTH): Promise<void> {
+  const tarefa = fila.then(() => enviar(bytes, ritmo));
   fila = tarefa.catch(() => undefined);
   return tarefa;
 }
 
-const PEDACO = 256;
-
-async function enviar(bytes: Uint8Array): Promise<void> {
+async function enviar(bytes: Uint8Array, ritmo: RitmoDaPorta): Promise<void> {
   const porta = await impressoraLembrada();
   if (porta === null) {
-    throw new ErroDaImpressora("Nenhuma impressora Bluetooth escolhida neste aparelho. Escolha em Configurações → Impressora.");
+    throw new ErroDaImpressora("Nenhuma impressora escolhida neste aparelho. Escolha em Configurações → Impressora.");
   }
 
   try {
-    // Velocidade é ignorada no Bluetooth, mas a API exige uma.
-    await porta.open({ baudRate: 9600 });
+    // Velocidade é ignorada no Bluetooth e na porta USB virtual, mas a API exige uma.
+    await porta.open({ baudRate: ritmo.baudRate });
   } catch {
-    throw new ErroDaImpressora("Não conectou na impressora. Confira se ela está ligada e perto do aparelho.");
+    throw new ErroDaImpressora(
+      "Não conectou na impressora. Confira se ela está ligada e se outro programa não está usando a porta.",
+    );
   }
 
   try {
     if (porta.writable === null) throw new ErroDaImpressora("A impressora não aceitou dados.");
     const escritor = porta.writable.getWriter();
     try {
-      for (let i = 0; i < bytes.length; i += PEDACO) {
-        await escritor.write(bytes.subarray(i, i + PEDACO));
+      for (let i = 0; i < bytes.length; i += ritmo.pedaco) {
+        await escritor.write(bytes.subarray(i, i + ritmo.pedaco));
+        if (ritmo.pausaMs > 0) await new Promise((r) => window.setTimeout(r, ritmo.pausaMs));
       }
       await escritor.close();
     } finally {

@@ -64,7 +64,6 @@ function escapar(texto: string): string {
 
 function montarHtml(
   linhas: LinhaComanda[],
-  papel: Papel,
   espacoFinalMm: number,
   faixa: FaixaDeImpressao,
 ): string {
@@ -85,8 +84,10 @@ function montarHtml(
     })
     .join("");
 
+  // O tamanho do papel fica por conta do driver: `size: 80mm auto` é inválido
+  // e o Chrome o descartava, e `size: 80mm` faria páginas quadradas.
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Impressão</title><style>
-@page { size: ${papel}mm auto; margin: 0; }
+@page { margin: 0; }
 html, body { margin: 0; padding: 0; background: #fff; color: #000;
   -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 body { width: ${faixa.inicioMm + largura}mm; padding: 2mm 0 1mm ${faixa.inicioMm}mm; box-sizing: border-box;
@@ -112,7 +113,7 @@ export function imprimirLinhas(
   espacoFinalMm = 6,
   faixa: FaixaDeImpressao = { inicioMm: 0, larguraMm: AREA_UTIL_MM[papel] },
 ): Promise<void> {
-  return imprimirHtml(montarHtml(linhas, papel, espacoFinalMm, faixa));
+  return imprimirHtml(montarHtml(linhas, espacoFinalMm, faixa));
 }
 
 /**
@@ -142,7 +143,7 @@ export function imprimirReguaDeAlinhamento(papel: Papel): Promise<void> {
     `<rect x="0" y="0" width="${largura}" height="4"/>${marcas.join("")}` +
     `<rect x="0" y="27" width="${largura}" height="4"/></svg>`;
   const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Régua</title><style>
-@page { size: ${papel}mm auto; margin: 0; }
+@page { margin: 0; }
 html, body { margin: 0; padding: 0; background: #fff; color: #000;
   -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 body { width: ${largura}mm; font-family: Arial, sans-serif; font-weight: 700; font-size: 3.2mm; }

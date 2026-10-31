@@ -43,6 +43,8 @@ export type ImpressoraDoAparelho = {
   estacao: boolean;
   /** Tabela de acentos do Bluetooth direto. Escolhida pelo teste de impressão. */
   tabela: TabelaDeAcentos;
+  /** Língua da impressora no modo `serial` (D-2026-10-31-180). */
+  comandos: ComandosDaImpressora;
   /** Papel em branco depois do documento, antes do corte. */
   espacoFinal: EspacoFinal;
   /** Margem nas duas laterais (o nome do campo ficou da primeira versão). */
@@ -61,6 +63,12 @@ export type ImpressoraDoAparelho = {
    */
   letrasPorLinha: string;
 };
+
+export type ComandosDaImpressora =
+  /** Térmica comum, como a KD-1025 no Bluetooth. */
+  | "escpos"
+  /** Diebold IM433T: conjunto próprio, recebe o documento como imagem. */
+  | "diebold";
 
 export type AreaMedida = { inicioMm: number; fimMm: number };
 
@@ -106,6 +114,7 @@ export const PADRAO: ImpressoraDoAparelho = {
   modo: "tela",
   estacao: false,
   tabela: "cp860",
+  comandos: "escpos",
   espacoFinal: "normal",
   margemEsquerda: "nenhuma",
   areaMedida: null,
@@ -139,7 +148,7 @@ function interpretar(bruto: string | null): ImpressoraDoAparelho {
   try {
     const valor: unknown = JSON.parse(bruto);
     if (typeof valor !== "object" || valor === null) return PADRAO;
-    const { papel, modo, estacao, tabela, espacoFinal, margemEsquerda, areaMedida, letrasPorLinha } = valor as Record<
+    const { papel, modo, estacao, tabela, comandos, espacoFinal, margemEsquerda, areaMedida, letrasPorLinha } = valor as Record<
       string,
       unknown
     >;
@@ -151,6 +160,7 @@ function interpretar(bruto: string | null): ImpressoraDoAparelho {
       modo: modoLido,
       estacao: estacao === true && podeSerBalcao({ modo: modoLido, papel: papelLido }),
       tabela: tabela === "cp850" || tabela === "sem-acento" ? tabela : "cp860",
+      comandos: comandos === "diebold" ? "diebold" : "escpos",
       espacoFinal: espacoFinal === "medio" || espacoFinal === "grande" ? espacoFinal : "normal",
       margemEsquerda:
         margemEsquerda === "pequena" || margemEsquerda === "media" || margemEsquerda === "grande"
