@@ -50,7 +50,9 @@ function Opcao({
   return (
     <label
       className={[
-        "inline-flex min-h-touch cursor-pointer items-center rounded-11 border-[1.5px] bg-surface px-3.5 text-[13.5px] font-semibold",
+        // `relative` segura o rádio invisível aqui dentro. Sem isso, ele fica fora do
+        // lugar e o navegador rola o modal atrás dele ao focar, deixando a tela em branco.
+        "relative inline-flex min-h-touch cursor-pointer items-center rounded-11 border-[1.5px] bg-surface px-3.5 text-[13.5px] font-semibold",
         marcada ? "border-brand-red text-ink" : "border-border-shalon text-ink-2",
       ].join(" ")}
     >

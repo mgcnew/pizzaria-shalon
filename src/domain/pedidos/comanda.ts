@@ -223,6 +223,34 @@ function bloqueDoItem(item: ItemDaComanda, largura: number): LinhaComanda[] {
   return saida;
 }
 
+/**
+ * Quadro de observações, logo depois dos itens e antes dos valores: é a última
+ * coisa que a cozinha lê antes de fechar o pedido. Em maiúsculas e entre réguas
+ * de asteriscos para não se confundir com o resto do papel. Repete a observação
+ * de cada item, que no meio de um pedido grande passaria batida.
+ */
+function quadroDeObservacoes(
+  observacao: string | null | undefined,
+  itens: ItemDaComanda[],
+  largura: number,
+): LinhaComanda[] {
+  const textos = [
+    ...(observacao?.trim() ? [observacao] : []),
+    ...itens
+      .filter((item) => item.observacao?.trim())
+      .map((item) => `${item.sabores?.length ? item.sabores.join(" / ") : item.nome}: ${item.observacao}`),
+  ];
+  if (textos.length === 0) return [];
+
+  return [
+    separador(largura, "*"),
+    { texto: centralizar("! ATENCAO - OBSERVACAO !", largura), estilo: "destaque" },
+    separador(largura, "*"),
+    ...textos.flatMap((texto) => linhas(`> ${texto.toUpperCase()}`, largura, "destaque")),
+    separador(largura, "*"),
+  ];
+}
+
 // -------------------------------------------------------------- comanda
 
 /**
@@ -277,11 +305,7 @@ export function montarComanda(
     saida.push(VAZIO);
   }
 
-  if (pedido.observacao) {
-    saida.push(SEPARADOR);
-    saida.push(...txt("OBSERVACAO DO PEDIDO", "titulo"));
-    saida.push(...txt(pedido.observacao, "destaque"));
-  }
+  saida.push(...quadroDeObservacoes(pedido.observacao, pedido.itens, largura));
 
   // Valores: o motoboy cobra pelo que está no papel (D-2026-10-17-147).
   if (pedido.valores) {
@@ -350,6 +374,8 @@ export type AlteracaoDaComanda = {
   motivo: string;
   itensAntes: { quantidade: number; nome: string }[];
   itensDepois: ItemDaComanda[];
+  /** Observação geral do pedido, como está agora. */
+  observacao?: string | null;
   /** Edição (D-2026-11-01-182): diz só o que mudou, em vez de ERA/PASSA A SER. */
   mudancas?: {
     saiu: { quantidade: number; nome: string }[];
@@ -443,6 +469,12 @@ export function montarAlteracao(
     saida.push(VAZIO);
   }
 
+  const quadro = quadroDeObservacoes(dados.observacao, dados.itensDepois, largura);
+  if (quadro.length > 0) {
+    saida.push(...quadro);
+    return saida;
+  }
+
   saida.push(separador(largura, "*"));
   return saida;
 }
@@ -453,7 +485,7 @@ export function montarAlteracao(
  * a cozinha só precisa fazer o que entrou agora.
  */
 export function montarAcrescimo(
-  dados: { numero: number; horario: string; motivo: string; itensNovos: ItemDaComanda[] },
+  dados: { numero: number; horario: string; motivo: string; itensNovos: ItemDaComanda[]; observacao?: string | null },
   largura: number = LARGURA,
 ): LinhaComanda[] {
   const saida: LinhaComanda[] = [];
@@ -472,6 +504,11 @@ export function montarAcrescimo(
   for (const item of dados.itensNovos) {
     saida.push(...bloqueDoItem(item, largura));
     saida.push(VAZIO);
+  }
+  const quadro = quadroDeObservacoes(dados.observacao, dados.itensNovos, largura);
+  if (quadro.length > 0) {
+    saida.push(...quadro);
+    return saida;
   }
   saida.push(separador(largura, "*"));
   return saida;

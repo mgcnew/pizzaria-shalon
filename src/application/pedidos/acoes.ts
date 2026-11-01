@@ -428,6 +428,7 @@ export async function emitirDocumento(
             .map((i, indice) => ({ linha: i.linha, item: itens[indice]! }))
             .filter((x) => x.linha >= (revisao.a_partir_da_linha ?? 0))
             .map((x) => x.item),
+          observacao: pedido.observacao,
         }, largura)
       : montarAlteracao({
       numero: pedido.numero,
@@ -438,6 +439,7 @@ export async function emitirDocumento(
         nome: i.nome,
       })),
       itensDepois: itens,
+      observacao: pedido.observacao,
       ...(revisao.mudancas
         ? {
             mudancas: {

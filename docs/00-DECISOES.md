@@ -5461,3 +5461,14 @@ sem uso pela tela.
 **Onde foi formalizada:** migration 0182 (`20261101100000_editar_pedido`),
 `PainelEdicao.tsx`, `HistoricoDeEdicoes.tsx` e `supabase/tests/editar_pedido.sql`.
 
+
+---
+
+## D-2026-11-01-183 — Observação em quadro de destaque na comanda
+
+**Decisão (Marcelo, 01/11/2026).** A observação não pode passar batida na impressão. Depois
+dos itens e antes dos valores, a comanda traz o quadro "ATENCAO - OBSERVACAO", em maiúsculas
+e entre réguas de asteriscos, com a observação do pedido e a de cada item, que continua
+também junto do próprio item. O quadro sai ainda nos documentos de ALTERAÇÃO e ACRÉSCIMO.
+
+**Onde foi formalizada:** `src/domain/pedidos/comanda.ts`.

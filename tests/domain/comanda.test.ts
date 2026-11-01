@@ -104,7 +104,7 @@ describe("comanda de produção", () => {
     expect(texto).toContain("Catupiry");
     expect(texto).toContain("Bacon");
     expect(texto).toContain("Sem cebola");
-    expect(texto).toContain("Interfone quebrado");
+    expect(texto).toContain("INTERFONE QUEBRADO");
   });
 
   it("NÃO vira fechamento financeiro: sem subtotal, taxa ou total", () => {
@@ -379,3 +379,42 @@ describe("documento da edição (D-2026-11-01-182)", () => {
     expect(revisaoDaComanda([{ id: "antiga", status: "applied" }])?.id).toBe("antiga");
   });
 });
+
+describe("quadro de observações", () => {
+  const base = { numero: 9, modalidade: "pickup" as const, horario: "20:00", cliente: "Ana" };
+
+  it("vem depois dos itens e antes dos valores, em maiúsculas, com a do pedido e a dos itens", () => {
+    const texto = renderizarTexto(
+      montarComanda({
+        ...base,
+        observacao: "Interfone quebrado",
+        itens: [{ quantidade: 1, nome: "Calabresa", observacao: "Sem cebola" }],
+        valores: { subtotal: 50, taxa: 0, total: 50 },
+      }),
+    );
+    const quadro = texto.indexOf("ATENCAO - OBSERVACAO");
+    expect(quadro).toBeGreaterThan(texto.indexOf("1x Calabresa"));
+    expect(quadro).toBeLessThan(texto.indexOf("Subtotal"));
+    expect(texto).toContain("> INTERFONE QUEBRADO");
+    expect(texto).toContain("> CALABRESA: SEM CEBOLA");
+  });
+
+  it("não aparece quando não há observação", () => {
+    const texto = renderizarTexto(montarComanda({ ...base, itens: [{ quantidade: 1, nome: "Calabresa" }] }));
+    expect(texto).not.toContain("ATENCAO");
+  });
+
+  it("sai também na ALTERAÇÃO e respeita a largura", () => {
+    const linhas = montarAlteracao({
+      numero: 9,
+      horario: "20:00",
+      motivo: "Cliente pediu",
+      itensAntes: [],
+      itensDepois: [{ quantidade: 1, nome: "Calabresa" }],
+      observacao: "Tocar a campainha duas vezes por favor porque o interfone esta quebrado",
+    });
+    expect(renderizarTexto(linhas)).toContain("ATENCAO - OBSERVACAO");
+    for (const linha of linhas) expect(linha.texto.length).toBeLessThanOrEqual(LARGURA);
+  });
+});
+
