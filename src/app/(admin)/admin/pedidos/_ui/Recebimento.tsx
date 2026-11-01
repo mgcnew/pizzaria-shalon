@@ -679,7 +679,12 @@ function DescontoNoPagamento({
   if (!aberto) {
     return (
       <div>
-        <Button tamanho="sm" variante="fantasma" onClick={() => setAberto(true)}>
+        <Button
+          tamanho="sm"
+          variante="secundario"
+          className="border-brand-red! text-brand-red!"
+          onClick={() => setAberto(true)}
+        >
           Dar desconto
         </Button>
       </div>
