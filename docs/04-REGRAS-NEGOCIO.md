@@ -785,7 +785,7 @@ Shalon pode solicitar alteração e contatar o cliente via WhatsApp.
 Alteração registra estado anterior, proposta, responsável, horário e diferenças relevantes.
 
 ### RN-ALT-004
-Se a alteração modificar itens ou total, o cliente precisa aprová-la pelo acompanhamento antes do pedido prosseguir.
+Se a alteração modificar itens ou total, o cliente precisa aprová-la pelo acompanhamento antes do pedido prosseguir. **Substituída por RN-ALT-009 em 01/11/2026 (D-2026-11-01-182):** não nascem propostas novas; vale apenas para as que já estavam abertas.
 
 ### RN-ALT-005
 A tela de aprovação mostra mudança e total anterior/novo.
@@ -798,6 +798,17 @@ Após aprovação, novos snapshots/revisões preservam o histórico anterior em 
 
 ### RN-ALT-008 — Acréscimo pedido pelo cliente
 Exceção controlada a RN-ALT-004: quando o **próprio cliente** pede mais itens (por WhatsApp, telefone ou no balcão), a equipe com `orders.request_change` pode **acrescentar** itens ao pedido até ele sair para entrega ou ser concluído, sem aprovação pelo acompanhamento. O canal é obrigatório e fica registrado como o aceite do cliente. Só acréscimo: tirar ou trocar itens segue RN-ALT-004. Os itens novos são precificados pelo servidor; os que já estavam não são reprecificados. Fica uma revisão aplicada do tipo acréscimo (RN-ALT-007), auditada, e a comanda de **ACRÉSCIMO** lista só os itens novos, mantendo a comanda anterior válida. Pedido já pago passa a ter "falta receber" a diferença, recebida como complemento (RN-PGTO-013). *(Decisão de 17/10/2026; D-2026-10-17-154.)*
+
+### RN-ALT-009 — Editar pedido com justificativa obrigatória
+A equipe com `orders.request_change` edita o pedido até ele sair para entrega ou ser concluído, e a edição **vale na hora**, sem aceite pelo link. Substitui a proposta (RN-ALT-004) e o acréscimo (RN-ALT-008). *(Decisão de 01/11/2026; D-2026-11-01-182.)*
+- **Justificativa obrigatória, conferida no servidor:** "Cliente pediu" (com o canal: WhatsApp, telefone ou balcão) ou "Lançado errado", mais o texto do motivo.
+- **O que muda:** itens, retirada ↔ entrega, endereço, taxa, nome, telefone, observação, forma de pagamento esperada e troco. O realizado não passa por aqui (RN-PGTO-002).
+- **Preço:** o item que fica mantém o preço do pedido; só o item novo paga o preço atual. O desconto é mantido, limitado ao novo valor.
+- **Entrega:** mesma medição de rota, faixas e taxa à mão do balcão; além do máximo, bloqueia. Pedido mínimo só é exigido ao passar para entrega. Acima do raio automático, salvar aprova a entrega, e por isso exige `orders.accept`; aprovação que já estava pendente continua pendente.
+- **Estado:** não recua. "Pronto para retirada" e "Pronto para entrega" trocam entre si com a modalidade. Pedido com motoboy não muda a entrega.
+- **Histórico:** revisão aplicada do tipo edição com antes, depois, quem, quando, motivo e diferenças, e auditoria (RN-ALT-003, RN-ALT-007).
+- **Comanda:** se mudou item, modalidade, endereço ou observação, o documento de **ALTERAÇÃO** diz o que tirar, acrescentar e a nova modalidade. Só acrescentar item novo gera a comanda de **ACRÉSCIMO**, e a anterior continua valendo. Corrigir só telefone ou nome não gera papel.
+- **Total acima do recebido:** "falta receber" a diferença (RN-PGTO-013). **Total abaixo do recebido:** exige a devolução no mesmo ato (RN-CAIXA-020).
 
 ---
 
@@ -1052,6 +1063,10 @@ só pode ser estornado com **caixa aberto** — tirar dinheiro exige gaveta aber
 
 Decisão de 25/09/2026 (`D-2026-09-25-78`). Desenho em
 `09-PDV-FRENTE-DE-CAIXA.md` §1.5.
+
+
+### RN-CAIXA-020 — Devolução parcial na edição do pedido
+Quando a edição (RN-ALT-009) deixa o total abaixo do recebido, a diferença é devolvida no mesmo ato, e quem edita escolhe de qual recebimento ela sai. Exige `finance.reverse`. A linha é estornada e o que sobra vira uma linha nova, com a mesma forma, sessão e data; em dinheiro, a gaveta perde só o valor devolvido. O recebimento precisa estar num **caixa aberto**: caso contrário, a edição é recusada e o caminho é estornar e receber de novo. *(Decisão de 01/11/2026; D-2026-11-01-182.)*
 
 ---
 

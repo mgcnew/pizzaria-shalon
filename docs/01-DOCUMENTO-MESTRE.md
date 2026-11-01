@@ -1821,7 +1821,7 @@ Pedido público enviado não vira venda confirmada automaticamente. Estado inici
 
 Pix antecipado exige confirmação do pagamento antes do aceite produtivo. Entrega fora do raio automático exige aprovação de entrega. Esses estados devem ser explícitos.
 
-Quando um problema puder ser corrigido, a equipe usa **“Alteração necessária — aguardando cliente”** em vez de rejeitar todo o pedido. A equipe negocia via WhatsApp e registra a proposta no sistema. Se alterar itens ou valor, o cliente precisa aprovar pelo acompanhamento. Mostrar claramente mudanças e total anterior/novo. Não avançar nem cancelar automaticamente por falta de resposta; equipe decide posteriormente com motivo.
+Quando um problema puder ser corrigido, a equipe usa **“Alteração necessária — aguardando cliente”** em vez de rejeitar todo o pedido. A equipe negocia via WhatsApp e registra a proposta no sistema. Se alterar itens ou valor, o cliente precisa aprovar pelo acompanhamento. Mostrar claramente mudanças e total anterior/novo. Não avançar nem cancelar automaticamente por falta de resposta; equipe decide posteriormente com motivo. **Atualização de 01/11/2026 (D-2026-11-01-182):** não nascem propostas novas; a equipe usa "Editar pedido", que vale na hora e exige justificativa (RN-ALT-009).
 
 Cliente não cancela pedido automaticamente. Pode usar **“Solicitar cancelamento”** quando a fase permitir; informa motivo e a pizzaria decide. Em fases avançadas, orientar contato via WhatsApp. Rejeição e cancelamento nunca apagam pedido e exigem motivo, responsável, data/hora e auditoria.
 

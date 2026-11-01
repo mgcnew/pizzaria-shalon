@@ -350,7 +350,31 @@ export type AlteracaoDaComanda = {
   motivo: string;
   itensAntes: { quantidade: number; nome: string }[];
   itensDepois: ItemDaComanda[];
+  /** Edição (D-2026-11-01-182): diz só o que mudou, em vez de ERA/PASSA A SER. */
+  mudancas?: {
+    saiu: { quantidade: number; nome: string }[];
+    entrou: { quantidade: number; nome: string }[];
+    modalidade: "delivery" | "pickup" | null;
+  };
+  endereco?: {
+    logradouro: string;
+    numero: string;
+    complemento?: string | null | undefined;
+    bairro: string;
+    referencia?: string | null | undefined;
+  } | null;
 };
+
+/**
+ * A revisão que o documento de ALTERAÇÃO imprime: a aplicada mais recente que
+ * mudou o que a cozinha ou a expedição fazem. Corrigir só o telefone não gera
+ * papel, e também não pode esconder a alteração anterior.
+ */
+export function revisaoDaComanda<
+  R extends { status: string; mudancas?: { afeta_comanda: boolean } | null | undefined },
+>(revisoes: readonly R[]): R | undefined {
+  return revisoes.find((r) => r.status === "applied" && r.mudancas?.afeta_comanda !== false);
+}
 
 /**
  * Documento de ALTERAÇÃO (RN-PRINT-005).
@@ -378,14 +402,42 @@ export function montarAlteracao(
   saida.push(VAZIO);
   saida.push(...txt(`Motivo: ${dados.motivo}`));
 
-  saida.push(SEPARADOR);
-  saida.push(...txt("ERA", "titulo"));
-  for (const item of dados.itensAntes) {
-    saida.push(...txt(`  - ${item.quantidade}x ${item.nome}`));
-  }
+  if (dados.mudancas) {
+    const { saiu, entrou, modalidade } = dados.mudancas;
+    if (modalidade) {
+      saida.push(SEPARADOR);
+      saida.push(...txt(modalidade === "delivery" ? "AGORA E ENTREGA" : "AGORA E RETIRADA", "destaque"));
+    }
+    if (dados.endereco) {
+      if (!modalidade) saida.push(SEPARADOR);
+      if (!modalidade) saida.push(...txt("ENDERECO MUDOU", "titulo"));
+      const e = dados.endereco;
+      saida.push(...txt(`${e.logradouro}, ${e.numero}${e.complemento ? ` - ${e.complemento}` : ""}`));
+      saida.push(...txt(e.bairro));
+      if (e.referencia) saida.push(...txt(`Ref.: ${e.referencia}`));
+    }
+    if (saiu.length > 0) {
+      saida.push(SEPARADOR);
+      saida.push(...txt("TIRAR", "titulo"));
+      for (const item of saiu) saida.push(...txt(`  - ${item.quantidade}x ${item.nome}`));
+    }
+    if (entrou.length > 0) {
+      saida.push(SEPARADOR);
+      saida.push(...txt("ACRESCENTAR", "titulo"));
+      for (const item of entrou) saida.push(...txt(`  + ${item.quantidade}x ${item.nome}`));
+    }
+    saida.push(SEPARADOR);
+    saida.push(...txt("PEDIDO COMPLETO", "titulo"));
+  } else {
+    saida.push(SEPARADOR);
+    saida.push(...txt("ERA", "titulo"));
+    for (const item of dados.itensAntes) {
+      saida.push(...txt(`  - ${item.quantidade}x ${item.nome}`));
+    }
 
-  saida.push(SEPARADOR);
-  saida.push(...txt("PASSA A SER", "titulo"));
+    saida.push(SEPARADOR);
+    saida.push(...txt("PASSA A SER", "titulo"));
+  }
   for (const item of dados.itensDepois) {
     saida.push(...bloqueDoItem(item, largura));
     saida.push(VAZIO);

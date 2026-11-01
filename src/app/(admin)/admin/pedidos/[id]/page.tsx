@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { StatusBadge } from "@/ui/components";
 import { Cartao } from "@/ui/patterns";
 import { formatBRL } from "@/lib/format";
-import { ESTADOS_COM_ACRESCIMO, rotuloInterno } from "@/domain/pedidos/estados";
+import { ESTADOS_EDITAVEIS, rotuloInterno } from "@/domain/pedidos/estados";
 import { obterPedido } from "@/application/pedidos/consultas";
 import { obterLojaPublica } from "@/application/publico/consultas";
 import { obterCaixa, obterPagamentoDoPedido } from "@/application/caixa/consultas";
@@ -15,10 +15,11 @@ import { Comanda } from "../_ui/Comanda";
 import { PainelAlteracao } from "../_ui/PainelAlteracao";
 import { Recebimento } from "../_ui/Recebimento";
 import { FiadoDoPedido } from "../_ui/FiadoDoPedido";
-import { PainelAcrescimo } from "../_ui/PainelAcrescimo";
+import { HistoricoDeEdicoes } from "../_ui/HistoricoDeEdicoes";
+import { PainelEdicao } from "../_ui/PainelEdicao";
 import { obterSessaoInterna, podeNaUI } from "@/application/auth/sessao";
 import { momentoDoRecebimento } from "@/domain/pedidos/recebimentoNaEntrega";
-import { separarMassa } from "@/domain/pedidos/comanda";
+import { revisaoDaComanda, separarMassa } from "@/domain/pedidos/comanda";
 import { tetoDaTaxaAConfirmar } from "@/domain/pedidos/taxaAConfirmar";
 
 export const metadata: Metadata = { title: "Pedido" };
@@ -31,8 +32,9 @@ export const metadata: Metadata = { title: "Pedido" };
  *
  * O WhatsApp do cliente aparece como link `wa.me` porque é assim que a
  * Shalon fala com quem pediu (RN-ALT-002). Não existe chat interno: conversa
- * acontece no WhatsApp, e o aceite da alteração acontece no acompanhamento —
- * mensagem respondida não é aceite (RN-ALT-004).
+ * acontece no WhatsApp, e o aceite de proposta acontece no acompanhamento —
+ * mensagem respondida não é aceite (RN-ALT-004). Isso vale só para propostas
+ * antigas ainda abertas: a edição de agora vale na hora (RN-ALT-009).
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -75,14 +77,13 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     }).format(new Date(iso));
 
   const revisaoAberta = pedido.revisoes.find((r) => r.status === "pending_customer");
-  const temAlteracaoAplicada = pedido.revisoes.some((r) => r.status === "applied");
-  // A revisão aplicada mais recente decide o documento: acréscimo ou alteração.
-  const ultimaAplicada = pedido.revisoes.find((r) => r.status === "applied");
-  // Acréscimo a pedido do cliente (D-2026-10-17-154): até sair ou concluir.
-  const podeAcrescentar =
+  // A revisão mais recente que mudou a produção decide o documento.
+  const revisaoDoDocumento = revisaoDaComanda(pedido.revisoes);
+  // Editar o pedido (D-2026-11-01-182): até sair ou concluir.
+  const podeEditar =
     podeNaUI(sessao, "orders.request_change") &&
     !pedido.aguarda_cliente &&
-    ESTADOS_COM_ACRESCIMO.includes(pedido.status);
+    ESTADOS_EDITAVEIS.includes(pedido.status);
 
   return (
     <div className="flex flex-col gap-4">
@@ -205,23 +206,24 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
               </p>
             ) : null}
 
-            {podeAcrescentar ? (
+            {podeEditar ? (
               <div className="mt-4 border-t border-border-shalon pt-3">
-                <PainelAcrescimo pedidoId={pedido.id} versao={pedido.versao} origem={pedido.origem} />
+                <PainelEdicao pedido={pedido} />
               </div>
             ) : null}
           </Cartao>
 
-          <Cartao titulo="Alteração" largura="cheio">
-            <PainelAlteracao
-              pedidoId={pedido.id}
-              versao={pedido.versao}
-              itens={pedido.itens}
-              podeAlterar={pedido.pode_alterar}
-              podeRetirar={pedido.pode_retirar_alteracao}
-              revisaoAberta={revisaoAberta}
-            />
-          </Cartao>
+          {revisaoAberta !== undefined ? (
+            <Cartao titulo="Alteração" largura="cheio">
+              <PainelAlteracao
+                pedidoId={pedido.id}
+                podeRetirar={pedido.pode_retirar_alteracao}
+                revisaoAberta={revisaoAberta}
+              />
+            </Cartao>
+          ) : null}
+
+          <HistoricoDeEdicoes revisoes={pedido.revisoes} fuso={fuso} />
         </div>
 
         <div className="flex flex-col gap-4">
@@ -309,8 +311,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
             <Comanda
               pedidoId={pedido.id}
               impressoes={pedido.impressoes}
-              podeEmitirAlteracao={temAlteracaoAplicada}
-              documentoDeAcrescimo={ultimaAplicada?.tipo === "addition"}
+              podeEmitirAlteracao={revisaoDoDocumento !== undefined}
+              documentoDeAcrescimo={revisaoDoDocumento?.a_partir_da_linha != null}
             />
             <p className="m-0 mt-3 text-[12px] text-muted">
               O envio direto para a impressora Bluetooth ainda não foi validado no

@@ -16,11 +16,13 @@ import {
   montarAlteracao,
   montarComanda,
   renderizarTexto,
+  revisaoDaComanda,
   type ItemDaComanda,
   type LinhaComanda,
 } from "@/domain/pedidos/comanda";
 import { obterPedido } from "./consultas";
 import { obterPagamentoDoPedido } from "@/application/caixa/consultas";
+import { listarBandeiras, listarFormasPagamento } from "@/application/configuracoes/consultas";
 import type {
   ClienteNoBalcao,
   ResultadoClienteNoBalcao,
@@ -83,92 +85,194 @@ export async function executarComando(entrada: unknown): Promise<ResultadoComand
   return data as ResultadoComando;
 }
 
-const alteracaoSchema = z.object({
-  pedido_id: z.string().uuid(),
-  /** Versão do pedido sobre a qual a proposta foi construída (§34). */
-  versao: z.string().min(10).max(40).optional(),
-  motivo: z.string().min(3).max(400),
-  itens: z
-    .array(
-      z.object({
-        produto_id: z.string().uuid(),
-        variacao_id: z.string().uuid().nullish(),
-        sabores: z.array(z.string().uuid()).max(4).optional(),
-        borda_id: z.string().uuid().nullish(),
-        adicionais: z.array(z.string().uuid()).max(20).optional(),
-        observacao: z.string().max(300).optional(),
-        quantidade: z.number().int().min(1).max(99),
-      }),
-    )
-    .min(1)
-    .max(60),
+const enderecoDaEdicaoSchema = z.object({
+  logradouro: z.string().trim().min(2).max(160),
+  numero: z.string().trim().min(1).max(20),
+  complemento: z.string().trim().max(80).nullish(),
+  bairro: z.string().trim().min(2).max(80),
+  cidade: z.string().trim().min(2).max(80),
+  uf: z.string().trim().length(2),
+  cep: z.string().trim().max(12).nullish(),
+  referencia: z.string().trim().max(160).nullish(),
 });
 
+const edicaoSchema = z
+  .object({
+    pedido_id: z.string().uuid(),
+    /** Versão do pedido sobre a qual a edição foi feita (§34). */
+    versao: z.string().min(10).max(40),
+    motivo_tipo: z.enum(["customer", "mistake"]),
+    canal: z.enum(["whatsapp", "phone", "counter"]).nullish(),
+    motivo: z.string().trim().min(3).max(400),
+    itens: z
+      .array(
+        z.union([
+          // Item que fica: só a linha e a quantidade. O preço é o do pedido.
+          z.object({ linha: z.number().int().min(1), quantidade: z.number().int().min(1).max(99) }),
+          // Item novo: configuração, sem preço. Quem precifica é o banco.
+          z.object({
+            produto_id: z.string().uuid(),
+            variacao_id: z.string().uuid().nullish(),
+            sabores: z.array(z.string().uuid()).max(4).optional(),
+            borda_id: z.string().uuid().nullish(),
+            adicionais: z.array(z.string().uuid()).max(20).optional(),
+            observacao: z.string().max(300).optional(),
+            quantidade: z.number().int().min(1).max(99),
+          }),
+        ]),
+      )
+      .min(1)
+      .max(60),
+    modalidade: z.enum(["delivery", "pickup"]),
+    /** Só vem quando a entrega precisa ser medida de novo. */
+    endereco: enderecoDaEdicaoSchema.nullish(),
+    taxa_manual: z.number().min(0).max(500).nullish(),
+    motivo_taxa_manual: z.string().trim().min(3).max(200).nullish(),
+    nome: z.string().trim().min(1).max(120),
+    whatsapp: z.string().max(20),
+    observacao: z.string().max(500),
+    pagamento: z
+      .object({
+        forma_id: z.string().uuid(),
+        bandeira_id: z.string().uuid().nullish(),
+        troco_para: z.number().nonnegative().nullish(),
+      })
+      .nullish(),
+    devolver_de: z.string().uuid().nullish(),
+  })
+  .refine((d) => d.motivo_tipo === "mistake" || Boolean(d.canal), { path: ["canal"] });
+
+export type ResultadoEdicao =
+  | { ok: true; total: number; a_receber: number; devolvido: number; afeta_comanda: boolean }
+  | {
+      ok: false;
+      erro: string;
+      versao_obsoleta?: boolean;
+      /** O novo total ficou abaixo do recebido: falta dizer de onde sai a devolução. */
+      devolucao?: { valor: number; total: number; pagamentos: { id: string; forma: string; valor: number }[] };
+      rota_falhou?: boolean;
+    };
+
 /**
- * Propõe uma alteração.
- *
- * Quando itens ou total mudam, o pedido passa a aguardar o cliente e NÃO
- * avança sozinho (RN-ALT-004 e RN-ALT-006). Quem decide isso é o banco, que
- * compara os valores reprecificados com os do pedido.
+ * Edita um pedido e vale na hora (RN-ALT-009). A justificativa é obrigatória, e
+ * é o banco que recusa sem ela. Mede a rota aqui, como no balcão, e não inventa
+ * distância nem taxa quando a medição falha (CLAUDE.md §20).
  */
-export async function proporAlteracao(entrada: unknown): Promise<ResultadoComando> {
-  const validado = alteracaoSchema.safeParse(entrada);
-  if (!validado.success) return { ok: false, erro: "Confira os itens da alteração." };
+export async function editarPedido(entrada: unknown): Promise<ResultadoEdicao> {
+  const validado = edicaoSchema.safeParse(entrada);
+  if (!validado.success) return { ok: false, erro: "Confira os dados e a justificativa da edição." };
+  const { pedido_id, endereco, ...dados } = validado.data;
+
+  let enderecoParaBanco: Record<string, unknown> | null = null;
+  let rota: { distancia_km: number; provedor: string } | null = null;
+
+  if (dados.modalidade === "delivery" && endereco) {
+    const base = {
+      logradouro: endereco.logradouro,
+      numero: endereco.numero,
+      complemento: endereco.complemento || null,
+      bairro: endereco.bairro,
+      cidade: endereco.cidade,
+      uf: endereco.uf.toUpperCase(),
+      cep: endereco.cep || null,
+      referencia: endereco.referencia || null,
+    };
+    const semRota = dados.taxa_manual !== null && dados.taxa_manual !== undefined && !dados.motivo_taxa_manual;
+    if (semRota) {
+      enderecoParaBanco = { ...base, latitude: null, longitude: null, confianca: null };
+    } else {
+      const medida = await cotarEntrega(base);
+      if (!medida.ok) {
+        return { ok: false, erro: medida.erro, ...(medida.motivo !== "fora_de_area" ? { rota_falhou: true } : {}) };
+      }
+      rota = { distancia_km: medida.distancia_km, provedor: medida.provedor };
+      enderecoParaBanco = {
+        ...base,
+        latitude: medida.latitude,
+        longitude: medida.longitude,
+        confianca: medida.confianca,
+      };
+    }
+  }
 
   const supabase = await getSupabaseServerClient();
-  const { data, error } = await supabase.rpc("propor_alteracao", {
-    p_order_id: validado.data.pedido_id,
-    p_dados: {
-      motivo: validado.data.motivo,
-      versao: validado.data.versao ?? null,
-      itens: validado.data.itens,
-    },
-  });
-
-  if (error) return falha("proporAlteracao", error);
-
-  revalidatePath(ROTA);
-  revalidatePath(`${ROTA}/${validado.data.pedido_id}`);
-  return data as ResultadoComando;
-}
-
-const acrescimoSchema = z.object({
-  pedido_id: z.string().uuid(),
-  versao: z.string().min(10).max(40).optional(),
-  canal: z.enum(["whatsapp", "phone", "counter"]),
-  itens: alteracaoSchema.shape.itens.max(30),
-});
-
-/**
- * Acrescenta itens a um pedido já aceito, a pedido do cliente
- * (D-2026-10-17-154). O canal é o aceite dele; o banco precifica os itens
- * novos, não mexe nos que já estavam e guarda o antes numa revisão.
- */
-export async function acrescentarItens(
-  entrada: unknown,
-): Promise<{ ok: true; acrescimo: number; total: number; a_receber: number } | { ok: false; erro: string }> {
-  const validado = acrescimoSchema.safeParse(entrada);
-  if (!validado.success) return { ok: false, erro: "Escolha os itens e por onde o cliente pediu." };
-
-  const supabase = await getSupabaseServerClient();
-  const { data, error } = await supabase.rpc("acrescentar_itens", {
-    p_order_id: validado.data.pedido_id,
-    p_dados: {
-      canal: validado.data.canal,
-      versao: validado.data.versao ?? null,
-      itens: validado.data.itens,
-    },
+  const { data, error } = await supabase.rpc("editar_pedido", {
+    p_order_id: pedido_id,
+    p_dados: { ...dados, endereco: enderecoParaBanco, rota },
   });
   if (error) {
-    logger.error("pedidos:acrescentarItens", { code: (error as { code?: string }).code });
-    return { ok: false, erro: "Não foi possível acrescentar agora. Tente de novo." };
+    logger.error("pedidos:editarPedido", { code: (error as { code?: string }).code });
+    return { ok: false, erro: "Não foi possível salvar a edição agora. Tente de novo." };
+  }
+
+  const r = data as {
+    ok: boolean;
+    erro?: string;
+    versao_obsoleta?: boolean;
+    exige_devolucao?: boolean;
+    valor?: number;
+    total?: number;
+    pagamentos?: { id: string; forma: string; valor: number }[];
+    a_receber?: number;
+    devolvido?: number;
+    afeta_comanda?: boolean;
+  };
+  if (!r.ok) {
+    return {
+      ok: false,
+      erro: r.erro ?? "Não foi possível salvar a edição.",
+      ...(r.versao_obsoleta ? { versao_obsoleta: true } : {}),
+      ...(r.exige_devolucao
+        ? {
+            devolucao: {
+              valor: Number(r.valor),
+              total: Number(r.total),
+              pagamentos: (r.pagamentos ?? []).map((x) => ({ ...x, valor: Number(x.valor) })),
+            },
+          }
+        : {}),
+    };
   }
 
   revalidatePath(ROTA);
-  revalidatePath(`${ROTA}/${validado.data.pedido_id}`);
-  const r = data as { ok: boolean; erro?: string; acrescimo?: number; total?: number; a_receber?: number };
-  if (!r.ok) return { ok: false, erro: r.erro ?? "Não foi possível acrescentar." };
-  return { ok: true, acrescimo: Number(r.acrescimo), total: Number(r.total), a_receber: Number(r.a_receber) };
+  revalidatePath(`${ROTA}/${pedido_id}`);
+  return {
+    ok: true,
+    total: Number(r.total),
+    a_receber: Number(r.a_receber),
+    devolvido: Number(r.devolvido),
+    afeta_comanda: Boolean(r.afeta_comanda),
+  };
+}
+
+/** O que a tela de edição precisa ao abrir. O banco confere tudo de novo ao salvar. */
+export async function contextoDaEdicao(): Promise<{
+  formas: { id: string; nome: string; familia: string; exige_bandeira: boolean; bandeiras: { id: string; nome: string }[] }[];
+  podeInformarTaxa: boolean;
+  cidade: string;
+  uf: string;
+}> {
+  const [contexto, formas, bandeiras] = await Promise.all([
+    contextoDoBalcao(),
+    listarFormasPagamento(),
+    listarBandeiras(),
+  ]);
+  return {
+    podeInformarTaxa: contexto.podeInformarTaxa,
+    cidade: contexto.cidade,
+    uf: contexto.uf,
+    formas: formas
+      .filter((f) => f.is_active && f.payment_family !== "pix_key")
+      .map((f) => ({
+        id: f.id,
+        nome: f.name,
+        familia: f.payment_family,
+        exige_bandeira: f.requires_brand,
+        bandeiras: bandeiras
+          .filter((b) => b.payment_method_id === f.id && b.is_active)
+          .map((b) => ({ id: b.id, nome: b.name })),
+      })),
+  };
 }
 
 export async function retirarAlteracao(pedidoId: string): Promise<ResultadoComando> {
@@ -311,11 +415,11 @@ export async function emitirDocumento(
       },
     }, largura);
   } else {
-    const revisao = pedido.revisoes.find((r) => r.status === "applied");
+    const revisao = revisaoDaComanda(pedido.revisoes);
     if (revisao === undefined) {
       return { ok: false, erro: "Não há alteração aplicada para imprimir." };
     }
-    linhas = revisao.tipo === "addition" && revisao.a_partir_da_linha != null
+    linhas = revisao.a_partir_da_linha != null
       ? montarAcrescimo({
           numero: pedido.numero,
           horario: horarioNaLoja(revisao.proposta_em, fuso),
@@ -334,6 +438,25 @@ export async function emitirDocumento(
         nome: i.nome,
       })),
       itensDepois: itens,
+      ...(revisao.mudancas
+        ? {
+            mudancas: {
+              saiu: revisao.mudancas.saiu,
+              entrou: revisao.mudancas.entrou,
+              modalidade: revisao.mudancas.modalidade?.para ?? null,
+            },
+            endereco:
+              revisao.mudancas.endereco_mudou && pedido.endereco
+                ? {
+                    logradouro: pedido.endereco["logradouro"] ?? "",
+                    numero: pedido.endereco["numero"] ?? "",
+                    complemento: pedido.endereco["complemento"],
+                    bairro: pedido.endereco["bairro"] ?? "",
+                    referencia: pedido.endereco["referencia"],
+                  }
+                : null,
+          }
+        : {}),
     }, largura);
   }
 

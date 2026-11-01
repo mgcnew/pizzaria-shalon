@@ -1,6 +1,6 @@
 import { StatusBadge } from "@/ui/components";
 import { formatBRL } from "@/lib/format";
-import { ESTADOS_COM_ACRESCIMO, rotuloInterno } from "@/domain/pedidos/estados";
+import { ESTADOS_EDITAVEIS, rotuloInterno } from "@/domain/pedidos/estados";
 import { CanalDoPedido } from "@/ui/components/CanalDoPedido";
 import type { PedidoNaFila } from "@/application/pedidos/tipos";
 import type { PedidoAReceber } from "@/application/pdv/tipos";
@@ -144,11 +144,11 @@ export function CartaoPedido({
               rotulo: "Emitir comanda",
               href: `/admin/pedidos?${consultaDaAba ?? (pedido.encerrado ? "aba=encerrados&" : "")}modal=comanda&pedido=${pedido.id}`,
             },
-            ...(ESTADOS_COM_ACRESCIMO.includes(pedido.status) && !pedido.aguarda_cliente
+            ...(ESTADOS_EDITAVEIS.includes(pedido.status) && !pedido.aguarda_cliente
               ? [
                   {
-                    rotulo: "Acrescentar itens",
-                    href: `/admin/pedidos?${consultaDaAba ?? ""}modal=detalhes&pedido=${pedido.id}&acrescentar=1`,
+                    rotulo: "Editar pedido",
+                    href: `/admin/pedidos?${consultaDaAba ?? ""}modal=detalhes&pedido=${pedido.id}&editar=1`,
                   },
                 ]
               : []),

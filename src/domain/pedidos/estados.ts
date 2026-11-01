@@ -245,10 +245,12 @@ export function rotuloDeModalidade(modalidade: string): string {
 }
 
 /**
- * Estados em que dá para acrescentar itens a pedido do cliente
- * (D-2026-10-17-154). Espelha `acrescentar_itens`, que decide de novo.
+ * Estados em que dá para editar o pedido (D-2026-11-01-182). Espelha
+ * `editar_pedido`, que decide de novo.
  */
-export const ESTADOS_COM_ACRESCIMO: readonly string[] = [
+export const ESTADOS_EDITAVEIS: readonly string[] = [
+  "waiting_pix_confirmation",
+  "waiting_delivery_approval",
   "waiting_store_confirmation",
   "confirmed",
   "in_production",

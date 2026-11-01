@@ -50,6 +50,7 @@ const COMANDOS_DO_PEDIDO: Record<string, Frase> = {
   rejeitar: (n) => `${pedido(n)} rejeitado`,
   cancelar: (n) => `${pedido(n)} cancelado`,
   cancelar_com_estorno: (n) => `${pedido(n)} cancelado com estorno do pagamento`,
+  editar: (n) => `${pedido(n)} editado`,
   propor_alteracao: (n) => `Alteração ${doPedido(n)} proposta ao cliente`,
   retirar_alteracao: (n) => `Proposta de alteração ${doPedido(n)} retirada`,
 };
@@ -58,6 +59,7 @@ const ACOES: Record<string, Frase> = {
   criar_pedido_manual: (n) => `${pedido(n)} lançado pelo painel`,
   pagamento_registrar: (n) => `Pagamento ${doPedido(n)} registrado`,
   pagamento_estornar: (n) => `Pagamento ${doPedido(n)} estornado`,
+  pagamento_devolver_parte: (n) => `Parte do pagamento ${doPedido(n)} devolvida`,
   pix_confirmar_pdv: (n) => `Pix ${doPedido(n)} confirmado no PDV`,
   caixa_excecao_sem_sessao: (n) => `Pagamento ${doPedido(n)} recebido sem caixa aberto`,
   imprimir_comanda: (n) => `Comanda ${doPedido(n)} impressa`,

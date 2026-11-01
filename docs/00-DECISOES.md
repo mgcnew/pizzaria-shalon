@@ -5436,3 +5436,28 @@ motoboy segue fora da lista: entra pelo acerto (RN-CAIXA-014). A lista depende d
 caixa aberto.
 
 **Onde foi formalizada:** `src/ui/caixa/DinheiroForaDaGaveta.tsx`. Sem migration.
+
+
+---
+
+## D-2026-11-01-182 — Editar pedido com justificativa obrigatória
+
+**Contexto.** É comum precisar mudar o pedido depois de lançado: o cliente muda de
+ideia ou o pedido foi lançado errado. Só havia "Propor alteração" (até o aceite, valendo
+depois do link) e "Acrescentar itens" (só somar).
+
+**Decisão (Marcelo, 01/11/2026).** Um único "Editar pedido", que cria RN-ALT-009 e
+RN-CAIXA-020 e substitui RN-ALT-004 e RN-ALT-008 para o que vier daqui em diante:
+1. vale na hora, sem aceite pelo link; a justificativa obrigatória é o controle;
+2. o item que fica mantém o preço original; só o novo paga o preço atual;
+3. total abaixo do recebido exige registrar a devolução no mesmo ato.
+
+**Decisões técnicas.** Devolução em caixa já fechado é recusada: o caminho é o estorno
+completo, porque mexer nele pediria correção do fechamento. Endereço editado fica só no
+pedido e não entra nos endereços salvos do cliente. Propostas abertas continuam podendo
+ser respondidas ou retiradas. `propor_alteracao` e `acrescentar_itens` ficam no banco,
+sem uso pela tela.
+
+**Onde foi formalizada:** migration 0182 (`20261101100000_editar_pedido`),
+`PainelEdicao.tsx`, `HistoricoDeEdicoes.tsx` e `supabase/tests/editar_pedido.sql`.
+

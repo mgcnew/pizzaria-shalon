@@ -107,11 +107,26 @@ export type RevisaoDoPedido = {
   total_antes: number;
   total_depois: number;
   itens_antes: { quantidade: number; nome: string }[];
-  /** `addition`: acréscimo pedido pelo cliente (D-2026-10-17-154). */
-  tipo?: "change" | "addition";
+  /** `addition`: acréscimo (D-2026-10-17-154). `edit`: edição direta (D-2026-11-01-182). */
+  tipo?: "change" | "addition" | "edit";
   /** Primeira linha dos itens acrescentados. */
   a_partir_da_linha?: number | null;
   canal?: "whatsapp" | "phone" | "counter" | null;
+  motivo_tipo?: "customer" | "mistake" | null;
+  /** Nome de quem fez. */
+  por?: string | null;
+  mudancas?: MudancasDaEdicao | null;
+};
+
+export type MudancasDaEdicao = {
+  saiu: { quantidade: number; nome: string }[];
+  entrou: { quantidade: number; nome: string }[];
+  modalidade: { de: "delivery" | "pickup"; para: "delivery" | "pickup" } | null;
+  endereco_mudou: boolean;
+  taxa: { de: number; para: number } | null;
+  dados: string[];
+  devolvido: number;
+  afeta_comanda: boolean;
 };
 
 export type ImpressaoDoPedido = {
@@ -159,6 +174,8 @@ export type PedidoAdministrativo = {
   itens: ItemDoPedido[];
   pagamento: {
     forma: string | null;
+    forma_id?: string | null;
+    bandeira_id?: string | null;
     familia: string | null;
     bandeira: string | null;
     valor_esperado: number | null;

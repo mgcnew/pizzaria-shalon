@@ -4,6 +4,7 @@ import {
   LARGURA,
   ladoALado,
   montarAlteracao,
+  revisaoDaComanda,
   montarComanda,
   quebrar,
   separarMassa,
@@ -334,5 +335,47 @@ describe("separarMassa (RN-ADD-007)", () => {
   it("sem massa, mantém os ingredientes; sem adicionais, devolve vazio", () => {
     expect(separarMassa(["Bacon"])).toEqual({ massa: null, ingredientes: ["Bacon"] });
     expect(separarMassa(null)).toEqual({ massa: null, ingredientes: [] });
+  });
+});
+
+describe("documento da edição (D-2026-11-01-182)", () => {
+  const texto = renderizarTexto(
+    montarAlteracao({
+      numero: 7,
+      horario: "01/11 20:00",
+      motivo: "Cliente pediu para entregar",
+      itensAntes: [{ quantidade: 2, nome: "Calabresa" }],
+      itensDepois: [{ quantidade: 1, nome: "Calabresa" }],
+      mudancas: {
+        saiu: [{ quantidade: 1, nome: "Calabresa (Grande)" }],
+        entrou: [{ quantidade: 1, nome: "Guarana" }],
+        modalidade: "delivery",
+      },
+      endereco: { logradouro: "Rua A", numero: "10", bairro: "Centro" },
+    }),
+  );
+
+  it("diz o que tirar, o que acrescentar e a nova modalidade", () => {
+    expect(texto).toContain("AGORA E ENTREGA");
+    expect(texto).toContain("Rua A, 10");
+    expect(texto).toContain("TIRAR");
+    expect(texto).toContain("1x Calabresa (Grande)");
+    expect(texto).toContain("ACRESCENTAR");
+    expect(texto).toContain("1x Guarana");
+    expect(texto).toContain("PEDIDO COMPLETO");
+    expect(texto).not.toContain("PASSA A SER");
+  });
+
+  it("edição só de dados não vira documento nem esconde a alteração anterior", () => {
+    const revisoes = [
+      { id: "telefone", status: "applied", mudancas: { afeta_comanda: false } },
+      { id: "itens", status: "applied", mudancas: { afeta_comanda: true } },
+    ];
+    expect(revisaoDaComanda(revisoes)?.id).toBe("itens");
+    expect(revisaoDaComanda([revisoes[0]!])).toBeUndefined();
+  });
+
+  it("revisão antiga, sem mudanças gravadas, continua valendo", () => {
+    expect(revisaoDaComanda([{ id: "antiga", status: "applied" }])?.id).toBe("antiga");
   });
 });
