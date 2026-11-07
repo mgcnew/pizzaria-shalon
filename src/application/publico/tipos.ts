@@ -55,6 +55,10 @@ export type TamanhoPublico = {
   tamanho_nome: string;
   fatias: number;
   max_sabores: number;
+  /** Sabores que o tamanho exige (D-2026-11-06-184). Ausente = 1. */
+  min_sabores?: number;
+  /** O tamanho aparece também como opção "Meio a meio" (D-2026-11-06-184). */
+  meio_a_meio_separado?: boolean;
   preco_de: number;
   preco: number;
   em_promocao: boolean;

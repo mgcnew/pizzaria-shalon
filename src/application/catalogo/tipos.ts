@@ -140,6 +140,10 @@ export type Tamanho = {
   name: string;
   slice_count: number;
   max_flavors: number;
+  /** Sabores que o tamanho exige (D-2026-11-06-184). */
+  min_flavors: number;
+  /** Aparece também como opção "Meio a meio" (D-2026-11-06-184). */
+  half_as_own_option: boolean;
   is_active: boolean;
   sort_order: number;
   /**

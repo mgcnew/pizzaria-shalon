@@ -115,8 +115,28 @@ export const obterProdutoPublico = cache(
   },
 );
 
-export function listarTamanhos(produtoId: string): Promise<TamanhoPublico[]> {
-  return rpc<TamanhoPublico>("tamanhos_publicos", { p_product_id: produtoId });
+export async function listarTamanhos(produtoId: string): Promise<TamanhoPublico[]> {
+  const tamanhos = await rpc<TamanhoPublico>("tamanhos_publicos", { p_product_id: produtoId });
+  if (tamanhos.length === 0) return tamanhos;
+
+  // Mínimo de sabores e "Meio a meio" separado (D-2026-11-06-184) vêm do
+  // cadastro do tamanho. Sem a migration 0183, ficam como antes: não quebra.
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("pizza_sizes")
+    .select("id, min_flavors, half_as_own_option")
+    .in("id", [...new Set(tamanhos.map((t) => t.tamanho_id))]);
+  if (error) return tamanhos;
+
+  const porId = new Map(
+    (data as { id: string; min_flavors: number; half_as_own_option: boolean }[]).map((l) => [l.id, l]),
+  );
+  return tamanhos.map((t) => {
+    const meta = porId.get(t.tamanho_id);
+    return meta
+      ? { ...t, min_sabores: meta.min_flavors, meio_a_meio_separado: meta.half_as_own_option }
+      : t;
+  });
 }
 
 /**

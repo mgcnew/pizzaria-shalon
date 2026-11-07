@@ -5472,3 +5472,25 @@ e entre réguas de asteriscos, com a observação do pedido e a de cada item, qu
 também junto do próprio item. O quadro sai ainda nos documentos de ALTERAÇÃO e ACRÉSCIMO.
 
 **Onde foi formalizada:** `src/domain/pedidos/comanda.ts`.
+
+---
+
+## D-2026-11-06-184 — Tradicional, Meio a meio, Broto e Especial na escolha de tamanho
+
+**Contexto.** Clientes escolhiam a Tradicional achando que já era meio a meio: o mesmo
+cartão oferecia "inteira ou meio a meio", e o 2º sabor era opcional.
+
+**Decisão (Marcelo, 06/11/2026).** A escolha de tamanho fica Tradicional (1 sabor), Meio a
+meio (2 sabores obrigatórios), Broto (2º sabor opcional, com aviso destacado de que sem ele
+vai 1 sabor só) e Especial (3 sabores obrigatórios). "Meio a meio" é a Tradicional com 2
+sabores, e não tamanho novo: os preços não se duplicam e a comanda continua dizendo
+"Tradicional" com "MEIO A MEIO". O preço segue RN-PIZZA-005.
+
+**Como.** `pizza_sizes` ganha `min_flavors` (o servidor recusa menos sabores, em
+`preco_meio_a_meio`) e `half_as_own_option` (apresentação). Ambos são editáveis em
+Produtos → Tamanhos. A venda rápida do PDV, que lança um sabor só, deixa de vender a
+Especial sem os 3 sabores.
+
+**Onde foi formalizada:** migration 0183 (`20261106100000_sabores_obrigatorios_por_tamanho`),
+`src/domain/catalogo/opcoesDeTamanho.ts` e `NucleoConfigurador.tsx`.
+

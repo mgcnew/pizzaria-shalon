@@ -125,6 +125,8 @@ Cada pizza escolhe quais tamanhos oferece e define preço para cada combinação
 ### RN-PIZZA-004 — Meio a meio
 Meio a meio somente é permitido quando o tamanho aceita mais de um sabor e todos os sabores escolhidos estão disponíveis naquele mesmo tamanho.
 
+**Mínimo de sabores e "Meio a meio" como opção própria (D-2026-11-06-184).** O tamanho também define quantos sabores **exige** (`min_flavors`); o servidor recusa menos. A escolha de tamanho mostra, nesta ordem: **Tradicional** (1 sabor), **Meio a meio** (2 sabores obrigatórios), **Broto** (2º sabor opcional, com o aviso de que sem ele vai 1 sabor só) e **Especial** (3 sabores obrigatórios). "Meio a meio" não é tamanho novo: é a Tradicional com 2 sabores, com os mesmos preços, e assim sai na comanda e nos relatórios.
+
 ### RN-PIZZA-005 — Preço do meio a meio
 O preço de uma pizza meio a meio é sempre o maior **preço efetivo atual** entre os sabores escolhidos para o mesmo tamanho.
 

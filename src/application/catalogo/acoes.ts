@@ -180,13 +180,27 @@ export async function salvarTamanho(
   // aqui ela só evita a Owner digitar um número que seria recusado.
   const vendidoComo = form.get("vendido_como") === "fogazza" ? "fogazza" : "pizza";
 
+  // D-2026-11-06-184: mínimo de sabores e "Meio a meio" como opção própria.
+  // O banco confere de novo (constraints de `pizza_sizes`).
+  const maximo = vendidoComo === "fogazza" ? 1 : maxSabores;
+  const minSabores = Number(form.get("min_sabores") ?? 1) || 1;
+  if (!Number.isInteger(minSabores) || minSabores < 1 || minSabores > maximo) {
+    return { erro: "O mínimo de sabores precisa ficar entre 1 e o máximo." };
+  }
+  const meioSeparado = form.get("meio_separado") === "on";
+  if (meioSeparado && (maximo !== 2 || minSabores !== 1)) {
+    return { erro: "A opção \"Meio a meio\" separada só vale para tamanho de até 2 sabores e mínimo 1." };
+  }
+
   const ordem = Number(form.get("ordem") ?? 0);
   const supabase = await getSupabaseServerClient();
   try {
     const dados = {
       name: nome.data,
       slice_count: fatias,
-      max_flavors: vendidoComo === "fogazza" ? 1 : maxSabores,
+      max_flavors: maximo,
+      min_flavors: minSabores,
+      half_as_own_option: meioSeparado,
       sort_order: ordem,
       sold_as: vendidoComo,
     };

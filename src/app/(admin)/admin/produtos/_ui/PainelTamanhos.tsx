@@ -43,9 +43,15 @@ export async function PainelTamanhos({ podeGerenciar }: { podeGerenciar: boolean
                   {t.sold_as === "fogazza"
                     ? "Fogazza · 1 sabor, sem borda"
                     : `${t.slice_count} fatias · ${
-                        t.max_flavors === 1
-                          ? "1 sabor (sem meio a meio)"
-                          : `até ${t.max_flavors} sabores`
+                        t.half_as_own_option
+                          ? "1 sabor, e também como Meio a meio (2 sabores)"
+                          : t.max_flavors === 1
+                            ? "1 sabor (sem meio a meio)"
+                            : t.min_flavors > 1 && t.min_flavors === t.max_flavors
+                              ? `${t.max_flavors} sabores obrigatórios`
+                              : t.min_flavors > 1
+                                ? `de ${t.min_flavors} a ${t.max_flavors} sabores`
+                                : `até ${t.max_flavors} sabores`
                       }`}
                 </p>
               </div>
@@ -94,6 +100,19 @@ export async function PainelTamanhos({ podeGerenciar }: { podeGerenciar: boolean
                         defaultValue={t.max_flavors}
                         hint="1 significa que este tamanho não aceita meio a meio."
                       />
+                      <Input
+                        label="Mínimo de sabores"
+                        name="min_sabores"
+                        type="number"
+                        min={1}
+                        required
+                        defaultValue={t.min_flavors ?? 1}
+                        hint="Quantos sabores o cliente é obrigado a escolher. Ex.: Especial = 3."
+                      />
+                      <label className="flex min-h-touch cursor-pointer items-center gap-2 text-[13.5px] text-ink">
+                        <input type="checkbox" name="meio_separado" defaultChecked={t.half_as_own_option ?? false} className="h-5 w-5" />
+                        Mostrar também a opção &quot;Meio a meio&quot; (este tamanho vira 1 sabor e a meio a meio pede 2)
+                      </label>
                       <Input label="Ordem" name="ordem" type="number" min={0} defaultValue={t.sort_order ?? 0} />
                     </FormularioAcao>
                   </div>
@@ -128,6 +147,19 @@ export async function PainelTamanhos({ podeGerenciar }: { podeGerenciar: boolean
             defaultValue={2}
             hint="1 significa que este tamanho não aceita meio a meio."
           />
+          <Input
+            label="Mínimo de sabores"
+            name="min_sabores"
+            type="number"
+            min={1}
+            required
+            defaultValue={1}
+            hint="Quantos sabores o cliente é obrigado a escolher. Ex.: Especial = 3."
+          />
+          <label className="flex min-h-touch cursor-pointer items-center gap-2 text-[13.5px] text-ink">
+            <input type="checkbox" name="meio_separado" className="h-5 w-5" />
+            Mostrar também a opção &quot;Meio a meio&quot; (este tamanho vira 1 sabor e a meio a meio pede 2)
+          </label>
           <Input label="Ordem" name="ordem" type="number" defaultValue={0} min={0} />
         </FormularioAcao>
       </NovoItem>

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition, type ReactNode } from "reac
 import { formatBRL } from "@/lib/format";
 import { montarItem } from "@/application/publico/acoes";
 import type { ItemMontado, OpcaoPreco } from "@/application/publico/tipos";
+import { opcoesDeTamanho, saboresQueFaltam } from "@/domain/catalogo/opcoesDeTamanho";
 import { FolhaDeOpcoes, type OpcaoDaFolha } from "./FolhaDeOpcoes";
 import type { DadosDoConfigurador, Escolhas, ItemConfigurado } from "./tipos";
 
@@ -97,6 +98,11 @@ export function NucleoConfigurador({
     quantidade: 1,
   });
   const [montado, setMontado] = useState<ItemMontado>(montadoInicial);
+  /**
+   * Opção "Meio a meio" de um tamanho separado (D-2026-11-06-184). O tamanho
+   * do cadastro é o mesmo da inteira; muda só quantos sabores a tela exige.
+   */
+  const [meio, setMeio] = useState(false);
   const [confirmado, setConfirmado] = useState(false);
 
   /**
@@ -122,12 +128,24 @@ export function NucleoConfigurador({
   const tamanho = tamanhos.find((t) => t.variacao_id === config.variacaoId) ?? null;
   const dadosDoTamanho = tamanho ? porTamanho[tamanho.tamanho_id] : undefined;
 
-  // RN-PIZZA-004: é o TAMANHO que decide se meio a meio existe. Com
-  // max_sabores = 1, a seção de sabores não é oferecida — não fica
-  // desabilitada, não aparece.
-  const aceitaMeioAMeio = (tamanho?.max_sabores ?? 1) > 1;
-  // Para quem abriu num tamanho de 1 sabor: onde o meio a meio existe.
-  const tamanhoComMeioAMeio = tamanhos.find((t) => t.disponivel && t.max_sabores > 1) ?? null;
+  // D-2026-11-06-184: Tradicional (1 sabor), Meio a meio (2 obrigatórios),
+  // Broto (2º opcional) e Especial (3 obrigatórios). Um tamanho pode virar
+  // duas opções com o mesmo preço; quem decide preço e limite é o servidor.
+  const opcoes = opcoesDeTamanho(tamanhos);
+  const opcao =
+    opcoes.find((o) => o.tamanho.variacao_id === config.variacaoId && o.meio === meio) ??
+    opcoes.find((o) => o.tamanho.variacao_id === config.variacaoId) ??
+    null;
+  const maxSabores = opcao?.maximo ?? tamanho?.max_sabores ?? 1;
+  const minSabores = opcao?.minimo ?? 1;
+  const saboresObrigatorios = minSabores > 1;
+  // RN-PIZZA-004: com 1 sabor, a seção de sabores não aparece.
+  const aceitaMeioAMeio = maxSabores > 1;
+  // Para quem abriu num tamanho de 1 sabor: onde o meio a meio existe. Não
+  // vale quando a própria lista já tem a opção "Meio a meio".
+  const tamanhoComMeioAMeio = opcoes.some((o) => o.meio)
+    ? null
+    : (tamanhos.find((t) => t.disponivel && t.max_sabores > 1) ?? null);
   const saboresEscolhidos = config.variacaoId
     ? [config.variacaoId, ...config.sabores]
     : [];
@@ -164,7 +182,14 @@ export function NucleoConfigurador({
    * são POR TAMANHO (RN-BORDA-002, RN-ADD-002). Manter a escolha anterior
    * levaria a uma combinação que o servidor recusaria.
    */
-  function escolherTamanho(variacaoId: string) {
+  function escolherTamanho(variacaoId: string, comoMeio = false) {
+    setMeio(comoMeio);
+    // Mesmo tamanho, outra opção (inteira ↔ meio a meio): borda e adicionais
+    // continuam valendo. Só os sabores extras saem ao voltar para a inteira.
+    if (variacaoId === config.variacaoId) {
+      if (!comoMeio && config.sabores.length > 0) aplicar({ sabores: [] });
+      return;
+    }
     aplicar({ variacaoId, sabores: [], bordaId: bordaPadraoDoTamanho(variacaoId), adicionais: [] });
   }
 
@@ -186,10 +211,11 @@ export function NucleoConfigurador({
     (s) => s.variacao_id !== config.variacaoId,
   );
   // O sabor principal já ocupa uma das vagas do tamanho.
-  const vagasExtras = (tamanho?.max_sabores ?? 1) - 1;
+  const vagasExtras = maxSabores - 1;
   // Só a próxima vaga vazia aparece: com 4 sabores permitidos, não são três
-  // caixas pontilhadas de uma vez.
-  const vagasVisiveis = Math.min(vagasExtras, config.sabores.length + 1);
+  // caixas pontilhadas de uma vez. As obrigatórias aparecem todas.
+  const vagasVisiveis = Math.min(vagasExtras, Math.max(config.sabores.length + 1, minSabores - 1));
+  const faltam = saboresQueFaltam(opcao, saboresEscolhidos.length);
   const nomeDoSabor = (id: string) =>
     outrosSabores.find((s) => s.variacao_id === id) ?? null;
 
@@ -227,7 +253,7 @@ export function NucleoConfigurador({
   const detalheDaBorda = (b: OpcaoPreco) => (b.preco > 0 ? `+ ${formatBRL(b.preco)}` : "Sem custo");
 
   const rotuloDaFolhaDeSabor = (indice: number) => {
-    const r = rotuloDaVaga(indice + 1, tamanho?.max_sabores ?? 2);
+    const r = rotuloDaVaga(indice + 1, maxSabores);
     return r === "2ª metade" ? "a 2ª metade" : `o ${r}`;
   };
 
@@ -360,8 +386,10 @@ export function NucleoConfigurador({
     setConfirmado(true);
   }
 
-  const podeConfirmar = montado.ok && produto.disponivel;
-  const erro = montado.ok ? null : montado.erro;
+  const podeConfirmar = montado.ok && produto.disponivel && faltam === 0;
+  // Enquanto faltam sabores obrigatórios, quem fala é a seção de sabores; a
+  // recusa do servidor pelo mínimo seria só a mesma coisa dita pior.
+  const erro = montado.ok || faltam > 0 ? null : montado.erro;
 
   const barra = (
     <div className="mx-auto flex max-w-shalon flex-col gap-2">
@@ -411,7 +439,9 @@ export function NucleoConfigurador({
               : "cursor-not-allowed bg-tn text-muted",
           ].join(" ")}
         >
-          {recalculando
+          {faltam > 0
+            ? `Escolha mais ${faltam === 1 ? "1 sabor" : `${faltam} sabores`}`
+            : recalculando
             ? "Calculando..."
             : montado?.ok
               ? `${rotuloAcao} • ${formatBRL(montado.total)}`
@@ -444,14 +474,15 @@ export function NucleoConfigurador({
           <legend className="mb-1 text-[16px] font-bold text-ink">Escolha o tamanho</legend>
           <p className="m-0 mb-[10px] text-[13px] text-muted">Obrigatório</p>
           <div className="flex flex-col gap-2">
-            {tamanhos.map((t) => {
-              const ativo = t.variacao_id === config.variacaoId;
+            {opcoes.map((o) => {
+              const t = o.tamanho;
+              const ativo = opcao?.chave === o.chave;
               return (
                 <button
-                  key={t.variacao_id}
+                  key={o.chave}
                   type="button"
                   disabled={!t.disponivel}
-                  onClick={() => escolherTamanho(t.variacao_id)}
+                  onClick={() => escolherTamanho(t.variacao_id, o.meio)}
                   aria-pressed={ativo}
                   className={[
                     "flex min-h-[60px] items-center gap-3 rounded-13 border-2 p-[14px] text-left",
@@ -470,22 +501,16 @@ export function NucleoConfigurador({
                   </span>
                   <span className="flex-1">
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className="text-[15px] font-semibold text-ink">{t.tamanho_nome}</span>
-                      {t.max_sabores > 1 ? (
+                      <span className="text-[15px] font-semibold text-ink">{o.meio ? "Meio a meio" : t.tamanho_nome}</span>
+                      {o.maximo > 1 ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-tw px-2 py-[2px] text-[12px] font-bold text-twf">
                           <IconeMetade lado="esquerda" cheio />
-                          Meio a meio
+                          {o.minimo > 2 ? `${o.minimo} sabores` : "Meio a meio"}
                         </span>
                       ) : null}
                     </span>
                     <span className="block text-[13px] text-ink-2">
-                      {t.fatias} fatias ·{" "}
-                      {t.max_sabores > 1
-                        ? t.max_sabores === 2
-                          ? "inteira ou meio a meio"
-                          : `inteira ou até ${t.max_sabores} sabores`
-                        : "1 sabor"}
-                      {t.disponivel ? "" : " · indisponível hoje"}
+                      {descreverOpcao(o)}
                     </span>
                   </span>
                   <span className="text-[15px] font-bold tabular-nums text-ink">
@@ -517,20 +542,39 @@ export function NucleoConfigurador({
       {aceitaMeioAMeio && dadosDoTamanho ? (
         <fieldset className="min-w-0 mt-[22px] border-0 p-0">
           <legend className="mb-1 text-[16px] font-bold text-ink">
-            {tamanho?.max_sabores === 2 ? "Inteira ou meio a meio?" : "Inteira ou com mais sabores?"}
+            {saboresObrigatorios
+              ? `Escolha os ${minSabores} sabores`
+              : maxSabores === 2
+                ? "Quer meio a meio?"
+                : "Quer mais sabores?"}
           </legend>
-          <p className="m-0 mb-[10px] text-[13px] text-muted">
-            Sua pizza já tem {produto.nome}. Quer dividir com{" "}
-            {tamanho?.max_sabores === 2 ? "outro sabor" : "outros sabores"}? É opcional.
-          </p>
+          {saboresObrigatorios ? (
+            <p className="m-0 mb-[10px] text-[13px] text-muted">
+              Obrigatório · sua pizza já tem {produto.nome}
+              {faltam > 0 ? (
+                <strong className="text-tdf">
+                  {" "}· {faltam === 1 ? "falta 1 sabor" : `faltam ${faltam} sabores`}
+                </strong>
+              ) : (
+                " · tudo escolhido"
+              )}
+            </p>
+          ) : (
+            // Broto: o 2º sabor é opcional, e precisa dizer o que acontece
+            // sem ele — clientes passavam batido e achavam que vinha meio a meio.
+            <p className="m-0 mb-[10px] rounded-12 border-2 border-twb bg-tw px-[14px] py-3 text-[14px] font-semibold text-twf">
+              Sua pizza já tem {produto.nome}. Se você não escolher{" "}
+              {maxSabores === 2 ? "a 2ª metade" : "outro sabor"}, ela vai com 1 sabor só.
+            </p>
+          )}
 
           <ul className="m-0 flex list-none flex-col gap-2 p-0">
             {/* Vaga 0: o sabor da página, que não se troca aqui. */}
             <li className="flex min-h-[56px] items-center gap-3 rounded-13 border-2 border-border-shalon bg-elev px-[14px] py-[13px]">
-              <MarcaDaVaga indice={0} total={tamanho?.max_sabores ?? 2} cheia />
+              <MarcaDaVaga indice={0} total={maxSabores} cheia />
               <span className="min-w-0 flex-1">
                 <span className="block text-[12px] font-bold uppercase tracking-[0.04em] text-muted">
-                  {rotuloDaVaga(0, tamanho?.max_sabores ?? 2)}
+                  {rotuloDaVaga(0, maxSabores)}
                 </span>
                 <span className="block text-[15px] font-semibold text-ink">{produto.nome}</span>
               </span>
@@ -540,7 +584,7 @@ export function NucleoConfigurador({
             {Array.from({ length: vagasVisiveis }, (_, i) => {
               const vaga = i + 1;
               const sabor = config.sabores[i] ? nomeDoSabor(config.sabores[i]) : null;
-              const rotulo = rotuloDaVaga(vaga, tamanho?.max_sabores ?? 2);
+              const rotulo = rotuloDaVaga(vaga, maxSabores);
 
               if (!sabor) {
                 return (
@@ -551,7 +595,7 @@ export function NucleoConfigurador({
                       onClick={() => setFolha({ tipo: "sabor", indice: i })}
                       className="motion-interactive flex min-h-[56px] w-full cursor-pointer items-center gap-3 rounded-13 border-2 border-dashed border-border-shalon bg-transparent px-[14px] py-[13px] text-left transition-colors hover:border-brand-orange"
                     >
-                      <MarcaDaVaga indice={vaga} total={tamanho?.max_sabores ?? 2} cheia={false} />
+                      <MarcaDaVaga indice={vaga} total={maxSabores} cheia={false} />
                       <span className="min-w-0 flex-1">
                         <span className="block text-[15px] font-semibold text-ink">
                           Escolher {rotulo === "2ª metade" ? "a 2ª metade" : `o ${rotulo}`}
@@ -582,7 +626,7 @@ export function NucleoConfigurador({
                     aria-label={`${rotulo}: ${sabor.nome}. Trocar sabor`}
                     className="flex min-h-[52px] min-w-0 flex-1 cursor-pointer items-center gap-3 border-0 bg-transparent py-[9px] pr-1 text-left"
                   >
-                    <MarcaDaVaga indice={vaga} total={tamanho?.max_sabores ?? 2} cheia />
+                    <MarcaDaVaga indice={vaga} total={maxSabores} cheia />
                     <span className="min-w-0 flex-1">
                       <span className="block text-[12px] font-bold uppercase tracking-[0.04em] text-muted">
                         {rotulo} · trocar
@@ -784,6 +828,25 @@ export function NucleoConfigurador({
   );
 }
 
+
+/** O que cada opção de tamanho leva, dito do jeito que o cliente entende. */
+function descreverOpcao(o: {
+  minimo: number;
+  maximo: number;
+  meio: boolean;
+  tamanho: { fatias: number; disponivel: boolean };
+}): string {
+  const sabores = o.meio
+    ? "2 sabores, um em cada metade"
+    : o.maximo === 1
+      ? "1 sabor"
+      : o.minimo === o.maximo
+        ? `${o.maximo} sabores`
+        : o.maximo === 2
+          ? "1 sabor ou meio a meio"
+          : `de ${o.minimo} a ${o.maximo} sabores`;
+  return `${o.tamanho.fatias} fatias · ${sabores}${o.tamanho.disponivel ? "" : " · indisponível hoje"}`;
+}
 
 /** "1ª metade" / "2ª metade" quando a pizza só tem duas; "1º sabor"… quando tem mais. */
 function rotuloDaVaga(indice: number, total: number): string {

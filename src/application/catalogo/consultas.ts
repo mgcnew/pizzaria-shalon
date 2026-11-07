@@ -73,11 +73,19 @@ export const listarTamanhos = cache(async (): Promise<Tamanho[]> => {
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase
     .from("pizza_sizes")
+    .select("id, name, slice_count, max_flavors, min_flavors, half_as_own_option, is_active, sort_order, sold_as")
+    .order("sort_order")
+    .order("name");
+  if (!error) return (data ?? []) as Tamanho[];
+
+  // Banco ainda sem a migration 0183: lista como antes, com os padrões.
+  const antigo = await supabase
+    .from("pizza_sizes")
     .select("id, name, slice_count, max_flavors, is_active, sort_order, sold_as")
     .order("sort_order")
     .order("name");
-  if (error) throw error;
-  return (data ?? []) as Tamanho[];
+  if (antigo.error) throw error;
+  return (antigo.data ?? []).map((t) => ({ ...t, min_flavors: 1, half_as_own_option: false })) as Tamanho[];
 });
 
 export const listarBordas = cache(async (): Promise<Borda[]> => {
