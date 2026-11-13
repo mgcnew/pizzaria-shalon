@@ -61,6 +61,12 @@ const nextConfig: NextConfig = {
     },
   },
   images: {
+    // Sem o otimizador da Vercel (12/11/2026): a cota gratuita acabou e ele
+    // passou a responder 402, derrubando TODAS as imagens do site. As fotos
+    // do catálogo já chegam ao Storage redimensionadas e em WebP pelo
+    // pipeline com `sharp` (03 §24), então servimos o arquivo direto.
+    // Reverter só junto com a decisão de pagar a otimização.
+    unoptimized: true,
     // Imagens do catálogo ficam no Storage do Supabase (CLAUDE.md §35: nunca
     // Base64 no banco). O host é lido do ambiente, não fixado no código —
     // dev e produção são projetos diferentes (pendência A-11).
