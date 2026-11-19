@@ -18,8 +18,7 @@ import { formasParaRecebimento } from "@/application/configuracoes/consultas";
 import { obterCaixa } from "@/application/caixa/consultas";
 import { AtalhosDePedidos } from "./_ui/AtalhosDePedidos";
 import { CentralDePedidos } from "./_ui/CentralDePedidos";
-import { CartaoPedido } from "./_ui/CartaoPedido";
-import { TabelaPedidos } from "./_ui/TabelaPedidos";
+import { EncerradosComBusca } from "./_ui/EncerradosComBusca";
 import { ModalNovoPedido } from "./_ui/ModalNovoPedido";
 import { ModalPedido } from "./_ui/ModalPedido";
 
@@ -187,29 +186,12 @@ export default async function Page({
               </p>
             </div>
           ) : (
-            <>
-              {/* ENCERRADOS MANTÉM O MAIS NOVO EM CIMA. Esta lista é consulta,
-                  não operação: quem abre aqui procura o que acabou de acontecer.
-                  É a ordem que a RPC já devolve, e por isso não se mexe nela. */}
-              <TabelaPedidos
-                pedidos={pedidos}
-                hora={hora}
-                espera={espera}
-                modo="encerrado"
-                rotulo="Pedidos encerrados, do mais recente para o mais antigo"
-                consultaDaAba={consultaDaAba}
-              />
-              <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(320px,1fr))] lg:hidden">
-                {pedidos.map((p) => (
-                  <CartaoPedido
-                    key={p.id}
-                    pedido={p}
-                    hora={hora[p.id] ?? ""}
-                    consultaDaAba={consultaDaAba}
-                  />
-                ))}
-              </div>
-            </>
+            <EncerradosComBusca
+              pedidos={pedidos}
+              hora={hora}
+              espera={espera}
+              consultaDaAba={consultaDaAba}
+            />
           )}
 
           {janela.haMais ? (

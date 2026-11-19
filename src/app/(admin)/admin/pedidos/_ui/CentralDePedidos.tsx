@@ -7,7 +7,9 @@ import type { RealtimeChannel, SupabaseClient } from "@supabase/supabase-js";
 import { carregarClienteRealtime } from "@/infrastructure/supabase/realtimeSobDemanda";
 import { exigeAtencao, parado } from "@/domain/pedidos/estados";
 import type { PedidoNaFila } from "@/application/pedidos/tipos";
+import { CampoDeBuscaDePedidos } from "./CampoDeBuscaDePedidos";
 import { CartaoPedido } from "./CartaoPedido";
+import { filtrarPedidosPorBusca } from "./buscaDePedidos";
 import { TabelaPedidos } from "./TabelaPedidos";
 import { GavetaDeCobranca } from "./GavetaDeCobranca";
 import { ProvedorDeOperacaoEmVoo } from "@/ui/operacaoEmVoo";
@@ -38,6 +40,60 @@ import type { PedidoAReceber } from "@/application/pdv/tipos";
  * RLS. Nada da carga útil do evento é exibido direto, porque ela traz a
  * linha crua — incluindo o telefone completo do cliente.
  */
+type ChaveDoGrupo = "decidir" | "parados" | "andamento";
+
+type GrupoDaFila = {
+  chave: ChaveDoGrupo;
+  titulo: string;
+  legenda: string | null;
+  rotulo: string;
+  lista: PedidoNaFila[];
+};
+
+/**
+ * Um filtro da fila, no desenho dos chips de Clientes. "Precisam de você"
+ * com pedido ganha a contagem em destaque: é o único grupo que é decisão de
+ * agora. O destaque é a cor E o número, nunca só a cor (CLAUDE.md §38).
+ */
+function ChipDoGrupo({
+  ativo,
+  aoEscolher,
+  quantidade,
+  urgente = false,
+  children,
+}: {
+  ativo: boolean;
+  aoEscolher: () => void;
+  quantidade: number;
+  urgente?: boolean;
+  children: React.ReactNode;
+}) {
+  const destacar = urgente && quantidade > 0 && !ativo;
+  return (
+    <button
+      type="button"
+      aria-pressed={ativo}
+      onClick={aoEscolher}
+      className={[
+        "motion-interactive inline-flex min-h-touch shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-11 px-3 text-[13px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-orange",
+        ativo
+          ? "border-[1.5px] border-transparent bg-cta text-cta-fg"
+          : "border-[1.5px] border-border-shalon bg-surface text-ink hover:border-brand-orange",
+      ].join(" ")}
+    >
+      {children}
+      <span
+        className={[
+          "min-w-[22px] rounded-pill px-[7px] py-[1px] text-center text-[12px] font-bold tabular-nums",
+          ativo ? "bg-cta-fg/20 text-cta-fg" : destacar ? "bg-td text-tdf" : "bg-elev text-ink-2",
+        ].join(" ")}
+      >
+        {quantidade}
+      </span>
+    </button>
+  );
+}
+
 /** Janela de agrupamento dos eventos de `orders` (D-2026-09-29-89). */
 const AGRUPAR_MS = 1000;
 
@@ -71,6 +127,13 @@ export function CentralDePedidos({
 }) {
   const router = useRouter();
   const [conectado, setConectado] = useState(false);
+  /**
+   * Filtro e busca são estado de TELA, e não de URL (D-2026-11-19-188): a
+   * fila recarrega por Realtime várias vezes por minuto, e `router.refresh()`
+   * preserva este estado; ir parar na URL faria cada tecla virar navegação.
+   */
+  const [grupoAtivo, setGrupoAtivo] = useState<ChaveDoGrupo | "todos">("todos");
+  const [busca, setBusca] = useState("");
   /**
    * O pedido em cobrança e a chave da tentativa, criados JUNTOS no clique.
    *
@@ -173,13 +236,14 @@ export function CentralDePedidos({
    *
    * Cada pedido cai em exatamente um (testado em estadosDoPedido.test.ts).
    */
-  const grupos = [
+  const encontrados = filtrarPedidosPorBusca(pedidos, busca);
+  const todosOsGrupos: GrupoDaFila[] = [
     {
       chave: "decidir",
       titulo: "Precisam de você",
       legenda: null,
       rotulo: "Pedidos que precisam de decisão, do que espera há mais tempo para o mais recente",
-      lista: pedidos.filter((p) => exigeAtencao(p.status)).sort(porIdade),
+      lista: encontrados.filter((p) => exigeAtencao(p.status)).sort(porIdade),
     },
     {
       chave: "parados",
@@ -187,16 +251,23 @@ export function CentralDePedidos({
       legenda:
         "Prontos esperando o cliente ou o motoboy, entregas que falharam e alterações aguardando resposta do cliente.",
       rotulo: "Pedidos parados, do que espera há mais tempo para o mais recente",
-      lista: pedidos.filter((p) => parado(p.status)).sort(porIdade),
+      lista: encontrados.filter((p) => parado(p.status)).sort(porIdade),
     },
     {
       chave: "andamento",
       titulo: "Em andamento",
       legenda: null,
       rotulo: "Pedidos em andamento, do que espera há mais tempo para o mais recente",
-      lista: pedidos.filter((p) => !exigeAtencao(p.status) && !parado(p.status)).sort(porIdade),
+      lista: encontrados.filter((p) => !exigeAtencao(p.status) && !parado(p.status)).sort(porIdade),
     },
-  ].filter((g) => g.lista.length > 0);
+  ];
+  // "Todos" mostra os grupos com pedido; um filtro mostra só o escolhido.
+  const grupos =
+    grupoAtivo === "todos"
+      ? todosOsGrupos.filter((g) => g.lista.length > 0)
+      : todosOsGrupos.filter((g) => g.chave === grupoAtivo);
+  const grupoEscolhido = todosOsGrupos.find((g) => g.chave === grupoAtivo) ?? null;
+  const termo = busca.trim();
 
   return (
     <ProvedorDeOperacaoEmVoo aoMudar={aoMudarOperacoes}>
@@ -234,7 +305,64 @@ export function CentralDePedidos({
           </div>
         ) : null}
 
-        {grupos.map((g) => (
+        {pedidos.length > 0 ? (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            {/* FILTROS COM CONTAGEM (D-2026-11-19-188). No celular os grupos
+                ficam um embaixo do outro, e achar "Parados" era rolar a fila
+                inteira. A contagem já responde "tem algo para mim?" sem
+                abrir nada. Rolam de lado em vez de quebrar linha, para a
+                fila começar sempre na mesma altura. */}
+            <div
+              role="group"
+              aria-label="Mostrar pedidos"
+              className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none]"
+            >
+              <ChipDoGrupo
+                ativo={grupoAtivo === "todos"}
+                aoEscolher={() => setGrupoAtivo("todos")}
+                quantidade={encontrados.length}
+              >
+                Todos
+              </ChipDoGrupo>
+              {todosOsGrupos.map((g) => (
+                <ChipDoGrupo
+                  key={g.chave}
+                  ativo={grupoAtivo === g.chave}
+                  aoEscolher={() => setGrupoAtivo(g.chave)}
+                  quantidade={g.lista.length}
+                  urgente={g.chave === "decidir"}
+                >
+                  {g.titulo}
+                </ChipDoGrupo>
+              ))}
+            </div>
+            <CampoDeBuscaDePedidos id="busca-fila" valor={busca} aoMudar={setBusca} />
+          </div>
+        ) : null}
+
+        {pedidos.length > 0 && grupos.every((g) => g.lista.length === 0) ? (
+          <div className="rounded-18 border border-dashed border-border-shalon bg-elev px-5 py-[44px] text-center">
+            <p className="m-0 font-display text-[19px] font-bold text-ink">
+              {termo
+                ? `Nenhum pedido com “${termo}”`
+                : `Nenhum pedido em “${grupoEscolhido?.titulo ?? ""}” agora`}
+            </p>
+            <p className="m-0 mt-1 text-[14px] text-ink-2">
+              {termo
+                ? "Confira o número ou tente parte do nome do cliente."
+                : "Quando algum chegar aqui, ele aparece na hora."}
+            </p>
+            <button
+              type="button"
+              onClick={() => (termo ? setBusca("") : setGrupoAtivo("todos"))}
+              className="mt-3 inline-flex min-h-touch cursor-pointer items-center rounded-11 border-[1.5px] border-border-shalon bg-surface px-[14px] text-[13.5px] font-semibold text-ink hover:border-brand-orange"
+            >
+              {termo ? "Limpar busca" : "Ver todos"}
+            </button>
+          </div>
+        ) : null}
+
+        {grupos.filter((g) => g.lista.length > 0).map((g) => (
           <section key={g.chave} aria-labelledby={`grupo-${g.chave}`}>
             <h2
               id={`grupo-${g.chave}`}

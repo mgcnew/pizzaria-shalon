@@ -58,6 +58,7 @@ export function AcoesDoPedido({
   comPrimaria = true,
   itensAdicionais = [],
   tetoDaTaxa = null,
+  largo = false,
 }: {
   pedidoId: string;
   acoes: AcaoDoPedido[];
@@ -76,6 +77,14 @@ export function AcoesDoPedido({
    * ele viu. Com ele, "Aprovar entrega" abre o campo da taxa antes.
    */
   tetoDaTaxa?: number | null;
+  /**
+   * Cartão do celular (D-2026-11-19-188): em `"linha"`, a primária ocupa a
+   * largura que sobra, e "Recusar" de um pedido novo sai do `⋯` para ficar
+   * ao lado de "Aceitar". Aceitar e recusar são a MESMA decisão, e esconder
+   * uma das metades num menu custava um toque a mais justo nela. Continua
+   * seguro: recusar abre o modal de motivo, e nada é recusado num toque.
+   */
+  largo?: boolean;
 }) {
   const [pedindoMotivo, setPedindoMotivo] = useState<AcaoDoPedido | null>(null);
   // Aprovar entrega com taxa a definir: `teto` vem da fila, ou da recusa do
@@ -98,7 +107,12 @@ export function AcoesDoPedido({
 
   const primaria =
     modo === "linha" && comPrimaria ? (acoes.find((a) => !a.destrutivo) ?? null) : null;
-  const noMenu = modo === "linha" ? acoes.filter((a) => a !== primaria) : [];
+  const recusaAoLado =
+    largo && primaria?.comando === "aceitar"
+      ? (acoes.find((a) => a.comando === "rejeitar") ?? null)
+      : null;
+  const noMenu =
+    modo === "linha" ? acoes.filter((a) => a !== primaria && a !== recusaAoLado) : [];
   const posicaoMenu = usePopoverFixo(
     caixaDoMenu,
     menuAberto,
@@ -203,15 +217,16 @@ export function AcoesDoPedido({
 
   const classeBotao = (acao: AcaoDoPedido) =>
     [
+      largo ? "min-w-0 flex-1 text-[14px]" : "",
       "min-h-touch cursor-pointer whitespace-nowrap rounded-10 border bg-transparent font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-orange disabled:cursor-not-allowed disabled:opacity-60 lg:min-h-10",
-      compacto ? "px-2.5 text-[12px]" : "px-3 text-[13px]",
+      largo ? "px-3" : compacto ? "px-2.5 text-[12px]" : "px-3 text-[13px]",
       estiloDoComando(acao.comando, acao.destrutivo),
     ].join(" ");
 
   return (
     <div className="flex flex-col gap-2">
       {modo === "linha" ? (
-        <div className="flex items-center gap-1">
+        <div className={largo ? "flex items-center gap-2" : "flex items-center gap-1"}>
           {primaria !== null ? (
             <button
               type="button"
@@ -220,6 +235,17 @@ export function AcoesDoPedido({
               className={classeBotao(primaria)}
             >
               {rotuloDaAcao(primaria)}
+            </button>
+          ) : null}
+
+          {recusaAoLado !== null ? (
+            <button
+              type="button"
+              disabled={executando}
+              onClick={() => aoEscolher(recusaAoLado)}
+              className={classeBotao(recusaAoLado)}
+            >
+              {rotuloDaAcao(recusaAoLado)}
             </button>
           ) : null}
 

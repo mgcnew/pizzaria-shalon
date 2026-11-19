@@ -61,49 +61,55 @@ export function CartaoPedido({
 
   return (
     <article className="rounded-16 border border-border-shalon bg-surface p-4">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <span className="font-display text-[20px] font-extrabold text-ink">
-            #{pedido.numero}
-          </span>
-          <p className="m-0 text-[14px] text-ink-2">{pedido.cliente}</p>
-          {/* A ESPERA NA FRENTE, como na tabela do desktop. O cartão mostrava
-              só a hora do relógio, e `20:41` sem data parecia recente quando
-              era o pedido mais antigo da fila. A hora fica, em segundo plano:
-              serve para localizar, não para priorizar. */}
-          <p className="m-0 text-[12.5px] text-muted">
-            {espera ? <span className="font-semibold text-ink-2">{espera}</span> : null}
-            {espera ? " · " : ""}
-            {hora} · {pedido.itens} {pedido.itens === 1 ? "item" : "itens"}
-          </p>
-        </div>
-
-        <div className="flex flex-col items-end gap-[6px]">
+      {/* ORDEM DE LEITURA (D-2026-11-19-188): primeiro "em que pé está e há
+          quanto tempo", depois "de quem é e quanto é". A situação e a espera
+          abrem o cartão porque são elas que dizem o que fazer; o número fica
+          grande, ao lado do total, porque é por ele que o balcão chama. */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <StatusBadge tom={estado.tom} pulsante={pedido.status === "waiting_store_confirmation"}>
             {estado.rotulo}
           </StatusBadge>
-          <span className="rounded-pill border border-border-shalon px-[8px] py-[3px] text-[12px] font-semibold text-ink">
-            <CanalDoPedido origem={pedido.origem} modalidade={pedido.modalidade} />
+          {/* A ESPERA NA FRENTE, como na tabela do desktop. `20:41` sem data
+              parecia recente quando era o pedido mais antigo da fila. A hora
+              fica, em segundo plano: serve para localizar, não para priorizar. */}
+          <span className="text-[12.5px] text-muted">
+            {espera ? <span className="font-semibold text-ink-2">{espera}</span> : null}
+            {espera ? " · " : ""}
+            {hora}
           </span>
         </div>
+        <span className="rounded-pill border border-border-shalon px-[8px] py-[3px] text-[12px] font-semibold text-ink">
+          <CanalDoPedido origem={pedido.origem} modalidade={pedido.modalidade} />
+        </span>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-baseline justify-between gap-2">
-        <span className="text-[13.5px] text-ink-2">
-          {pedido.forma_pagamento ?? "—"}
-          {pedido.troco !== null ? ` · troco ${formatBRL(pedido.troco)}` : ""}
-        </span>
-        <span className="font-display text-[18px] font-extrabold tabular-nums text-ink">
+      <div className="mt-2 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <span className="font-display text-[20px] font-extrabold leading-tight text-ink">
+            #{pedido.numero}
+          </span>
+          <p className="m-0 truncate text-[14px] text-ink-2">{pedido.cliente}</p>
+        </div>
+        <span className="shrink-0 font-display text-[20px] font-extrabold leading-tight tabular-nums text-ink">
           {formatBRL(pedido.total)}
         </span>
       </div>
 
+      <p className="m-0 mt-1 text-[13px] text-ink-2">
+        {pedido.itens} {pedido.itens === 1 ? "item" : "itens"} · {pedido.forma_pagamento ?? "—"}
+        {pedido.troco !== null ? ` · troco ${formatBRL(pedido.troco)}` : ""}
+      </p>
+
+      {/* O QUE TRAVA, em etiquetas: antes cada aviso era uma faixa da largura
+          do cartão, e três avisos empurravam as ações para fora da tela. O
+          texto continua dizendo o que falta, não só a cor (CLAUDE.md §38). */}
       {travas.length > 0 ? (
-        <ul className="m-0 mt-2 list-none p-0">
+        <ul className="m-0 mt-2 flex list-none flex-wrap gap-[6px] p-0">
           {travas.map((t) => (
             <li
               key={t}
-              className="mt-1 rounded-10 bg-tw px-3 py-[6px] text-[12.5px] font-semibold text-twf"
+              className="rounded-pill bg-tw px-[10px] py-[4px] text-[12px] font-semibold text-twf"
             >
               {t}
             </li>
@@ -117,43 +123,48 @@ export function CartaoPedido({
         </p>
       ) : null}
 
-      <div className="mt-3 flex flex-col gap-2">
+      {/* Receber e o `⋯` na MESMA linha: antes o `⋯` ficava sozinho numa
+          linha embaixo, e parecia que o cartão tinha um botão quebrado. */}
+      <div className="mt-3 flex items-start gap-2">
         {cobravel && aoCobrar ? (
           <button
             type="button"
             onClick={() => aoCobrar(cobravel)}
-            className={`min-h-touch w-full cursor-pointer rounded-10 border bg-transparent px-3 text-[13px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-orange ${ESTILO_RECEBER}`}
+            className={`min-h-touch min-w-0 flex-1 cursor-pointer rounded-10 border bg-transparent px-3 text-[14px] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-orange ${ESTILO_RECEBER}`}
           >
             Receber {formatBRL(cobravel.total)}
           </button>
         ) : null}
-        <AcoesDoPedido
-          pedidoId={pedido.id}
-          acoes={pedido.acoes}
-          motoboy={pedido.motoboy ?? null}
-          tetoDaTaxa={pedido.taxa_a_definir ?? null}
-          compacto
-          modo="linha"
-          comPrimaria={!cobravel}
-          itensAdicionais={[
-            {
-              rotulo: "Ver detalhes",
-              href: `/admin/pedidos?${consultaDaAba ?? (pedido.encerrado ? "aba=encerrados&" : "")}modal=detalhes&pedido=${pedido.id}`,
-            },
-            {
-              rotulo: "Emitir comanda",
-              href: `/admin/pedidos?${consultaDaAba ?? (pedido.encerrado ? "aba=encerrados&" : "")}modal=comanda&pedido=${pedido.id}`,
-            },
-            ...(ESTADOS_EDITAVEIS.includes(pedido.status) && !pedido.aguarda_cliente
-              ? [
-                  {
-                    rotulo: "Editar pedido",
-                    href: `/admin/pedidos?${consultaDaAba ?? ""}modal=detalhes&pedido=${pedido.id}&editar=1`,
-                  },
-                ]
-              : []),
-          ]}
-        />
+        <div className={cobravel && aoCobrar ? "shrink-0" : "min-w-0 flex-1"}>
+          <AcoesDoPedido
+            pedidoId={pedido.id}
+            acoes={pedido.acoes}
+            motoboy={pedido.motoboy ?? null}
+            tetoDaTaxa={pedido.taxa_a_definir ?? null}
+            compacto
+            largo
+            modo="linha"
+            comPrimaria={!cobravel}
+            itensAdicionais={[
+              {
+                rotulo: "Ver detalhes",
+                href: `/admin/pedidos?${consultaDaAba ?? (pedido.encerrado ? "aba=encerrados&" : "")}modal=detalhes&pedido=${pedido.id}`,
+              },
+              {
+                rotulo: "Emitir comanda",
+                href: `/admin/pedidos?${consultaDaAba ?? (pedido.encerrado ? "aba=encerrados&" : "")}modal=comanda&pedido=${pedido.id}`,
+              },
+              ...(ESTADOS_EDITAVEIS.includes(pedido.status) && !pedido.aguarda_cliente
+                ? [
+                    {
+                      rotulo: "Editar pedido",
+                      href: `/admin/pedidos?${consultaDaAba ?? ""}modal=detalhes&pedido=${pedido.id}&editar=1`,
+                    },
+                  ]
+                : []),
+            ]}
+          />
+        </div>
       </div>
     </article>
   );

@@ -5548,3 +5548,27 @@ vez de `pizzariashalon.vercel.app`. A hospedagem continua na Vercel: só o ender
    novo e reconfigurar a impressora e o som em cada aparelho.
 
 **Onde foi formalizada:** `src/ui/impressao/convite.ts` e `next.config.ts` (`redirects`).
+
+## D-2026-11-19-188 — Fila de pedidos com filtros, busca e cartão reorganizado
+
+**Pedido (Marcelo, 19/11/2026),** a partir de referências do Mobbin (Shopify, Vinted, talabat,
+Instacart, inDrive). Só apresentação: nenhuma regra, permissão ou ação muda.
+
+1. **Filtros com contagem** acima da fila em aberto: Todos, Precisam de você, Parados e Em
+   andamento, cada um com o número de pedidos. "Precisam de você" com pedido destaca a
+   contagem em vermelho. Rolam de lado no celular. Estado de tela, não de URL: o Realtime
+   recarrega a fila o tempo todo e o filtro escolhido precisa sobreviver a isso.
+2. **Busca por número ou cliente**, na fila em aberto e nos encerrados. Só algarismos (com
+   ou sem `#`) casam o começo do número; texto casa o nome, sem acento e sem caixa, cada
+   palavra. Filtra no navegador o que já foi carregado; nos encerrados, dias anteriores
+   continuam em "Carregar dias anteriores".
+3. **Cartão do celular:** a situação e a espera abrem o cartão; o número e o total ficam
+   grandes, lado a lado; itens, pagamento e troco numa linha; os avisos (Pix, taxa, fiado,
+   motoboy) viram etiquetas em vez de faixas. Pedido novo mostra **Aceitar** e **Recusar**
+   lado a lado. Recusar deixa o `⋯` só no cartão: recusar continua pedindo motivo num modal,
+   então nada é recusado num toque. "Receber" e o `⋯` ficam na mesma linha. A tabela do
+   desktop não mudou.
+
+**Onde foi formalizada:** `src/app/(admin)/admin/pedidos/_ui/CentralDePedidos.tsx`,
+`CartaoPedido.tsx`, `EncerradosComBusca.tsx`, `buscaDePedidos.ts` e `AcoesDoPedido.tsx`
+(prop `largo`).
