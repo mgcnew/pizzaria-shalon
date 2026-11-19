@@ -210,6 +210,9 @@ export type ResultadoComando =
       /** Entrega na rua: conclui pelo "Motoboy voltou" desta corrida (0179). */
       motoboy_voltou?: boolean;
       corrida_id?: string;
+      /** Cancelar pedido pago exige estornar junto (RN-CAIXA-019). */
+      exige_estorno?: boolean;
+      total_pago?: number;
     };
 
 /**

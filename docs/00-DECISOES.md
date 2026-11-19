@@ -5572,3 +5572,19 @@ Instacart, inDrive). Só apresentação: nenhuma regra, permissão ou ação mud
 **Onde foi formalizada:** `src/app/(admin)/admin/pedidos/_ui/CentralDePedidos.tsx`,
 `CartaoPedido.tsx`, `EncerradosComBusca.tsx`, `buscaDePedidos.ts` e `AcoesDoPedido.tsx`
 (prop `largo`).
+
+## D-2026-11-19-189 — Cancelar pedido pago pela tela de Pedidos, estornando junto
+
+**Pedido (Marcelo, 19/11/2026).** Pedido pronto e já pago não tinha como ser cancelado: o
+banco recusava ("Este pedido tem pagamento confirmado", RN-CAIXA-019), e a função que
+cancela e estorna numa transação (`cancelar_pedido_com_estorno`, D-2026-09-25-78) não era
+usada por nenhuma tela.
+
+Agora, quando o Cancelar é recusado por pagamento, o mesmo modal continua aberto com o
+motivo já digitado, avisa que o pedido foi pago e com quanto, e o botão passa a
+**Cancelar e estornar R$ X**. Nada da regra mudou: continua exigindo motivo, as
+permissões `orders.cancel` e `finance.reverse`, e caixa aberto para estornar dinheiro de
+sessão já fechada. Vale no cartão, na tabela e na tela do pedido.
+
+**Onde foi formalizada:** `src/application/pedidos/acoes.ts` (`cancelarComEstorno`) e
+`src/app/(admin)/admin/pedidos/_ui/AcoesDoPedido.tsx`.

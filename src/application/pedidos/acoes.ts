@@ -85,6 +85,46 @@ export async function executarComando(entrada: unknown): Promise<ResultadoComand
   return data as ResultadoComando;
 }
 
+const cancelamentoComEstornoSchema = z.object({
+  pedido_id: z.string().uuid(),
+  motivo: z.string().trim().min(3).max(400),
+});
+
+/**
+ * Cancela um pedido pago estornando o que foi recebido, numa transação só
+ * (RN-CAIXA-019, D-2026-11-19-189).
+ *
+ * Quem decide é `cancelar_pedido_com_estorno`: as duas permissões
+ * (`orders.cancel` e `finance.reverse`), a gaveta aberta para dinheiro e a
+ * idempotência do segundo clique. Ela recusa com `raise` para desfazer um
+ * estorno já gravado, e a mensagem desse `raise` é escrita para o operador
+ * (código P0001); qualquer outro erro vira a mensagem genérica.
+ */
+export async function cancelarComEstorno(entrada: unknown): Promise<ResultadoComando> {
+  const validado = cancelamentoComEstornoSchema.safeParse(entrada);
+  if (!validado.success) {
+    return { ok: false, erro: "Informe o motivo do cancelamento com ao menos 3 caracteres." };
+  }
+
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("cancelar_pedido_com_estorno", {
+    p_order_id: validado.data.pedido_id,
+    p_motivo: validado.data.motivo,
+  });
+
+  if (error) {
+    if ((error as { code?: string }).code === "P0001" && error.message) {
+      return { ok: false, erro: error.message };
+    }
+    return falha("cancelarComEstorno", error);
+  }
+
+  revalidatePath(ROTA);
+  revalidatePath(`${ROTA}/${validado.data.pedido_id}`);
+  revalidatePath("/admin/pdv");
+  return data as ResultadoComando;
+}
+
 const enderecoDaEdicaoSchema = z.object({
   logradouro: z.string().trim().min(2).max(160),
   numero: z.string().trim().min(1).max(20),

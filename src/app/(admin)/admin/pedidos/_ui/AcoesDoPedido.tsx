@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { createPortal } from "react-dom";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
-import { executarComando } from "@/application/pedidos/acoes";
+import { cancelarComEstorno, executarComando } from "@/application/pedidos/acoes";
 import type { AcaoDoPedido } from "@/application/pedidos/tipos";
 import { IndicadorDeNavegacao } from "@/ui/components/IndicadorDeNavegacao";
 import { useFecharAoNavegar } from "@/ui/hooks/useFecharAoNavegar";
@@ -95,6 +95,9 @@ export function AcoesDoPedido({
   const [voltou, setVoltou] = useState<{ corrida_id: string; nome: string | null } | null>(null);
   const acoes = comAVolta(acoesDoServidor, motoboy);
   const [motivo, setMotivo] = useState("");
+  // Cancelar foi recusado porque o pedido está pago: o modal continua aberto,
+  // com o motivo já digitado, e passa a oferecer cancelar E estornar.
+  const [estorno, setEstorno] = useState<number | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [menuAberto, setMenuAberto] = useState(false);
   // "Ver detalhes" e "Emitir comanda" abrem modal por query, sem skeleton de
@@ -163,6 +166,10 @@ export function AcoesDoPedido({
         taxa: taxaInformada,
       });
       if (!r.ok) {
+        if (r.exige_estorno && acao.comando === "cancelar") {
+          setEstorno(r.total_pago ?? 0);
+          return;
+        }
         if (r.exige_taxa && pedindoTaxa === null) {
           setPedindoTaxa({ acao, teto: tetoDaTaxa });
           return;
@@ -181,6 +188,21 @@ export function AcoesDoPedido({
       setMotivo("");
       setPedindoTaxa(null);
       setTaxa("");
+      setMenuAberto(false);
+    });
+  }
+
+  function cancelarEEstornar(motivoInformado: string) {
+    setErro(null);
+    iniciar(async () => {
+      const r = await cancelarComEstorno({ pedido_id: pedidoId, motivo: motivoInformado });
+      if (!r.ok) {
+        setErro(r.erro);
+        return;
+      }
+      setPedindoMotivo(null);
+      setMotivo("");
+      setEstorno(null);
       setMenuAberto(false);
     });
   }
@@ -349,11 +371,17 @@ export function AcoesDoPedido({
               aoMudarMotivo={setMotivo}
               executando={executando}
               erro={erro}
-              aoConfirmar={() => disparar(pedindoMotivo, motivo.trim())}
+              estorno={estorno}
+              aoConfirmar={() =>
+                estorno !== null
+                  ? cancelarEEstornar(motivo.trim())
+                  : disparar(pedindoMotivo, motivo.trim())
+              }
               aoFechar={() => {
                 if (executando) return;
                 setPedindoMotivo(null);
                 setMotivo("");
+                setEstorno(null);
                 setErro(null);
               }}
             />,
@@ -430,6 +458,7 @@ function ModalDeMotivo({
   aoMudarMotivo,
   executando,
   erro,
+  estorno = null,
   aoConfirmar,
   aoFechar,
 }: {
@@ -439,6 +468,8 @@ function ModalDeMotivo({
   aoMudarMotivo: (motivo: string) => void;
   executando: boolean;
   erro: string | null;
+  /** O pedido está pago: confirmar cancela E estorna este valor. */
+  estorno?: number | null;
   aoConfirmar: () => void;
   aoFechar: () => void;
 }) {
@@ -516,6 +547,18 @@ function ModalDeMotivo({
             Fica registrado no histórico do pedido e na auditoria.
           </p>
 
+          {estorno !== null ? (
+            <div role="alert" className="mt-3 rounded-10 bg-tw px-3 py-2 text-[13px] text-twf">
+              <p className="m-0 font-semibold">
+                Este pedido já foi pago{estorno > 0 ? ` (${formatBRL(estorno)})` : ""}.
+              </p>
+              <p className="m-0 mt-1">
+                Cancelar vai estornar o valor recebido, e o estorno fica registrado no caixa.
+                Devolva o valor ao cliente.
+              </p>
+            </div>
+          ) : null}
+
           {erro !== null ? (
             <p role="alert" className="m-0 mt-3 rounded-10 bg-td px-3 py-2 text-[13px] font-semibold text-tdf">
               {erro}
@@ -528,7 +571,11 @@ function ModalDeMotivo({
               disabled={executando || motivo.trim().length < 3}
               className="min-h-touch cursor-pointer rounded-11 border-0 bg-cta px-4 text-[14px] font-semibold text-cta-fg disabled:cursor-not-allowed disabled:bg-tn disabled:text-muted"
             >
-              {executando ? "Registrando…" : "Confirmar"}
+              {executando
+                ? "Registrando…"
+                : estorno !== null
+                  ? `Cancelar e estornar${estorno > 0 ? ` ${formatBRL(estorno)}` : ""}`
+                  : "Confirmar"}
             </button>
             <button
               type="button"
