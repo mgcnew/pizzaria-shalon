@@ -13,11 +13,17 @@ type Props = InputHTMLAttributes<HTMLInputElement> & {
   hint?: string;
   /** Oculta visualmente o rótulo, preservando-o para leitores de tela. */
   labelOculto?: boolean;
+  /**
+   * O que falta neste campo, dito em texto (não só na cor, CLAUDE.md §38).
+   * Aparece no lugar da dica e marca o campo como inválido.
+   */
+  erro?: string | null;
 };
 
-export function Input({ label, hint, labelOculto = false, id, className = "", ...props }: Props) {
+export function Input({ label, hint, labelOculto = false, erro = null, id, className = "", ...props }: Props) {
   const inputId = id ?? `campo-${label.toLowerCase().replace(/\s+/g, "-")}`;
-  const hintId = hint ? `${inputId}-hint` : undefined;
+  const hintId = hint && !erro ? `${inputId}-hint` : undefined;
+  const erroId = erro ? `${inputId}-erro` : undefined;
 
   return (
     <div className="w-full">
@@ -33,9 +39,11 @@ export function Input({ label, hint, labelOculto = false, id, className = "", ..
       </label>
       <input
         id={inputId}
-        aria-describedby={hintId}
+        aria-describedby={erroId ?? hintId}
+        aria-invalid={erro ? true : undefined}
         className={[
-          "w-full min-h-[50px] rounded-12 border-[1.5px] border-border-shalon",
+          "w-full min-h-[50px] rounded-12 border-[1.5px]",
+          erro ? "border-tdb" : "border-border-shalon",
           "bg-surface px-[14px] py-[12px] text-[16px] text-ink",
           "placeholder:text-muted",
           "motion-interactive transition-colors focus:border-brand-orange focus:outline-none",
@@ -43,7 +51,11 @@ export function Input({ label, hint, labelOculto = false, id, className = "", ..
         ].join(" ")}
         {...props}
       />
-      {hint ? (
+      {erro ? (
+        <p id={erroId} className="mt-[6px] text-[12.5px] font-semibold text-tdf">
+          {erro}
+        </p>
+      ) : hint ? (
         <p id={hintId} className="mt-[6px] text-[12px] text-muted">
           {hint}
         </p>

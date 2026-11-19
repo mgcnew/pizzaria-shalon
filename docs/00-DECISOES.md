@@ -5609,3 +5609,25 @@ opcional (reconhece o cadastro), nome e motivo, com dois motivos de um toque.
 **Onde foi formalizada:** `supabase/migrations/20261119100000_transferir_pedido.sql`,
 `supabase/tests/transferir_pedido.sql`, `src/application/pedidos/acoes.ts`
 (`transferirPedido`) e `src/app/(admin)/admin/pedidos/_ui/TransferirPedido.tsx`.
+
+## D-2026-11-19-191 — Novo pedido diz o que falta e leva até o campo
+
+**Pedido (Marcelo, 19/11/2026).** Ao lançar um pedido com algo faltando, a tela deve dizer com
+clareza o quê. Se for obrigatório, leva até o campo. Se for opcional, só avisa. Sem cliques a
+mais.
+
+1. **Continuar e Lançar pedido ficam sempre clicáveis.** Antes ficavam apagados sem dizer por
+   quê (o "Continuar" do passo Cliente não explicava nada). Agora, faltando algo obrigatório,
+   o clique mostra o que falta e leva o foco ao primeiro campo, trocando de passo se for
+   preciso (do Pagamento de volta para o Cliente, por exemplo). Nenhuma caixa para fechar.
+2. **Cada campo diz o que falta**, em texto e com a borda em vermelho, só depois da primeira
+   tentativa: "Informe o número.", "WhatsApp incompleto: use DDD e número.", "Escolha a forma
+   de pagamento.". Antes de tentar, continua a linha neutra "Falta preencher: …".
+3. **Opcional só avisa.** WhatsApp vazio no Balcão e no Telefone não segura o pedido; aparece
+   junto do botão "Sem WhatsApp: o pedido não entra no histórico do cliente e não pode ir para
+   o fiado.".
+4. Ctrl+Enter segue as mesmas regras dos botões. O que é obrigatório não mudou, e o servidor
+   continua conferindo tudo ao lançar.
+
+**Onde foi formalizada:** `src/app/(admin)/admin/pedidos/_ui/NovoPedido.tsx` e
+`src/ui/components/Input.tsx` (prop `erro`).

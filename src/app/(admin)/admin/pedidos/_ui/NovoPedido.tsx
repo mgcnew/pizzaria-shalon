@@ -41,6 +41,45 @@ const MOTIVOS_DE_TROCA_DA_TAXA = [
   "Outro",
 ] as const;
 
+/** Onde fica cada campo obrigatório, para a tela levar a pessoa até ele. */
+const CAMPOS = {
+  whatsapp: "novo-pedido-whatsapp",
+  nome: "novo-pedido-nome",
+  rua: "novo-pedido-rua",
+  numero: "novo-pedido-numero",
+  bairro: "novo-pedido-bairro",
+  cidade: "novo-pedido-cidade",
+  uf: "novo-pedido-uf",
+  novaTaxa: "novo-pedido-nova-taxa",
+  motivoDaTroca: "novo-pedido-motivo-da-troca",
+  motivoOutro: "novo-pedido-motivo-outro",
+  busca: "busca-produto",
+  forma: "novo-pedido-forma",
+  troco: "novo-pedido-troco",
+} as const;
+
+/** Uma coisa que falta para lançar: o passo, o campo e o que dizer. */
+type Falta = { etapa: EtapaNovoPedido; campo: string; curto: string; texto: string };
+
+function falta(etapa: EtapaNovoPedido, campo: string, curto: string, texto: string): Falta {
+  return { etapa, campo, curto, texto };
+}
+
+/**
+ * Leva o foco ao campo que falta. Seletor de menu e grupos não têm `id` no
+ * controle: o `id` fica no contêiner, e o foco vai para o primeiro controle
+ * dentro dele.
+ */
+function focarCampo(id: string) {
+  const alvo = document.getElementById(id);
+  if (!alvo) return;
+  const controle = alvo.matches("input, textarea, button, select")
+    ? alvo
+    : alvo.querySelector<HTMLElement>("input, textarea, button, select");
+  (controle ?? alvo).scrollIntoView({ block: "center", behavior: "smooth" });
+  (controle ?? alvo).focus({ preventScroll: true });
+}
+
 const ETAPAS: readonly { valor: EtapaNovoPedido; nome: string; numero: number }[] = [
   { valor: "cliente", nome: "Cliente", numero: 1 },
   { valor: "itens", nome: "Itens", numero: 2 },
@@ -146,6 +185,8 @@ export function NovoPedido({
   const [trocoPara, setTrocoPara] = useState("");
 
   const [erro, setErro] = useState<string | null>(null);
+  // Ligado na primeira tentativa de avançar ou lançar com algo faltando.
+  const [mostrarFaltas, setMostrarFaltas] = useState(false);
 
   /**
    * CEP é opcional no balcão (D-2026-10-16-138). Quando digitado, completa
@@ -485,23 +526,49 @@ export function NovoPedido({
   const taxaInformada = usarTaxaManual ? taxaManualValor : usarTrocaDaTaxa ? taxaTrocadaValor : null;
 
   // O que falta para lançar, dito com todas as letras: o botão desabilitado
-  // sozinho não explica nada (era o caso do CEP sem cidade).
+  // sozinho não explica nada (era o caso do CEP sem cidade). Cada falta sabe
+  // em que passo e em que campo está, para a tela levar a pessoa até lá
+  // (D-2026-11-19-191). `curto` é o nome usado no resumo ao lado.
+  const entrega = modalidade === "delivery";
+  const trocaAberta = trocandoTaxa && cotacao?.ok === true;
   const pendencias = [
-    itens.length === 0 ? "itens" : null,
-    nome.trim().length < 2 ? "nome do cliente" : null,
-    !whatsappOk ? "WhatsApp" : null,
-    modalidade === "delivery" && logradouro.trim().length <= 1 ? "rua" : null,
-    modalidade === "delivery" && numero.trim().length === 0 ? "número" : null,
-    modalidade === "delivery" && bairro.trim().length <= 1 ? "bairro" : null,
-    modalidade === "delivery" && cidade.trim().length <= 1 ? "cidade" : null,
-    modalidade === "delivery" && !/^[A-Za-z]{2}$/.test(uf) ? "UF" : null,
-    forma === null ? "forma de pagamento" : null,
-    precisaTroco && trocoPara.trim() === "" ? "troco para quanto" : null,
-    trocandoTaxa && cotacao?.ok && taxaTrocadaValor === null ? "nova taxa" : null,
-    trocandoTaxa && cotacao?.ok && taxaTrocadaValor !== cotacao.taxa && motivoDaTrocaTexto.length < 3
-      ? "motivo da troca da taxa"
+    bloqueado
+      ? falta("cliente", CAMPOS.whatsapp, "cliente bloqueado", "Cliente bloqueado: não dá para lançar pedido para este WhatsApp.")
       : null,
-  ].filter((x): x is string => x !== null);
+    !whatsappOk
+      ? falta(
+          "cliente",
+          CAMPOS.whatsapp,
+          "WhatsApp",
+          whatsappDigitos.length === 0
+            ? "Informe o WhatsApp do cliente."
+            : "WhatsApp incompleto: use DDD e número.",
+        )
+      : null,
+    nome.trim().length < 2 ? falta("cliente", CAMPOS.nome, "nome do cliente", "Informe o nome do cliente.") : null,
+    entrega && logradouro.trim().length <= 1 ? falta("cliente", CAMPOS.rua, "rua", "Informe a rua.") : null,
+    entrega && numero.trim().length === 0 ? falta("cliente", CAMPOS.numero, "número", "Informe o número.") : null,
+    entrega && bairro.trim().length <= 1 ? falta("cliente", CAMPOS.bairro, "bairro", "Informe o bairro.") : null,
+    entrega && cidade.trim().length <= 1 ? falta("cliente", CAMPOS.cidade, "cidade", "Informe a cidade.") : null,
+    entrega && !/^[A-Za-z]{2}$/.test(uf) ? falta("cliente", CAMPOS.uf, "UF", "UF com 2 letras.") : null,
+    trocaAberta && taxaTrocadaValor === null
+      ? falta("cliente", CAMPOS.novaTaxa, "nova taxa", "Informe a nova taxa.")
+      : null,
+    trocaAberta && cotacao?.ok && taxaTrocadaValor !== cotacao.taxa && motivoDaTrocaTexto.length < 3
+      ? motivoDaTroca === "Outro"
+        ? falta("cliente", CAMPOS.motivoOutro, "motivo da troca da taxa", "Descreva o motivo da troca da taxa.")
+        : falta("cliente", CAMPOS.motivoDaTroca, "motivo da troca da taxa", "Escolha o motivo da troca da taxa.")
+      : null,
+    itens.length === 0 ? falta("itens", CAMPOS.busca, "itens", "Adicione ao menos um item.") : null,
+    forma === null ? falta("pagamento", CAMPOS.forma, "forma de pagamento", "Escolha a forma de pagamento.") : null,
+    precisaTroco && trocoPara.trim() === ""
+      ? falta("pagamento", CAMPOS.troco, "troco para quanto", "Informe para quanto é o troco.")
+      : null,
+  ].filter((x): x is Falta => x !== null);
+  // A mensagem de cada campo, só depois da primeira tentativa: campo vazio no
+  // começo não é erro, é o que ainda vai ser preenchido.
+  const erroDo = (campo: string) =>
+    mostrarFaltas ? (pendencias.find((p) => p.campo === campo)?.texto ?? null) : null;
 
   const trocaIncompleta =
     trocandoTaxa && cotacao?.ok === true && !usarTrocaDaTaxa && taxaTrocadaValor !== cotacao.taxa;
@@ -512,6 +579,40 @@ export function NovoPedido({
     clienteCompleto &&
     forma !== null &&
     (!precisaTroco || trocoPara.trim() !== "");
+
+  /**
+   * Faltou algo obrigatório: diz o quê e leva ao primeiro campo, trocando de
+   * passo se preciso. É um clique só: nada de caixa para fechar
+   * (D-2026-11-19-191).
+   */
+  function irParaOQueFalta(faltas: Falta[]) {
+    const primeira = faltas[0];
+    if (!primeira) return;
+    setMostrarFaltas(true);
+    if (emModal && primeira.etapa !== etapa) mudarEtapa(primeira.etapa);
+    // Dois quadros: o passo novo precisa estar na tela antes do foco.
+    requestAnimationFrame(() => requestAnimationFrame(() => focarCampo(primeira.campo)));
+  }
+
+  function avancar() {
+    const proxima = ETAPAS[indiceDaEtapa + 1]?.valor;
+    if (proxima === undefined) return;
+    const faltas = pendencias.filter((p) => p.etapa === etapa);
+    if (faltas.length > 0) {
+      irParaOQueFalta(faltas);
+      return;
+    }
+    mudarEtapa(proxima);
+  }
+
+  function tentarLancar() {
+    if (enviando) return;
+    if (pendencias.length > 0) {
+      irParaOQueFalta(pendencias);
+      return;
+    }
+    lancar();
+  }
 
   function lancar() {
     if (!podeLancar || forma === null) return;
@@ -653,11 +754,9 @@ export function NovoPedido({
 
     if (evento.key === "Enter" && (evento.ctrlKey || evento.metaKey)) {
       evento.preventDefault();
-      if (proxima !== undefined) {
-        if (etapaCompleta) mudarEtapa(proxima);
-      } else if (podeLancar) {
-        lancar();
-      }
+      // As mesmas regras dos botões: com algo faltando, leva até lá.
+      if (proxima !== undefined) avancar();
+      else tentarLancar();
       return;
     }
 
@@ -819,6 +918,8 @@ export function NovoPedido({
               traz nome, endereço e pagamento habitual — o nome só é digitado
               quando o cliente é novo. */}
           <Input
+            id={CAMPOS.whatsapp}
+            erro={erroDo(CAMPOS.whatsapp)}
             label={telefoneOpcional ? "WhatsApp (opcional)" : "WhatsApp"}
             value={whatsapp}
             onChange={(e) => mudarWhatsapp(e.target.value)}
@@ -840,7 +941,14 @@ export function NovoPedido({
           ) : reconhecido !== null ? (
             <ResumoDoCliente dados={reconhecido} />
           ) : null}
-          <Input label="Nome" value={nome} onChange={(e) => setNome(e.target.value)} maxLength={120} />
+          <Input
+            id={CAMPOS.nome}
+            erro={erroDo(CAMPOS.nome)}
+            label="Nome"
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
+            maxLength={120}
+          />
         </fieldset>
         </div>
 
@@ -906,19 +1014,21 @@ export function NovoPedido({
                 em vez de cinco. */}
             <div className="grid grid-cols-12 gap-x-3 gap-y-3">
               <div className="col-span-9">
-                <Input label="Rua" value={logradouro} onChange={(e) => setLogradouro(e.target.value)} maxLength={160} />
+                <Input id={CAMPOS.rua} erro={erroDo(CAMPOS.rua)} label="Rua" value={logradouro} onChange={(e) => setLogradouro(e.target.value)} maxLength={160} />
               </div>
               <div className="col-span-3">
-                <Input label="Número" value={numero} onChange={(e) => setNumero(e.target.value)} maxLength={20} />
+                <Input id={CAMPOS.numero} erro={erroDo(CAMPOS.numero)} label="Número" value={numero} onChange={(e) => setNumero(e.target.value)} maxLength={20} />
               </div>
               <div className={`col-span-12 ${emModal ? "lg:col-span-5" : ""}`}>
-                <Input label="Bairro" value={bairro} onChange={(e) => setBairro(e.target.value)} maxLength={80} />
+                <Input id={CAMPOS.bairro} erro={erroDo(CAMPOS.bairro)} label="Bairro" value={bairro} onChange={(e) => setBairro(e.target.value)} maxLength={80} />
               </div>
               <div className={`col-span-9 ${emModal ? "lg:col-span-5" : ""}`}>
-                <Input label="Cidade" value={cidade} onChange={(e) => setCidade(e.target.value)} maxLength={80} />
+                <Input id={CAMPOS.cidade} erro={erroDo(CAMPOS.cidade)} label="Cidade" value={cidade} onChange={(e) => setCidade(e.target.value)} maxLength={80} />
               </div>
               <div className={`col-span-3 ${emModal ? "lg:col-span-2" : ""}`}>
                 <Input
+                  id={CAMPOS.uf}
+                  erro={erroDo(CAMPOS.uf)}
                   label="UF"
                   value={uf}
                   onChange={(e) => setUf(e.target.value.toUpperCase().slice(0, 2))}
@@ -964,6 +1074,8 @@ export function NovoPedido({
                     <div className="mt-2.5 flex flex-col gap-2 border-t border-tgb pt-2.5">
                       <div className="grid gap-2 sm:grid-cols-[160px_1fr]">
                         <Input
+                          id={CAMPOS.novaTaxa}
+                          erro={erroDo(CAMPOS.novaTaxa)}
                           label="Nova taxa (R$)"
                           value={taxaTrocada}
                           onChange={(e) => setTaxaTrocada(e.target.value)}
@@ -971,16 +1083,21 @@ export function NovoPedido({
                           placeholder="Ex.: 4,00"
                           maxLength={8}
                         />
-                        <SelectMenu
-                          label="Motivo da troca"
-                          valor={motivoDaTroca}
-                          aoMudar={setMotivoDaTroca}
-                          placeholder="Escolha o motivo"
-                          opcoes={MOTIVOS_DE_TROCA_DA_TAXA.map((m) => ({ valor: m, texto: m }))}
-                        />
+                        <div id={CAMPOS.motivoDaTroca}>
+                          <SelectMenu
+                            label="Motivo da troca"
+                            valor={motivoDaTroca}
+                            aoMudar={setMotivoDaTroca}
+                            placeholder="Escolha o motivo"
+                            opcoes={MOTIVOS_DE_TROCA_DA_TAXA.map((m) => ({ valor: m, texto: m }))}
+                          />
+                          <ErroDoCampo texto={erroDo(CAMPOS.motivoDaTroca)} />
+                        </div>
                       </div>
                       {motivoDaTroca === "Outro" ? (
                         <Input
+                          id={CAMPOS.motivoOutro}
+                          erro={erroDo(CAMPOS.motivoOutro)}
                           label="Descreva o motivo"
                           value={motivoOutro}
                           onChange={(e) => setMotivoOutro(e.target.value)}
@@ -1046,18 +1163,21 @@ export function NovoPedido({
             </p>
           ) : (
             <>
-              <SelectMenu
-                label="Forma"
-                valor={formaId}
-                aoMudar={(valor) => {
-                  setFormaId(valor);
-                  setPrecisaTroco(false);
-                }}
-                opcoes={[
-                  { valor: "", texto: "Escolha…" },
-                  ...formas.map((f) => ({ valor: f.id, texto: f.nome })),
-                ]}
-              />
+              <div id={CAMPOS.forma}>
+                <SelectMenu
+                  label="Forma"
+                  valor={formaId}
+                  aoMudar={(valor) => {
+                    setFormaId(valor);
+                    setPrecisaTroco(false);
+                  }}
+                  opcoes={[
+                    { valor: "", texto: "Escolha…" },
+                    ...formas.map((f) => ({ valor: f.id, texto: f.nome })),
+                  ]}
+                />
+                <ErroDoCampo texto={erroDo(CAMPOS.forma)} />
+              </div>
 
               {forma?.exige_bandeira ? <BandeirasAceitas bandeiras={forma.bandeiras} /> : null}
 
@@ -1082,6 +1202,8 @@ export function NovoPedido({
                   </label>
                   {precisaTroco ? (
                     <Input
+                      id={CAMPOS.troco}
+                      erro={erroDo(CAMPOS.troco)}
                       label="Troco para quanto?"
                       value={trocoPara}
                       onChange={(e) => setTrocoPara(e.target.value)}
@@ -1115,9 +1237,12 @@ export function NovoPedido({
           <h2 className="m-0 mb-3 text-[15px] font-bold text-ink">Itens</h2>
 
           {itens.length === 0 ? (
-            <p className="m-0 mb-3 text-[13.5px] text-ink-2">
-              Nenhum item ainda. Procure o produto abaixo e configure como o cliente pediu.
-            </p>
+            <>
+              <p className="m-0 mb-3 text-[13.5px] text-ink-2">
+                Nenhum item ainda. Procure o produto abaixo e configure como o cliente pediu.
+              </p>
+              <ErroDoCampo texto={erroDo(CAMPOS.busca)} />
+            </>
           ) : (
             <ul className="m-0 mb-3 list-none p-0">
               {itens.map((i) => (
@@ -1190,16 +1315,37 @@ export function NovoPedido({
             </p>
           ) : null}
 
+          {/* O QUE FALTA, antes de clicar em tom neutro; depois da tentativa,
+              em destaque e com o que fazer. O botão continua clicável: o
+              clique é o que leva até o campo (D-2026-11-19-191). */}
           {!enviando && pendencias.length > 0 ? (
-            <p className="m-0 mt-3 text-[12.5px] text-ink-2" role="status">
-              Falta preencher: {pendencias.join(", ")}.
+            mostrarFaltas ? (
+              <div role="alert" className="mt-3 rounded-10 bg-td px-3 py-2 text-[13px] text-tdf">
+                <p className="m-0 font-semibold">Para lançar, falta:</p>
+                <ul className="m-0 mt-1 list-disc pl-5">
+                  {pendencias.map((p) => (
+                    <li key={p.campo}>{p.texto}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="m-0 mt-3 text-[12.5px] text-ink-2" role="status">
+                Falta preencher: {pendencias.map((p) => p.curto).join(", ")}.
+              </p>
+            )
+          ) : null}
+
+          {/* Opcional que faltou: só avisa, não segura o pedido. */}
+          {telefoneOpcional && whatsappDigitos.length === 0 ? (
+            <p className="m-0 mt-3 rounded-10 bg-tw px-3 py-2 text-[12.5px] text-twf">
+              Sem WhatsApp: o pedido não entra no histórico do cliente e não pode ir para o fiado.
             </p>
           ) : null}
 
           <button
             type="button"
-            disabled={!podeLancar}
-            onClick={lancar}
+            disabled={enviando}
+            onClick={tentarLancar}
             aria-keyshortcuts="Control+Enter"
             className="motion-interactive mt-3 flex min-h-[52px] w-full cursor-pointer items-center justify-center rounded-13 border-0 bg-cta text-[16px] font-semibold text-cta-fg transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:bg-tn disabled:text-muted disabled:opacity-100"
           >
@@ -1216,6 +1362,12 @@ export function NovoPedido({
           </p>
         </section>
       </div>
+
+      {emModal && mostrarFaltas && indiceDaEtapa < ETAPAS.length - 1 && pendencias.some((p) => p.etapa === etapa) ? (
+        <p role="alert" className="m-0 rounded-10 bg-td px-3 py-2 text-[13px] font-semibold text-tdf">
+          Para continuar: {pendencias.filter((p) => p.etapa === etapa).map((p) => p.texto).join(" ")}
+        </p>
+      ) : null}
 
       {emModal ? (
         <div className="flex items-center justify-between gap-3 border-t border-border-shalon pt-4">
@@ -1237,8 +1389,7 @@ export function NovoPedido({
           {indiceDaEtapa < ETAPAS.length - 1 ? (
             <button
               type="button"
-              onClick={() => mudarEtapa(ETAPAS[indiceDaEtapa + 1]!.valor)}
-              disabled={etapa === "cliente" ? !clienteCompleto : itens.length === 0}
+              onClick={avancar}
               className="motion-interactive inline-flex min-h-touch cursor-pointer items-center rounded-11 border-0 bg-cta px-4 text-[13.5px] font-bold text-cta-fg transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:bg-tn disabled:text-muted disabled:opacity-100"
             >
               Continuar →
@@ -1261,9 +1412,15 @@ export function NovoPedido({
         taxa={{ texto: textoDaTaxa, valor: taxaDaTela }}
         forma={forma?.nome ?? null}
         trocoPara={precisaTroco && trocoPara.trim() !== "" ? `R$ ${trocoPara.trim()}` : null}
-        pendencias={pendencias}
+        pendencias={pendencias.map((p) => p.curto)}
       />
     ) : null}
     </div>
   );
+}
+
+/** A mensagem de um campo sem `Input` próprio (seletor de menu, lista de itens). */
+function ErroDoCampo({ texto }: { texto: string | null }) {
+  if (!texto) return null;
+  return <p className="m-0 mt-[6px] text-[12.5px] font-semibold text-tdf">{texto}</p>;
 }
