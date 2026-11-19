@@ -181,7 +181,90 @@ export default async function Page({
             descricao="Ajuste a busca, a cadência ou os filtros."
           />
         ) : (
-          <div className="-mx-3 overflow-x-auto">
+          <>
+          {/* Celular: um cartão por cliente, em vez da tabela de 8 colunas que
+              obrigava a rolar para o lado (19/11/2026). */}
+          <ul className="m-0 flex list-none flex-col gap-2 p-0 md:hidden">
+            {lista.clientes.map((c) => {
+              const deve = Number(c.em_aberto ?? 0);
+              return (
+                <li
+                  key={c.cliente_id}
+                  className={[
+                    "rounded-14 border px-3.5 py-3",
+                    deve > 0 ? "border-twb bg-tw/40" : "border-border-shalon bg-surface",
+                  ].join(" ")}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <Link
+                        href={`/admin/clientes/${c.cliente_id}`}
+                        className="block truncate text-[15px] font-bold text-ink no-underline"
+                      >
+                        {c.nome}
+                      </Link>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <CadenciaDiscreta valor={c.classificacao} explicacao={c.porque} />
+                        {c.bloqueado ? (
+                          <span className="text-[11.5px] font-semibold text-tdf">Bloqueado</span>
+                        ) : null}
+                        {!c.aceita_promocao ? (
+                          <span className="rounded-pill bg-elev px-2 py-[2px] text-[11px] font-semibold text-muted">Não aceita promoção</span>
+                        ) : null}
+                      </div>
+                    </div>
+                    {deve > 0 ? (
+                      <span className="shrink-0 text-right">
+                        <span className="block text-[11px] font-semibold uppercase tracking-wide text-twf">Deve</span>
+                        <span className="block font-display text-[17px] font-extrabold tabular-nums text-twf">
+                          {formatBRL(deve)}
+                        </span>
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <dl className="m-0 mt-2.5 grid grid-cols-3 gap-2 rounded-11 bg-elev px-2.5 py-2 text-center">
+                    <div>
+                      <dt className="text-[11px] text-muted">Pedidos</dt>
+                      <dd className="m-0 text-[14px] font-semibold tabular-nums text-ink">{c.pedidos}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-[11px] text-muted">Ticket médio</dt>
+                      <dd className="m-0 text-[14px] font-semibold tabular-nums text-ink">
+                        {c.ticket_medio === null ? "—" : formatBRL(c.ticket_medio)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[11px] text-muted">Última compra</dt>
+                      <dd className="m-0 text-[14px] font-semibold text-ink">{haQuanto(c.dias_sem_comprar)}</dd>
+                    </div>
+                  </dl>
+
+                  {c.classificacao !== "dados_insuficientes" ? (
+                    <p className="m-0 mt-2 text-[12px] leading-snug text-muted">{c.porque}</p>
+                  ) : null}
+
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    {c.whatsapp ? (
+                      <span className="text-[13.5px] text-ink-2">
+                        <TelefoneCopiavel telefone={c.whatsapp} />
+                      </span>
+                    ) : (
+                      <span className="text-[13px] text-muted">Sem telefone</span>
+                    )}
+                    <Link
+                      href={`/admin/clientes/${c.cliente_id}`}
+                      className="inline-flex min-h-touch shrink-0 items-center text-[13px] font-semibold text-brand-red no-underline"
+                    >
+                      Ver ficha →
+                    </Link>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="-mx-3 hidden overflow-x-auto md:block">
             <table className="w-full min-w-[820px] border-collapse text-[13.5px]">
               <thead>
                 <tr className="whitespace-nowrap text-left">
@@ -249,6 +332,7 @@ export default async function Page({
               </tbody>
             </table>
           </div>
+          </>
         )}
 
         {totalDePaginas > 1 ? (
