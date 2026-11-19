@@ -5521,3 +5521,24 @@ para o Remarketing. O intervalo típico aparece arredondado. A regra do que entr
 (RN-DASH-001 a 003) não mudou.
 
 **Onde foi formalizada:** `src/app/(admin)/admin/_ui/CentralDeAtencao.tsx`.
+
+## D-2026-11-19-187 — Domínio próprio: pizzariashalon.com.br
+
+**Pedido (Marcelo, 19/11/2026).** O sistema passa a usar o domínio comprado na Hostinger em
+vez de `pizzariashalon.vercel.app`. A hospedagem continua na Vercel: só o endereço muda.
+
+1. **Endereço principal:** `https://pizzariashalon.com.br`, sem www. O
+   `www.pizzariashalon.com.br` redireciona (308) para ele, configurado no projeto da Vercel.
+2. **DNS na Hostinger** (os servidores de nomes continuam os dela): `A @ → 216.198.79.1` e
+   `CNAME www → 9bb56410dacf07ae.vercel-dns-017.com`, como a Vercel pediu. HTTPS emitido
+   pela Vercel.
+3. **Supabase Auth:** Site URL `https://pizzariashalon.com.br`; o domínio novo entra nas
+   Redirect URLs ao lado do antigo, para os links de senha já enviados seguirem valendo.
+   Os links de senha e de convite usam o endereço de onde a pessoa acessou, então não há
+   URL do site no código nem no ambiente.
+4. **QR do cupom:** encerra o endereço temporário da D-2026-10-08-117. Agora é
+   `https://pizzariashalon.com.br/?origem=cupom`.
+5. **Mapas:** as chaves (HERE, TomTom, Google) são usadas só no servidor e não dependem do
+   domínio.
+
+**Onde foi formalizada:** `src/ui/impressao/convite.ts`.

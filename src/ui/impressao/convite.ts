@@ -6,14 +6,14 @@ import qrcode from "qrcode-generator";
  * Só no cupom do PDV e na segunda via, que vão para a mão do cliente. A
  * comanda é da cozinha e não leva convite.
  *
- * ENDEREÇO TEMPORÁRIO, decidido pela dona em 08/10/2026: enquanto não há
- * domínio próprio, o QR aponta para o endereço da Vercel. Trocar aqui, e só
- * aqui, quando o domínio existir.
+ * Domínio próprio desde 19/11/2026 (D-2026-11-19-187). Até então o QR
+ * apontava para o endereço da Vercel, que passou a ser só um apelido. Trocar
+ * aqui, e só aqui, se o domínio mudar.
  *
  * `origem=cupom` marca de onde veio a visita. O cardápio ignora parâmetros
  * que não conhece; a marca existe para os relatórios poderem contar depois.
  */
-export const ENDERECO_DO_APP = "pizzariashalon.vercel.app";
+export const ENDERECO_DO_APP = "pizzariashalon.com.br";
 export const URL_DO_CONVITE = `https://${ENDERECO_DO_APP}/?origem=cupom`;
 
 export const CHAMADA_DO_CONVITE = "Peça pelo nosso app!";

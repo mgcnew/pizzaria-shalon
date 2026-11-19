@@ -48,7 +48,7 @@ describe("ESC/POS da 58 mm (D-2026-10-08-116, entrega 2)", () => {
 
 describe("QR code nativo (GS ( k)", () => {
   it("centraliza, guarda o endereço com o tamanho certo, imprime e volta à esquerda", () => {
-    const url = "https://pizzariashalon.vercel.app/?origem=cupom";
+    const url = "https://pizzariashalon.com.br/?origem=cupom";
     const bytes = Array.from(montarEscPos([{ texto: url, estilo: "qrcode" }], "cp860"));
     const inicio = bytes.indexOf(0x1d);
     expect(bytes.slice(inicio - 3, inicio)).toEqual([0x1b, 0x61, 1]);
