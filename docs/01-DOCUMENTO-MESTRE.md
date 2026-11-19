@@ -1761,7 +1761,7 @@ Cada produto, combo e categoria pode ter link compartilhável. Link de produto s
 
 A V1 terá **Favoritos** persistidos localmente no navegador, sem login e sem sincronização entre dispositivos. Favorito temporariamente indisponível permanece salvo e marcado; produto estruturalmente inativo não precisa aparecer.
 
-O topo público terá menu hambúrguer com **Meus pedidos, Histórico de pedidos e Favoritos**. Não haverá navegação inferior persistente.
+A navegação pública fica numa **barra inferior** com **Cardápio, Meus pedidos, Histórico de pedidos e Favoritos**, no lugar do menu hambúrguer do topo. Ela some nas telas com botão próprio no rodapé (produto, checkout e acompanhamento do pedido). *(Atualizado em 19/11/2026, D-2026-11-19-185.)*
 
 Meus pedidos/histórico usam credencial/token local persistente associado aos pedidos daquele navegador/dispositivo. **Nunca liberar histórico completo apenas digitando número de WhatsApp.** Cada pedido também terá URL individual de acompanhamento com token seguro e imprevisível, que dá acesso somente àquele pedido.
 

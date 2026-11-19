@@ -5497,12 +5497,14 @@ Especial sem os 3 sabores.
 
 ---
 
-## D-2026-11-19-185 — Navegação do cardápio na barra, sem menu hambúrguer
+## D-2026-11-19-185 — Navegação do cardápio numa barra inferior, sem menu hambúrguer
 
-**Decisão (Marcelo, 19/11/2026).** "Meus pedidos", "Histórico" e "Favoritos" ficam sempre à
-vista na barra do topo do cardápio, no lugar do menu hambúrguer. No computador entram na
-mesma linha do logo, antes do carrinho; no celular ficam numa faixa logo abaixo, em três
-colunas, com "Pedidos" no lugar de "Meus pedidos" para caber. O botão da página atual fica
-destacado. Continua sendo a navegação exigida pelo Documento Mestre §79.8.
+**Decisão (Marcelo, 19/11/2026).** O menu hambúrguer do topo sai. Cardápio, Pedidos, Histórico
+e Favoritos ficam numa barra inferior, como num aplicativo: no celular, encostada no rodapé
+(respeitando a área do gesto do iPhone); no computador, uma pílula flutuante no centro. A aba
+da página atual fica destacada. A barra some no produto (que tem a barra de "Adicionar"), no
+checkout e no acompanhamento do pedido. Revoga o "não haverá navegação inferior persistente"
+do Documento Mestre §79.8, que foi atualizado. Uma primeira versão, com os botões no topo,
+foi substituída no mesmo dia.
 
-**Onde foi formalizada:** `src/app/(publico)/_ui/NavegacaoPublica.tsx` e `CabecalhoPublico.tsx`.
+**Onde foi formalizada:** `src/app/(publico)/_ui/NavegacaoPublica.tsx` e `layout.tsx`.
