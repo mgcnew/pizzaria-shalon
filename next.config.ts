@@ -40,7 +40,26 @@ const nextConfig: NextConfig = {
    * página por baixo competindo com o redirect.
    */
   async redirects() {
-    return [{ source: "/admin/caixa", destination: "/admin/pdv", permanent: false }];
+    return [
+      { source: "/admin/caixa", destination: "/admin/pdv", permanent: false },
+      /**
+       * ENDEREÇO ANTIGO → DOMÍNIO PRÓPRIO (D-2026-11-19-187).
+       *
+       * Cupons impressos e links compartilhados com `pizzariashalon.vercel.app`
+       * continuam valendo: o caminho e os parâmetros vão junto. Só o host exato
+       * é redirecionado; as prévias da Vercel têm outros hosts e não são afetadas.
+       *
+       * `permanent: true` (308) DE PROPÓSITO, ao contrário do caixa acima: a
+       * mudança de domínio não tem volta prevista, e o 308 é o que buscadores e
+       * navegadores entendem como "mudou de endereço".
+       */
+      {
+        source: "/:caminho*",
+        has: [{ type: "host", value: "pizzariashalon.vercel.app" }],
+        destination: "https://pizzariashalon.com.br/:caminho*",
+        permanent: true,
+      },
+    ];
   },
   // O diretório do Claude Design é referência visual, não código da aplicação.
   // Nunca deve ser compilado nem entrar no bundle (CLAUDE.md §7 e §8).

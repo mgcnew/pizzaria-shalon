@@ -5540,5 +5540,11 @@ vez de `pizzariashalon.vercel.app`. A hospedagem continua na Vercel: só o ender
    `https://pizzariashalon.com.br/?origem=cupom`.
 5. **Mapas:** as chaves (HERE, TomTom, Google) são usadas só no servidor e não dependem do
    domínio.
+6. **Endereço antigo:** `pizzariashalon.vercel.app` redireciona (308) para o domínio novo,
+   com o mesmo caminho e os mesmos parâmetros, para não quebrar cupons e links já
+   espalhados. Decidido pelo Marcelo sabendo do efeito: o navegador guarda dados por
+   endereço, então no domínio novo o cliente começa sem carrinho, favoritos e "Meus
+   pedidos" (os links de acompanhamento seguem valendo), e no balcão é preciso entrar de
+   novo e reconfigurar a impressora e o som em cada aparelho.
 
-**Onde foi formalizada:** `src/ui/impressao/convite.ts`.
+**Onde foi formalizada:** `src/ui/impressao/convite.ts` e `next.config.ts` (`redirects`).
