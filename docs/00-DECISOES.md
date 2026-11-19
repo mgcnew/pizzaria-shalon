@@ -5631,3 +5631,28 @@ mais.
 
 **Onde foi formalizada:** `src/app/(admin)/admin/pedidos/_ui/NovoPedido.tsx` e
 `src/ui/components/Input.tsx` (prop `erro`).
+
+## D-2026-11-19-192 — Cardápio e checkout dizem ao cliente o que falta
+
+**Pedido (Marcelo, 19/11/2026),** pensando em quem tem dificuldade com o celular. O mesmo
+modelo do Novo pedido (D-2026-11-19-191), do lado do cliente.
+
+1. **Finalizar pedido:** "Enviar pedido" fica clicável quando o que falta é algo que o
+   cliente preenche. O toque mostra a lista do que falta, em palavras simples ("Escreva o
+   número da casa.", "Escolha como vai pagar."), marca cada campo e leva o cursor ao
+   primeiro, de cima para baixo. Antes do toque, uma linha neutra conta quantas informações
+   faltam. Inclui lembrar de tocar em "Calcular taxa de entrega".
+2. **Calcular taxa de entrega** com o endereço pela metade leva ao campo do endereço que
+   falta, em vez de ficar apagado.
+3. **Montar a pizza:** com sabor obrigatório faltando, o botão "Escolha mais 1 sabor" deixa
+   de parecer apagado e, ao toque, abre direto a escolha do sabor que falta.
+4. **Opcional só avisa:** na entrega, sem ponto de referência, aparece só a dica "um ponto
+   de referência ajuda o entregador a chegar mais rápido".
+
+O que continua bloqueando sem campo para preencher (loja fechada, pedido mínimo, preços que
+mudaram, conferência que falhou) segue com as mensagens que já tinha. Nenhuma regra mudou, e
+o servidor confere tudo no envio.
+
+**Onde foi formalizada:** `src/app/(publico)/_ui/Checkout.tsx`,
+`src/ui/configurador/NucleoConfigurador.tsx`, `src/ui/focarCampo.ts` e
+`src/ui/components/ErroDoCampo.tsx`.

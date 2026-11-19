@@ -9,6 +9,8 @@ import { SelectMenu } from "@/ui/components/SelectMenu";
 import { Textarea } from "@/ui/components/Textarea";
 import { formatBRL } from "@/lib/format";
 import { buscarClienteParaBalcao, contextoDoBalcao, criarPedidoManual } from "@/application/pedidos/acoes";
+import { ErroDoCampo } from "@/ui/components/ErroDoCampo";
+import { focarCampoDepoisDeDesenhar } from "@/ui/focarCampo";
 import { buscarEnderecoPorCep } from "@/application/checkout/cep";
 import { cotarEntrega } from "@/application/checkout/acoes";
 import type { CotacaoEntrega } from "@/application/checkout/tipos";
@@ -63,21 +65,6 @@ type Falta = { etapa: EtapaNovoPedido; campo: string; curto: string; texto: stri
 
 function falta(etapa: EtapaNovoPedido, campo: string, curto: string, texto: string): Falta {
   return { etapa, campo, curto, texto };
-}
-
-/**
- * Leva o foco ao campo que falta. Seletor de menu e grupos não têm `id` no
- * controle: o `id` fica no contêiner, e o foco vai para o primeiro controle
- * dentro dele.
- */
-function focarCampo(id: string) {
-  const alvo = document.getElementById(id);
-  if (!alvo) return;
-  const controle = alvo.matches("input, textarea, button, select")
-    ? alvo
-    : alvo.querySelector<HTMLElement>("input, textarea, button, select");
-  (controle ?? alvo).scrollIntoView({ block: "center", behavior: "smooth" });
-  (controle ?? alvo).focus({ preventScroll: true });
 }
 
 const ETAPAS: readonly { valor: EtapaNovoPedido; nome: string; numero: number }[] = [
@@ -590,8 +577,7 @@ export function NovoPedido({
     if (!primeira) return;
     setMostrarFaltas(true);
     if (emModal && primeira.etapa !== etapa) mudarEtapa(primeira.etapa);
-    // Dois quadros: o passo novo precisa estar na tela antes do foco.
-    requestAnimationFrame(() => requestAnimationFrame(() => focarCampo(primeira.campo)));
+    focarCampoDepoisDeDesenhar(primeira.campo);
   }
 
   function avancar() {
@@ -1419,8 +1405,3 @@ export function NovoPedido({
   );
 }
 
-/** A mensagem de um campo sem `Input` próprio (seletor de menu, lista de itens). */
-function ErroDoCampo({ texto }: { texto: string | null }) {
-  if (!texto) return null;
-  return <p className="m-0 mt-[6px] text-[12.5px] font-semibold text-tdf">{texto}</p>;
-}

@@ -387,6 +387,21 @@ export function NucleoConfigurador({
   }
 
   const podeConfirmar = montado.ok && produto.disponivel && faltam === 0;
+
+  /**
+   * Faltou sabor obrigatório: o botão não fica apagado sem explicação. O toque
+   * abre direto a escolha do primeiro sabor que falta (D-2026-11-19-192).
+   */
+  function aoTocarNoBotao() {
+    if (faltam > 0) {
+      const vaga = Array.from({ length: Math.max(0, maxSabores - 1) }, (_, i) => i).find(
+        (i) => !config.sabores[i],
+      );
+      if (vaga !== undefined) setFolha({ tipo: "sabor", indice: vaga });
+      return;
+    }
+    confirmar();
+  }
   // Enquanto faltam sabores obrigatórios, quem fala é a seção de sabores; a
   // recusa do servidor pelo mínimo seria só a mesma coisa dita pior.
   const erro = montado.ok || faltam > 0 ? null : montado.erro;
@@ -430,13 +445,15 @@ export function NucleoConfigurador({
 
         <button
           type="button"
-          disabled={!podeConfirmar}
-          onClick={confirmar}
+          disabled={!podeConfirmar && faltam === 0}
+          onClick={aoTocarNoBotao}
           className={[
             "min-h-[52px] flex-1 rounded-13 border-0 text-[16px] font-bold",
             podeConfirmar
               ? "cursor-pointer bg-cta text-cta-fg"
-              : "cursor-not-allowed bg-tn text-muted",
+              : faltam > 0
+                ? "cursor-pointer border-2 border-dashed border-brand-orange bg-surface text-ink"
+                : "cursor-not-allowed bg-tn text-muted",
           ].join(" ")}
         >
           {faltam > 0

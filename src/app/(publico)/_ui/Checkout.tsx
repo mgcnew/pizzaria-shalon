@@ -4,7 +4,9 @@ import Link from "next/link";
 import { BandeirasAceitas } from "@/ui/components/BandeirasAceitas";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
+import { ErroDoCampo } from "@/ui/components/ErroDoCampo";
 import { Input } from "@/ui/components/Input";
+import { focarCampoDepoisDeDesenhar } from "@/ui/focarCampo";
 import { SelectMenu } from "@/ui/components/SelectMenu";
 import { Textarea } from "@/ui/components/Textarea";
 import { formatBRL } from "@/lib/format";
@@ -51,6 +53,28 @@ type Props = {
 };
 
 const UF = /^[A-Za-z]{2}$/;
+
+/** Onde fica cada campo obrigatório, para a tela levar o cliente até ele. */
+const CAMPOS = {
+  nome: "checkout-nome",
+  whatsapp: "checkout-whatsapp",
+  cep: "checkout-cep",
+  rua: "checkout-rua",
+  numero: "checkout-numero",
+  bairro: "checkout-bairro",
+  cidade: "checkout-cidade",
+  uf: "checkout-uf",
+  calcular: "checkout-calcular-entrega",
+  forma: "checkout-forma",
+  troco: "checkout-troco",
+} as const;
+
+const CAMPOS_DO_ENDERECO: readonly string[] = [
+  CAMPOS.cep, CAMPOS.rua, CAMPOS.numero, CAMPOS.bairro, CAMPOS.cidade, CAMPOS.uf,
+];
+
+/** Uma coisa que falta para enviar: o campo e o que dizer, em palavras simples. */
+type Falta = { campo: string; texto: string };
 
 export function Checkout({ loja, formasPorModalidade }: Props) {
   const router = useRouter();
@@ -231,6 +255,8 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
 
   const [revalidacao, setRevalidacao] = useState<Revalidacao | null>(null);
   const [erroEnvio, setErroEnvio] = useState<string | null>(null);
+  // Ligado no primeiro toque em "Enviar" ou "Calcular" com algo faltando.
+  const [mostrarFaltas, setMostrarFaltas] = useState(false);
   const [divergencias, setDivergencias] = useState<unknown[] | null>(null);
   const [enviando, iniciarEnvio] = useTransition();
 
@@ -316,6 +342,43 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
   // botão fica desligado para não convidar a tentar.
   const lojaAberta = revalidacao?.ok === true ? revalidacao.loja_aberta : loja.aberta;
 
+  /*
+   * O QUE FALTA, DITO AO CLIENTE (D-2026-11-19-192). O botão apagado sozinho
+   * não explicava nada, e quem tem dificuldade com o celular desistia aqui.
+   * Na ordem da tela, para o toque levar ao PRIMEIRO campo, de cima para baixo.
+   */
+  const whatsappDigitos = whatsapp.replace(/\D/g, "");
+  const entrega = modalidade === "delivery";
+  const faltas = ([
+    nome.trim().length < 2 ? { campo: CAMPOS.nome, texto: "Escreva seu nome." } : null,
+    whatsappDigitos.length < 10
+      ? {
+          campo: CAMPOS.whatsapp,
+          texto:
+            whatsappDigitos.length === 0
+              ? "Escreva seu WhatsApp com DDD."
+              : "O WhatsApp está incompleto. Use o DDD e o número.",
+        }
+      : null,
+    entrega && !cepValido ? { campo: CAMPOS.cep, texto: "Escreva o CEP (8 números)." } : null,
+    entrega && logradouro.trim().length <= 1 ? { campo: CAMPOS.rua, texto: "Escreva a rua." } : null,
+    entrega && numero.trim().length === 0 ? { campo: CAMPOS.numero, texto: "Escreva o número da casa." } : null,
+    entrega && bairro.trim().length <= 1 ? { campo: CAMPOS.bairro, texto: "Escreva o bairro." } : null,
+    entrega && cidade.trim().length <= 1 ? { campo: CAMPOS.cidade, texto: "Escreva a cidade." } : null,
+    entrega && !UF.test(uf) ? { campo: CAMPOS.uf, texto: "Escreva o estado com 2 letras (ex.: SP)." } : null,
+    entrega && enderecoCompleto && cotacao === null && !cotando
+      ? { campo: CAMPOS.calcular, texto: "Toque em “Calcular taxa de entrega”." }
+      : null,
+    forma === null && formas.length > 0
+      ? { campo: CAMPOS.forma, texto: "Escolha como vai pagar." }
+      : null,
+    precisaTroco && trocoPara.trim() === ""
+      ? { campo: CAMPOS.troco, texto: "Diga para quanto precisa de troco." }
+      : null,
+  ] as (Falta | null)[]).filter((f): f is Falta => f !== null);
+  const erroDo = (campo: string) =>
+    mostrarFaltas ? (faltas.find((f) => f.campo === campo)?.texto ?? null) : null;
+
   const podeEnviar =
     !enviando &&
     lojaAberta &&
@@ -328,6 +391,30 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
     forma !== null &&
     (!precisaTroco || trocoPara.trim() !== "") &&
     (modalidade === "pickup" || cotacao?.ok === true || taxaAConfirmar !== null);
+
+  /** Faltando algo: diz o quê e leva ao primeiro campo. Um toque só. */
+  function tentarEnviar() {
+    if (enviando) return;
+    const primeira = faltas[0];
+    if (primeira) {
+      setMostrarFaltas(true);
+      focarCampoDepoisDeDesenhar(primeira.campo);
+      return;
+    }
+    enviar();
+  }
+
+  /** Endereço pela metade: o "Calcular" diz o que falta em vez de ficar apagado. */
+  function tentarCotar() {
+    if (cotando) return;
+    const primeira = faltas.find((f) => CAMPOS_DO_ENDERECO.includes(f.campo));
+    if (primeira) {
+      setMostrarFaltas(true);
+      focarCampoDepoisDeDesenhar(primeira.campo);
+      return;
+    }
+    pedirCotacao();
+  }
 
   function enviar() {
     if (!podeEnviar || forma === null) return;
@@ -499,6 +586,8 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
               </div>
             ) : null}
             <Input
+              id={CAMPOS.nome}
+              erro={erroDo(CAMPOS.nome)}
               label="Nome"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
@@ -507,6 +596,8 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
               required
             />
             <Input
+              id={CAMPOS.whatsapp}
+              erro={erroDo(CAMPOS.whatsapp)}
               label="WhatsApp"
               value={whatsapp}
               onChange={(e) => setWhatsapp(e.target.value)}
@@ -532,6 +623,8 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
               ) : null}
 
               <Input
+                id={CAMPOS.cep}
+                erro={erroDo(CAMPOS.cep)}
                 label="CEP"
                 required
                 value={cep}
@@ -552,6 +645,8 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
               <div className="flex gap-3">
                 <div className="flex-[3]">
                   <Input
+                    id={CAMPOS.rua}
+                    erro={erroDo(CAMPOS.rua)}
                     label="Rua"
                     value={logradouro}
                     onChange={(e) => editarEndereco(setLogradouro)(e.target.value)}
@@ -561,6 +656,8 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
                 </div>
                 <div className="flex-1">
                   <Input
+                    id={CAMPOS.numero}
+                    erro={erroDo(CAMPOS.numero)}
                     label="Número"
                     value={numero}
                     onChange={(e) => editarEndereco(setNumero)(e.target.value)}
@@ -570,6 +667,8 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
               </div>
 
               <Input
+                id={CAMPOS.bairro}
+                erro={erroDo(CAMPOS.bairro)}
                 label="Bairro"
                 value={bairro}
                 onChange={(e) => editarEndereco(setBairro)(e.target.value)}
@@ -579,6 +678,8 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
               <div className="flex gap-3">
                 <div className="flex-[3]">
                   <Input
+                    id={CAMPOS.cidade}
+                    erro={erroDo(CAMPOS.cidade)}
                     label="Cidade"
                     value={cidade}
                     onChange={(e) => editarEndereco(setCidade)(e.target.value)}
@@ -587,6 +688,8 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
                 </div>
                 <div className="w-[88px]">
                   <Input
+                    id={CAMPOS.uf}
+                    erro={erroDo(CAMPOS.uf)}
                     label="UF"
                     value={uf}
                     onChange={(e) => editarEndereco(setUf)(e.target.value.toUpperCase().slice(0, 2))}
@@ -613,13 +716,15 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
               />
 
               <button
+                id={CAMPOS.calcular}
                 type="button"
-                onClick={pedirCotacao}
-                disabled={!enderecoCompleto || cotando}
+                onClick={tentarCotar}
+                disabled={cotando}
                 className="min-h-touch-cta cursor-pointer rounded-12 border-[1.5px] border-border-shalon bg-surface px-4 text-[15px] font-semibold text-ink disabled:cursor-not-allowed disabled:text-muted"
               >
                 {cotando ? "Calculando a entrega…" : "Calcular taxa de entrega"}
               </button>
+              <ErroDoCampo texto={erroDo(CAMPOS.calcular)} />
 
               {cotacao?.ok === true ? (
                 <div className="rounded-12 bg-elev p-3">
@@ -682,18 +787,21 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
               </p>
             ) : (
               <>
-                <SelectMenu
-                  label="Forma de pagamento"
-                  valor={formaId}
-                  aoMudar={(valor) => {
-                    setFormaId(valor);
-                    setPrecisaTroco(false);
-                  }}
-                  opcoes={[
-                    { valor: "", texto: "Escolha…" },
-                    ...formas.map((f) => ({ valor: f.id, texto: f.nome })),
-                  ]}
-                />
+                <div id={CAMPOS.forma}>
+                  <SelectMenu
+                    label="Forma de pagamento"
+                    valor={formaId}
+                    aoMudar={(valor) => {
+                      setFormaId(valor);
+                      setPrecisaTroco(false);
+                    }}
+                    opcoes={[
+                      { valor: "", texto: "Escolha…" },
+                      ...formas.map((f) => ({ valor: f.id, texto: f.nome })),
+                    ]}
+                  />
+                  <ErroDoCampo texto={erroDo(CAMPOS.forma)} />
+                </div>
 
                 {forma?.exige_bandeira ? <BandeirasAceitas bandeiras={forma.bandeiras} /> : null}
 
@@ -710,6 +818,8 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
                     </label>
                     {precisaTroco ? (
                       <Input
+                        id={CAMPOS.troco}
+                        erro={erroDo(CAMPOS.troco)}
                         label="Troco para quanto?"
                         value={trocoPara}
                         onChange={(e) => setTrocoPara(e.target.value)}
@@ -840,10 +950,37 @@ export function Checkout({ loja, formasPorModalidade }: Props) {
             </div>
           ) : null}
 
+          {/* O QUE FALTA, junto do botão: antes do toque, em tom neutro; depois,
+              em destaque. O toque leva ao primeiro campo (D-2026-11-19-192). */}
+          {!enviando && faltas.length > 0 ? (
+            mostrarFaltas ? (
+              <div role="alert" className="mt-3 rounded-10 bg-td px-3 py-2 text-[13.5px] text-tdf">
+                <p className="m-0 font-semibold">Para enviar, falta:</p>
+                <ul className="m-0 mt-1 list-disc pl-5">
+                  {faltas.map((f) => (
+                    <li key={f.campo}>{f.texto}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="m-0 mt-3 text-[13px] text-ink-2" role="status">
+                {faltas.length === 1 ? "Falta 1 informação" : `Faltam ${faltas.length} informações`} para
+                enviar. Toque em “Enviar pedido” e mostramos onde.
+              </p>
+            )
+          ) : null}
+
+          {/* Opcional: só uma dica, não segura o pedido. */}
+          {entrega && faltas.length === 0 && referencia.trim() === "" ? (
+            <p className="m-0 mt-3 text-[12.5px] text-muted">
+              Dica: um ponto de referência ajuda o entregador a chegar mais rápido.
+            </p>
+          ) : null}
+
           <button
             type="button"
-            onClick={enviar}
-            disabled={!podeEnviar}
+            onClick={tentarEnviar}
+            disabled={enviando || (faltas.length === 0 && !podeEnviar)}
             className="mt-[14px] flex min-h-[52px] w-full cursor-pointer items-center justify-center rounded-13 border-0 bg-cta text-[17px] font-semibold text-cta-fg disabled:cursor-not-allowed disabled:bg-tn disabled:text-muted"
           >
             {enviando ? "Enviando…" : "Enviar pedido"}
