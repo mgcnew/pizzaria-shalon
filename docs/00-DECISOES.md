@@ -5494,3 +5494,15 @@ Especial sem os 3 sabores.
 **Onde foi formalizada:** migration 0183 (`20261106100000_sabores_obrigatorios_por_tamanho`),
 `src/domain/catalogo/opcoesDeTamanho.ts` e `NucleoConfigurador.tsx`.
 
+
+---
+
+## D-2026-11-19-185 — Navegação do cardápio na barra, sem menu hambúrguer
+
+**Decisão (Marcelo, 19/11/2026).** "Meus pedidos", "Histórico" e "Favoritos" ficam sempre à
+vista na barra do topo do cardápio, no lugar do menu hambúrguer. No computador entram na
+mesma linha do logo, antes do carrinho; no celular ficam numa faixa logo abaixo, em três
+colunas, com "Pedidos" no lugar de "Meus pedidos" para caber. O botão da página atual fica
+destacado. Continua sendo a navegação exigida pelo Documento Mestre §79.8.
+
+**Onde foi formalizada:** `src/app/(publico)/_ui/NavegacaoPublica.tsx` e `CabecalhoPublico.tsx`.
