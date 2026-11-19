@@ -466,6 +466,16 @@ revogada ou de cliente bloqueado não devolve nada. O WhatsApp digitado nunca
 serve de chave de busca (03 §12.1). A credencial é por endereço de site:
 compra feita em um domínio não é reconhecida em outro.
 
+**Valorização de quem volta (D-2026-11-19-193).** Com a mesma credencial, o
+cardápio diz "Que bom te ver de novo, <primeiro nome>!", mostra o selo "Fã de
+<sabor>" quando um sabor aparece em 3 ou mais pedidos concluídos e oferece
+**Pedir de novo** o último pedido concluído, remontado com preço, promoção e
+disponibilidade de hoje (o que saiu do cardápio fica de fora, e a tela diz).
+Ao enviar o 1º, 5º, 10º, 25º, 50º e 100º pedido (depois, a cada 50), a tela de
+pedido enviado comemora o marco. Tudo conta **só os pedidos feitos daquele
+navegador** (03 §11), nunca os de outro aparelho ou do balcão, e nada disso dá
+prêmio, ponto ou desconto: não é programa de fidelidade (CLAUDE.md §46).
+
 ### RN-CLI-005
 Alteração de nome/WhatsApp em pedido novo pode atualizar o cadastro principal para uso futuro, sem alterar snapshots de pedidos antigos.
 

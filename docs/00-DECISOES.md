@@ -5656,3 +5656,32 @@ o servidor confere tudo no envio.
 **Onde foi formalizada:** `src/app/(publico)/_ui/Checkout.tsx`,
 `src/ui/configurador/NucleoConfigurador.tsx`, `src/ui/focarCampo.ts` e
 `src/ui/components/ErroDoCampo.tsx`.
+
+## D-2026-11-19-193 — Valorizar o cliente que volta, sem programa de fidelidade
+
+**Pedido (Marcelo, 19/11/2026):** fazer o cliente se sentir importante e valorizado. Escolheu
+as quatro ideias propostas, todas **sem prêmio, ponto, cupom ou desconto** (CLAUDE.md §19 e
+§46), o que mantém isto fora de programa de fidelidade.
+
+1. **Saudação:** "Que bom te ver de novo, Maria!" no topo do cardápio, para o navegador que
+   já comprou, com "Não é você?" que esquece o aparelho.
+2. **Pedir de novo:** o último pedido concluído vai para o carrinho remontado pelo motor de
+   hoje (preço, promoção e disponibilidade atuais). O que saiu do cardápio fica de fora, com
+   aviso. Chamado "Pedir de novo", e não "o de sempre", porque é o último pedido, não o mais
+   frequente.
+3. **Marco:** no "Pedido enviado", o 1º, 5º, 10º, 25º, 50º e 100º pedido (depois a cada 50)
+   ganham uma comemoração ("Este é o seu 10º pedido por aqui").
+4. **Selo:** "Fã de Calabresa" quando um sabor aparece em 3 ou mais pedidos concluídos. "Fã
+   de", e não "Fã nº 1": não há comparação entre clientes, e o selo não pode afirmar o que
+   não mede.
+
+**Privacidade (03 §10.2, §11).** Tudo vem de `cliente_valorizado` (migration 0185), só com
+a credencial do navegador, e conta **só os pedidos feitos daquele navegador**: pedido de
+balcão com o mesmo WhatsApp não entra. Sem valores, datas, endereço nem status. A página de
+acompanhamento não fala de outros pedidos.
+
+Formalizado em RN-CLI-004 e em 03 §11.
+
+**Onde foi formalizada:** `supabase/migrations/20261119110000_cliente_valorizado.sql`,
+`supabase/tests/cliente_valorizado.sql`, `src/domain/clientes/valorizacao.ts`,
+`src/app/(publico)/_ui/BoasVindasDoCliente.tsx` e `MarcoDoPedido.tsx`.

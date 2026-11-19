@@ -10,6 +10,7 @@ import {
   listarMaisPedidos,
   obterLojaPublica,
 } from "@/application/publico/consultas";
+import { BoasVindasDoCliente } from "./_ui/BoasVindasDoCliente";
 import { AvisoLojaFechada } from "./_ui/AvisoLojaFechada";
 import { Banners } from "./_ui/Banners";
 import { Busca } from "./_ui/Busca";
@@ -183,6 +184,8 @@ export default async function Home({
 
       <AvisoLojaFechada loja={loja} />
       <Busca termo="" />
+      {/* Quem volta é reconhecido neste navegador (D-2026-11-19-193). */}
+      <BoasVindasDoCliente />
 
       <Banners
         nomeLoja={loja?.nome_exibicao ?? loja?.nome ?? "Pizzaria Shalon"}

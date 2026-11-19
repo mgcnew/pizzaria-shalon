@@ -208,3 +208,33 @@ export type EnderecoDoCliente = {
 export type ClienteDoDispositivo =
   | { encontrado: false }
   | { encontrado: true; nome: string; whatsapp: string; enderecos: EnderecoDoCliente[] };
+
+/** As escolhas de um item já pedido, no formato de `configuracao_do_item`. */
+export type ConfiguracaoDoItemPedido = {
+  produto_id: string;
+  variacao_id: string | null;
+  sabores: string[];
+  borda_id: string | null;
+  adicionais: string[];
+  observacao: string;
+  quantidade: number;
+};
+
+/**
+ * Reconhecimento do cliente que volta (D-2026-11-19-193). Espelha
+ * `cliente_valorizado` (migration 0185): só os pedidos deste navegador, sem
+ * valores, datas, endereço ou status.
+ */
+export type ClienteValorizado =
+  | { encontrado: false }
+  | {
+      encontrado: true;
+      /** Primeiro nome. */
+      nome: string;
+      /** Pedidos deste navegador que não foram recusados nem cancelados. */
+      pedidos: number;
+      sabor_favorito: { nome: string; vezes: number } | null;
+      ultimo_pedido: {
+        itens: { nome: string; produto_slug: string | null; configuracao: ConfiguracaoDoItemPedido }[];
+      } | null;
+    };

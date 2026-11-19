@@ -527,6 +527,14 @@ do dono; credencial malformada, desconhecida, revogada ou de cliente
 bloqueado recebe a mesma resposta vazia. `esquecer_dispositivo(token)` revoga
 ("Não sou eu") e só funciona para quem tem a credencial (D-2026-10-01-107).
 
+`cliente_valorizado(token)` (D-2026-11-19-193), também só com a credencial,
+devolve o primeiro nome, quantos pedidos **daquele navegador** não foram
+recusados nem cancelados, o sabor mais pedido e a configuração dos itens do
+último pedido concluído. Nada de valores, datas, endereço ou status, e nada de
+pedidos de outro aparelho. A página de acompanhamento continua sem falar de
+outros pedidos (§10.2): o marco só aparece no "Pedido enviado", lido pela
+credencial do próprio navegador.
+
 Favoritos permanecem locais na V1 e não precisam de RLS.
 
 ---

@@ -19,6 +19,7 @@ import { pedidoPorToken } from "./consultas";
 import { lerSegredoDeOrigem, tokenDeAcompanhamento, SegredoAusente } from "./segredo";
 import type {
   ClienteDoDispositivo,
+  ClienteValorizado,
   CotacaoEntrega,
   EnderecoInformado,
   PedidoParaEnviar,
@@ -646,6 +647,29 @@ export async function reconhecerNoNavegador(token: unknown): Promise<ClienteDoDi
     return { encontrado: false };
   }
   return (data as ClienteDoDispositivo | null) ?? { encontrado: false };
+}
+
+/**
+ * O cliente que volta, NESTE navegador (D-2026-11-19-193): primeiro nome,
+ * quantos pedidos fez por aqui, o sabor que mais pede e o último pedido para
+ * repetir. A mesma chave de `reconhecerNoNavegador`, e o mesmo vazio para
+ * qualquer credencial que não sirva. Falha vira vazio: reconhecer é gentileza,
+ * nunca pode travar o cardápio.
+ */
+export async function valorizarNoNavegador(token: unknown): Promise<ClienteValorizado> {
+  const validado = tokenDeDispositivo.safeParse(token);
+  if (!validado.success) return { encontrado: false };
+
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("cliente_valorizado", { p_token: validado.data });
+  if (error) {
+    // Banco sem a 0185: sem reconhecimento, e sem barulho no log.
+    if ((error as { code?: string }).code !== "PGRST202") {
+      logger.error("checkout:valorizar", { code: (error as { code?: string }).code });
+    }
+    return { encontrado: false };
+  }
+  return (data as ClienteValorizado | null) ?? { encontrado: false };
 }
 
 /** "Não sou eu": revoga a credencial deste navegador. */

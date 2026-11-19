@@ -7,6 +7,7 @@ import { alteracaoDoPedido, pedidoPorToken, pixDoPedido } from "@/application/ch
 import { ChavePix } from "../../_ui/ChavePix";
 import { DecidirAlteracao } from "../../_ui/DecidirAlteracao";
 import { AcompanharAoVivo } from "../../_ui/AcompanharAoVivo";
+import { MarcoDoPedido } from "../../_ui/MarcoDoPedido";
 import { assinaturaDoPedido } from "@/domain/pedidos/acompanhamento";
 import { separarMassa } from "@/domain/pedidos/comanda";
 import { tetoDaTaxaAConfirmar } from "@/domain/pedidos/taxaAConfirmar";
@@ -72,6 +73,7 @@ export default async function Page({
             Guarde este link: é por ele que você acompanha o pedido. Ele funciona neste e em
             qualquer outro aparelho, então não o compartilhe com quem não deve ver o pedido.
           </p>
+          <MarcoDoPedido />
         </div>
       ) : null}
 
