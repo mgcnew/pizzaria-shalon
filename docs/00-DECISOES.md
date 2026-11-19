@@ -5508,3 +5508,16 @@ do Documento Mestre §79.8, que foi atualizado. Uma primeira versão, com os bot
 foi substituída no mesmo dia.
 
 **Onde foi formalizada:** `src/app/(publico)/_ui/NavegacaoPublica.tsx` e `layout.tsx`.
+
+---
+
+## D-2026-11-19-186 — "Precisa de você agora" mais enxuto
+
+**Pedido (Marcelo, 19/11/2026).** O bloco acumulava informação. Agora: cada pendência é uma
+linha com a quantidade em destaque e leva à fila filtrada; "nada pendente" virou uma linha
+verde curta; os clientes sumidos ficam numa lista própria com inicial, nome e dias sem
+comprar em destaque, três à vista e o resto em "Ver mais", com atalho "Chamar de volta"
+para o Remarketing. O intervalo típico aparece arredondado. A regra do que entra no bloco
+(RN-DASH-001 a 003) não mudou.
+
+**Onde foi formalizada:** `src/app/(admin)/admin/_ui/CentralDeAtencao.tsx`.
