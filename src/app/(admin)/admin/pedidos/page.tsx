@@ -70,7 +70,8 @@ export default async function Page({
     encerrados
       ? listarEncerrados(diasAnteriores).then((janela) => ({ janela, pedidos: janela.pedidos }))
       : listarFila(false).then((pedidos) => ({ janela: null, pedidos }));
-  const tipoModal = modal === "detalhes" || modal === "comanda" ? modal : null;
+  const tipoModal =
+    modal === "detalhes" || modal === "comanda" || modal === "transferir" ? modal : null;
 
   const [sessao, { janela, pedidos }, loja, aReceber, formasDeRecebimento, caixa, pedidoModal] = await Promise.all([
     obterSessaoInterna(),

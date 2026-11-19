@@ -1,12 +1,13 @@
 import { Badge, StatusBadge } from "@/ui/components";
 import { formatBRL } from "@/lib/format";
 import { revisaoDaComanda } from "@/domain/pedidos/comanda";
-import { ESTADOS_EDITAVEIS, rotuloDeModalidade, rotuloDeOrigem, rotuloInterno } from "@/domain/pedidos/estados";
+import { ESTADOS_EDITAVEIS, ESTADOS_TRANSFERIVEIS, rotuloDeModalidade, rotuloDeOrigem, rotuloInterno } from "@/domain/pedidos/estados";
 import type { PedidoAdministrativo } from "@/application/pedidos/tipos";
 import { Comanda } from "./Comanda";
 import { EstruturaModalPedido } from "./EstruturaModalPedido";
 import { HistoricoDeEdicoes } from "./HistoricoDeEdicoes";
 import { PainelEdicao } from "./PainelEdicao";
+import { TransferirPedido } from "./TransferirPedido";
 
 
 export function ModalPedido({
@@ -18,7 +19,7 @@ export function ModalPedido({
   editarAberto = false,
 }: {
   pedido: PedidoAdministrativo;
-  tipo: "detalhes" | "comanda";
+  tipo: "detalhes" | "comanda" | "transferir";
   fuso: string;
   fecharEm: string;
   /** Tem `orders.request_change` (o estado do pedido é conferido aqui). */
@@ -38,6 +39,28 @@ export function ModalPedido({
     minute: "2-digit",
   }).format(new Date(pedido.criado_em));
   const subtitulo = `${quando} · ${rotuloDeOrigem(pedido.origem)} · ${rotuloDeModalidade(pedido.modalidade)}`;
+
+  if (tipo === "transferir") {
+    return (
+      <EstruturaModalPedido
+        titulo={`Transferir pedido #${pedido.numero}`}
+        subtitulo={subtitulo}
+        fecharEm={fecharEm}
+        largura="regular"
+      >
+        {/* O pedido pode ter mudado entre abrir o menu e chegar aqui. */}
+        {podeEditar && ESTADOS_TRANSFERIVEIS.includes(pedido.status) ? (
+          <TransferirPedido pedido={pedido} fecharEm={fecharEm} />
+        ) : (
+          <p className="m-0 rounded-12 border border-border-shalon bg-elev px-3 py-2.5 text-[13.5px] text-ink-2">
+            {podeEditar
+              ? `Só dá para transferir pedido que está pronto. Este está como “${estado.rotulo}”.`
+              : "Você não tem permissão para transferir pedidos."}
+          </p>
+        )}
+      </EstruturaModalPedido>
+    );
+  }
 
   if (tipo === "comanda") {
     return (

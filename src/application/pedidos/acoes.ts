@@ -125,6 +125,48 @@ export async function cancelarComEstorno(entrada: unknown): Promise<ResultadoCom
   return data as ResultadoComando;
 }
 
+const transferenciaSchema = z.object({
+  pedido_id: z.string().uuid(),
+  nome: z.string().trim().min(1).max(120),
+  whatsapp: z.string().max(20),
+  motivo: z.string().trim().min(3).max(400),
+});
+
+/**
+ * Passa um pedido pronto e não pago para outro cliente, como retirada
+ * (D-2026-11-19-190). Quem decide tudo é `transferir_pedido`: o estado, o
+ * pagamento, o cadastro de quem leva e o novo total. A tela só manda quem
+ * leva e por quê.
+ */
+export async function transferirPedido(entrada: unknown): Promise<ResultadoComando> {
+  const validado = transferenciaSchema.safeParse(entrada);
+  if (!validado.success) {
+    return { ok: false, erro: "Informe o nome de quem vai levar e o motivo (ao menos 3 letras)." };
+  }
+
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase.rpc("transferir_pedido", {
+    p_order_id: validado.data.pedido_id,
+    p_dados: {
+      nome: validado.data.nome,
+      whatsapp: validado.data.whatsapp,
+      motivo: validado.data.motivo,
+    },
+  });
+
+  if (error) {
+    // Banco sem a 0184: a tela avisa em vez de falhar calada.
+    if ((error as { code?: string }).code === "PGRST202") {
+      return { ok: false, erro: "A transferência ainda não foi ativada no banco." };
+    }
+    return falha("transferirPedido", error);
+  }
+
+  revalidatePath(ROTA);
+  revalidatePath(`${ROTA}/${validado.data.pedido_id}`);
+  return data as ResultadoComando;
+}
+
 const enderecoDaEdicaoSchema = z.object({
   logradouro: z.string().trim().min(2).max(160),
   numero: z.string().trim().min(1).max(20),

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { StatusBadge } from "@/ui/components";
 import { IndicadorDeNavegacao } from "@/ui/components/IndicadorDeNavegacao";
 import { formatBRL, formatarEspera, minutosDesde } from "@/lib/format";
-import { ESTADOS_EDITAVEIS, rotuloInterno } from "@/domain/pedidos/estados";
+import { ESTADOS_EDITAVEIS, ESTADOS_TRANSFERIVEIS, rotuloInterno } from "@/domain/pedidos/estados";
 import { CanalDoPedido } from "@/ui/components/CanalDoPedido";
 import type { PedidoNaFila } from "@/application/pedidos/tipos";
 import type { PedidoAReceber } from "@/application/pdv/tipos";
@@ -305,6 +305,14 @@ export function TabelaPedidos({
                                 {
                                   rotulo: "Editar pedido",
                                   href: `/admin/pedidos?${consulta}modal=detalhes&pedido=${p.id}&editar=1`,
+                                },
+                              ]
+                            : []),
+                          ...(ESTADOS_TRANSFERIVEIS.includes(p.status)
+                            ? [
+                                {
+                                  rotulo: "Transferir para outro cliente",
+                                  href: `/admin/pedidos?${consulta}modal=transferir&pedido=${p.id}`,
                                 },
                               ]
                             : []),

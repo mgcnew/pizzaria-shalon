@@ -5588,3 +5588,24 @@ sessão já fechada. Vale no cartão, na tabela e na tela do pedido.
 
 **Onde foi formalizada:** `src/application/pedidos/acoes.ts` (`cancelarComEstorno`) e
 `src/app/(admin)/admin/pedidos/_ui/AcoesDoPedido.tsx`.
+
+## D-2026-11-19-190 — Transferir pedido pronto para outro cliente
+
+**Pedido (Marcelo, 19/11/2026).** Quando o cliente desiste ou não vem buscar, a pizza pronta
+vai para outra pessoa que está no balcão. Decisões dele: o **mesmo pedido** passa para quem
+leva (não cancela um e cria outro), só se ninguém pagou, e vira **retirada no balcão**.
+
+Formalizado como **RN-STATE-011**. Feito por uma função própria, `transferir_pedido`
+(migration 0184), e não pela edição: `editar_pedido` troca só nome e WhatsApp do pedido, e a
+compra continuaria no cadastro de quem desistiu. A transferência também troca o cadastro,
+tira o pedido do link e do "Meus pedidos" de quem desistiu, zera taxa, endereço e troco, e
+registra auditoria (`pedido_transferir`) e histórico de status. Permissão: a mesma de editar
+pedido (`orders.request_change`). Pago ou no fiado é recusado: cancela-se com estorno
+(D-2026-11-19-189).
+
+Na tela: item **"Transferir para outro cliente"** no menu `⋯` do pedido pronto, com WhatsApp
+opcional (reconhece o cadastro), nome e motivo, com dois motivos de um toque.
+
+**Onde foi formalizada:** `supabase/migrations/20261119100000_transferir_pedido.sql`,
+`supabase/tests/transferir_pedido.sql`, `src/application/pedidos/acoes.ts`
+(`transferirPedido`) e `src/app/(admin)/admin/pedidos/_ui/TransferirPedido.tsx`.

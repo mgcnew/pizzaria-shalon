@@ -248,6 +248,12 @@ export function rotuloDeModalidade(modalidade: string): string {
  * Estados em que dá para editar o pedido (D-2026-11-01-182). Espelha
  * `editar_pedido`, que decide de novo.
  */
+/**
+ * Pedido pronto pode passar para outro cliente (D-2026-11-19-190). Só
+ * apresentação: quem confere estado e pagamento é `transferir_pedido`.
+ */
+export const ESTADOS_TRANSFERIVEIS: readonly string[] = ["ready_for_pickup", "ready_for_delivery"];
+
 export const ESTADOS_EDITAVEIS: readonly string[] = [
   "waiting_pix_confirmation",
   "waiting_delivery_approval",

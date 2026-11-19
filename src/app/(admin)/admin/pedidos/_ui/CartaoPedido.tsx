@@ -1,6 +1,6 @@
 import { StatusBadge } from "@/ui/components";
 import { formatBRL } from "@/lib/format";
-import { ESTADOS_EDITAVEIS, rotuloInterno } from "@/domain/pedidos/estados";
+import { ESTADOS_EDITAVEIS, ESTADOS_TRANSFERIVEIS, rotuloInterno } from "@/domain/pedidos/estados";
 import { CanalDoPedido } from "@/ui/components/CanalDoPedido";
 import type { PedidoNaFila } from "@/application/pedidos/tipos";
 import type { PedidoAReceber } from "@/application/pdv/tipos";
@@ -159,6 +159,14 @@ export function CartaoPedido({
                     {
                       rotulo: "Editar pedido",
                       href: `/admin/pedidos?${consultaDaAba ?? ""}modal=detalhes&pedido=${pedido.id}&editar=1`,
+                    },
+                  ]
+                : []),
+              ...(ESTADOS_TRANSFERIVEIS.includes(pedido.status)
+                ? [
+                    {
+                      rotulo: "Transferir para outro cliente",
+                      href: `/admin/pedidos?${consultaDaAba ?? ""}modal=transferir&pedido=${pedido.id}`,
                     },
                   ]
                 : []),

@@ -773,6 +773,22 @@ Rejeição ocorre antes da aceitação operacional e exige motivo configurável/
 ### RN-STATE-010 — Cancelamento
 Cancelamento é distinto de rejeição, nunca apaga o pedido e exige motivo, responsável e timestamp.
 
+Pedido já pago é cancelado estornando o valor na mesma operação (RN-CAIXA-019), também pela
+tela de Pedidos (D-2026-11-19-189).
+
+### RN-STATE-011 — Transferência de pedido pronto
+Pedido pronto (para retirada ou para entrega) pode passar para outro cliente quando quem pediu
+desistiu ou não veio buscar (D-2026-11-19-190). É o **mesmo pedido**, com motivo obrigatório:
+
+- só se ninguém pagou nem deixou no fiado; com pagamento, cancela-se com estorno;
+- quem leva passa a ser o cliente do pedido, inclusive no cadastro (pelo WhatsApp, quando
+  informado), e a compra conta para ele, não para quem desistiu;
+- o pedido vira **retirada no balcão**: taxa e endereço de entrega saem, e o total é
+  recalculado no servidor;
+- o link de acompanhamento de quem desistiu deixa de abrir o pedido;
+- itens, preços e desconto não mudam; quem era o cliente, quem transferiu, quando e por quê
+  ficam na auditoria e no histórico de status.
+
 ---
 
 ## 22. Alteração de pedido após envio
